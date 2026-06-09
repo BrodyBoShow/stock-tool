@@ -29,7 +29,10 @@ def get_connection() -> psycopg.Connection:
             "DATABASE_URL is not set. Copy .env.example to .env and fill in "
             "your Supabase connection string."
         )
-    return psycopg.connect(database_url)
+    # Supabase's transaction-mode pooler (port 6543) multiplexes server-side
+    # backends, so psycopg3's automatic prepared statements collide across
+    # runs (DuplicatePreparedStatement). Disabling them keeps the pooler happy.
+    return psycopg.connect(database_url, prepare_threshold=None)
 
 
 def healthcheck() -> bool:
