@@ -1,0 +1,12 @@
+# Secrets
+.env
+
+# Python virtual environment
+.venv/
+
+# Python bytecode / caches
+__pycache__/
+*.pyc
+
+# Tooling caches
+.ruff_cache/

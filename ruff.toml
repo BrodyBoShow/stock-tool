@@ -1,0 +1,14 @@
+# Ruff configuration for the Stock-Tool project.
+# Docs: https://docs.astral.sh/ruff/
+
+target-version = "py311"
+line-length = 100
+
+[lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, UP: pyupgrade, B: bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = []
+
+[format]
+quote-style = "double"
+indent-style = "space"

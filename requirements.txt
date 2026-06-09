@@ -1,0 +1,11 @@
+httpx
+pandas
+psycopg[binary]
+python-dotenv
+yfinance
+anthropic
+pydantic
+beautifulsoup4
+lxml
+streamlit
+ruff
