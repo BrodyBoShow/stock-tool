@@ -1,0 +1,76 @@
+{
+  "map_version": "v1",
+  "comment": "Raw XBRL tag -> normalized concept. Expanded in Phase 4 from the Phase 1 seed after surveying tags used across the S&P 500 universe. Source of truth for concept_map; engine syncs this to the DB (idempotent upsert) at the start of every fundamentals run. Additive-only within v1; semantic changes require a version bump.",
+  "mappings": {
+    "Revenues": "revenue",
+    "SalesRevenueNet": "revenue",
+    "RevenueFromContractWithCustomerExcludingAssessedTax": "revenue",
+    "RevenueFromContractWithCustomerIncludingAssessedTax": "revenue",
+    "SalesRevenueGoodsNet": "revenue",
+    "SalesRevenueServicesNet": "revenue",
+    "RevenuesNetOfInterestExpense": "revenue",
+    "RegulatedAndUnregulatedOperatingRevenue": "revenue",
+
+    "CostOfRevenue": "cost_of_revenue",
+    "CostOfGoodsAndServicesSold": "cost_of_revenue",
+    "CostOfGoodsSold": "cost_of_revenue",
+    "CostOfServices": "cost_of_revenue",
+    "CostOfGoodsAndServiceExcludingDepreciationDepletionAndAmortization": "cost_of_revenue",
+
+    "GrossProfit": "gross_profit",
+
+    "OperatingIncomeLoss": "operating_income",
+
+    "NetIncomeLoss": "net_income",
+    "ProfitLoss": "net_income",
+    "NetIncomeLossAvailableToCommonStockholdersBasic": "net_income",
+
+    "EarningsPerShareBasic": "eps_basic",
+    "IncomeLossFromContinuingOperationsPerBasicShare": "eps_basic",
+
+    "EarningsPerShareDiluted": "eps_diluted",
+    "IncomeLossFromContinuingOperationsPerDilutedShare": "eps_diluted",
+    "EarningsPerShareBasicAndDiluted": "eps_diluted",
+
+    "CommonStockSharesOutstanding": "shares_outstanding",
+    "EntityCommonStockSharesOutstanding": "shares_outstanding",
+    "WeightedAverageNumberOfSharesOutstandingBasic": "shares_outstanding",
+    "WeightedAverageNumberOfDilutedSharesOutstanding": "shares_outstanding",
+    "WeightedAverageNumberOfShareOutstandingBasicAndDiluted": "shares_outstanding",
+
+    "Assets": "total_assets",
+    "AssetsCurrent": "current_assets",
+    "Liabilities": "total_liabilities",
+    "LiabilitiesCurrent": "current_liabilities",
+
+    "StockholdersEquity": "total_equity",
+    "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest": "total_equity",
+
+    "CashAndCashEquivalentsAtCarryingValue": "cash_and_equivalents",
+    "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents": "cash_and_equivalents",
+
+    "LongTermDebt": "total_debt",
+    "LongTermDebtNoncurrent": "total_debt",
+    "LongTermDebtCurrent": "total_debt",
+    "DebtCurrent": "total_debt",
+    "ShortTermBorrowings": "total_debt",
+    "CommercialPaper": "total_debt",
+    "LongTermDebtAndCapitalLeaseObligations": "total_debt",
+    "LongTermDebtAndCapitalLeaseObligationsCurrent": "total_debt",
+
+    "NetCashProvidedByUsedInOperatingActivities": "operating_cash_flow",
+    "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations": "operating_cash_flow",
+
+    "PaymentsToAcquirePropertyPlantAndEquipment": "capex",
+    "PaymentsToAcquireProductiveAssets": "capex",
+
+    "DepreciationDepletionAndAmortization": "depreciation_amortization",
+    "DepreciationAmortizationAndAccretionNet": "depreciation_amortization",
+    "DepreciationAndAmortization": "depreciation_amortization",
+
+    "IncomeTaxExpenseBenefit": "income_tax_expense",
+
+    "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest": "pretax_income",
+    "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments": "pretax_income"
+  }
+}
