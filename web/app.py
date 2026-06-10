@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -86,6 +87,7 @@ SECTOR_PILLS = {
 }
 
 APP_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700;800&display=swap');
 .stApp { background: linear-gradient(135deg, #eff6ff 0%, #ffffff 45%, #eef2ff 100%); }
 header[data-testid="stHeader"] { background: transparent; }
 .block-container { padding-top: 2.4rem; max-width: 1380px; }
@@ -329,7 +331,37 @@ section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] { paddi
 section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] { gap: .72rem; }
 section[data-testid="stSidebar"] hr { margin: 10px 0; }
 section[data-testid="stSidebar"] div[data-testid="stButton"] button { min-height: 34px; }
-.sb-brand { font-size: 1.12rem; font-weight: 800; color: #0f172a; padding: 0 0 4px; }
+.sb-brand { font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .96rem; font-weight: 800; color: #0f172a; padding: 0 0 6px;
+  letter-spacing: .14em; display: flex; align-items: center; gap: 8px; }
+.sb-brand .sb-mark { color: #2a9d8f; font-size: 1.1rem; }
+
+/* minimal uppercase nav tabs — scoped to the .navmark container so the
+   Reset/Refresh/Save buttons elsewhere in the sidebar are untouched */
+section[data-testid="stSidebar"]
+  div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .navmark)
+  div[data-testid="stElementContainer"]:has(.navmark)
+  { display: none; }
+section[data-testid="stSidebar"]
+  div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .navmark)
+  div[data-testid="stButton"] button {
+  background: transparent !important; border: none !important;
+  border-left: 2px solid transparent !important; border-radius: 0 !important;
+  justify-content: flex-start !important; box-shadow: none !important;
+  text-transform: uppercase; letter-spacing: .13em;
+  font-size: .76rem !important; font-weight: 700 !important;
+  color: #64748b !important; padding: 5px 12px !important; min-height: 30px !important;
+}
+section[data-testid="stSidebar"]
+  div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .navmark)
+  div[data-testid="stButton"] button:hover
+  { color: #0f172a !important; background: #f1f5f9 !important; }
+section[data-testid="stSidebar"]
+  div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .navmark)
+  button[data-testid="stBaseButton-primary"] {
+  color: #0f172a !important; background: #f8fafc !important;
+  border-left-color: #2a9d8f !important;
+}
 
 /* hide slider numeric clutter (floating value + min/max ticks) — the
    Any/N+ badge in the label row is the single source of truth */
@@ -1016,27 +1048,132 @@ def svg_sparkline(vals: list[float], w: int = 280, h: int = 56,
     )
 
 
-def screener_header_html(score_date, stale_days: int | None) -> str:
-    # Only claim freshness the data actually supports: a green pulse means the
-    # latest scores are recent; amber (static) means the pipeline looks stale.
-    if stale_days is not None and stale_days > 3:
-        dot_cls, status = "live-dot stale", f"Scores {stale_days} days old"
+# Height of the terminal header iframe (px). Keep in sync with its content.
+TERMINAL_HEADER_HEIGHT = 184
+
+
+def screener_terminal_header_html(
+    score_date, stale_days: int | None,
+    vix: float | None, vix_chg: float | None,
+    adv: int, dec: int, total: int,
+) -> str:
+    """Bloomberg-ish terminal header rendered in an isolated iframe so it can
+    carry its own monospace font + a live JS clock.
+
+    Honesty notes: the status badge says NIGHTLY/STALE (never "LIVE" — the
+    pipeline is a nightly batch). The clock and OPEN/CLOSED are real wall-clock
+    ET (pure time, not a data claim). VIX is the FRED last close; ADV/DEC are
+    computed from our own nightly close-vs-prior-close, not an index feed.
+    """
+    fresh = stale_days is None or stale_days <= 3
+    badge_cls = "ok" if fresh else "stale"
+    badge_txt = "NIGHTLY" if fresh else f"STALE {stale_days}D"
+    sd = escape(str(score_date)) if score_date else "n/a"
+
+    if vix is None:
+        vix_cell = '<span class="k">VIX</span> <span class="mut">n/a</span>'
+    elif vix_chg is None:
+        vix_cell = f'<span class="k">VIX</span> <span class="v">{vix:.2f}</span>'
     else:
-        dot_cls, status = "live-dot", "Refreshed nightly"
-    return (
-        '<div class="ck-header">'
-        "<div>"
-        '<h1 class="ck-title">S&amp;P 500 Factor Screener</h1>'
-        '<p class="ck-sub">Quantitative factor rankings — growth · value · quality · momentum</p>'
-        '<p class="ck-disclaimer">Composite is a cross-sectional ranking within the S&amp;P 500 '
-        "universe (100 = top). It is <b>not</b> a buy signal or return prediction.</p>"
-        "</div>"
-        '<div class="ck-right">'
-        f'<div class="live-row"><span class="{dot_cls}"></span>{status}</div>'
-        '<div class="ck-date-label">Scores as of</div>'
-        f'<div class="ck-date">{escape(str(score_date))}</div>'
-        "</div></div>"
-    )
+        # market convention: rising VIX = risk/fear = red; falling = green
+        cc = "dn" if vix_chg > 0 else ("up" if vix_chg < 0 else "mut")
+        ar = "▲" if vix_chg > 0 else ("▼" if vix_chg < 0 else "■")
+        vix_cell = (
+            f'<span class="k">VIX</span> <span class="v">{vix:.2f}</span> '
+            f'<span class="{cc}">{ar}{abs(vix_chg):.2f}</span>'
+        )
+    ratio = f"{adv / dec:.2f}" if dec else "—"
+
+    style = """<style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&display=swap');
+    *{box-sizing:border-box} html,body{margin:0;padding:0}
+    body{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+      background:transparent}
+    .term{background:#0f1117;border-radius:13px;border-bottom:2px solid #2a9d8f;
+      padding:15px 20px 13px;color:#e5e7eb;box-shadow:0 6px 22px rgba(8,11,18,.22);
+      background-image:radial-gradient(120% 140% at 0% 0%,#151a23 0%,#0f1117 55%);}
+    .row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+    .eyebrow{font-size:10px;letter-spacing:.3em;color:#6b7280;font-weight:700}
+    .clk-label{font-size:10px;letter-spacing:.22em;color:#6b7280;font-weight:700;text-align:right}
+    .title{font-size:22px;font-weight:800;color:#f8fafc;letter-spacing:.01em;margin-top:3px}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;
+      letter-spacing:.14em;padding:2px 8px;border-radius:5px;margin-left:12px;
+      vertical-align:middle;position:relative;top:-3px}
+    .badge.ok{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.32)}
+    .badge.stale{background:rgba(245,158,11,.13);color:#f59e0b;
+      border:1px solid rgba(245,158,11,.32)}
+    .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+    .badge.ok .dot{animation:pulse 1.6s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+    .clk{font-size:19px;color:#cbd5e1;font-weight:600;text-align:right;letter-spacing:.02em;
+      font-variant-numeric:tabular-nums}
+    .mkt{font-size:10px;font-weight:700;letter-spacing:.16em;padding:2px 9px;border-radius:5px}
+    .mkt-open{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.32)}
+    .mkt-closed{background:rgba(148,163,184,.1);color:#94a3b8;
+      border:1px solid rgba(148,163,184,.26)}
+    .tabs{display:flex;gap:20px;margin-top:11px}
+    .tab{font-size:12px;font-weight:700;letter-spacing:.09em;color:#5b6675;
+      padding-bottom:7px;border-bottom:2px solid transparent}
+    .tab.active{color:#f8fafc;border-bottom-color:#2a9d8f}
+    .divider{height:1px;background:linear-gradient(90deg,rgba(42,157,143,.45),transparent);
+      margin:10px 0 9px}
+    .bar{display:flex;flex-wrap:wrap;align-items:center;font-size:12px}
+    .cell{padding:0 13px;border-right:1px solid #1d2430;white-space:nowrap;line-height:1.5}
+    .cell:first-child{padding-left:0}.cell:last-child{border-right:none}
+    .k{color:#6b7280;font-weight:700;letter-spacing:.05em}
+    .v{color:#e5e7eb;font-weight:700}
+    .up{color:#22c55e;font-weight:700}.dn{color:#ef4444;font-weight:700}.mut{color:#94a3b8}
+    </style>"""
+
+    body = f"""<div class="term">
+      <div class="row">
+        <div class="eyebrow">EQUITY SCREENER</div>
+        <div class="clk-label">NYSE · ET</div>
+      </div>
+      <div class="row">
+        <div class="title">S&amp;P 500 FACTOR SCREENER<span class="badge {badge_cls}">\
+<span class="dot"></span>{badge_txt}</span></div>
+        <div class="clk" id="clk">————-—— ——:——:——</div>
+      </div>
+      <div class="row">
+        <div class="tabs"><span class="tab active">S&amp;P 500</span></div>
+        <div class="mkt mkt-closed" id="mkt">— —</div>
+      </div>
+      <div class="divider"></div>
+      <div class="bar">
+        <span class="cell">{vix_cell}</span>
+        <span class="cell"><span class="k">ADV</span> <span class="up">{adv}</span></span>
+        <span class="cell"><span class="k">DEC</span> <span class="dn">{dec}</span></span>
+        <span class="cell"><span class="k">A/D</span> <span class="v">{ratio}</span></span>
+        <span class="cell"><span class="k">NAMES</span> <span class="v">{total}</span></span>
+        <span class="cell"><span class="k">SCORES</span> <span class="mut">{sd}</span></span>
+      </div>
+    </div>"""
+
+    script = """<script>
+    function etParts(){
+      var n=new Date();
+      var f=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
+        year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',
+        minute:'2-digit',second:'2-digit',weekday:'short',hour12:false});
+      var o={}; f.formatToParts(n).forEach(function(p){o[p.type]=p.value;}); return o;
+    }
+    function tick(){
+      var m=etParts(); var h=(m.hour==='24')?'00':m.hour;
+      document.getElementById('clk').textContent=
+        m.year+'-'+m.month+'-'+m.day+'  '+h+':'+m.minute+':'+m.second;
+      var mins=parseInt(h,10)*60+parseInt(m.minute,10);
+      var wk=!(m.weekday==='Sat'||m.weekday==='Sun');
+      var open=wk && mins>=570 && mins<960;   // 09:30–16:00 ET regular session
+      var e=document.getElementById('mkt');
+      e.textContent=open?'● OPEN':'● CLOSED';
+      e.className='mkt '+(open?'mkt-open':'mkt-closed');
+    }
+    tick(); setInterval(tick,1000);
+    </script>"""
+
+    return ("<!doctype html><html><head><meta charset='utf-8'>"
+            + style + "</head><body>" + body + script + "</body></html>")
 
 
 def stats_row_html(df: pd.DataFrame) -> str:
@@ -1342,20 +1479,27 @@ def _nav_to(ticker: str) -> None:
 # ── shared nav ───────────────────────────────────────────────────────────────
 
 def _sidebar_nav(current: str) -> None:
-    st.markdown('<div class="sb-brand">📈 Research Cockpit</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sb-brand"><span class="sb-mark">▚</span>RESEARCH COCKPIT</div>',
+        unsafe_allow_html=True,
+    )
+    # Real pages only — no dead nav. The .navmark scopes the minimal-tab CSS to
+    # just these buttons (active page = primary, styled with the accent rule).
     pages = [
-        ("screener",  "📊 Screener"),
-        ("watchlist", "⭐ Watchlist"),
-        ("theses",    "📝 Theses"),
+        ("screener",  "Screener"),
+        ("watchlist", "Watchlist"),
+        ("theses",    "Theses"),
     ]
-    for page_key, label in pages:
-        btn_type = "primary" if current == page_key else "secondary"
-        if st.button(label, key=f"nav_{page_key}", width="stretch", type=btn_type):
-            st.session_state.page = page_key
-            st.session_state.selected_ticker = None
-            st.query_params.clear()
-            st.rerun()
+    nav = st.container()
+    with nav:
+        st.markdown('<div class="navmark"></div>', unsafe_allow_html=True)
+        for page_key, label in pages:
+            btn_type = "primary" if current == page_key else "secondary"
+            if st.button(label, key=f"nav_{page_key}", width="stretch", type=btn_type):
+                st.session_state.page = page_key
+                st.session_state.selected_ticker = None
+                st.query_params.clear()
+                st.rerun()
 
 
 # ── screener page ─────────────────────────────────────────────────────────────
@@ -1582,7 +1726,29 @@ def show_screener() -> None:
     if isinstance(score_date, date):
         stale_days = (date.today() - score_date).days
     st.markdown(APP_CSS_TAG, unsafe_allow_html=True)
-    st.markdown(screener_header_html(score_date, stale_days), unsafe_allow_html=True)
+
+    # honest market-bar inputs: VIX last close from FRED; ADV/DEC from our own
+    # nightly close-vs-prior-close (NaN comparisons are False, so they're skipped)
+    vix = vix_chg = None
+    vseq = load_macro_latest().get("VIXCLS")
+    if vseq and vseq[0][1] is not None:
+        vix = vseq[0][1]
+        if len(vseq) > 1 and vseq[1][1] is not None:
+            vix_chg = vix - vseq[1][1]
+    adv = int((df["last_price"] > df["prev_close"]).sum())
+    dec = int((df["last_price"] < df["prev_close"]).sum())
+
+    components.html(
+        screener_terminal_header_html(
+            score_date, stale_days, vix, vix_chg, adv, dec, len(df),
+        ),
+        height=TERMINAL_HEADER_HEIGHT,
+    )
+    st.caption(
+        "Quantitative factor rankings — growth · value · quality · momentum. "
+        "Composite is a cross-sectional ranking within the S&P 500 universe "
+        "(100 = top); it is **not** a buy signal or return prediction."
+    )
     st.markdown(stats_row_html(df), unsafe_allow_html=True)
 
     # featured: top 3 by composite ────────────────────────────────────────────

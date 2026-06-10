@@ -9,4 +9,6 @@ beautifulsoup4
 lxml
 streamlit
 plotly
+fastapi
+uvicorn
 ruff
