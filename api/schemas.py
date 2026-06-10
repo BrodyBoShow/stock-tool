@@ -136,6 +136,22 @@ class ThesisMutationResponse(BaseModel):
     status: str  # "created" | "updated"
 
 
+# ── macro (FRED context — never feeds factor scores) ──────────────────────────
+
+class MacroObservation(BaseModel):
+    date: date
+    value: float | None
+
+
+class MacroSeriesLatest(BaseModel):
+    series_id: str
+    observations: list[MacroObservation]  # latest first, up to two
+
+
+class MacroLatestResponse(BaseModel):
+    series: list[MacroSeriesLatest]
+
+
 # ── health ────────────────────────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):

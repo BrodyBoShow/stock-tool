@@ -137,3 +137,18 @@ export const SCREENER_GRID =
   '38px minmax(150px,1.6fr) minmax(130px,1.3fr) repeat(5,minmax(78px,1fr)) minmax(90px,0.9fr)'
 
 export const PREVIEW_N = 100
+
+/** FRED macro context series — CONTEXT ONLY, never feeds factor scores.
+ *  Mirrors web/app.py MACRO_DISPLAY: (id, label, unit suffix, decimals). */
+export const MACRO_DISPLAY: Array<{
+  id: string
+  label: string
+  unit: string
+  dec: number
+}> = [
+  { id: 'DGS10', label: '10Y Treasury', unit: '%', dec: 2 },
+  { id: 'DGS2', label: '2Y Treasury', unit: '%', dec: 2 },
+  { id: 'FEDFUNDS', label: 'Fed Funds', unit: '%', dec: 2 },
+  { id: 'CPIAUCSL', label: 'CPI', unit: '', dec: 1 },
+  { id: 'VIXCLS', label: 'VIX', unit: '', dec: 2 },
+]

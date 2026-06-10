@@ -6,6 +6,7 @@ import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
+import { MacroStrip } from '@/components/deepdive/MacroStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
 import { ThesisPanel } from '@/components/deepdive/ThesisPanel'
 import { ErrorCard } from '@/components/ErrorCard'
@@ -98,6 +99,8 @@ export function DeepDivePage() {
         onDaysChange={setDays}
         isFetching={isFetching}
       />
+
+      <MacroStrip />
 
       <FactorInputsTable header={header} />
 

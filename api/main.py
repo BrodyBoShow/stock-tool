@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.routers import screener, securities, theses, watchlist
+from api.routers import macro, screener, securities, theses, watchlist
 from api.schemas import HealthResponse
 from engine.db import healthcheck
 
@@ -52,6 +52,7 @@ app.include_router(screener.router, prefix="/screener", tags=["screener"])
 app.include_router(securities.router, prefix="/securities", tags=["securities"])
 app.include_router(watchlist.router, prefix="/watchlist", tags=["watchlist"])
 app.include_router(theses.router, prefix="/theses", tags=["theses"])
+app.include_router(macro.router, prefix="/macro", tags=["macro"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])

@@ -1,4 +1,5 @@
 import type {
+  MacroLatestResponse,
   ScreenerResponse,
   SecurityResponse,
   ThesesResponse,
@@ -89,6 +90,10 @@ export function getWatchlist(): Promise<WatchlistResponse> {
 
 export function getTheses(): Promise<ThesesResponse> {
   return getJson<ThesesResponse>('/theses')
+}
+
+export function getMacroLatest(): Promise<MacroLatestResponse> {
+  return getJson<MacroLatestResponse>('/macro/latest')
 }
 
 // TODO(auth): the write endpoints below are "auth-required before public" —

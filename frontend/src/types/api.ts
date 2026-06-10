@@ -125,6 +125,20 @@ export interface ThesisMutationResponse {
   status: 'created' | 'updated'
 }
 
+export interface MacroObservation {
+  date: string
+  value: number | null
+}
+
+export interface MacroSeriesLatest {
+  series_id: string
+  observations: MacroObservation[]
+}
+
+export interface MacroLatestResponse {
+  series: MacroSeriesLatest[]
+}
+
 export interface HealthResponse {
   status: string
   db: string
