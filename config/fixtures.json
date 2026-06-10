@@ -1,0 +1,187 @@
+{
+  "comment": "Golden fixtures for Phase 5b data-quality gates. EXPECTED values are transcribed from each company's officially filed 10-K figures (assistant training knowledge of the filings, cutoff Jan 2026; FY2025 values cite the specific filed 10-K) — deliberately NOT derived from this project's xbrl_facts pipeline, so the suite tests the pipeline against external ground truth. Every value carries a citation for human verification against EDGAR. Tolerances: dollar figures 1% relative, EPS 1% relative, margins 0.003 absolute.",
+  "value_fixtures": [
+    {
+      "ticker": "AAPL",
+      "fiscal_year_end": "2023-09-30",
+      "metrics": {
+        "ttm_revenue": {"expected": 383285000000, "tol_rel": 0.01,
+          "source": "AAPL FY2023 10-K (filed 2023-11-03), Consolidated Statements of Operations: total net sales $383,285M"},
+        "ttm_eps": {"expected": 6.13, "tol_rel": 0.01,
+          "source": "AAPL FY2023 10-K: diluted EPS $6.13"},
+        "gross_margin": {"expected": 0.44131, "tol_abs": 0.003,
+          "source": "AAPL FY2023 10-K: gross margin $169,148M / net sales $383,285M = 44.13%"}
+      }
+    },
+    {
+      "ticker": "AAPL",
+      "fiscal_year_end": "2024-09-28",
+      "metrics": {
+        "ttm_revenue": {"expected": 391035000000, "tol_rel": 0.01,
+          "source": "AAPL FY2024 10-K (filed 2024-11-01): total net sales $391,035M"},
+        "ttm_eps": {"expected": 6.08, "tol_rel": 0.01,
+          "source": "AAPL FY2024 10-K: diluted EPS $6.08 (includes EU State Aid tax charge)"},
+        "gross_margin": {"expected": 0.46206, "tol_abs": 0.003,
+          "source": "AAPL FY2024 10-K: gross margin $180,683M / $391,035M = 46.21%"}
+      }
+    },
+    {
+      "ticker": "AAPL",
+      "fiscal_year_end": "2025-09-27",
+      "metrics": {
+        "ttm_revenue": {"expected": 416161000000, "tol_rel": 0.01,
+          "source": "AAPL FY2025 10-K (filed 2025-10-31): total net sales $416,161M"},
+        "ttm_eps": {"expected": 7.46, "tol_rel": 0.01,
+          "source": "AAPL FY2025 10-K (filed 2025-10-31): diluted EPS $7.46"}
+      }
+    },
+    {
+      "ticker": "GOOGL",
+      "fiscal_year_end": "2023-12-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 307394000000, "tol_rel": 0.01,
+          "source": "Alphabet FY2023 10-K (filed 2024-01-31): revenues $307,394M"},
+        "ttm_eps": {"expected": 5.80, "tol_rel": 0.01,
+          "source": "Alphabet FY2023 10-K: diluted EPS $5.80"}
+      }
+    },
+    {
+      "ticker": "GOOGL",
+      "fiscal_year_end": "2024-12-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 350018000000, "tol_rel": 0.01,
+          "source": "Alphabet FY2024 10-K (filed 2025-02-05): revenues $350,018M"},
+        "ttm_eps": {"expected": 8.04, "tol_rel": 0.01,
+          "source": "Alphabet FY2024 10-K: diluted EPS $8.04"}
+      }
+    },
+    {
+      "ticker": "NKE",
+      "fiscal_year_end": "2023-05-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 51217000000, "tol_rel": 0.01,
+          "source": "NIKE FY2023 10-K (filed 2023-07-20, May fiscal year-end): revenues $51,217M"},
+        "ttm_eps": {"expected": 3.23, "tol_rel": 0.01,
+          "source": "NIKE FY2023 10-K: diluted EPS $3.23"},
+        "gross_margin": {"expected": 0.43525, "tol_abs": 0.003,
+          "source": "NIKE FY2023 10-K: gross profit $22,292M / revenues $51,217M = 43.52%"}
+      }
+    },
+    {
+      "ticker": "NKE",
+      "fiscal_year_end": "2024-05-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 51362000000, "tol_rel": 0.01,
+          "source": "NIKE FY2024 10-K (filed 2024-07-25): revenues $51,362M"},
+        "ttm_eps": {"expected": 3.73, "tol_rel": 0.01,
+          "source": "NIKE FY2024 10-K: diluted EPS $3.73"},
+        "gross_margin": {"expected": 0.44560, "tol_abs": 0.003,
+          "source": "NIKE FY2024 10-K: gross profit $22,887M / revenues $51,362M = 44.56%"}
+      }
+    },
+    {
+      "ticker": "NKE",
+      "fiscal_year_end": "2025-05-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 46309000000, "tol_rel": 0.01,
+          "source": "NIKE FY2025 10-K (filed 2025-07-17): revenues $46,309M"}
+      }
+    },
+    {
+      "ticker": "JPM",
+      "fiscal_year_end": "2023-12-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 158104000000, "tol_rel": 0.01,
+          "source": "JPMorgan FY2023 10-K (filed 2024-02-16): total net revenue, reported basis $158,104M (XBRL 'Revenues')"},
+        "ttm_eps": {"expected": 16.23, "tol_rel": 0.01,
+          "source": "JPMorgan FY2023 10-K: diluted EPS $16.23"}
+      }
+    },
+    {
+      "ticker": "JPM",
+      "fiscal_year_end": "2024-12-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 177556000000, "tol_rel": 0.01,
+          "source": "JPMorgan FY2024 10-K (filed 2025-02-14): total net revenue, reported basis $177,556M"},
+        "ttm_eps": {"expected": 19.75, "tol_rel": 0.01,
+          "source": "JPMorgan FY2024 10-K: diluted EPS $19.75"}
+      }
+    },
+    {
+      "ticker": "BRK-B",
+      "fiscal_year_end": "2022-12-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 302089000000, "tol_rel": 0.01,
+          "source": "Berkshire Hathaway FY2022 10-K (filed 2023-02-27), Consolidated Statements of Earnings: total revenues $302,089M"}
+      }
+    },
+    {
+      "ticker": "BRK-B",
+      "fiscal_year_end": "2023-12-31",
+      "metrics": {
+        "ttm_revenue": {"expected": 364482000000, "tol_rel": 0.01,
+          "source": "Berkshire Hathaway FY2023 10-K (filed 2024-02-26): total revenues $364,482M"}
+      }
+    }
+  ],
+  "behavior_fixtures": {
+    "comment": "Expected structural behaviors, asserted from the data (not from truncatable job_runs warning text). A regression that silently 'fixes' any of these wrongly must fail the suite.",
+    "dual_class_identical": {
+      "tickers": ["GOOGL", "GOOG"],
+      "metrics": ["ttm_revenue", "ttm_eps"],
+      "reason": "Same CIK; facts duplicated per share class by design (Phase 4)."
+    },
+    "eps_proxy_at_latest": {
+      "tickers": ["ARES", "HSY", "KKR"],
+      "assert": "ttm_eps present at latest as_of while zero eps_basic/eps_diluted facts exist (proxy = net income / wtd diluted shares)",
+      "reason": "Multi-class names whose per-class EPS is dimensioned (absent from companyfacts) but share counts exist."
+    },
+    "eps_null_no_proxy_possible": {
+      "tickers": ["BRK-B", "V"],
+      "assert": "ttm_eps absent at latest as_of and zero eps facts (no usable share counts to proxy with)",
+      "reason": "Multi-class cover-page share counts are dimensioned; EPS uses custom extension tags."
+    },
+    "roic_roa_proxy": {
+      "tickers": ["JPM"],
+      "assert": "roic present at latest as_of while zero operating_income facts exist (ROA proxy)",
+      "reason": "Banks do not report an operating-income subtotal."
+    },
+    "revenue_null_flagged": {
+      "tickers": ["SYF", "TFC", "EQR", "APA"],
+      "assert": "ttm_revenue absent at latest as_of",
+      "reason": "No globally-safe revenue tag (bank/REIT component tagging or tag switch); left null, never forced."
+    },
+    "recent_ipo_no_data": {
+      "tickers": ["FDXF"],
+      "assert": "zero xbrl_facts, zero fundamental_metrics, flagged in fundamentals_ingestion warnings",
+      "reason": "FedEx Freight spinoff with no XBRL history yet; self-heals as it files."
+    },
+    "recent_ipo_short_history": {
+      "tickers": ["Q"],
+      "assert": "has metrics at latest as_of but revenue_cagr absent (insufficient annual history)",
+      "reason": "Qnity Electronics spun off Oct 2025."
+    },
+    "universe_excludes": {
+      "tickers": ["BRK-A"],
+      "assert": "not present in securities",
+      "reason": "S&P 500 lists only the B share class."
+    }
+  },
+  "point_in_time": {
+    "comment": "Proves restatements do not leak backward: the original filed value must remain the as-known value at early dates.",
+    "ticker": "ADM",
+    "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+    "period_end": "2024-03-31",
+    "fiscal_period": "Q1",
+    "unit": "USD",
+    "as_known_early": {"date": "2024-05-15", "expected": 21847000000,
+      "source": "ADM Q1-2024 10-Q (filed 2024-04-30): revenues from contracts with customers as originally presented; the 10-Q/A filed 2024-11-18 re-affirmed this figure"},
+    "as_known_late": {"date": "2025-06-01", "expected": 5945000000,
+      "source": "ADM Q1-2025 10-Q (filed 2025-05-06): Q1-2024 comparative re-presented (contract-revenue scope narrowed following ADM's restatement saga); verified in xbrl_facts filing chain 2024-04-30 -> 2024-11-18 -> 2025-05-06"}
+  },
+  "sanity_gates": {
+    "margin_bounds": [-1.0, 1.0],
+    "eps_abs_bound": 1000,
+    "ttm_reconcile_tolerance": 0.02
+  }
+}

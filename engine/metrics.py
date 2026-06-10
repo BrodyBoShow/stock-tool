@@ -71,6 +71,20 @@ QUARTER_GAP_DAYS = (60, 120)
 RECONCILE_TOL = 0.02
 DEFAULT_TAX_RATE = 0.21
 
+# Fact-level hygiene (Phase 5b): some filers mis-tag dollar totals under
+# per-share concepts with a per-share unit (HAL, DELL), so units alone are
+# not enough — bound the value too. Margins outside plausible bounds signal
+# a concept-basis mismatch (e.g. full COGS against a revenue subset) and are
+# nulled + warned rather than stored.
+UNIT_RULES = {
+    "eps_basic": "USD/shares",
+    "eps_diluted": "USD/shares",
+    "shares_outstanding": "shares",
+}
+DEFAULT_UNIT = "USD"  # every other normalized concept is a USD money amount
+EPS_FACT_BOUND = 1000.0
+MARGIN_BOUNDS = (-1.0, 1.0)
+
 MAX_STORED_WARNINGS = 200
 
 # Raw-tag preference for share counts (most specific first).
@@ -127,6 +141,18 @@ class Fact:
     @property
     def is_instant(self) -> bool:
         return self.ps is None
+
+
+def fact_is_clean(f: Fact) -> bool:
+    """Unit + plausibility hygiene; quarantines filer tagging errors."""
+    expected_unit = UNIT_RULES.get(f.normalized, DEFAULT_UNIT)
+    if f.unit != expected_unit:
+        return False
+    if f.normalized in ("eps_basic", "eps_diluted") and abs(f.value) > EPS_FACT_BOUND:
+        return False
+    if f.normalized == "shares_outstanding" and f.value < 0:
+        return False
+    return True
 
 
 def snapshot(facts: list[Fact], as_of: date) -> list[Fact]:
@@ -359,6 +385,7 @@ def compute_company_metrics(
         "eps_proxy_dates": set(),
         "roic_proxy_dates": set(),
         "tax_defaulted": False,
+        "margin_nulled": set(),
         "missing_latest": [],
     }
 
@@ -391,6 +418,13 @@ def compute_company_metrics(
                 m["gross_margin"] = (rev_ttm - cor_ttm) / rev_ttm
             if oi_ttm is not None:
                 m["operating_margin"] = oi_ttm / rev_ttm
+        # Margins outside plausible bounds mean the numerator and denominator
+        # came from incompatible concept bases — null + warn, never store.
+        for margin in ("gross_margin", "operating_margin"):
+            v = m.get(margin)
+            if v is not None and not (MARGIN_BOUNDS[0] <= v <= MARGIN_BOUNDS[1]):
+                del m[margin]
+                diag["margin_nulled"].add(margin)
 
         if ocf_ttm is not None:
             m["fcf"] = ocf_ttm - (capex_ttm or 0.0)
@@ -601,7 +635,9 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                         """,
                         (security_id,),
                     )
-                    facts = [Fact(*row) for row in cur.fetchall()]
+                    facts = [
+                        f for f in (Fact(*row) for row in cur.fetchall()) if fact_is_clean(f)
+                    ]
                     cur.execute(
                         """
                         SELECT ex_date, ratio FROM corporate_actions
@@ -627,8 +663,16 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                     for metric, value in metrics.items()
                     if value is not None and abs(value) < 1e14
                 ]
-                if batch:
-                    with conn.cursor() as cur:
+                # Atomic replace per company: a recompute that no longer
+                # produces a (now-guarded) value must also remove the stale
+                # stored row, not just overwrite matching keys.
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM fundamental_metrics "
+                        "WHERE security_id = %s AND metric_version = %s",
+                        (security_id, METRIC_VERSION),
+                    )
+                    if batch:
                         cur.executemany(
                             """
                             INSERT INTO fundamental_metrics
@@ -639,7 +683,7 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                             """,
                             batch,
                         )
-                    conn.commit()
+                conn.commit()
                 rows_written += len(batch)
 
                 latest = results.get(as_of_dates[-1], {}) if as_of_dates else {}
@@ -661,6 +705,11 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                     warnings.append(
                         f"{ticker}: ttm_eps proxied at {len(diag['eps_proxy_dates'])} "
                         f"early window-truncated snapshot(s) only"
+                    )
+                if diag["margin_nulled"]:
+                    warnings.append(
+                        f"{ticker}: {'/'.join(sorted(diag['margin_nulled']))} outside "
+                        f"plausible bounds at some snapshots - nulled (basis mismatch)"
                     )
                 if latest_as_of in diag["roic_proxy_dates"]:
                     roic_proxy_companies.append(ticker)
