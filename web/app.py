@@ -158,6 +158,22 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
   .factor-grid { grid-template-columns: repeat(2, 1fr); }
   .dd-stats { gap: 20px; }
 }
+
+/* watchlist & thesis */
+.review-badge {
+  display: inline-block; background: #fef2f2; color: #dc2626;
+  border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px;
+  font-size: .72rem; font-weight: 700;
+}
+.thesis-block {
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 12px; padding: 16px; margin: 8px 0;
+}
+.thesis-label {
+  color: #6b7280; font-size: .75rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px;
+}
+.thesis-text { color: #111827; font-size: .92rem; line-height: 1.55; }
 """
 
 # ── factor / metric metadata ──────────────────────────────────────────────────
@@ -325,7 +341,8 @@ def load_screener_data() -> tuple[pd.DataFrame, object]:
                 SELECT s.ticker, s.name, s.sector, s.exchange,
                        fs.composite,
                        fs.growth_pctl, fs.value_pctl, fs.quality_pctl, fs.momentum_pctl,
-                       lp.close AS last_price
+                       lp.close AS last_price,
+                       s.security_id
                 FROM securities s
                 JOIN factor_scores fs
                     ON fs.security_id = s.security_id AND fs.score_date = %s
@@ -494,6 +511,208 @@ def load_sparklines(tickers: tuple[str, ...], n: int = 30) -> dict[str, list[flo
         if f is not None:
             out.setdefault(ticker, []).append(f)
     return out
+
+
+@st.cache_data(ttl=DATA_TTL)
+def load_watchlist() -> pd.DataFrame:
+    """Watchlist rows joined with securities + latest factor scores."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.ticker, s.name, s.sector, w.added_at,
+                       fs.composite, fs.growth_pctl, fs.value_pctl,
+                       fs.quality_pctl, fs.momentum_pctl,
+                       lp.close AS last_price,
+                       w.id AS watchlist_id, s.security_id
+                FROM watchlist w
+                JOIN securities s ON s.security_id = w.security_id
+                LEFT JOIN factor_scores fs
+                    ON fs.security_id = s.security_id
+                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                LEFT JOIN LATERAL (
+                    SELECT close FROM prices_daily p
+                    WHERE p.security_id = s.security_id
+                    ORDER BY p.date DESC LIMIT 1
+                ) lp ON true
+                ORDER BY w.added_at DESC
+                """
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    if not rows:
+        return pd.DataFrame(columns=[
+            "ticker", "name", "sector", "added_at",
+            "composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl",
+            "last_price", "watchlist_id", "security_id",
+        ])
+    df = pd.DataFrame(rows, columns=cols)
+    for col in ("composite", "growth_pctl", "value_pctl",
+                "quality_pctl", "momentum_pctl", "last_price"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+@st.cache_data(ttl=DATA_TTL)
+def load_watchlist_set() -> frozenset:
+    """Frozenset of tickers currently in the watchlist (for button state)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT s.ticker FROM watchlist w "
+                "JOIN securities s ON s.security_id = w.security_id"
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    return frozenset(r[0] for r in rows)
+
+
+@st.cache_data(ttl=DATA_TTL, max_entries=128)
+def load_thesis(ticker: str) -> dict | None:
+    """Active thesis for one ticker, or None."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT t.id, t.security_id, t.summary, t.invalidation_rules,
+                       t.review_date, t.conviction, t.status,
+                       t.created_at, t.updated_at
+                FROM theses t
+                JOIN securities s ON s.security_id = t.security_id
+                WHERE s.ticker = %s AND t.status = 'active'
+                ORDER BY t.updated_at DESC
+                LIMIT 1
+                """,
+                (ticker,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    return dict(zip(cols, row, strict=True))
+
+
+@st.cache_data(ttl=DATA_TTL)
+def load_all_theses() -> pd.DataFrame:
+    """All active theses joined with securities + latest composite."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.ticker, s.name, s.sector,
+                       t.id AS thesis_id, t.security_id,
+                       t.summary, t.invalidation_rules,
+                       t.review_date, t.conviction, t.updated_at,
+                       fs.composite
+                FROM theses t
+                JOIN securities s ON s.security_id = t.security_id
+                LEFT JOIN factor_scores fs
+                    ON fs.security_id = s.security_id
+                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                WHERE t.status = 'active'
+                ORDER BY t.review_date ASC NULLS LAST, t.updated_at DESC
+                """
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    if not rows:
+        return pd.DataFrame(columns=[
+            "ticker", "name", "sector", "thesis_id", "security_id",
+            "summary", "invalidation_rules", "review_date",
+            "conviction", "updated_at", "composite",
+        ])
+    df = pd.DataFrame(rows, columns=cols)
+    df["composite"] = pd.to_numeric(df["composite"], errors="coerce")
+    df["review_date"] = pd.to_datetime(df["review_date"]).dt.date
+    return df
+
+
+# ── DB write functions (not cached) ──────────────────────────────────────────
+
+def watchlist_add(security_id: int) -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO watchlist (security_id) VALUES (%s) "
+                "ON CONFLICT (security_id) DO NOTHING",
+                (security_id,),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    st.cache_data.clear()
+
+
+def watchlist_remove(security_id: int) -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM watchlist WHERE security_id = %s", (security_id,))
+        conn.commit()
+    finally:
+        conn.close()
+    st.cache_data.clear()
+
+
+def thesis_save(
+    security_id: int,
+    summary: str,
+    invalidation_rules: str,
+    review_date,
+) -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM theses WHERE security_id = %s AND status = 'active' LIMIT 1",
+                (security_id,),
+            )
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    """
+                    UPDATE theses
+                    SET summary = %s, invalidation_rules = %s,
+                        review_date = %s, updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (summary, invalidation_rules or None, review_date, row[0]),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO theses (security_id, summary, invalidation_rules, review_date)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (security_id, summary, invalidation_rules or None, review_date),
+                )
+        conn.commit()
+    finally:
+        conn.close()
+    st.cache_data.clear()
+
+
+def thesis_delete(thesis_id: int) -> None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM theses WHERE id = %s", (thesis_id,))
+        conn.commit()
+    finally:
+        conn.close()
+    st.cache_data.clear()
 
 
 # ── HTML builders ─────────────────────────────────────────────────────────────
@@ -687,6 +906,24 @@ def _nav_to(ticker: str) -> None:
     st.rerun()
 
 
+# ── shared nav ───────────────────────────────────────────────────────────────
+
+def _sidebar_nav(current: str) -> None:
+    st.markdown("## 📈 Research Cockpit")
+    pages = [
+        ("screener",  "📊 Screener"),
+        ("watchlist", "⭐ Watchlist"),
+        ("theses",    "📝 Theses"),
+    ]
+    for page_key, label in pages:
+        btn_type = "primary" if current == page_key else "secondary"
+        if st.button(label, key=f"nav_{page_key}", width="stretch", type=btn_type):
+            st.session_state.page = page_key
+            st.session_state.selected_ticker = None
+            st.query_params.clear()
+            st.rerun()
+
+
 # ── screener page ─────────────────────────────────────────────────────────────
 
 def show_screener() -> None:
@@ -694,7 +931,7 @@ def show_screener() -> None:
 
     # sidebar ─────────────────────────────────────────────────────────────────
     with st.sidebar:
-        st.markdown("## 📈 Research Cockpit")
+        _sidebar_nav("screener")
         st.caption("S&P 500 · Factor screener")
         if st.button("↻ Refresh data", width="stretch",
                      help="Re-query the database now (data otherwise refreshes nightly)"):
@@ -727,6 +964,25 @@ def show_screener() -> None:
         )
         if go_ticker and st.button(f"Open {go_ticker} →", width="stretch"):
             _nav_to(go_ticker)
+
+        st.markdown("---")
+        st.markdown("### ⭐ Add to watchlist")
+        wl_tickers = sorted(df["ticker"].tolist())
+        add_ticker = st.selectbox(
+            "Ticker to save", ["— select —"] + wl_tickers,
+            label_visibility="collapsed", key="sb_wl_add",
+        )
+        if add_ticker != "— select —":
+            sid_row = df[df["ticker"] == add_ticker]
+            if not sid_row.empty:
+                sid = int(sid_row["security_id"].iloc[0])
+                wl_now = load_watchlist_set()
+                if add_ticker in wl_now:
+                    st.caption(f"★ {add_ticker} already saved")
+                else:
+                    if st.button(f"★ Save {add_ticker}", width="stretch", key="sb_wl_save"):
+                        watchlist_add(sid)
+                        st.rerun()
 
     # apply filters ───────────────────────────────────────────────────────────
     view = df.copy()
@@ -769,21 +1025,32 @@ def show_screener() -> None:
     )
     top3 = df[df["composite"].notna()].head(3)
     sparks = load_sparklines(tuple(top3["ticker"].tolist()))
+    wl_set = load_watchlist_set()
     feat_cols = st.columns(3)
     for i, (_, row) in enumerate(top3.iterrows()):
         spark_vals = sparks.get(row["ticker"], [])
+        t = row["ticker"]
         with feat_cols[i]:
             st.markdown(
                 featured_card_html(
                     int(row["rank"]) if pd.notna(row["rank"]) else i + 1,
-                    row["ticker"], row["name"], row["composite"],
+                    t, row["name"], row["composite"],
                     row["last_price"], spark_vals, FEATURED_GRADIENTS[i],
                 ),
                 unsafe_allow_html=True,
             )
-            if st.button(f"View {row['ticker']} analysis →",
-                         key=f"feat_{row['ticker']}", width="stretch"):
-                _nav_to(row["ticker"])
+            bc1, bc2 = st.columns(2)
+            with bc1:
+                if st.button(f"View {t} →", key=f"feat_{t}", width="stretch"):
+                    _nav_to(t)
+            with bc2:
+                if t in wl_set:
+                    st.button("★ Saved", key=f"wl_feat_{t}", width="stretch",
+                              disabled=True)
+                else:
+                    if st.button("☆ Watchlist", key=f"wl_feat_{t}", width="stretch"):
+                        watchlist_add(int(row["security_id"]))
+                        st.rerun()
 
     # table ───────────────────────────────────────────────────────────────────
     with st.container(border=True):
@@ -852,11 +1119,7 @@ def show_deepdive(ticker: str) -> None:
 
     # sidebar ─────────────────────────────────────────────────────────────────
     with st.sidebar:
-        if st.button("← Back to Screener", width="stretch", type="primary"):
-            st.session_state.page = "screener"
-            st.session_state.selected_ticker = None
-            st.query_params.clear()
-            st.rerun()
+        _sidebar_nav("deepdive")
         st.markdown("---")
         if info:
             st.markdown(f"**{info['ticker']}** — {info.get('name', '')}")
@@ -894,6 +1157,9 @@ def show_deepdive(ticker: str) -> None:
 
     # header card ─────────────────────────────────────────────────────────────
     st.markdown(deepdive_header_html(info, rank, total_ranked), unsafe_allow_html=True)
+
+    # watchlist toggle
+    _dd_watchlist_toggle(ticker, int(info["security_id"]))
     st.markdown("")
 
     # price chart ─────────────────────────────────────────────────────────────
@@ -947,6 +1213,7 @@ def show_deepdive(ticker: str) -> None:
             "Scores and metrics will populate automatically once filings are ingested "
             "by the weekly pipeline."
         )
+        _show_thesis_section(info)
         _show_placeholders()
         return
 
@@ -965,6 +1232,8 @@ def show_deepdive(ticker: str) -> None:
     else:
         st.info("No fundamental metrics available.")
 
+    st.markdown("")
+    _show_thesis_section(info)
     _show_placeholders()
 
 
@@ -1154,12 +1423,336 @@ def _show_placeholders() -> None:
             "The summarizer will call the Anthropic API with structured-output prompts "
             "and cache results by filing accession number."
         )
-    with st.expander("⭐ Watchlist & thesis notes — coming next", expanded=False):
-        st.info(
-            "Watchlist management and per-company thesis notes will be available "
-            "in Stage 2. Write features are deliberately excluded from this "
-            "read-only cockpit build."
+
+
+# ── deep-dive watchlist toggle ────────────────────────────────────────────────
+
+def _dd_watchlist_toggle(ticker: str, security_id: int) -> None:
+    wl_set = load_watchlist_set()
+    in_wl = ticker in wl_set
+    wl_col, _ = st.columns([2, 6])
+    with wl_col:
+        if in_wl:
+            if st.button("★ In Watchlist · Remove?", key="dd_wl_btn",
+                         width="stretch", type="secondary"):
+                st.session_state["dd_wl_confirm"] = True
+        else:
+            if st.button("☆ Add to Watchlist", key="dd_wl_btn",
+                         width="stretch", type="secondary"):
+                watchlist_add(security_id)
+                st.rerun()
+    if st.session_state.get("dd_wl_confirm"):
+        c1, c2, _ = st.columns([1.2, 1, 6])
+        with c1:
+            if st.button("Confirm remove", key="dd_wl_yes", type="primary"):
+                watchlist_remove(security_id)
+                st.session_state.pop("dd_wl_confirm", None)
+                st.rerun()
+        with c2:
+            if st.button("Cancel", key="dd_wl_cancel"):
+                st.session_state.pop("dd_wl_confirm", None)
+                st.rerun()
+
+
+# ── thesis section (deep-dive) ────────────────────────────────────────────────
+
+def _show_thesis_section(info: dict) -> None:
+    ticker = info["ticker"]
+    security_id = int(info["security_id"])
+    thesis = load_thesis(ticker)
+    editing = st.session_state.get(f"thesis_edit_{ticker}", False)
+
+    with st.expander("📝 Investment thesis", expanded=bool(thesis)):
+        # --- delete confirm ---
+        if st.session_state.get(f"thesis_del_confirm_{ticker}"):
+            st.warning("Delete this thesis permanently?")
+            dc1, dc2, _ = st.columns([1, 1, 5])
+            with dc1:
+                if st.button("Yes, delete", key=f"tdel_yes_{ticker}", type="primary"):
+                    thesis_delete(int(thesis["id"]))
+                    st.session_state.pop(f"thesis_del_confirm_{ticker}", None)
+                    st.session_state.pop(f"thesis_edit_{ticker}", None)
+                    st.rerun()
+            with dc2:
+                if st.button("Cancel", key=f"tdel_cancel_{ticker}"):
+                    st.session_state.pop(f"thesis_del_confirm_{ticker}", None)
+                    st.rerun()
+            return
+
+        # --- show saved thesis ---
+        if thesis and not editing:
+            upd = thesis.get("updated_at")
+            upd_str = upd.strftime("%b %d, %Y") if hasattr(upd, "strftime") else str(upd or "")
+            st.caption(f"Last updated {upd_str}")
+            st.markdown(
+                f'<div class="thesis-block">'
+                f'<div class="thesis-label">Thesis</div>'
+                f'<div class="thesis-text">{escape(thesis["summary"])}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if thesis.get("invalidation_rules"):
+                st.markdown(
+                    f'<div class="thesis-block">'
+                    f'<div class="thesis-label">Exit / invalidation condition</div>'
+                    f'<div class="thesis-text">{escape(thesis["invalidation_rules"])}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            if thesis.get("review_date"):
+                rd = thesis["review_date"]
+                rd_str = rd.strftime("%b %d, %Y") if hasattr(rd, "strftime") else str(rd)
+                overdue = (rd <= date.today()) if rd else False
+                if overdue:
+                    st.markdown(
+                        f'<span class="review-badge">Review due</span> {rd_str}',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.caption(f"Review date: {rd_str}")
+
+            ec1, ec2, _ = st.columns([1, 1, 5])
+            with ec1:
+                if st.button("✏️ Edit", key=f"thesis_edit_btn_{ticker}"):
+                    st.session_state[f"thesis_edit_{ticker}"] = True
+                    st.rerun()
+            with ec2:
+                if st.button("🗑️ Delete", key=f"thesis_del_btn_{ticker}"):
+                    st.session_state[f"thesis_del_confirm_{ticker}"] = True
+                    st.rerun()
+            return
+
+        # --- create / edit form ---
+        default_summary = thesis["summary"] if thesis else ""
+        default_inv = thesis.get("invalidation_rules") or "" if thesis else ""
+        default_date = thesis.get("review_date") if thesis else None
+
+        with st.form(key=f"thesis_form_{ticker}"):
+            st.markdown("**Write your thesis**" if not thesis else "**Edit thesis**")
+            summary_text = st.text_area(
+                "Your view on this company *",
+                value=default_summary,
+                placeholder=(
+                    "Why does this company deserve a position? "
+                    "What is the core investment case?"
+                ),
+                height=120,
+            )
+            inv_text = st.text_area(
+                "Exit / invalidation condition",
+                value=default_inv,
+                placeholder=(
+                    "What would make you change your mind? "
+                    "e.g. gross margin falls below 30%, loses key contract"
+                ),
+                height=80,
+            )
+            review_dt = st.date_input(
+                "Review date (optional)",
+                value=default_date,
+                help="Set a future date to revisit this thesis",
+            )
+            submitted = st.form_submit_button("Save thesis")
+
+        if submitted:
+            if not summary_text.strip():
+                st.error("Thesis text cannot be empty.")
+            else:
+                thesis_save(
+                    security_id,
+                    summary_text.strip(),
+                    inv_text.strip(),
+                    review_dt,
+                )
+                st.session_state.pop(f"thesis_edit_{ticker}", None)
+                st.rerun()
+
+        if not thesis:
+            st.caption(
+                "Record your investment case, the condition that would make you exit, "
+                "and a date to review it."
+            )
+
+
+# ── watchlist page ────────────────────────────────────────────────────────────
+
+def show_watchlist() -> None:
+    st.markdown(APP_CSS_TAG, unsafe_allow_html=True)
+
+    with st.sidebar:
+        _sidebar_nav("watchlist")
+        st.markdown("---")
+        if st.button("↻ Refresh data", width="stretch"):
+            st.cache_data.clear()
+            st.rerun()
+
+    st.markdown("## ⭐ Watchlist")
+
+    wl_df = load_watchlist()
+
+    if wl_df.empty:
+        with st.container(border=True):
+            st.info(
+                "No saved names yet — add one from the screener or from any "
+                "company's deep-dive page."
+            )
+            if st.button("Go to Screener →", key="wl_empty_go"):
+                st.session_state.page = "screener"
+                st.session_state.selected_ticker = None
+                st.query_params.clear()
+                st.rerun()
+        return
+
+    st.caption(f"{len(wl_df)} saved {'company' if len(wl_df) == 1 else 'companies'}")
+
+    display = wl_df[[
+        "ticker", "name", "sector",
+        "composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl",
+        "last_price",
+    ]].copy().reset_index(drop=True)
+    for col in ("composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl"):
+        display[col] = pd.to_numeric(display[col], errors="coerce").round(1)
+
+    event = st.dataframe(
+        display,
+        width="stretch",
+        hide_index=True,
+        height=min(55 * len(display) + 55, 560),
+        on_select="rerun",
+        selection_mode="single-row",
+        column_config={
+            "ticker":       st.column_config.TextColumn("Ticker",    width=75),
+            "name":         st.column_config.TextColumn("Company",   width=200),
+            "sector":       st.column_config.TextColumn("Sector",    width=155),
+            "composite":    st.column_config.ProgressColumn(
+                "Composite", min_value=0, max_value=100, format="%.1f", width=130),
+            "growth_pctl":  st.column_config.ProgressColumn(
+                "Growth",    min_value=0, max_value=100, format="%.1f", width=110),
+            "value_pctl":   st.column_config.ProgressColumn(
+                "Value",     min_value=0, max_value=100, format="%.1f", width=110),
+            "quality_pctl": st.column_config.ProgressColumn(
+                "Quality",   min_value=0, max_value=100, format="%.1f", width=110),
+            "momentum_pctl":st.column_config.ProgressColumn(
+                "Momentum",  min_value=0, max_value=100, format="%.1f", width=110),
+            "last_price":   st.column_config.NumberColumn(
+                "Last Price", format="$%.2f", width=95),
+        },
+    )
+
+    if event.selection and event.selection.rows:
+        sel_ticker = display.iloc[event.selection.rows[0]]["ticker"]
+        _nav_to(sel_ticker)
+
+    # remove section
+    with st.container(border=True):
+        st.markdown("**Remove from watchlist**")
+        remove_ticker = st.selectbox(
+            "Company to remove",
+            ["— select —"] + wl_df["ticker"].tolist(),
+            label_visibility="collapsed",
+            key="wl_remove_sel",
         )
+        if remove_ticker != "— select —":
+            match = wl_df[wl_df["ticker"] == remove_ticker].iloc[0]
+            st.warning(
+                f"Remove **{remove_ticker}** ({match['name']}) from your watchlist?"
+            )
+            rc1, rc2, _ = st.columns([1, 1, 5])
+            with rc1:
+                if st.button("Yes, remove", key="wl_rm_yes", type="primary"):
+                    watchlist_remove(int(match["security_id"]))
+                    st.rerun()
+            with rc2:
+                if st.button("Cancel", key="wl_rm_cancel"):
+                    st.rerun()
+
+
+# ── thesis tracker page ───────────────────────────────────────────────────────
+
+def _render_thesis_tracker_row(row: pd.Series, review_due: bool) -> None:
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns([1.5, 4, 2, 1])
+        with c1:
+            st.markdown(f"**{row['ticker']}**")
+            st.caption(row.get("sector") or "—")
+            comp = _f(row.get("composite"))
+            if comp is not None:
+                st.caption(f"Composite: {comp:.1f}")
+        with c2:
+            summary = str(row.get("summary") or "")
+            st.markdown(summary[:160] + ("…" if len(summary) > 160 else ""))
+            inv = str(row.get("invalidation_rules") or "")
+            if inv:
+                st.caption(
+                    "Exit: " + inv[:100] + ("…" if len(inv) > 100 else "")
+                )
+        with c3:
+            rd = row.get("review_date")
+            if rd:
+                rd_str = rd.strftime("%b %d, %Y") if hasattr(rd, "strftime") else str(rd)
+                if review_due:
+                    st.markdown(
+                        f'<span class="review-badge">Review due</span><br>{rd_str}',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.caption(f"Review: {rd_str}")
+            else:
+                st.caption("No review date")
+        with c4:
+            if st.button("Open →", key=f"th_open_{row['thesis_id']}",
+                         width="stretch"):
+                _nav_to(row["ticker"])
+
+
+def show_theses() -> None:
+    st.markdown(APP_CSS_TAG, unsafe_allow_html=True)
+
+    with st.sidebar:
+        _sidebar_nav("theses")
+        st.markdown("---")
+        if st.button("↻ Refresh data", width="stretch"):
+            st.cache_data.clear()
+            st.rerun()
+
+    st.markdown("## 📝 Thesis Tracker")
+    st.caption(
+        "Your investment theses — one per company. "
+        "Review-due theses appear first."
+    )
+
+    theses_df = load_all_theses()
+
+    if theses_df.empty:
+        with st.container(border=True):
+            st.info(
+                "No theses written yet. Open any company's deep-dive and "
+                "write your first thesis there."
+            )
+            if st.button("Go to Screener →", key="th_empty_go"):
+                st.session_state.page = "screener"
+                st.session_state.selected_ticker = None
+                st.query_params.clear()
+                st.rerun()
+        return
+
+    today = date.today()
+    due_mask = theses_df["review_date"].notna() & (theses_df["review_date"] <= today)
+    due_df = theses_df[due_mask]
+    active_df = theses_df[~due_mask]
+
+    if not due_df.empty:
+        st.markdown(
+            f"#### Review due — {len(due_df)} "
+            f"{'thesis' if len(due_df) == 1 else 'theses'}"
+        )
+        for _, row in due_df.iterrows():
+            _render_thesis_tracker_row(row, review_due=True)
+
+    if not active_df.empty:
+        st.markdown("#### Active theses" if due_df.empty else "#### Upcoming")
+        for _, row in active_df.iterrows():
+            _render_thesis_tracker_row(row, review_due=False)
 
 
 # ── routing ───────────────────────────────────────────────────────────────────
@@ -1179,8 +1772,13 @@ def main() -> None:
     if "selected_ticker" not in st.session_state:
         st.session_state.selected_ticker = None
 
-    if st.session_state.page == "deepdive" and st.session_state.selected_ticker:
+    page = st.session_state.page
+    if page == "deepdive" and st.session_state.selected_ticker:
         show_deepdive(st.session_state.selected_ticker)
+    elif page == "watchlist":
+        show_watchlist()
+    elif page == "theses":
+        show_theses()
     else:
         show_screener()
 
