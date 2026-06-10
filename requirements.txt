@@ -8,4 +8,5 @@ pydantic
 beautifulsoup4
 lxml
 streamlit
+plotly
 ruff
