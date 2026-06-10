@@ -1,0 +1,43 @@
+# Weekly pipeline: fundamentals refresh -> metrics -> quality gate -> factor scoring.
+#
+# Schedule: 12:00 UTC every Sunday (~8:00 AM US Eastern when DST is off,
+# ~9:00 AM when DST is on). GitHub Actions cron is always UTC and does not
+# adjust for DST; the seasonal shift is acceptable for this batch job.
+#
+# The full S&P 500 fundamentals refresh can take 30-60+ minutes depending on
+# SEC throttling, hence the 120-minute timeout.
+#
+# On failure GitHub automatically emails the repository owner via the default
+# Actions notification settings — no extra configuration required.
+
+name: Weekly pipeline
+
+on:
+  schedule:
+    - cron: "0 12 * * 0"
+  workflow_dispatch:  # manual trigger from the Actions tab
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run weekly pipeline
+        run: python scripts/run_weekly.py

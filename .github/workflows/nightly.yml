@@ -1,0 +1,40 @@
+# Nightly pipeline: incremental price refresh -> price sanity -> factor scoring.
+#
+# Schedule: 23:30 UTC every day (~6:30 PM US Eastern when DST is off,
+# ~7:30 PM when DST is on). GitHub Actions cron is always UTC and does not
+# adjust for DST; the ~1-hour seasonal shift is acceptable for this batch job.
+#
+# On failure GitHub automatically emails the repository owner via the default
+# Actions notification settings — no extra configuration required.
+
+name: Nightly pipeline
+
+on:
+  schedule:
+    - cron: "30 23 * * *"
+  workflow_dispatch:  # manual trigger from the Actions tab
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run nightly pipeline
+        run: python scripts/run_nightly.py
