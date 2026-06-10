@@ -48,10 +48,12 @@ eps_growth, revenue_cagr, share_count_trend.
 from __future__ import annotations
 
 import json
+import time
 from collections import defaultdict
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import psycopg
 from dotenv import load_dotenv
 
 from engine.db import get_connection
@@ -63,6 +65,13 @@ load_dotenv(_PROJECT_ROOT / ".env")
 JOB_NAME = "metric_computation"
 JOB_VERSION = "v1"
 METRIC_VERSION = "v1"
+
+# Batch-commit tuning: write BATCH_SIZE companies per transaction so no
+# transaction is open for more than a few seconds (prevents idle-in-transaction
+# hangs when the DB connection goes half-open mid-compute).
+BATCH_SIZE = 25
+WRITE_RETRY_ATTEMPTS = 3
+WRITE_RETRY_BACKOFF = (2, 5, 15)  # seconds between retry attempts
 
 QUARTER_DAYS = (70, 110)
 ANNUAL_DAYS = (340, 395)
@@ -623,8 +632,14 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
     ]
 
     try:
+        # pending: (security_id, ticker, write_rows, diag, as_of_dates, results)
+        # Accumulated per BATCH_SIZE companies; flushed as a single transaction.
+        pending: list[tuple] = []
+
         for i, (security_id, ticker) in enumerate(universe, start=1):
             try:
+                # --- fetch: read transaction committed immediately so the
+                # connection is NOT idle-in-transaction during compute. ---
                 with conn.cursor() as cur:
                     cur.execute(
                         """
@@ -648,87 +663,123 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                         (security_id,),
                     )
                     splits = [(ex, float(r)) for ex, r in cur.fetchall()]
+                conn.commit()  # close read txn — no idle-in-transaction during compute
 
                 if not facts:
                     warnings.append(f"{ticker}: no normalized facts - no metrics computed")
                     companies_done += 1
                     continue
 
+                # --- compute: pure Python, no DB transaction open ---
                 as_of_dates = sorted({f.filed for f in facts})
                 results, diag = compute_company_metrics(facts, splits, as_of_dates)
 
-                batch = [
+                write_rows = [
                     (security_id, as_of, metric, value, METRIC_VERSION)
                     for as_of, metrics in results.items()
                     for metric, value in metrics.items()
                     if value is not None and abs(value) < 1e14
                 ]
-                # Atomic replace per company: a recompute that no longer
-                # produces a (now-guarded) value must also remove the stale
-                # stored row, not just overwrite matching keys.
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "DELETE FROM fundamental_metrics "
-                        "WHERE security_id = %s AND metric_version = %s",
-                        (security_id, METRIC_VERSION),
-                    )
-                    if batch:
-                        cur.executemany(
-                            """
-                            INSERT INTO fundamental_metrics
-                              (security_id, as_of_date, metric, value, metric_version)
-                            VALUES (%s, %s, %s, %s, %s)
-                            ON CONFLICT (security_id, as_of_date, metric, metric_version)
-                            DO UPDATE SET value = EXCLUDED.value
-                            """,
-                            batch,
-                        )
-                conn.commit()
-                rows_written += len(batch)
+                pending.append((security_id, ticker, write_rows, diag, as_of_dates, results))
 
-                latest = results.get(as_of_dates[-1], {}) if as_of_dates else {}
-                missing = [k for k in ALL_METRICS if k not in latest]
-                if not missing:
-                    full_coverage += 1
-                elif missing:
-                    warnings.append(
-                        f"{ticker}: missing at latest snapshot: {', '.join(missing)}"
-                    )
-                latest_as_of = as_of_dates[-1] if as_of_dates else None
-                if latest_as_of in diag["eps_proxy_dates"]:
-                    eps_proxy_companies.append(ticker)
-                    warnings.append(
-                        f"{ticker}: ttm_eps is a PROXY (net income / wtd shares) "
-                        f"at the latest snapshot"
-                    )
-                elif diag["eps_proxy_dates"]:
-                    warnings.append(
-                        f"{ticker}: ttm_eps proxied at {len(diag['eps_proxy_dates'])} "
-                        f"early window-truncated snapshot(s) only"
-                    )
-                if diag["margin_nulled"]:
-                    warnings.append(
-                        f"{ticker}: {'/'.join(sorted(diag['margin_nulled']))} outside "
-                        f"plausible bounds at some snapshots - nulled (basis mismatch)"
-                    )
-                if latest_as_of in diag["roic_proxy_dates"]:
-                    roic_proxy_companies.append(ticker)
-                    warnings.append(f"{ticker}: roic is a PROXY (ROA = net income / assets)")
-                elif diag["roic_proxy_dates"]:
-                    warnings.append(
-                        f"{ticker}: roic proxied (ROA) at "
-                        f"{len(diag['roic_proxy_dates'])} early snapshot(s) only"
-                    )
-                if diag["recon_issues"]:
-                    recon_companies.append(ticker)
-                    for issue in sorted(diag["recon_issues"])[:3]:
-                        warnings.append(f"{ticker}: TTM reconciliation - {issue}")
-
-                companies_done += 1
             except Exception as exc:  # noqa: BLE001
-                conn.rollback()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 companies_failed += 1
                 warnings.append(f"{ticker}: failed - {exc!r}")
+
+            # --- flush every BATCH_SIZE companies, and after the last one ---
+            if pending and (len(pending) >= BATCH_SIZE or i == len(universe)):
+                for attempt in range(WRITE_RETRY_ATTEMPTS + 1):
+                    try:
+                        with conn.cursor() as cur:
+                            for sid, _tk, rows, _diag, _aod, _res in pending:
+                                # Atomic replace: stale rows removed before new ones
+                                # are inserted, so a metric dropped by a recompute
+                                # doesn't ghost in the table.
+                                cur.execute(
+                                    "DELETE FROM fundamental_metrics "
+                                    "WHERE security_id = %s AND metric_version = %s",
+                                    (sid, METRIC_VERSION),
+                                )
+                                if rows:
+                                    cur.executemany(
+                                        """
+                                        INSERT INTO fundamental_metrics
+                                          (security_id, as_of_date, metric, value,
+                                           metric_version)
+                                        VALUES (%s, %s, %s, %s, %s)
+                                        ON CONFLICT (security_id, as_of_date, metric,
+                                                     metric_version)
+                                        DO UPDATE SET value = EXCLUDED.value
+                                        """,
+                                        rows,
+                                    )
+                        conn.commit()
+                        break  # batch written successfully
+                    except (psycopg.OperationalError, psycopg.InterfaceError) as exc:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                        if attempt >= WRITE_RETRY_ATTEMPTS:
+                            raise  # exhausted retries — fail loud, let orchestrator record it
+                        _delay = WRITE_RETRY_BACKOFF[attempt]
+                        warnings.append(
+                            f"batch write error (attempt {attempt + 1}), "
+                            f"retrying in {_delay}s: {exc}"
+                        )
+                        time.sleep(_delay)
+                        conn = get_connection()  # fresh connection; upserts are idempotent
+
+                # update stats now that the batch is durably written
+                for _sid, tk, rows, diag, aod, res in pending:
+                    rows_written += len(rows)
+                    latest = res.get(aod[-1], {}) if aod else {}
+                    missing = [k for k in ALL_METRICS if k not in latest]
+                    if not missing:
+                        full_coverage += 1
+                    elif missing:
+                        warnings.append(
+                            f"{tk}: missing at latest snapshot: {', '.join(missing)}"
+                        )
+                    latest_as_of = aod[-1] if aod else None
+                    if latest_as_of in diag["eps_proxy_dates"]:
+                        eps_proxy_companies.append(tk)
+                        warnings.append(
+                            f"{tk}: ttm_eps is a PROXY (net income / wtd shares) "
+                            f"at the latest snapshot"
+                        )
+                    elif diag["eps_proxy_dates"]:
+                        warnings.append(
+                            f"{tk}: ttm_eps proxied at {len(diag['eps_proxy_dates'])} "
+                            f"early window-truncated snapshot(s) only"
+                        )
+                    if diag["margin_nulled"]:
+                        warnings.append(
+                            f"{tk}: {'/'.join(sorted(diag['margin_nulled']))} outside "
+                            f"plausible bounds at some snapshots - nulled (basis mismatch)"
+                        )
+                    if latest_as_of in diag["roic_proxy_dates"]:
+                        roic_proxy_companies.append(tk)
+                        warnings.append(f"{tk}: roic is a PROXY (ROA = net income / assets)")
+                    elif diag["roic_proxy_dates"]:
+                        warnings.append(
+                            f"{tk}: roic proxied (ROA) at "
+                            f"{len(diag['roic_proxy_dates'])} early snapshot(s) only"
+                        )
+                    if diag["recon_issues"]:
+                        recon_companies.append(tk)
+                        for issue in sorted(diag["recon_issues"])[:3]:
+                            warnings.append(f"{tk}: TTM reconciliation - {issue}")
+                    companies_done += 1
+                pending = []
 
             if i % 50 == 0:
                 print(f"  ... {i}/{len(universe)} companies ({rows_written} metric rows)",
