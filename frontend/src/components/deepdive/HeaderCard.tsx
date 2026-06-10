@@ -6,7 +6,13 @@ const STAT_LABEL = 'text-[0.75rem] text-[#6b7280]'
 const STAT_VALUE = 'text-[1.35rem] font-extrabold text-[#111827]'
 const STAT_SUB = 'text-[0.72rem] text-[#9ca3af]'
 
-export function HeaderCard({ header }: { header: SecurityHeader }) {
+export function HeaderCard({
+  header,
+  action,
+}: {
+  header: SecurityHeader
+  action?: React.ReactNode
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-[18px] rounded-card border border-[#e5e7eb] bg-white px-[22px] py-5 shadow-card">
       <div className="flex items-center gap-3.5">
@@ -39,9 +45,11 @@ export function HeaderCard({ header }: { header: SecurityHeader }) {
         </div>
       </div>
 
-      <div className="flex gap-[34px]">
-        <div>
-          <div className={STAT_LABEL}>Last close</div>
+      <div className="flex flex-col items-end gap-3">
+        {action}
+        <div className="flex gap-[34px]">
+          <div>
+            <div className={STAT_LABEL}>Last close</div>
           <div className={STAT_VALUE}>{fmtPrice(header.last_price)}</div>
           <div className={STAT_SUB}>{fmtDate(header.price_date)}</div>
         </div>
@@ -56,6 +64,7 @@ export function HeaderCard({ header }: { header: SecurityHeader }) {
           <div className={STAT_LABEL}>Scores</div>
           <div className={STAT_VALUE}>{fmtDate(header.score_date)}</div>
           <div className={STAT_SUB}>nightly batch</div>
+        </div>
         </div>
       </div>
     </div>

@@ -7,8 +7,10 @@ import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { PriceChart } from '@/components/deepdive/PriceChart'
+import { ThesisPanel } from '@/components/deepdive/ThesisPanel'
 import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { WatchlistButton } from '@/components/WatchlistButton'
 import { getSecurity } from '@/lib/api'
 
 function DeepDiveSkeleton() {
@@ -74,7 +76,10 @@ export function DeepDivePage() {
   return (
     <div className="space-y-5">
       {backLink}
-      <HeaderCard header={header} />
+      <HeaderCard
+        header={header}
+        action={<WatchlistButton ticker={header.ticker} variant="button" />}
+      />
 
       <div>
         <FactorCards header={header} />
@@ -84,6 +89,8 @@ export function DeepDivePage() {
           {weightStr ? ` · Weights: ${weightStr}` : ''}.
         </p>
       </div>
+
+      <ThesisPanel ticker={header.ticker} />
 
       <PriceChart
         prices={prices}

@@ -88,6 +88,43 @@ export interface WatchlistResponse {
   rows: WatchlistRow[]
 }
 
+export interface WatchlistMutationResponse {
+  ticker: string
+  security_id: number
+  status: 'added' | 'already_present'
+}
+
+export interface ThesisRow {
+  thesis_id: number
+  security_id: number
+  ticker: string
+  name: string | null
+  sector: string | null
+  summary: string
+  invalidation_rules: string | null
+  review_date: string | null
+  conviction: string | null
+  updated_at: string
+  composite: number | null
+  review_due: boolean
+}
+
+export interface ThesesResponse {
+  rows: ThesisRow[]
+}
+
+export interface ThesisUpsertRequest {
+  summary: string
+  invalidation_rules?: string | null
+  review_date?: string | null
+}
+
+export interface ThesisMutationResponse {
+  ticker: string
+  security_id: number
+  status: 'created' | 'updated'
+}
+
 export interface HealthResponse {
   status: string
   db: string

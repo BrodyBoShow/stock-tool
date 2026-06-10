@@ -88,9 +88,12 @@ function PriceCell({ row }: { row: ScreenerRow }) {
 export function ScreenerTable({
   rows,
   scoreDate,
+  rowAccessory,
 }: {
   rows: ScreenerRow[]
   scoreDate: string | null
+  /** Optional trailing per-row control (e.g. add-to-watchlist star). */
+  rowAccessory?: (ticker: string) => React.ReactNode
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
     key: 'composite',
@@ -121,6 +124,10 @@ export function ScreenerTable({
 
   const arrow = (key: SortKey) =>
     sort.key === key ? (sort.dir === -1 ? ' ▼' : ' ▲') : ''
+
+  // append a 44px control column when an accessory is provided
+  const gridCols = rowAccessory ? `${SCREENER_GRID} 44px` : SCREENER_GRID
+  const minW = rowAccessory ? 'min-w-[864px]' : 'min-w-[820px]'
 
   return (
     <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-[#e5e7eb] bg-white shadow-card">
@@ -155,8 +162,8 @@ export function ScreenerTable({
       {/* virtualized grid */}
       <div ref={parentRef} className="overflow-auto" style={{ maxHeight: 640 }}>
         <div
-          className="sticky top-0 z-10 grid min-w-[820px] border-b border-[#e5e7eb] bg-[#f9fafb]"
-          style={{ gridTemplateColumns: SCREENER_GRID }}
+          className={`sticky top-0 z-10 grid ${minW} border-b border-[#e5e7eb] bg-[#f9fafb]`}
+          style={{ gridTemplateColumns: gridCols }}
         >
           <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-[#6b7280]`}>
             #{arrow('rank')}
@@ -182,6 +189,7 @@ export function ScreenerTable({
           <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-[#6b7280]`}>
             Price{arrow('last_price')}
           </button>
+          {rowAccessory && <div className={TH} aria-hidden="true" />}
         </div>
 
         {visible.length === 0 ? (
@@ -190,7 +198,7 @@ export function ScreenerTable({
           </div>
         ) : (
           <div
-            className="relative min-w-[820px]"
+            className={`relative ${minW}`}
             style={{ height: virtualizer.getTotalSize() }}
           >
             {virtualizer.getVirtualItems().map((vi) => {
@@ -201,7 +209,7 @@ export function ScreenerTable({
                   to={`/securities/${r.ticker}`}
                   className="absolute left-0 grid w-full cursor-pointer border-b border-[#f3f4f6] text-inherit no-underline transition-[box-shadow,background] duration-100 hover:bg-[#f8fafc] hover:shadow-[inset_3px_0_0_#1e293b]"
                   style={{
-                    gridTemplateColumns: SCREENER_GRID,
+                    gridTemplateColumns: gridCols,
                     height: vi.size,
                     transform: `translateY(${vi.start}px)`,
                   }}
@@ -226,6 +234,11 @@ export function ScreenerTable({
                   <ScoreCell factor="quality" value={r.quality_pctl} />
                   <ScoreCell factor="momentum" value={r.momentum_pctl} />
                   <PriceCell row={r} />
+                  {rowAccessory && (
+                    <div className="flex h-full items-center justify-center">
+                      {rowAccessory(r.ticker)}
+                    </div>
+                  )}
                 </Link>
               )
             })}

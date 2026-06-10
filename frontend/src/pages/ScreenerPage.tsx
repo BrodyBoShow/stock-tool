@@ -5,6 +5,7 @@ import { ErrorCard } from '@/components/ErrorCard'
 import { FilterSidebar } from '@/components/screener/FilterSidebar'
 import { ScreenerHeader } from '@/components/ScreenerHeader'
 import { ScreenerTable } from '@/components/screener/ScreenerTable'
+import { WatchlistButton } from '@/components/WatchlistButton'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getScreener } from '@/lib/api'
 import { applyFilters, DEFAULT_FILTERS, type Filters } from '@/lib/filters'
@@ -62,7 +63,11 @@ export function ScreenerPage() {
           totalCount={data.rows.length}
           sectors={sectors}
         />
-        <ScreenerTable rows={filtered} scoreDate={data.score_date} />
+        <ScreenerTable
+          rows={filtered}
+          scoreDate={data.score_date}
+          rowAccessory={(ticker) => <WatchlistButton ticker={ticker} variant="icon" />}
+        />
       </div>
       <p className="pb-2 text-center text-xs text-[#9ca3af]">
         Factor scores are cross-sectional percentile rankings within the S&amp;P 500
