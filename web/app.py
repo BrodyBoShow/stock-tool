@@ -901,22 +901,21 @@ def show_deepdive(ticker: str) -> None:
         ch1, ch2 = st.columns([3, 1])
         with ch1:
             st.markdown("#### Price history")
-            st.caption("Adjusted close (splits & dividends applied)")
+            st.caption("Adjusted close (splits & dividends applied) · up to 5 years")
         with ch2:
+            # History is backfilled to ~5 years, so 5Y already shows everything —
+            # no separate "Max" range (it would be identical).
             period = st.segmented_control(
-                "Range", ["1Y", "3Y", "5Y", "Max"], default="1Y",
+                "Range", ["1Y", "3Y", "5Y"], default="1Y",
                 label_visibility="collapsed",
             ) or "1Y"
 
         if price_df.empty:
             st.info("No price data available.")
         else:
-            if period == "Max":
-                chart = price_df
-            else:
-                days = {"1Y": 365, "3Y": 3 * 365, "5Y": 5 * 365}[period]
-                cutoff = price_df["date"].max() - pd.Timedelta(days=days)
-                chart = price_df[price_df["date"] >= cutoff]
+            days = {"1Y": 365, "3Y": 3 * 365, "5Y": 5 * 365}[period]
+            cutoff = price_df["date"].max() - pd.Timedelta(days=days)
+            chart = price_df[price_df["date"] >= cutoff]
 
             if chart.empty:
                 st.info(f"No price data for the {period} range.")
