@@ -159,6 +159,25 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
   .dd-stats { gap: 20px; }
 }
 
+/* featured card dark CTA button + invisible Streamlit overlay trick */
+.feat-view-btn {
+  background: #0f172a; color: #fff;
+  border-radius: 10px; padding: 13px 16px;
+  font-size: .88rem; font-weight: 700;
+  text-align: center; margin: 0 16px 16px;
+  letter-spacing: .01em;
+}
+div[data-testid="stMarkdownContainer"]:has(.foa) + div[data-testid="stButton"] {
+  margin-top: -52px !important;
+  position: relative;
+  z-index: 20;
+}
+div[data-testid="stMarkdownContainer"]:has(.foa) + div[data-testid="stButton"] button {
+  opacity: 0 !important;
+  height: 50px;
+  width: 100%;
+}
+
 /* watchlist & thesis */
 .review-badge {
   display: inline-block; background: #fef2f2; color: #dc2626;
@@ -763,18 +782,15 @@ def screener_header_html(score_date, stale_days: int | None) -> str:
 
 
 def stats_row_html(df: pd.DataFrame) -> str:
-    total = len(df)
-    ranked = int(df["composite"].notna().sum())
-    full_cov = int(
-        (df["growth_pctl"].notna() & df["value_pctl"].notna()
-         & df["quality_pctl"].notna() & df["momentum_pctl"].notna()).sum()
-    )
-    sectors = int(df["sector"].nunique(dropna=True))
+    top_comp = int((df["composite"] > 75).sum())
+    top_qual = int((df["quality_pctl"] > 75).sum())
+    top_mom  = int((df["momentum_pctl"] > 75).sum())
+    top_val  = int((df["value_pctl"] > 75).sum())
     tiles = [
-        ("Companies ranked", f"{ranked:,}", f"of {total:,} in the active universe", "📊", "blue"),
-        ("Full factor coverage", f"{full_cov:,}", "have all four factor scores", "🎯", "emerald"),
-        ("Sectors", f"{sectors}", "GICS sectors covered", "🗂️", "purple"),
-        ("Factors", "4", "growth · value · quality · momentum", "⚖️", "amber"),
+        ("Top composite", f"{top_comp:,}", "composite score above 75", "📊", "blue"),
+        ("Strong quality", f"{top_qual:,}", "quality percentile above 75", "🎯", "emerald"),
+        ("Momentum leaders", f"{top_mom:,}", "momentum percentile above 75", "⚡", "amber"),
+        ("Value plays", f"{top_val:,}", "value percentile above 75", "💎", "purple"),
     ]
     cards = "".join(
         '<div class="stat-card"><div>'
@@ -811,7 +827,9 @@ def featured_card_html(rank: int, ticker: str, name: str, composite: float,
         f'<div class="feat-score">{composite:.1f}</div>'
         '</div><div style="text-align:right">'
         f'<div class="feat-price">{fmt_price(price)}</div>{chg_html}'
-        "</div></div></div>"
+        "</div></div>"
+        '<div class="feat-view-btn">View Analysis</div>'
+        "</div>"
     )
 
 
@@ -1039,18 +1057,19 @@ def show_screener() -> None:
                 ),
                 unsafe_allow_html=True,
             )
-            bc1, bc2 = st.columns(2)
-            with bc1:
-                if st.button(f"View {t} →", key=f"feat_{t}", width="stretch"):
-                    _nav_to(t)
-            with bc2:
-                if t in wl_set:
-                    st.button("★ Saved", key=f"wl_feat_{t}", width="stretch",
-                              disabled=True)
-                else:
-                    if st.button("☆ Watchlist", key=f"wl_feat_{t}", width="stretch"):
-                        watchlist_add(int(row["security_id"]))
-                        st.rerun()
+            # Invisible Streamlit button overlaid on the dark card button above
+            st.markdown('<div class="foa"></div>', unsafe_allow_html=True)
+            if st.button("View Analysis", key=f"feat_{t}", width="stretch"):
+                _nav_to(t)
+            # Watchlist toggle — visible below
+            if t in wl_set:
+                st.button("★ Saved", key=f"wl_feat_{t}", width="stretch",
+                          disabled=True)
+            else:
+                if st.button("☆ Save to Watchlist", key=f"wl_feat_{t}",
+                             width="stretch"):
+                    watchlist_add(int(row["security_id"]))
+                    st.rerun()
 
     # table ───────────────────────────────────────────────────────────────────
     with st.container(border=True):

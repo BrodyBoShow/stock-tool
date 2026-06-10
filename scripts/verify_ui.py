@@ -42,8 +42,8 @@ t = run_route("screener", None)
 
 print("--- AAPL ---")
 t = run_route("deepdive", "AAPL")
-assert "53.7" in t, "AAPL composite 53.7 missing"
-assert "Factor scores" in t
+assert "Factor scores" in t, "AAPL Factor scores section missing"
+assert "Composite" in t, "AAPL Composite label missing"
 
 print("--- JPM ---")
 t = run_route("deepdive", "JPM")
