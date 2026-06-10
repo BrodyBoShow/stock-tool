@@ -1,0 +1,147 @@
+import { useMemo } from 'react'
+
+import {
+  FINANCIAL_NULL_METRICS,
+  FINANCIAL_SECTORS,
+  METRIC_DISPLAY_ORDER,
+  METRIC_LABELS,
+} from '@/lib/constants'
+import { DASH, fmtDate, fmtMetric } from '@/lib/format'
+import type { FundamentalPoint } from '@/types/api'
+
+export function FundamentalsTable({
+  fundamentals,
+  sector,
+  ticker,
+  roicIsProxy,
+}: {
+  fundamentals: FundamentalPoint[]
+  sector: string | null
+  ticker: string
+  roicIsProxy: boolean
+}) {
+  const isFinancial = sector !== null && FINANCIAL_SECTORS.has(sector)
+
+  // Pivot the flat rows: 8 most recent as_of_dates as columns (newest left).
+  const { dates, byMetric } = useMemo(() => {
+    const allDates = [...new Set(fundamentals.map((f) => f.as_of_date))]
+      .sort()
+      .reverse()
+      .slice(0, 8)
+    const dateSet = new Set(allDates)
+    const m = new Map<string, Map<string, number | null>>()
+    for (const f of fundamentals) {
+      if (!dateSet.has(f.as_of_date)) continue
+      let row = m.get(f.metric)
+      if (!row) {
+        row = new Map()
+        m.set(f.metric, row)
+      }
+      row.set(f.as_of_date, f.value)
+    }
+    return { dates: allDates, byMetric: m }
+  }, [fundamentals])
+
+  const showFinancialNa =
+    isFinancial &&
+    METRIC_DISPLAY_ORDER.some(
+      (metric) =>
+        byMetric.has(metric) &&
+        FINANCIAL_NULL_METRICS.has(metric) &&
+        dates.some((d) => (byMetric.get(metric)?.get(d) ?? null) === null),
+    )
+
+  if (fundamentals.length === 0) {
+    return (
+      <div className="rounded-card border border-[#bfdbfe] bg-[#eff6ff] p-5 shadow-card">
+        <div className="text-sm font-bold text-[#1d4ed8]">
+          No fundamental data available for {ticker}
+        </div>
+        <p className="mt-1 text-[0.82rem] text-[#1e40af]">
+          This security has no XBRL filings yet (likely a recent spinoff or IPO).
+          Metrics will populate automatically once filings are ingested by the
+          weekly pipeline.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+      <div className="text-base font-bold text-[#111827]">
+        Fundamental metrics — point-in-time history
+      </div>
+      <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+        Values as known at each filing date (point-in-time correct — restatements
+        apply forward only, never backward). TTM = trailing twelve months. Showing
+        the eight most recent filing dates.
+      </div>
+
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+              <th className="whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]">
+                Metric
+              </th>
+              {dates.map((d) => (
+                <th
+                  key={d}
+                  className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]"
+                >
+                  {fmtDate(d)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {METRIC_DISPLAY_ORDER.filter((metric) => byMetric.has(metric)).map(
+              (metric) => (
+                <tr key={metric} className="border-b border-[#f3f4f6]">
+                  <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-[#374151]">
+                    {METRIC_LABELS[metric] ?? metric}
+                  </td>
+                  {dates.map((d) => {
+                    const v = byMetric.get(metric)?.get(d) ?? null
+                    let cell: string
+                    if (
+                      v === null &&
+                      isFinancial &&
+                      FINANCIAL_NULL_METRICS.has(metric)
+                    ) {
+                      cell = 'n/a*'
+                    } else if (v === null) {
+                      cell = DASH
+                    } else {
+                      cell = fmtMetric(metric, v, metric === 'roic' && roicIsProxy)
+                    }
+                    return (
+                      <td
+                        key={d}
+                        className="whitespace-nowrap px-3 py-2 text-right text-[0.82rem] text-[#111827] tabular-nums"
+                      >
+                        {cell}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-3 space-y-1 text-[0.72rem] text-[#9ca3af]">
+        {showFinancialNa && (
+          <p>
+            * Not meaningful for banks / insurers / REITs — these metrics assume a
+            non-financial operating model.
+          </p>
+        )}
+        {roicIsProxy && (
+          <p>* ROIC value is ROA (net income ÷ total assets); see scores note.</p>
+        )}
+      </div>
+    </div>
+  )
+}

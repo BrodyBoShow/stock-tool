@@ -1,0 +1,142 @@
+import {
+  FACTOR_DEFS,
+  FACTOR_TABLE,
+  INPUT_LABELS,
+  type FactorKey,
+} from '@/lib/constants'
+import { DASH, fmtInput, fmtPctl } from '@/lib/format'
+import type { SecurityHeader } from '@/types/api'
+
+const VALUE_NA_REASON =
+  'No market cap or share count available — likely a multi-class share ' +
+  'structure (e.g. BRK-B, V) where cover-page share data is class-dimensioned ' +
+  'and absent from the XBRL companyfacts API.'
+
+const TH =
+  'px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
+const TD = 'px-3 py-2 text-[0.82rem]'
+
+function pctlOf(header: SecurityHeader, key: FactorKey): number | null {
+  switch (key) {
+    case 'composite':
+      return header.composite
+    case 'growth':
+      return header.growth_pctl
+    case 'value':
+      return header.value_pctl
+    case 'quality':
+      return header.quality_pctl
+    case 'momentum':
+      return header.momentum_pctl
+  }
+}
+
+export function FactorInputsTable({ header }: { header: SecurityHeader }) {
+  const details = header.details ?? {}
+  const inputs = details.inputs ?? {}
+  const subPctls = details.sub_pctls ?? {}
+  const roicIsProxy = details.flags?.roic_pool === 'roa_proxy'
+  const momentumBasis = Boolean(details.flags?.momentum_basis)
+
+  const factors = Object.keys(FACTOR_DEFS) as Array<keyof typeof FACTOR_DEFS>
+
+  return (
+    <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+      <div className="text-base font-bold text-[#111827]">Sub-metric detail</div>
+      <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+        The raw inputs behind each factor, with their own percentile ranks within
+        the universe.
+      </div>
+
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse">
+          <thead>
+            <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+              <th className={TH}>Factor</th>
+              <th className={TH}>Metric</th>
+              <th className={`${TH} text-right`}>Value</th>
+              <th className={`${TH} text-right`}>Rank (0–100)</th>
+              <th className={TH}>Better when</th>
+            </tr>
+          </thead>
+          <tbody>
+            {factors.map((factor) => {
+              const factorV = pctlOf(header, factor)
+              const color = FACTOR_TABLE[factor].bar
+              const dot = (
+                <span className="inline-flex items-center text-[0.78rem] font-bold text-[#374151]">
+                  <span
+                    className="mr-1.5 inline-block h-2 w-2 rounded-full"
+                    style={{ background: color }}
+                  />
+                  {factor.charAt(0).toUpperCase() + factor.slice(1)}
+                </span>
+              )
+
+              if (factorV === null) {
+                const reason =
+                  factor === 'value' ? VALUE_NA_REASON : 'Factor data unavailable.'
+                return (
+                  <tr key={factor} className="border-b border-[#f3f4f6] align-top">
+                    <td className={TD}>{dot}</td>
+                    <td className={`${TD} italic text-[#9ca3af]`}>
+                      {factor.charAt(0).toUpperCase() + factor.slice(1)} factor n/a
+                    </td>
+                    <td className={`${TD} text-[0.75rem] text-[#9ca3af]`} colSpan={3}>
+                      {reason}
+                    </td>
+                  </tr>
+                )
+              }
+
+              return FACTOR_DEFS[factor].map(([metricKey, direction], i) => (
+                <tr key={`${factor}-${metricKey}`} className="border-b border-[#f3f4f6]">
+                  <td className={TD}>{i === 0 ? dot : null}</td>
+                  <td className={`${TD} text-[#374151]`}>
+                    {INPUT_LABELS[metricKey] ?? metricKey}
+                  </td>
+                  <td className={`${TD} text-right font-semibold text-[#111827] tabular-nums`}>
+                    {fmtInput(
+                      metricKey,
+                      inputs[metricKey],
+                      metricKey === 'roic' && roicIsProxy,
+                    )}
+                  </td>
+                  <td className={`${TD} text-right text-[#374151] tabular-nums`}>
+                    {fmtPctl(subPctls[metricKey])}
+                  </td>
+                  <td className={`${TD} text-[#6b7280]`}>
+                    {direction === 'higher' ? '↑ higher' : '↓ lower'}
+                  </td>
+                </tr>
+              ))
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {(roicIsProxy || momentumBasis) && (
+        <div className="mt-3 space-y-1 text-[0.72rem] text-[#9ca3af]">
+          {roicIsProxy && (
+            <p>
+              * ROIC shown as ROA proxy (net income ÷ total assets) — this company
+              type does not report an operating-income subtotal. Ranked in a
+              separate pool from true-ROIC companies.
+            </p>
+          )}
+          {momentumBasis && (
+            <p>
+              Momentum = cross-sectional ranking of raw 3/6/12-month adj-close
+              returns within the universe (no benchmark subtraction in v1).
+            </p>
+          )}
+        </div>
+      )}
+      {Object.keys(inputs).length === 0 && (
+        <p className="mt-3 text-[0.78rem] text-[#9ca3af]">
+          No factor input detail available for this security. {DASH}
+        </p>
+      )}
+    </div>
+  )
+}
