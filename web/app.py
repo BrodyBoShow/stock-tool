@@ -1,4 +1,4 @@
-"""Stock Research Cockpit — Streamlit front end (read-only).
+"""StockBud — Streamlit front end (read-only).
 
 Routing: st.session_state.page ∈ {"screener", "deepdive"}
          st.session_state.selected_ticker: str | None
@@ -29,7 +29,7 @@ from engine.db import get_connection  # noqa: E402
 
 # ── page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Stock Research Cockpit",
+    page_title="StockBud",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -1480,7 +1480,7 @@ def _nav_to(ticker: str) -> None:
 
 def _sidebar_nav(current: str) -> None:
     st.markdown(
-        '<div class="sb-brand"><span class="sb-mark">▚</span>RESEARCH COCKPIT</div>',
+        '<div class="sb-brand"><span class="sb-mark">▚</span>STOCKBUD</div>',
         unsafe_allow_html=True,
     )
     # Real pages only — no dead nav. The .navmark scopes the minimal-tab CSS to

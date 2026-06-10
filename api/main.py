@@ -1,4 +1,4 @@
-"""Phase 9 — FastAPI read/write layer for the Stock Research Cockpit.
+"""Phase 9 — FastAPI read/write layer for StockBud.
 
 DB credentials live only in the API process env; they are never exposed in
 any response body or error message.

@@ -1,4 +1,4 @@
-# Stock Research Cockpit — Runbook
+# StockBud — Runbook
 
 ## Two scheduled cadences
 

@@ -1,4 +1,4 @@
-# Stock Research Cockpit — Build Spec & Schema (v2)
+# StockBud — Build Spec & Schema (v2)
 
 A US-stocks, daily-data research tool. The goal is **research leverage and process discipline**, not a score that predicts the market. Three principles run through the whole design:
 
@@ -318,7 +318,7 @@ Hand the agent **one phase at a time**, single linear pass, stop at each Done ch
 **Done:** Sub-second responses on cached tables.
 
 ### Phase 9 — Frontend MVP
-**Goal:** The cockpit.
+**Goal:** The StockBud frontend.
 **Tasks:** Screener page (sortable/filterable table), deep-dive page (price chart, financials, factor scores with raw inputs, thesis panel, AI summary), watchlist page.
 **Done:** Screen → click ticker → see everything → add to watchlist → save a thesis with invalidation rules and a review date.
 
