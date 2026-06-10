@@ -10,3 +10,10 @@ __pycache__/
 
 # Tooling caches
 .ruff_cache/
+
+# Local design reference (extracted zip, not part of the app)
+.design_ref/
+
+# Local Streamlit run logs
+streamlit_out.txt
+streamlit_err.txt
