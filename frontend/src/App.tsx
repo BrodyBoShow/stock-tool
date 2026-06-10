@@ -10,7 +10,7 @@ export default function App() {
   return (
     <>
       <TopNav />
-      <main className="mx-auto max-w-[1380px] px-6 py-6">
+      <main className="mx-auto w-full max-w-[1760px] px-6 py-6 lg:px-8">
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<ScreenerPage />} />

@@ -3,8 +3,8 @@ import { useMemo, useState } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { FilterSidebar } from '@/components/screener/FilterSidebar'
+import { ScreenerHeader } from '@/components/ScreenerHeader'
 import { ScreenerTable } from '@/components/screener/ScreenerTable'
-import { TerminalHeader } from '@/components/TerminalHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getScreener } from '@/lib/api'
 import { applyFilters, DEFAULT_FILTERS, type Filters } from '@/lib/filters'
@@ -12,7 +12,7 @@ import { applyFilters, DEFAULT_FILTERS, type Filters } from '@/lib/filters'
 function ScreenerSkeleton() {
   return (
     <div className="space-y-5">
-      <Skeleton className="h-[170px] w-full rounded-[13px] bg-slate-800/20" />
+      <Skeleton className="h-[210px] w-full rounded-2xl" />
       <div className="flex items-start gap-5">
         <Skeleton className="h-[480px] w-[270px] shrink-0 rounded-card" />
         <div className="min-w-0 flex-1 space-y-0 overflow-hidden rounded-card border border-[#e5e7eb] bg-white p-4 shadow-card">
@@ -52,7 +52,7 @@ export function ScreenerPage() {
 
   return (
     <div className="space-y-5">
-      <TerminalHeader scoreDate={data.score_date} rows={data.rows} />
+      <ScreenerHeader scoreDate={data.score_date} rows={data.rows} />
       <div className="flex items-start gap-5">
         <FilterSidebar
           filters={filters}
