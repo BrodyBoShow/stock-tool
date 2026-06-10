@@ -152,6 +152,11 @@ class MacroLatestResponse(BaseModel):
     series: list[MacroSeriesLatest]
 
 
+class MacroSeriesResponse(BaseModel):
+    series_id: str
+    observations: list[MacroObservation]  # full history, oldest first
+
+
 # ── health ────────────────────────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):

@@ -2,18 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 
 import { MACRO_DISPLAY } from '@/lib/constants'
 import { getMacroLatest } from '@/lib/api'
+import { fmtShortDate } from '@/lib/format'
 import type { MacroObservation } from '@/types/api'
-
-/** "2026-06-08" -> "Jun 8" (UTC-safe, no year). */
-function shortDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  if (!y || !m || !d) return iso
-  const names = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ]
-  return `${names[m - 1]} ${d}`
-}
 
 function fmtVal(v: number | null, unit: string, dec: number): string {
   if (v === null) return '—'
@@ -57,13 +47,13 @@ function MacroTile({
             {delta.arrow}
             {delta.mag}
           </span>
-          <span className="text-[0.66rem] text-[#9ca3af]">vs {shortDate(prior.date)}</span>
+          <span className="text-[0.66rem] text-[#9ca3af]">vs {fmtShortDate(prior.date)}</span>
         </div>
       ) : (
         <div className="mt-0.5 text-[0.72rem] text-[#9ca3af]">no prior reading</div>
       )}
       {latest && (
-        <div className="mt-1 text-[0.63rem] text-[#cbd5e1]">as of {shortDate(latest.date)}</div>
+        <div className="mt-1 text-[0.63rem] text-[#cbd5e1]">as of {fmtShortDate(latest.date)}</div>
       )}
     </div>
   )

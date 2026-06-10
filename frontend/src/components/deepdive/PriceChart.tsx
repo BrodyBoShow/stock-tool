@@ -1,21 +1,27 @@
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import {
   Area,
-  AreaChart,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 
+import { getMacroSeries } from '@/lib/api'
+import { MACRO_DISPLAY } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
-import type { PricePoint } from '@/types/api'
+import type { MacroObservation, PricePoint } from '@/types/api'
 
 export const RANGES = [
   { label: '1Y', days: 365 },
   { label: '3Y', days: 1095 },
   { label: '5Y', days: 1825 },
 ] as const
+
+const OVERLAY_COLOR = '#7c3aed' // violet — distinct from the blue price line
 
 function tickLabel(iso: string): string {
   const [y, m] = iso.split('-').map(Number)
@@ -26,25 +32,59 @@ function tickLabel(iso: string): string {
   return `${names[(m ?? 1) - 1]} '${String(y).slice(2)}`
 }
 
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
+interface ChartRow {
+  date: string
+  v: number
+  macro?: number | null
+}
+
+/** Forward-fill the macro value as of each price date (point-in-time join). */
+function asOfMerge(rows: ChartRow[], obs: MacroObservation[]): ChartRow[] {
+  const sorted = obs.filter((o) => o.value !== null) // API returns oldest-first
+  let i = 0
+  let last: number | null = null
+  return rows.map((p) => {
+    while (i < sorted.length && sorted[i].date <= p.date) {
+      last = sorted[i].value as number
+      i += 1
+    }
+    return { ...p, macro: last }
+  })
+}
+
+interface TooltipMeta {
+  overlay: boolean
+  label: string
+  unit: string
+  dec: number
+}
+
+interface TooltipProps {
   active?: boolean
-  payload?: Array<{ value?: number | string }>
+  payload?: Array<{ dataKey?: string | number; value?: number | string }>
   label?: string
-}) {
-  if (!active || !payload?.length) return null
-  const v = payload[0]?.value
-  return (
-    <div className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs shadow-card">
-      <div className="font-semibold text-[#111827]">{fmtDate(label)}</div>
-      <div className="mt-0.5 text-[#2563eb]">
-        {typeof v === 'number' ? `$${v.toFixed(2)}` : '—'}
+}
+
+function makeTooltip(meta: TooltipMeta) {
+  return function ChartTooltip({ active, payload, label }: TooltipProps) {
+    if (!active || !payload?.length) return null
+    const price = payload.find((p) => p.dataKey === 'v')?.value
+    const macro = payload.find((p) => p.dataKey === 'macro')?.value
+    return (
+      <div className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs shadow-card">
+        <div className="font-semibold text-[#111827]">{fmtDate(label)}</div>
+        <div className="mt-0.5 text-[#2563eb]">
+          {typeof price === 'number' ? `$${price.toFixed(2)}` : '—'}
+        </div>
+        {meta.overlay && (
+          <div className="mt-0.5" style={{ color: OVERLAY_COLOR }}>
+            {meta.label}:{' '}
+            {typeof macro === 'number' ? `${macro.toFixed(meta.dec)}${meta.unit}` : '—'}
+          </div>
+        )}
       </div>
-    </div>
-  )
+    )
+  }
 }
 
 export function PriceChart({
@@ -58,13 +98,39 @@ export function PriceChart({
   onDaysChange: (d: number) => void
   isFetching: boolean
 }) {
-  const data = useMemo(
+  const [overlayOn, setOverlayOn] = useState(false)
+  const [seriesId, setSeriesId] = useState('VIXCLS')
+
+  const priceRows = useMemo<ChartRow[]>(
     () =>
       prices
         .filter((p) => p.adj_close !== null)
         .map((p) => ({ date: p.date, v: p.adj_close as number })),
     [prices],
   )
+
+  const { data: macroData } = useQuery({
+    queryKey: ['macro', 'series', seriesId],
+    queryFn: () => getMacroSeries(seriesId),
+    enabled: overlayOn,
+    staleTime: 6 * 60 * 60 * 1000,
+  })
+
+  const data = useMemo<ChartRow[]>(
+    () =>
+      overlayOn && macroData
+        ? asOfMerge(priceRows, macroData.observations)
+        : priceRows,
+    [priceRows, overlayOn, macroData],
+  )
+
+  const meta = MACRO_DISPLAY.find((m) => m.id === seriesId)
+  const Tip = makeTooltip({
+    overlay: overlayOn,
+    label: meta?.label ?? 'Macro',
+    unit: meta?.unit ?? '',
+    dec: meta?.dec ?? 2,
+  })
 
   return (
     <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
@@ -94,17 +160,57 @@ export function PriceChart({
         </div>
       </div>
 
+      {/* opt-in macro overlay controls (default off) */}
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => setOverlayOn((o) => !o)}
+          aria-pressed={overlayOn}
+          className={
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[0.76rem] font-semibold transition-colors ' +
+            (overlayOn
+              ? 'border-violet-200 bg-violet-50 text-violet-700'
+              : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+          }
+        >
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ background: overlayOn ? OVERLAY_COLOR : '#cbd5e1' }}
+          />
+          Macro overlay
+        </button>
+        {overlayOn && (
+          <>
+            <select
+              value={seriesId}
+              onChange={(e) => setSeriesId(e.target.value)}
+              aria-label="Macro overlay series"
+              className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-[0.76rem] font-semibold text-[#1e293b] focus:border-[#7c3aed] focus:outline-none"
+            >
+              {MACRO_DISPLAY.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-[0.7rem] text-[#9ca3af]">
+              right axis · context only, not a signal
+            </span>
+          </>
+        )}
+      </div>
+
       <div
         className="mt-4 transition-opacity"
         style={{ opacity: isFetching ? 0.55 : 1 }}
       >
-        {data.length < 2 ? (
+        {priceRows.length < 2 ? (
           <div className="flex h-[300px] items-center justify-center text-sm text-[#9ca3af]">
             Not enough price data for this range.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="px-fill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#2563eb" stopOpacity={0.16} />
@@ -120,6 +226,7 @@ export function PriceChart({
                 tick={{ fontSize: 11, fill: '#9ca3af' }}
               />
               <YAxis
+                yAxisId="price"
                 domain={['auto', 'auto']}
                 tickFormatter={(v: number) => `$${v.toFixed(0)}`}
                 width={56}
@@ -127,8 +234,21 @@ export function PriceChart({
                 tickLine={false}
                 tick={{ fontSize: 11, fill: '#9ca3af' }}
               />
-              <Tooltip content={<ChartTooltip />} />
+              {overlayOn && (
+                <YAxis
+                  yAxisId="macro"
+                  orientation="right"
+                  domain={['auto', 'auto']}
+                  tickFormatter={(v: number) => `${v.toFixed(meta?.dec ?? 0)}${meta?.unit ?? ''}`}
+                  width={52}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: OVERLAY_COLOR }}
+                />
+              )}
+              <Tooltip content={<Tip />} />
               <Area
+                yAxisId="price"
                 type="monotone"
                 dataKey="v"
                 stroke="#2563eb"
@@ -136,7 +256,19 @@ export function PriceChart({
                 fill="url(#px-fill)"
                 isAnimationActive={false}
               />
-            </AreaChart>
+              {overlayOn && (
+                <Line
+                  yAxisId="macro"
+                  type="monotone"
+                  dataKey="macro"
+                  stroke={OVERLAY_COLOR}
+                  strokeWidth={1.6}
+                  dot={false}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>

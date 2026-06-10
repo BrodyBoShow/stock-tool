@@ -139,6 +139,11 @@ export interface MacroLatestResponse {
   series: MacroSeriesLatest[]
 }
 
+export interface MacroSeriesResponse {
+  series_id: string
+  observations: MacroObservation[]
+}
+
 export interface HealthResponse {
   status: string
   db: string

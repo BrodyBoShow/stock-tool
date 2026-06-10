@@ -1,5 +1,6 @@
 import type {
   MacroLatestResponse,
+  MacroSeriesResponse,
   ScreenerResponse,
   SecurityResponse,
   ThesesResponse,
@@ -94,6 +95,10 @@ export function getTheses(): Promise<ThesesResponse> {
 
 export function getMacroLatest(): Promise<MacroLatestResponse> {
   return getJson<MacroLatestResponse>('/macro/latest')
+}
+
+export function getMacroSeries(seriesId: string): Promise<MacroSeriesResponse> {
+  return getJson<MacroSeriesResponse>(`/macro/series/${encodeURIComponent(seriesId)}`)
 }
 
 // TODO(auth): the write endpoints below are "auth-required before public" —

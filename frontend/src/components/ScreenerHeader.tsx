@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
-import { fmtDate } from '@/lib/format'
+import { getMacroLatest } from '@/lib/api'
+import { fmtDate, fmtShortDate } from '@/lib/format'
 import type { ScreenerRow } from '@/types/api'
 
 /** ET wall-clock parts via Intl — never the user's local zone. */
@@ -91,6 +93,39 @@ export function ScreenerHeader({
 
   const staleDays = scoreDate ? staleDaysET(scoreDate, now) : null
   const fresh = staleDays === null || staleDays <= 3
+
+  // VIX from FRED (/macro/latest). Market convention: rising VIX = fear = red,
+  // falling = calm = green — that's the one place a macro delta is colored.
+  const { data: macro } = useQuery({
+    queryKey: ['macro', 'latest'],
+    queryFn: getMacroLatest,
+    staleTime: 6 * 60 * 60 * 1000,
+  })
+  const vixObs = macro?.series.find((s) => s.series_id === 'VIXCLS')?.observations ?? []
+  const vixLatest = vixObs[0]?.value ?? null
+  const vixPrior = vixObs[1]?.value ?? null
+  const vixChg = vixLatest != null && vixPrior != null ? vixLatest - vixPrior : null
+
+  let vixValue: React.ReactNode = '—'
+  let vixHint = 'macro feed pending'
+  if (vixLatest != null) {
+    vixHint = vixObs[1] ? `vs ${fmtShortDate(vixObs[1].date)}` : 'latest close'
+    if (vixChg != null && vixChg !== 0) {
+      const color = vixChg > 0 ? '#dc2626' : '#059669'
+      const arrow = vixChg > 0 ? '▲' : '▼'
+      vixValue = (
+        <>
+          {vixLatest.toFixed(2)}{' '}
+          <span className="text-[0.82rem] font-bold" style={{ color }}>
+            {arrow}
+            {Math.abs(vixChg).toFixed(2)}
+          </span>
+        </>
+      )
+    } else {
+      vixValue = vixLatest.toFixed(2)
+    }
+  }
 
   const { adv, dec } = useMemo(() => {
     let a = 0
@@ -183,7 +218,7 @@ export function ScreenerHeader({
           <Stat label="Advancing" value={adv} accent="#059669" hint="vs prior close" />
           <Stat label="Declining" value={dec} accent="#dc2626" hint="vs prior close" />
           <Stat label="Adv / Dec" value={ratio} hint="breadth ratio" />
-          <Stat label="Volatility · VIX" value="—" hint="macro feed pending" />
+          <Stat label="Volatility · VIX" value={vixValue} hint={vixHint} />
           <Stat label="Index" value="S&P 500" hint="active universe" />
         </div>
       </div>

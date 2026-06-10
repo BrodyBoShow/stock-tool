@@ -113,4 +113,16 @@ export function fmtDate(iso: string | null | undefined): string {
   })
 }
 
+/** "2026-06-08" -> "Jun 8" (UTC-safe, no year). */
+export function fmtShortDate(iso: string | null | undefined): string {
+  if (!iso) return DASH
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  const names = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ]
+  return `${names[m - 1]} ${d}`
+}
+
 export { DASH }
