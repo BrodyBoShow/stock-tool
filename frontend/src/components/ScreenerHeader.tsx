@@ -97,14 +97,22 @@ export function ScreenerHeader({
   const fresh = staleDays === null || staleDays <= 3
 
   // Live-price stamp (intraday overlay). Prices are ~15-min delayed (free
-  // yfinance); scores remain end-of-day. Show the quote time in ET.
+  // yfinance); scores remain end-of-day. Show the quote date + time in ET.
   let liveStamp: string | null = null
+  let liveDate: string | null = null
   if (quotesAsOfEpoch != null) {
-    const q = etParts(new Date(quotesAsOfEpoch * 1000))
+    const d = new Date(quotesAsOfEpoch * 1000)
+    const q = etParts(d)
     const h24 = Number(q.hour)
     const h12 = ((h24 + 11) % 12) + 1
     liveStamp = `${h12}:${q.minute} ${h24 >= 12 ? 'PM' : 'AM'}`
+    liveDate = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
+      day: 'numeric',
+    }).format(d)
   }
+  const liveNow = Boolean(liveStamp && open) // only call it "live" while open
 
   // VIX from FRED (/macro/latest). Market convention: rising VIX = fear = red,
   // falling = calm = green — that's the one place a macro delta is colored.
@@ -174,9 +182,25 @@ export function ScreenerHeader({
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-[#64748b]">
               <span>
-                Nightly percentile rankings across {rows.length} companies
+                Factor rankings across {rows.length} companies
               </span>
-              {fresh ? (
+              {liveNow ? (
+                <>
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-sky-700"
+                    title="Prices are live (~15-min delayed)."
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-sky-500"
+                      style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
+                    />
+                    Live prices · {liveDate}, {liveStamp} ET
+                  </span>
+                  <span className="text-[0.72rem] text-[#94a3b8]">
+                    scores · {fmtDate(scoreDate)} close
+                  </span>
+                </>
+              ) : fresh ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-emerald-700">
                   <span
                     className="h-1.5 w-1.5 rounded-full bg-emerald-500"
@@ -218,18 +242,6 @@ export function ScreenerHeader({
               <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
                 New York · ET
               </div>
-              {liveStamp && (
-                <div
-                  className="mt-1 inline-flex items-center gap-1.5 text-[0.68rem] font-semibold text-[#0ea5e9]"
-                  title="Prices are live (~15-min delayed). Factor scores remain end-of-day."
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-[#0ea5e9]"
-                    style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
-                  />
-                  Prices live · {liveStamp} ET
-                </div>
-              )}
             </div>
           </div>
         </div>
