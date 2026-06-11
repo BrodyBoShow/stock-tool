@@ -92,7 +92,7 @@ export function DeepDivePage() {
       <div>
         <FactorCards header={header} />
         <p className="mt-2 text-[0.72rem] text-[#9ca3af]">
-          Cross-sectional percentile ranks within the S&amp;P 500 universe (100 =
+          Cross-sectional percentile ranks within the US-listed universe (100 =
           top), as of {header.score_date ?? 'n/a'} (nightly)
           {weightStr ? ` · Weights: ${weightStr}` : ''}.
         </p>

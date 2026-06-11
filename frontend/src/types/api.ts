@@ -13,6 +13,7 @@ export interface ScreenerRow {
   momentum_pctl: number | null
   last_price: number | null
   prev_close: number | null
+  market_cap: number | null
   security_id: number
 }
 

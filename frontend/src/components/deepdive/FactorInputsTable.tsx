@@ -83,7 +83,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
           <Swatch color="rgba(239,68,68,0.45)" /> Weak (rank ≤ 33)
         </span>
         <span className="text-[#9ca3af]">
-          — direction-adjusted percentile within the S&amp;P 500, so green is always good
+          — direction-adjusted percentile within the US-listed universe, so green is always good
         </span>
       </div>
 

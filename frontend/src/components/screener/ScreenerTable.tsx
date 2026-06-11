@@ -133,7 +133,7 @@ export function ScreenerTable({
     <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-[#e5e7eb] bg-white shadow-card">
       {/* card header */}
       <div className="px-4 pb-2.5 pt-3.5">
-        <div className="text-base font-bold text-[#111827]">S&amp;P 500 companies</div>
+        <div className="text-base font-bold text-[#111827]">US-listed companies</div>
         <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
           {rows.length} companies · ranked by composite factor score · scores as of{' '}
           {scoreDate ?? 'n/a'} (nightly)

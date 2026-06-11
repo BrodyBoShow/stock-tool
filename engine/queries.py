@@ -70,6 +70,7 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
                        fs.growth_pctl, fs.value_pctl, fs.quality_pctl, fs.momentum_pctl,
                        lp.close  AS last_price,
                        lp2.close AS prev_close,
+                       lp.close * sh.value AS market_cap,
                        s.security_id
                 FROM securities s
                 JOIN factor_scores fs
@@ -85,6 +86,12 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
                     WHERE p2.security_id = s.security_id
                     ORDER BY p2.date DESC LIMIT 1 OFFSET 1
                 ) lp2 ON true
+                LEFT JOIN LATERAL (
+                    SELECT value FROM xbrl_facts f
+                    WHERE f.security_id = s.security_id
+                      AND f.normalized_concept = 'shares_outstanding'
+                    ORDER BY f.period_end DESC LIMIT 1
+                ) sh ON true
                 WHERE s.is_active
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
@@ -97,7 +104,7 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
 
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl",
-        "last_price", "prev_close",
+        "last_price", "prev_close", "market_cap",
     }
     rows: list[dict[str, Any]] = []
     for rank, raw in enumerate(db_rows, start=1):

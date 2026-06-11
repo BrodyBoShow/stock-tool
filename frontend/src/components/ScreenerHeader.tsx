@@ -180,7 +180,7 @@ export function ScreenerHeader({
               <span className="text-[#94a3b8]">Equity Screener</span>
             </div>
             <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
-              S&amp;P 500 Factor Screener
+              US Equity Factor Screener
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-[#64748b]">
               <span>
@@ -263,7 +263,7 @@ export function ScreenerHeader({
           <Stat label="Declining" value={dec} accent="#dc2626" hint="vs prior close" />
           <Stat label="Adv / Dec" value={ratio} hint="breadth ratio" />
           <Stat label="Volatility · VIX" value={vixValue} hint={vixHint} />
-          <Stat label="Index" value="S&P 500" hint="active universe" />
+          <Stat label="Universe" value="NYSE + Nasdaq" hint="US-listed equities" />
         </div>
       </div>
     </header>

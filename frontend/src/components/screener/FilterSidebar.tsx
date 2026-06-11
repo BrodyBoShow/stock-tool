@@ -5,7 +5,7 @@ import {
   sectorPillColors,
   type FactorKey,
 } from '@/lib/constants'
-import { activeFilterCount, type Filters } from '@/lib/filters'
+import { activeFilterCount, MARKET_CAP_OPTIONS, type Filters } from '@/lib/filters'
 
 const FACTOR_LABEL: Record<FactorKey, string> = {
   composite: 'Composite',
@@ -106,6 +106,25 @@ export function FilterSidebar({
             )
           })}
         </div>
+      </div>
+
+      {/* market-cap floor */}
+      <div className="mt-4">
+        <div className={SECTION}>Market cap</div>
+        <select
+          value={filters.minMarketCap}
+          onChange={(e) =>
+            onChange({ ...filters, minMarketCap: Number(e.target.value) })
+          }
+          aria-label="Minimum market cap"
+          className="mt-1.5 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#111827] focus:border-[#1e293b] focus:outline-none"
+        >
+          {MARKET_CAP_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* factor minimums */}

@@ -25,6 +25,7 @@ class ScreenerRow(BaseModel):
     momentum_pctl: float | None
     last_price: float | None
     prev_close: float | None
+    market_cap: float | None = None
     security_id: int
 
 

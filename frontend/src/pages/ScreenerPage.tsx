@@ -131,8 +131,8 @@ export function ScreenerPage() {
         />
       </div>
       <p className="pb-2 text-center text-xs text-[#9ca3af]">
-        Factor scores are cross-sectional percentile rankings within the S&amp;P 500
-        universe, refreshed nightly — not investment advice.
+        Factor scores are cross-sectional percentile rankings within the US-listed
+        (NYSE/Nasdaq) universe, refreshed nightly — not investment advice.
       </p>
     </div>
   )
