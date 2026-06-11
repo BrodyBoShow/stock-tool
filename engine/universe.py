@@ -246,6 +246,40 @@ def run_broad(universe_name: str = "us_listed") -> dict:
     }
 
 
+def deactivate_derivative_listings() -> int:
+    """Deactivate warrant/unit/right listings; returns the count deactivated.
+
+    SPAC warrants and units (AIMDW, BESS-WT, VSECU, ...) share their parent
+    company's CIK, so they inherit its fundamentals and slip through the
+    "has fundamentals" graduation gate — then top the screener on pure
+    momentum. A security is a derivative listing when a SHORTER same-CIK
+    sibling ticker is a strict prefix and the remainder is a known
+    warrant/unit/right suffix. Run after any universe expansion/graduation.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE securities s SET is_active=false
+                WHERE s.is_active AND EXISTS (
+                  SELECT 1 FROM securities b
+                  WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                    AND length(b.ticker) < length(s.ticker)
+                    AND s.ticker LIKE b.ticker || '%'
+                    AND ltrim(substring(s.ticker from length(b.ticker)+1), '-')
+                        IN ('W','WS','WT','U','UN','R','RT')
+                )
+                """
+            )
+            n = cur.rowcount
+        conn.commit()
+        return n
+    finally:
+        if not conn.closed:
+            conn.close()
+
+
 def _sic_to_sector(sic: int) -> str | None:
     """Map an SEC SIC code to a GICS-like sector label (approximate).
 
@@ -259,6 +293,8 @@ def _sic_to_sector(sic: int) -> str | None:
         return "Utilities"
     if 6500 <= sic <= 6599 or sic == 6798:
         return "Real Estate"
+    if sic == 6794:  # patent owners & lessors (IDCC, DLB-style licensors) — tech, not finance
+        return "Information Technology"
     if 6000 <= sic <= 6799:
         return "Financials"
     if 2830 <= sic <= 2839 or 3841 <= sic <= 3851 or 8000 <= sic <= 8099:
