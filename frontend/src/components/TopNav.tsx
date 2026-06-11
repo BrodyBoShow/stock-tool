@@ -1,10 +1,59 @@
+import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
+
+import { useToast } from '@/components/ui/Toast'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   'border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
   (isActive
     ? 'border-[#4f46e5] text-[#0f172a]'
     : 'border-transparent text-[#64748b] hover:text-[#0f172a]')
+
+/**
+ * Pull the latest data from the API on demand — the React equivalent of the
+ * Streamlit refresh button. Invalidates every cached query so the nightly /
+ * weekly pipeline's DB updates surface without a hard reload. (The API reads
+ * the DB live per request, so this is purely busting the client cache.)
+ */
+function RefreshButton() {
+  const qc = useQueryClient()
+  const fetching = useIsFetching()
+  const toast = useToast()
+  const spinning = fetching > 0
+
+  const onClick = () => {
+    void qc.invalidateQueries()
+    toast('success', 'Pulling the latest data…')
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={spinning}
+      title="Refresh data"
+      aria-label="Refresh data"
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] disabled:opacity-60"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        className={spinning ? 'animate-spin' : ''}
+        aria-hidden="true"
+      >
+        <path
+          d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  )
+}
 
 function Logo() {
   return (
@@ -52,6 +101,8 @@ export function TopNav() {
           <NavLink to="/theses" className={link}>
             Theses
           </NavLink>
+          <span className="h-5 w-px bg-[#e5e7eb]" aria-hidden="true" />
+          <RefreshButton />
         </div>
       </div>
     </nav>
