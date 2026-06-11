@@ -105,6 +105,47 @@ class SummaryStatusResponse(BaseModel):
     summary: FilingSummary | None     # cached summary if one exists
 
 
+# ── AI decision briefs (Phase 11) ─────────────────────────────────────────────
+
+class FactorTrendPoint(BaseModel):
+    score_date: date
+    composite: float | None
+    growth_pctl: float | None
+    value_pctl: float | None
+    quality_pctl: float | None
+    momentum_pctl: float | None
+    rank: int | None                  # 1 = best composite in the universe
+
+
+class DataConfidence(BaseModel):
+    level: str                        # "high" | "medium" | "low"
+    reason: str
+
+
+class DecisionBriefContent(BaseModel):
+    one_liner: str
+    bull_case: list[str]
+    bear_case: list[str]
+    key_catalyst: str
+    main_risk: str
+    data_confidence: DataConfidence
+    next_questions: list[str]
+
+
+class DecisionBrief(BaseModel):
+    score_date: date
+    brief: DecisionBriefContent
+    model: str | None
+    generated_at: datetime
+
+
+class BriefStatusResponse(BaseModel):
+    ticker: str
+    has_scores: bool                  # scored at least once (brief possible)?
+    trend: list[FactorTrendPoint]     # oldest first; shown even without a brief
+    brief: DecisionBrief | None       # cached brief for the latest snapshot
+
+
 # ── watchlist ─────────────────────────────────────────────────────────────────
 
 class WatchlistRow(BaseModel):

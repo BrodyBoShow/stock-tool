@@ -4,9 +4,10 @@ No Streamlit dependency. Returns plain Python dicts/lists/frozensets.
 Called directly by api/ routers. web/app.py continues to use its own
 cached wrappers (it is being retired as a dev harness).
 
-Write operations are scoped strictly to `watchlist` and `theses` tables.
-Pipeline tables (securities, factor_scores, fundamental_metrics, prices_daily,
-macro_series, etc.) are never touched here.
+Write operations are scoped strictly to `watchlist`, `theses`, and the AI
+result caches (`ai_summaries`, `decision_briefs`). Pipeline tables (securities,
+factor_scores, fundamental_metrics, prices_daily, macro_series, etc.) are
+never touched here.
 """
 from __future__ import annotations
 
@@ -672,6 +673,180 @@ def save_filing_summary(
                 """,
                 (
                     security_id, accession_no, form, json.dumps(summary), model,
+                    prompt_version, schema_version, input_tokens, output_tokens,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ── decision briefs (Phase 11) ────────────────────────────────────────────────
+
+# Metrics carried in factor_scores.details.inputs that peers are compared on.
+BRIEF_METRICS = [
+    "pe", "ps", "ev_ebitda", "fcf_yield",
+    "gross_margin", "operating_margin", "roic",
+    "debt_to_equity", "net_debt_ebitda",
+    "revenue_cagr", "eps_growth",
+]
+
+
+def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
+    """Composite + factor percentiles + universe rank at every score_date.
+
+    Rank (1 = best composite among active securities) is recomputed per
+    score_date, so rank moves are comparable across snapshots. Returns the
+    most recent `limit` snapshots, oldest first. History accrues one row per
+    scoring run, so trend windows lengthen automatically over time.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH ranked AS (
+                    SELECT fs.security_id, fs.score_date, fs.composite,
+                           fs.growth_pctl, fs.value_pctl,
+                           fs.quality_pctl, fs.momentum_pctl,
+                           RANK() OVER (PARTITION BY fs.score_date
+                                        ORDER BY fs.composite DESC NULLS LAST
+                           ) AS univ_rank
+                    FROM factor_scores fs
+                    JOIN securities s ON s.security_id = fs.security_id
+                    WHERE s.is_active
+                )
+                SELECT r.score_date, r.composite, r.growth_pctl, r.value_pctl,
+                       r.quality_pctl, r.momentum_pctl, r.univ_rank
+                FROM ranked r
+                JOIN securities s ON s.security_id = r.security_id
+                WHERE s.ticker = %s
+                ORDER BY r.score_date DESC
+                LIMIT %s
+                """,
+                (ticker, limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+
+    out: list[dict[str, Any]] = []
+    for row in reversed(rows):  # newest-first query result -> oldest-first list
+        d = dict(zip(cols, row, strict=True))
+        for k in ("composite", "growth_pctl", "value_pctl",
+                  "quality_pctl", "momentum_pctl"):
+            d[k] = _f(d.get(k))
+        d["rank"] = int(d["univ_rank"]) if d.get("univ_rank") is not None else None
+        del d["univ_rank"]
+        out.append(d)
+    return out
+
+
+def sector_metric_medians(sector: str) -> dict[str, Any]:
+    """Median of each sub-metric across a sector at the latest score_date.
+
+    Reads factor_scores.details.inputs for every active security in the
+    sector. Returns {"n": peer_count, "medians": {metric: median_or_None}}.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fs.details
+                FROM factor_scores fs
+                JOIN securities s ON s.security_id = fs.security_id
+                WHERE s.is_active AND s.sector = %s
+                  AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                """,
+                (sector,),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    values: dict[str, list[float]] = {m: [] for m in BRIEF_METRICS}
+    for (details,) in rows:
+        d = details if isinstance(details, dict) else json.loads(details or "{}")
+        inputs = d.get("inputs") or {}
+        for m in BRIEF_METRICS:
+            v = _f(inputs.get(m))
+            if v is not None:
+                values[m].append(v)
+
+    def _median(xs: list[float]) -> float | None:
+        if not xs:
+            return None
+        xs = sorted(xs)
+        n = len(xs)
+        mid = n // 2
+        return xs[mid] if n % 2 else (xs[mid - 1] + xs[mid]) / 2.0
+
+    return {"n": len(rows), "medians": {m: _median(v) for m, v in values.items()}}
+
+
+def get_cached_brief(
+    security_id: int, score_date: date, prompt_version: str, schema_version: str
+) -> dict[str, Any] | None:
+    """Cached Decision Brief for one security at one scoring snapshot."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT score_date, brief, model,
+                       prompt_version, schema_version, generated_at
+                FROM decision_briefs
+                WHERE security_id = %s AND score_date = %s
+                  AND prompt_version = %s AND schema_version = %s
+                LIMIT 1
+                """,
+                (security_id, score_date, prompt_version, schema_version),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    d = dict(zip(cols, row, strict=True))
+    if isinstance(d.get("brief"), str):
+        d["brief"] = json.loads(d["brief"])
+    return d
+
+
+def save_brief(
+    *,
+    security_id: int,
+    score_date: date,
+    brief: dict[str, Any],
+    model: str,
+    prompt_version: str,
+    schema_version: str,
+    input_tokens: int | None,
+    output_tokens: int | None,
+) -> None:
+    """Upsert a generated Decision Brief into the decision_briefs cache."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO decision_briefs
+                  (security_id, score_date, brief, model,
+                   prompt_version, schema_version, input_tokens, output_tokens)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (security_id, score_date, prompt_version, schema_version)
+                DO UPDATE SET
+                  brief = EXCLUDED.brief,
+                  model = EXCLUDED.model,
+                  input_tokens = EXCLUDED.input_tokens,
+                  output_tokens = EXCLUDED.output_tokens,
+                  generated_at = NOW()
+                """,
+                (
+                    security_id, score_date, json.dumps(brief), model,
                     prompt_version, schema_version, input_tokens, output_tokens,
                 ),
             )

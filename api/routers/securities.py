@@ -4,6 +4,9 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 
 from api.schemas import (
+    BriefStatusResponse,
+    DecisionBrief,
+    FactorTrendPoint,
     FilingRow,
     FilingSummary,
     FundamentalPoint,
@@ -12,6 +15,7 @@ from api.schemas import (
     SecurityResponse,
     SummaryStatusResponse,
 )
+from engine import brief as brief_engine
 from engine import queries, summarize
 
 router = APIRouter()
@@ -78,6 +82,65 @@ def get_summary(ticker: str) -> SummaryStatusResponse:
         latest_filed_date=filing["filed_date"],
         summary=_to_summary(cached) if cached else None,
     )
+
+
+def _to_brief(cached: dict) -> DecisionBrief:
+    return DecisionBrief(
+        score_date=cached["score_date"],
+        brief=cached["brief"],
+        model=cached.get("model"),
+        generated_at=cached["generated_at"],
+    )
+
+
+@router.get("/{ticker}/brief", response_model=BriefStatusResponse)
+def get_brief(ticker: str) -> BriefStatusResponse:
+    """Decision Brief status: factor-rank trend (always, from our own score
+    history) plus the cached brief for the latest snapshot if one exists.
+    Read-only — never generates."""
+    ticker = ticker.upper()
+    header = queries.security_header(ticker)
+    if header is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found or inactive")
+
+    trend = queries.factor_history(ticker)
+    has_scores = header.get("score_date") is not None
+    cached = None
+    if has_scores:
+        cached = queries.get_cached_brief(
+            header["security_id"], header["score_date"],
+            brief_engine.PROMPT_VERSION, brief_engine.SCHEMA_VERSION,
+        )
+    return BriefStatusResponse(
+        ticker=ticker,
+        has_scores=has_scores,
+        trend=[FactorTrendPoint(**t) for t in trend],
+        brief=_to_brief(cached) if cached else None,
+    )
+
+
+# TODO(auth): generation calls the Anthropic API and costs money per snapshot —
+# gate this endpoint (auth + rate limit) before any public deploy.
+@router.post("/{ticker}/brief", response_model=DecisionBrief)
+def generate_brief(
+    ticker: str,
+    force: bool = Query(False, description="Re-generate even if a brief is cached."),
+) -> DecisionBrief:
+    """Generate (or return cached) the Decision Brief for the latest scoring
+    snapshot: bull/bear case, catalyst, risk, data confidence, next questions —
+    synthesized strictly from StockBud's own data."""
+    ticker = ticker.upper()
+    try:
+        cached = brief_engine.get_or_generate_brief(ticker, force=force)
+    except RuntimeError as exc:  # ANTHROPIC_API_KEY missing
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if cached is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{ticker!r} has no factor scores yet — no brief to build",
+        )
+    return _to_brief(cached)
 
 
 # TODO(auth): generation calls the Anthropic API and costs money per filing —

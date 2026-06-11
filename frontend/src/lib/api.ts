@@ -1,4 +1,6 @@
 import type {
+  BriefStatusResponse,
+  DecisionBrief,
   FilingSummary,
   MacroLatestResponse,
   MacroSeriesResponse,
@@ -114,6 +116,20 @@ export function generateSummary(ticker: string): Promise<FilingSummary> {
   return sendJson<FilingSummary>(
     'POST',
     `/securities/${encodeURIComponent(ticker)}/summary`,
+  )
+}
+
+export function getBriefStatus(ticker: string): Promise<BriefStatusResponse> {
+  return getJson<BriefStatusResponse>(
+    `/securities/${encodeURIComponent(ticker)}/brief`,
+  )
+}
+
+// TODO(auth): generation hits the Anthropic API and costs money — gate before public.
+export function generateBrief(ticker: string): Promise<DecisionBrief> {
+  return sendJson<DecisionBrief>(
+    'POST',
+    `/securities/${encodeURIComponent(ticker)}/brief`,
   )
 }
 

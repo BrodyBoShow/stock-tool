@@ -100,6 +100,45 @@ export interface SummaryStatusResponse {
   summary: FilingSummary | null
 }
 
+export interface FactorTrendPoint {
+  score_date: string
+  composite: number | null
+  growth_pctl: number | null
+  value_pctl: number | null
+  quality_pctl: number | null
+  momentum_pctl: number | null
+  rank: number | null // 1 = best composite in the universe
+}
+
+export interface DataConfidence {
+  level: 'high' | 'medium' | 'low'
+  reason: string
+}
+
+export interface DecisionBriefContent {
+  one_liner: string
+  bull_case: string[]
+  bear_case: string[]
+  key_catalyst: string
+  main_risk: string
+  data_confidence: DataConfidence
+  next_questions: string[]
+}
+
+export interface DecisionBrief {
+  score_date: string
+  brief: DecisionBriefContent
+  model: string | null
+  generated_at: string
+}
+
+export interface BriefStatusResponse {
+  ticker: string
+  has_scores: boolean
+  trend: FactorTrendPoint[] // oldest first
+  brief: DecisionBrief | null
+}
+
 export interface WatchlistRow {
   ticker: string
   name: string | null

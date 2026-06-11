@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FilingSummaryPanel } from '@/components/deepdive/FilingSummaryPanel'
@@ -82,6 +83,8 @@ export function DeepDivePage() {
         header={header}
         action={<WatchlistButton ticker={header.ticker} variant="button" />}
       />
+
+      <DecisionBriefPanel ticker={header.ticker} />
 
       <div>
         <FactorCards header={header} />

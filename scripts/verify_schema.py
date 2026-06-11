@@ -33,6 +33,7 @@ EXPECTED_TABLES = [
     "watchlist",
     "theses",
     "ai_summaries",
+    "decision_briefs",
     "macro_series",
     "job_runs",
 ]
