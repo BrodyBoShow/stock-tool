@@ -182,6 +182,24 @@ class InsiderResponse(BaseModel):
     transactions: list[InsiderTransaction]  # newest first
 
 
+# ── material events (Phase 13 — 8-K, context only) ────────────────────────────
+
+class MaterialEvent(BaseModel):
+    event_date: date | None
+    filed_date: date
+    form: str
+    items: list[str]                  # raw SEC item codes, e.g. ["2.02","9.01"]
+    labels: list[str]                 # plain-English labels for those codes
+    high_signal: bool                 # any genuinely market-moving item present
+    primary_doc_url: str | None
+    accession_no: str
+
+
+class EventsResponse(BaseModel):
+    ticker: str
+    events: list[MaterialEvent]       # newest first
+
+
 # ── watchlist ─────────────────────────────────────────────────────────────────
 
 class WatchlistRow(BaseModel):

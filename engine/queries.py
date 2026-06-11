@@ -699,6 +699,38 @@ def save_filing_summary(
         conn.close()
 
 
+# ── material events (Phase 13 — 8-K, context only) ────────────────────────────
+
+def events_for_ticker(ticker: str, months: int = 12, limit: int = 60) -> list[dict[str, Any]]:
+    """Recent 8-K material events for one ticker, newest event first.
+
+    Returns raw rows (item codes + dates + doc url); the API layer attaches
+    plain-English labels and the high-signal flag from engine.events.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT e.event_date, e.filed_date, e.form, e.items,
+                       e.primary_doc_url, e.accession_no
+                FROM material_events e
+                JOIN securities s ON s.security_id = e.security_id
+                WHERE s.ticker = %s
+                  AND coalesce(e.event_date, e.filed_date)
+                      >= CURRENT_DATE - %s * INTERVAL '1 month'
+                ORDER BY coalesce(e.event_date, e.filed_date) DESC, e.filed_date DESC
+                LIMIT %s
+                """,
+                (ticker, months, limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    return [dict(zip(cols, r, strict=True)) for r in rows]
+
+
 # ── decision briefs (Phase 11) ────────────────────────────────────────────────
 
 # Metrics carried in factor_scores.details.inputs that peers are compared on.

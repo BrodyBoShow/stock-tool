@@ -7,6 +7,7 @@ import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FilingSummaryPanel } from '@/components/deepdive/FilingSummaryPanel'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
+import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
@@ -115,6 +116,8 @@ export function DeepDivePage() {
         ticker={header.ticker}
         roicIsProxy={roicIsProxy}
       />
+
+      <EventsPanel ticker={header.ticker} />
 
       <InsiderPanel ticker={header.ticker} />
 

@@ -1,6 +1,7 @@
 import type {
   BriefStatusResponse,
   DecisionBrief,
+  EventsResponse,
   FilingSummary,
   InsiderResponse,
   MacroLatestResponse,
@@ -123,6 +124,12 @@ export function generateSummary(ticker: string): Promise<FilingSummary> {
 export function getInsiders(ticker: string): Promise<InsiderResponse> {
   return getJson<InsiderResponse>(
     `/securities/${encodeURIComponent(ticker)}/insiders`,
+  )
+}
+
+export function getEvents(ticker: string): Promise<EventsResponse> {
+  return getJson<EventsResponse>(
+    `/securities/${encodeURIComponent(ticker)}/events`,
   )
 }
 

@@ -26,6 +26,7 @@ from typing import Any
 import anthropic
 from dotenv import load_dotenv
 
+from engine import events as events_engine
 from engine import queries, summarize
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -35,7 +36,7 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # small quant snapshot (~3-4k tokens). Switch to claude-opus-4-8 for the
 # highest-quality synthesis.
 MODEL = "claude-sonnet-4-6"
-PROMPT_VERSION = "v2"  # v2: added Form 4 insider-activity context
+PROMPT_VERSION = "v3"  # v2: Form 4 insider context; v3: recent 8-K events
 SCHEMA_VERSION = "v1"
 
 BRIEF_SCHEMA: dict[str, Any] = {
@@ -171,6 +172,25 @@ def build_context(ticker: str) -> dict[str, Any] | None:
         "ingested": bool(insider_rows),
     }
 
+    # recent 8-K material events (context only) — the qualitative "what
+    # happened lately" the numerics can't name. Cap to the most recent dozen.
+    event_rows = queries.events_for_ticker(ticker, months=12, limit=12)
+    events = {
+        "ingested": bool(event_rows),
+        "items": [
+            {
+                "date": str(r["event_date"] or r["filed_date"]),
+                "labels": [
+                    events_engine.label_for(i)
+                    for i in r["items"]
+                    if i in events_engine.HIGH_SIGNAL_ITEMS
+                ],
+            }
+            for r in event_rows
+            if any(i in events_engine.HIGH_SIGNAL_ITEMS for i in r["items"])
+        ],
+    }
+
     # cached 10-K summary only — never trigger a (paid, slow) generation here
     filing_summary = None
     filing = queries.latest_filing(ticker, form="10-K")
@@ -191,6 +211,7 @@ def build_context(ticker: str) -> dict[str, Any] | None:
         "peers": peers,
         "price_pos": price_pos,
         "insiders": insiders,
+        "events": events,
         "filing_summary": filing_summary,
     }
 
@@ -257,6 +278,21 @@ def render_prompt(ctx: dict[str, Any]) -> str:
     else:
         parts += ["", "## Insider activity: not ingested for this name yet — "
                       "do not draw conclusions from its absence."]
+
+    ev = ctx["events"]
+    if ev["ingested"]:
+        if ev["items"]:
+            parts += ["", "## Recent material events (SEC 8-K, last 12 months, "
+                          "high-signal items only)"]
+            for it in ev["items"]:
+                parts.append(f"  {it['date']}: {', '.join(it['labels'])}")
+        else:
+            parts += ["", "## Recent material events: 8-Ks on file but none in the "
+                          "high-signal categories (M&A, exec changes, results, "
+                          "impairments, restatements) in the last 12 months."]
+    else:
+        parts += ["", "## Recent material events: not ingested for this name yet — "
+                      "do not infer anything from their absence."]
 
     fs = ctx["filing_summary"]
     if fs:

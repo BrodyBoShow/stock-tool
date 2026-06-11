@@ -35,6 +35,7 @@ EXPECTED_TABLES = [
     "ai_summaries",
     "decision_briefs",
     "insider_transactions",
+    "material_events",
     "macro_series",
     "job_runs",
 ]

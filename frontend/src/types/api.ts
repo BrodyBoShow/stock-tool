@@ -173,6 +173,22 @@ export interface InsiderResponse {
   transactions: InsiderTransaction[] // newest first
 }
 
+export interface MaterialEvent {
+  event_date: string | null
+  filed_date: string
+  form: string
+  items: string[] // raw SEC item codes
+  labels: string[] // plain-English labels
+  high_signal: boolean
+  primary_doc_url: string | null
+  accession_no: string
+}
+
+export interface EventsResponse {
+  ticker: string
+  events: MaterialEvent[] // newest first
+}
+
 export interface WatchlistRow {
   ticker: string
   name: string | null

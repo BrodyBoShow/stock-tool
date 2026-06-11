@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from api.schemas import (
     BriefStatusResponse,
     DecisionBrief,
+    EventsResponse,
     FactorTrendPoint,
     FilingRow,
     FilingSummary,
@@ -13,12 +14,14 @@ from api.schemas import (
     InsiderResponse,
     InsiderTransaction,
     InsiderWindow,
+    MaterialEvent,
     PricePoint,
     SecurityHeader,
     SecurityResponse,
     SummaryStatusResponse,
 )
 from engine import brief as brief_engine
+from engine import events as events_engine
 from engine import queries, summarize
 
 router = APIRouter()
@@ -105,6 +108,32 @@ def get_insiders(ticker: str) -> InsiderResponse:
         ],
         transactions=[InsiderTransaction(**r) for r in rows[:60]],
     )
+
+
+@router.get("/{ticker}/events", response_model=EventsResponse)
+def get_events(ticker: str) -> EventsResponse:
+    """Recent 8-K material events (last 12 months), newest first, with
+    plain-English item labels and a high-signal flag. Context only."""
+    ticker = ticker.upper()
+    header = queries.security_header(ticker)
+    if header is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found or inactive")
+
+    rows = queries.events_for_ticker(ticker, months=12)
+    events = [
+        MaterialEvent(
+            event_date=r["event_date"],
+            filed_date=r["filed_date"],
+            form=r["form"],
+            items=r["items"],
+            labels=[events_engine.label_for(i) for i in r["items"]],
+            high_signal=any(i in events_engine.HIGH_SIGNAL_ITEMS for i in r["items"]),
+            primary_doc_url=r["primary_doc_url"],
+            accession_no=r["accession_no"],
+        )
+        for r in rows
+    ]
+    return EventsResponse(ticker=ticker, events=events)
 
 
 def _to_brief(cached: dict) -> DecisionBrief:
