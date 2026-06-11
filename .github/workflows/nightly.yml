@@ -62,12 +62,17 @@ jobs:
         run: python scripts/ingest_macro.py
 
       # Insider transactions (Form 4) — CONTEXT ONLY, never scoring tables.
-      # Incremental by accession, so nightly deltas are small; --max-fetches
-      # bounds the run so an unfinished backfill rolls to the next night.
-      # Runs BEFORE AI pre-generation so fresh insider data grounds the briefs.
+      # Incremental by accession, so steady-state nightly deltas are small.
+      # The expanded universe still has a one-time Form 4 backfill to chew
+      # through (~150k fetches), so the cap is raised to catch up over a few
+      # nights, then it settles into small deltas. Supervised so a Supabase
+      # pooler drop mid-write restarts instead of eating the job timeout;
+      # incremental, so the restart resumes where it left off.
       - name: Refresh insider transactions (Form 4)
         continue-on-error: true
-        run: python scripts/ingest_insiders.py --max-fetches 6000
+        run: >
+          python scripts/supervise_backfill.py --label nightly-insiders --stall 900 --
+          python -u scripts/ingest_insiders.py --max-fetches 40000
 
       # 8-K material events — CONTEXT ONLY. One submissions read per company
       # (no document fetch), incremental by accession.
