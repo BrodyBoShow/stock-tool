@@ -221,6 +221,7 @@ def run_bulk_backfill(
     provider: PriceProvider | None = None,
     *,
     only_missing: bool = True,
+    active_only: bool = False,
     log_every: int = 25,
     cooldowns: tuple[int, ...] = (60, 120, 300, 600, 900),
     max_consecutive_rate_limits: int = 5,
@@ -261,12 +262,13 @@ def run_bulk_backfill(
     )
     try:
         with conn.cursor() as cur:
-            universe = _load_all_securities(cur)
+            universe = _load_universe(cur) if active_only else _load_all_securities(cur)
             latest = _latest_dates(cur)
         if only_missing:
             universe = [(sid, t) for sid, t in universe if sid not in latest]
         scope = len(universe)
-        print(f"[bulk] backfilling {scope} tickers (only_missing={only_missing})", flush=True)
+        print(f"[bulk] backfilling {scope} tickers (only_missing={only_missing}, "
+              f"active_only={active_only})", flush=True)
 
         last_db = time.monotonic()  # when the conn was last known-good
         for i, (security_id, ticker) in enumerate(universe, start=1):

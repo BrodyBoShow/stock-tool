@@ -30,7 +30,13 @@ JOB_VERSION = "v1"
 
 FRESHNESS_DAYS = 10   # latest_date must be within N calendar days of today
 COVERAGE_THRESHOLD = 0.80   # ≥ 80 % of active universe must have a bar
-JUMP_THRESHOLD = 0.50        # adj_close day-over-day change > 50 % → breach
+JUMP_THRESHOLD = 0.50        # adj_close day-over-day change > 50 % = "wild"
+# In a broad (6k+) universe a few low-float micro-caps genuinely move >50% every
+# day (verified real: matching close/adj_close on huge volume). Wild moves are
+# only a data-feed breach when they're SYSTEMIC: more than this fraction of
+# covered names (or the absolute floor, whichever is larger).
+WILD_MOVE_MAX_FRACTION = 0.02
+WILD_MOVE_MIN_COUNT = 10
 
 
 def _check(cur) -> tuple[bool, list[str], dict]:
@@ -58,7 +64,12 @@ def _check(cur) -> tuple[bool, list[str], dict]:
     cur.execute("SELECT count(*) FROM securities WHERE is_active")
     universe_count = cur.fetchone()[0]
     cur.execute(
-        "SELECT count(DISTINCT security_id) FROM prices_daily WHERE date = %s",
+        """
+        SELECT count(DISTINCT p.security_id)
+        FROM prices_daily p
+        JOIN securities s ON s.security_id = p.security_id AND s.is_active
+        WHERE p.date = %s
+        """,
         (latest_date,),
     )
     covered = cur.fetchone()[0]
@@ -100,9 +111,15 @@ def _check(cur) -> tuple[bool, list[str], dict]:
     split_sids = {row[0] for row in cur.fetchall()}
     detail["split_excluded_count"] = len(split_sids)
 
-    # Latest adj_close per security on latest_date
+    # Latest adj_close per ACTIVE security on latest_date (staged-inactive
+    # names are out of scoring scope and shouldn't trip the gate).
     cur.execute(
-        "SELECT security_id, adj_close FROM prices_daily WHERE date = %s",
+        """
+        SELECT p.security_id, p.adj_close
+        FROM prices_daily p
+        JOIN securities s ON s.security_id = p.security_id AND s.is_active
+        WHERE p.date = %s
+        """,
         (latest_date,),
     )
     today_adj = {sid: float(ac) for sid, ac in cur.fetchall() if ac is not None}
@@ -137,10 +154,16 @@ def _check(cur) -> tuple[bool, list[str], dict]:
             wild_moves.append((ticker_map.get(sid, str(sid)), round(change * 100, 1)))
 
     detail["wild_move_count"] = len(wild_moves)
-    for ticker, pct in wild_moves[:20]:
+    # Individual >50% moves are real among low-float micro-caps; breach only
+    # when they're widespread enough to indicate feed corruption.
+    wild_allowed = max(WILD_MOVE_MIN_COUNT, int(covered * WILD_MOVE_MAX_FRACTION))
+    detail["wild_move_allowed"] = wild_allowed
+    if len(wild_moves) > wild_allowed:
+        examples = ", ".join(f"{t} ±{p}%" for t, p in wild_moves[:10])
         breaches.append(
-            f"Wild move: {ticker} adj_close changed ±{pct}% on {latest_date} "
-            f"(threshold {JUMP_THRESHOLD:.0%})"
+            f"Systemic wild moves: {len(wild_moves)} names changed >"
+            f"{JUMP_THRESHOLD:.0%} on {latest_date} (allowed {wild_allowed}); "
+            f"e.g. {examples}"
         )
 
     return len(breaches) == 0, breaches, detail

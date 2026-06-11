@@ -21,7 +21,9 @@ on:
 jobs:
   nightly:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # ~6k active names: the incremental price refresh is one yfinance request
+    # per ticker and sleeps through rate-limit cooldowns, so give it room.
+    timeout-minutes: 300
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -42,8 +44,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Supervised: a Supabase pooler drop mid-write can hang the client inside
+      # a socket read with no timeout; the supervisor kills and relaunches on
+      # stdout silence (cooldown announcements extend the allowance). Every
+      # pipeline step is idempotent/incremental, so restarts are safe.
       - name: Run nightly pipeline
-        run: python scripts/run_nightly.py
+        run: >
+          python scripts/supervise_backfill.py --label nightly --stall 900 --
+          python -u scripts/run_nightly.py
 
       # Macro is CONTEXT ONLY (writes macro_series, never the scoring tables).
       # Best-effort: skipped if the FRED key isn't set, and a FRED outage won't
