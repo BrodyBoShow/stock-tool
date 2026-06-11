@@ -259,6 +259,8 @@ def deactivate_derivative_listings() -> int:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Rule 1: shorter same-CIK sibling is a strict prefix and the
+            # remainder is a warrant/unit/right suffix (AIMDW->AIMD, BESS-WT).
             cur.execute(
                 """
                 UPDATE securities s SET is_active=false
@@ -273,6 +275,22 @@ def deactivate_derivative_listings() -> int:
                 """
             )
             n = cur.rowcount
+            # Rule 2: Nasdaq reserves the trailing W/U/R suffix letter for
+            # warrants/units/rights (real share classes use A/B/K/L/V...).
+            # Catches roots shorter than 4 chars where rule 1's strict-prefix
+            # remainder check misses (PCTTW with common PCT, BCGWW from BCG).
+            cur.execute(
+                """
+                UPDATE securities s SET is_active=false
+                WHERE s.is_active AND s.ticker ~ '^[A-Z]{3,4}[WUR]$'
+                  AND EXISTS (
+                    SELECT 1 FROM securities b
+                    WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                      AND length(b.ticker) < length(s.ticker)
+                  )
+                """
+            )
+            n += cur.rowcount
         conn.commit()
         return n
     finally:
