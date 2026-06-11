@@ -8,6 +8,7 @@ import type {
   InsiderResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
+  QuotesResponse,
   ScreenerResponse,
   SecurityResponse,
   SummaryStatusResponse,
@@ -52,6 +53,10 @@ async function getJson<T>(path: string): Promise<T> {
     throw new ApiError(res.status, detail)
   }
   return (await res.json()) as T
+}
+
+export function getQuotes(): Promise<QuotesResponse> {
+  return getJson<QuotesResponse>('/quotes')
 }
 
 export function getScreener(): Promise<ScreenerResponse> {

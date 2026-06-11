@@ -39,6 +39,17 @@ def _f(v) -> float | None:
 
 # ── read queries ──────────────────────────────────────────────────────────────
 
+def active_tickers() -> list[str]:
+    """Tickers of all active securities (for the live-quote overlay)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT ticker FROM securities WHERE is_active ORDER BY ticker")
+            return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
     """All active securities at the latest score_date with last two prices.
 

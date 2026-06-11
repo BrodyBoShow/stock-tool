@@ -33,6 +33,21 @@ class ScreenerResponse(BaseModel):
     rows: list[ScreenerRow]
 
 
+# ── live quotes (Phase 15 — intraday price overlay, context only) ─────────────
+
+class QuoteRow(BaseModel):
+    price: float | None
+    prev_close: float | None
+    change_pct: float | None
+
+
+class QuotesResponse(BaseModel):
+    as_of_epoch: float          # server fetch time (unix seconds)
+    age_seconds: float          # how old the served quotes are
+    stale: bool                 # true if a refresh failed and this is fallback
+    quotes: dict[str, QuoteRow] # ticker -> latest (delayed ~15m) quote
+
+
 # ── securities (deep-dive) ────────────────────────────────────────────────────
 
 class SecurityHeader(BaseModel):

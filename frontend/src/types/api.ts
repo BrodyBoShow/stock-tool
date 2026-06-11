@@ -179,6 +179,19 @@ export interface InsiderResponse {
   transactions: InsiderTransaction[] // newest first
 }
 
+export interface QuoteRow {
+  price: number | null
+  prev_close: number | null
+  change_pct: number | null
+}
+
+export interface QuotesResponse {
+  as_of_epoch: number
+  age_seconds: number
+  stale: boolean
+  quotes: Record<string, QuoteRow>
+}
+
 export interface FilingTopicAnswer {
   topic: string
   disclosed: boolean

@@ -72,9 +72,11 @@ function Stat({
 export function ScreenerHeader({
   scoreDate,
   rows,
+  quotesAsOfEpoch,
 }: {
   scoreDate: string | null
   rows: ScreenerRow[]
+  quotesAsOfEpoch?: number | null
 }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -93,6 +95,16 @@ export function ScreenerHeader({
 
   const staleDays = scoreDate ? staleDaysET(scoreDate, now) : null
   const fresh = staleDays === null || staleDays <= 3
+
+  // Live-price stamp (intraday overlay). Prices are ~15-min delayed (free
+  // yfinance); scores remain end-of-day. Show the quote time in ET.
+  let liveStamp: string | null = null
+  if (quotesAsOfEpoch != null) {
+    const q = etParts(new Date(quotesAsOfEpoch * 1000))
+    const h24 = Number(q.hour)
+    const h12 = ((h24 + 11) % 12) + 1
+    liveStamp = `${h12}:${q.minute} ${h24 >= 12 ? 'PM' : 'AM'}`
+  }
 
   // VIX from FRED (/macro/latest). Market convention: rising VIX = fear = red,
   // falling = calm = green — that's the one place a macro delta is colored.
@@ -206,6 +218,18 @@ export function ScreenerHeader({
               <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
                 New York · ET
               </div>
+              {liveStamp && (
+                <div
+                  className="mt-1 inline-flex items-center gap-1.5 text-[0.68rem] font-semibold text-[#0ea5e9]"
+                  title="Prices are live (~15-min delayed). Factor scores remain end-of-day."
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-[#0ea5e9]"
+                    style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
+                  />
+                  Prices live · {liveStamp} ET
+                </div>
+              )}
             </div>
           </div>
         </div>
