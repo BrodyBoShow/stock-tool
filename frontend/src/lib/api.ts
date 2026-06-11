@@ -6,6 +6,7 @@ import type {
   FilingQaStatusResponse,
   FilingSummary,
   InsiderResponse,
+  LiveScoresResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
   QuotesResponse,
@@ -57,6 +58,10 @@ async function getJson<T>(path: string): Promise<T> {
 
 export function getQuotes(): Promise<QuotesResponse> {
   return getJson<QuotesResponse>('/quotes')
+}
+
+export function getLiveScores(): Promise<LiveScoresResponse> {
+  return getJson<LiveScoresResponse>('/screener/live')
 }
 
 export function getScreener(): Promise<ScreenerResponse> {

@@ -192,6 +192,21 @@ export interface QuotesResponse {
   quotes: Record<string, QuoteRow>
 }
 
+export interface LiveScore {
+  composite: number | null
+  growth: number | null
+  value: number | null
+  quality: number | null
+  momentum: number | null
+}
+
+export interface LiveScoresResponse {
+  as_of_epoch: number
+  age_seconds: number
+  config_version: string
+  scores: Record<string, LiveScore>
+}
+
 export interface FilingTopicAnswer {
   topic: string
   disclosed: boolean

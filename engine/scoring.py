@@ -41,6 +41,8 @@ Methodology:
 from __future__ import annotations
 
 import json
+import threading
+import time
 from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
@@ -48,6 +50,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+from engine import quotes as _quotes
 from engine.db import get_connection
 from engine.jobs import finish_job, start_job
 from engine.metrics import (
@@ -185,8 +188,15 @@ def _load_latest_metrics(cur) -> pd.DataFrame:
     return df.pivot(index="security_id", columns="metric", values="value")
 
 
-def _load_price_inputs(cur, score_date) -> pd.DataFrame:
-    """Latest close + 3/6/12-month total returns per security."""
+def _load_price_inputs(cur, score_date, price_overrides=None) -> pd.DataFrame:
+    """Latest close + 3/6/12-month total returns per security.
+
+    If price_overrides ({security_id: live_price}) is given, the live price
+    replaces the latest close for valuation and the raw-momentum numerator,
+    yielding provisional intraday inputs. 12-minus-1 momentum is untouched
+    (its legs are lagged prices).
+    """
+    price_overrides = price_overrides or {}
     start = score_date - timedelta(days=max(MOMENTUM_WINDOWS.values()) + 40)
     cur.execute(
         """
@@ -211,11 +221,14 @@ def _load_price_inputs(cur, score_date) -> pd.DataFrame:
                      & (_g["date"] >= target - timedelta(days=MOMENTUM_LOOKBACK_GRACE))]
             return ref.iloc[-1]["adj_close"] if not ref.empty else None
 
-        row = {"close": last["close"]}
+        live = price_overrides.get(sid)
+        close_px = float(live) if live is not None else last["close"]
+        num_px = float(live) if live is not None else last["adj_close"]
+        row = {"close": close_px}
         for name, days in MOMENTUM_WINDOWS.items():
             ref = _ref_adj(days)
             if ref is not None and ref > 0:
-                row[name] = last["adj_close"] / ref - 1.0
+                row[name] = num_px / ref - 1.0
         # 12-minus-1 momentum: return from ~12 months ago to ~1 month ago,
         # skipping the most recent month (short-term reversal). Numerator and
         # denominator are both lagged prices, not today's close.
@@ -348,14 +361,24 @@ def _roic_percentiles(df: pd.DataFrame) -> pd.Series:
     return out
 
 
-def run(config_version: str = DEFAULT_CONFIG_VERSION, write: bool = True) -> dict:
+def run(
+    config_version: str = DEFAULT_CONFIG_VERSION,
+    write: bool = True,
+    price_overrides: dict[int, float] | None = None,
+    log_job: bool = True,
+) -> dict:
     """Score the universe under `config_version`.
 
     config_version selects the factor spec (FACTOR_DEFS_BY_VERSION) and weights
     (score_config). write=False is a dry run: everything is computed and the
-    report returned, but factor_scores is NOT written and no job_runs row is
-    finished as success — used to validate a config (e.g. confirm v1 still
-    reproduces the live rows) without mutating anything.
+    report returned, but factor_scores is NOT written — used to validate a
+    config or to compute provisional intraday scores.
+
+    price_overrides ({security_id: live_price}) substitutes a live price for the
+    latest close in the price-driven sub-metrics (valuation + raw momentum), so
+    the same scoring math yields intraday/provisional scores. The 12-minus-1
+    momentum term is unaffected (both its legs are lagged prices, not today's).
+    log_job=False skips the job_runs bookkeeping (for frequent live recomputes).
     """
     factor_defs = FACTOR_DEFS_BY_VERSION.get(config_version)
     if factor_defs is None:
@@ -376,19 +399,22 @@ def run(config_version: str = DEFAULT_CONFIG_VERSION, write: bool = True) -> dic
         )
         tickers = dict(cur.fetchall())
 
-    job_id = start_job(
-        conn,
-        JOB_NAME,
-        job_version=JOB_VERSION,
-        params={"config_version": config_version, "weights": weights,
-                "write": write},
-        data_date=score_date,
+    job_id = (
+        start_job(
+            conn,
+            JOB_NAME,
+            job_version=JOB_VERSION,
+            params={"config_version": config_version, "weights": weights,
+                    "write": write},
+            data_date=score_date,
+        )
+        if log_job else None
     )
 
     try:
         with conn.cursor() as cur:
             metrics = _load_latest_metrics(cur)
-            prices = _load_price_inputs(cur, score_date)
+            prices = _load_price_inputs(cur, score_date, price_overrides)
             fundamentals = _load_score_time_fundamentals(cur)
             insiders = _load_insider_signal(cur) if uses_insider else pd.DataFrame()
 
@@ -530,11 +556,12 @@ def run(config_version: str = DEFAULT_CONFIG_VERSION, write: bool = True) -> dic
             conn.commit()
 
         scored = sum(1 for r in rows if r[7] is not None)
-        finish_job(
-            conn, job_id,
-            status="success" if write else "dry_run",
-            rows_affected=len(rows) if write else 0,
-        )
+        if log_job:
+            finish_job(
+                conn, job_id,
+                status="success" if write else "dry_run",
+                rows_affected=len(rows) if write else 0,
+            )
 
         # --- sanity report data ---
         report = df[["ticker"]].copy()
@@ -560,8 +587,85 @@ def run(config_version: str = DEFAULT_CONFIG_VERSION, write: bool = True) -> dic
         }
     except Exception as exc:  # noqa: BLE001
         conn.rollback()
-        finish_job(conn, job_id, status="failed", error=str(exc))
+        if log_job and job_id is not None:
+            finish_job(conn, job_id, status="failed", error=str(exc))
         raise
     finally:
         if not conn.closed:
             conn.close()
+
+
+# ── live (provisional intraday) scoring ─────────────────────────────────────────
+# Recompute scores on live prices without writing — the price-driven factors
+# (Value, raw Momentum) move; Quality/Growth are unchanged (filing-driven). The
+# stored EOD scores remain the system of record; these are a display overlay.
+# Free: pure computation over data already in hand (no model calls, no paid data).
+
+_LIVE_TTL_SECONDS = 90
+_live_lock = threading.Lock()
+_live_cache: dict[str, dict] = {}
+
+
+def _live_score_map(config_version: str) -> dict:
+    # active securities + their tickers, to map live quotes (by ticker) to the
+    # security_id space the scorer works in.
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id, ticker FROM securities WHERE is_active"
+            )
+            pairs = cur.fetchall()
+    finally:
+        conn.close()
+    sid_by_ticker = {t: int(sid) for sid, t in pairs}
+
+    q = _quotes.get_quotes([t for _, t in pairs])
+    overrides: dict[int, float] = {}
+    for t, info in q["quotes"].items():
+        sid = sid_by_ticker.get(t)
+        px = info.get("price")
+        if sid is not None and px:
+            overrides[sid] = float(px)
+
+    res = run(config_version, write=False, price_overrides=overrides, log_job=False)
+    rep = res["report"]
+
+    def _f(v):
+        return round(float(v), 2) if pd.notna(v) else None
+
+    scores: dict[str, dict] = {}
+    for _sid, r in rep.iterrows():
+        scores[r["ticker"]] = {
+            "composite": _f(r.get("composite")),
+            "growth": _f(r.get("growth")),
+            "value": _f(r.get("value")),
+            "quality": _f(r.get("quality")),
+            "momentum": _f(r.get("momentum")),
+        }
+    return {
+        "scores": scores,
+        "as_of_epoch": q["as_of_epoch"],
+        "config_version": config_version,
+    }
+
+
+def compute_live(config_version: str = DEFAULT_CONFIG_VERSION) -> dict:
+    """Provisional intraday scores from live prices, cached for a short TTL.
+
+    Never writes to factor_scores — the nightly close-based scores stay the
+    official record. Returns {scores: {ticker: {composite, growth, value,
+    quality, momentum}}, as_of_epoch, config_version, age_seconds}.
+    """
+    now = time.monotonic()
+    hit = _live_cache.get(config_version)
+    if hit is not None and now - hit["_mono"] < _LIVE_TTL_SECONDS:
+        return {**hit["payload"], "age_seconds": round(now - hit["_mono"], 1)}
+    with _live_lock:
+        now = time.monotonic()
+        hit = _live_cache.get(config_version)
+        if hit is not None and now - hit["_mono"] < _LIVE_TTL_SECONDS:
+            return {**hit["payload"], "age_seconds": round(now - hit["_mono"], 1)}
+        payload = _live_score_map(config_version)
+        _live_cache[config_version] = {"_mono": time.monotonic(), "payload": payload}
+        return {**payload, "age_seconds": 0.0}

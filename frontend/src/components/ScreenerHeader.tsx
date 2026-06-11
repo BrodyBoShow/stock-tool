@@ -73,10 +73,12 @@ export function ScreenerHeader({
   scoreDate,
   rows,
   quotesAsOfEpoch,
+  scoresLive,
 }: {
   scoreDate: string | null
   rows: ScreenerRow[]
   quotesAsOfEpoch?: number | null
+  scoresLive?: boolean
 }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -188,16 +190,22 @@ export function ScreenerHeader({
                 <>
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-sky-700"
-                    title="Prices are live (~15-min delayed)."
+                    title={
+                      scoresLive
+                        ? 'Live prices + provisional intraday scores (~15-min delayed). Official scores strike at the close.'
+                        : 'Prices are live (~15-min delayed).'
+                    }
                   >
                     <span
                       className="h-1.5 w-1.5 rounded-full bg-sky-500"
                       style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
                     />
-                    Live prices · {liveDate}, {liveStamp} ET
+                    {scoresLive ? 'Live · prices + scores' : 'Live prices'} ·{' '}
+                    {liveDate}, {liveStamp} ET
                   </span>
                   <span className="text-[0.72rem] text-[#94a3b8]">
-                    scores · {fmtDate(scoreDate)} close
+                    {scoresLive ? 'provisional · ' : ''}official close ·{' '}
+                    {fmtDate(scoreDate)}
                   </span>
                 </>
               ) : fresh ? (

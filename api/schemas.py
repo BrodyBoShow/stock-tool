@@ -48,6 +48,21 @@ class QuotesResponse(BaseModel):
     quotes: dict[str, QuoteRow] # ticker -> latest (delayed ~15m) quote
 
 
+class LiveScore(BaseModel):
+    composite: float | None
+    growth: float | None
+    value: float | None
+    quality: float | None
+    momentum: float | None
+
+
+class LiveScoresResponse(BaseModel):
+    as_of_epoch: float
+    age_seconds: float
+    config_version: str
+    scores: dict[str, LiveScore]  # ticker -> provisional intraday factor scores
+
+
 # ── securities (deep-dive) ────────────────────────────────────────────────────
 
 class SecurityHeader(BaseModel):

@@ -7,7 +7,7 @@ import { ScreenerHeader } from '@/components/ScreenerHeader'
 import { ScreenerTable } from '@/components/screener/ScreenerTable'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getQuotes, getScreener } from '@/lib/api'
+import { getLiveScores, getQuotes, getScreener } from '@/lib/api'
 import { applyFilters, DEFAULT_FILTERS, type Filters } from '@/lib/filters'
 
 function ScreenerSkeleton() {
@@ -45,21 +45,53 @@ export function ScreenerPage() {
     refetchOnWindowFocus: true,
   })
 
+  // Provisional intraday factor scores recomputed on live prices (server-side,
+  // cached). Value + Momentum move; Quality/Growth unchanged. Never persisted.
+  const { data: liveScores } = useQuery({
+    queryKey: ['live-scores'],
+    queryFn: getLiveScores,
+    staleTime: 60 * 1000,
+    refetchInterval: 90 * 1000,
+    refetchOnWindowFocus: true,
+  })
+
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
 
-  // Overlay live price + prev_close onto each row so the existing table cells
-  // (and their day-change) render the latest quote when one is available.
+  // Overlay live prices AND live factor scores onto each row, then re-rank by
+  // the live composite so the screener reflects intraday. The EOD scores from
+  // the API are the fallback when no live data is available yet.
   const rows = useMemo(() => {
     if (!data) return []
     const q = quotes?.quotes
-    if (!q) return data.rows
-    return data.rows.map((r) => {
-      const lq = q[r.ticker]
-      return lq && lq.price != null
-        ? { ...r, last_price: lq.price, prev_close: lq.prev_close }
-        : r
+    const ls = liveScores?.scores
+    let out = data.rows.map((r) => {
+      let row = r
+      const lq = q?.[r.ticker]
+      if (lq && lq.price != null) {
+        row = { ...row, last_price: lq.price, prev_close: lq.prev_close }
+      }
+      const s = ls?.[r.ticker]
+      if (s && s.composite != null) {
+        row = {
+          ...row,
+          composite: s.composite,
+          growth_pctl: s.growth,
+          value_pctl: s.value,
+          quality_pctl: s.quality,
+          momentum_pctl: s.momentum,
+        }
+      }
+      return row
     })
-  }, [data, quotes])
+    // Re-rank by live composite (desc) when live scores are present.
+    if (ls) {
+      out = [...out].sort(
+        (a, b) => (b.composite ?? -Infinity) - (a.composite ?? -Infinity),
+      )
+      out = out.map((r, i) => ({ ...r, rank: i + 1 }))
+    }
+    return out
+  }, [data, quotes, liveScores])
 
   const sectors = useMemo(() => {
     const s = new Set<string>()
@@ -81,6 +113,7 @@ export function ScreenerPage() {
         scoreDate={data.score_date}
         rows={rows}
         quotesAsOfEpoch={quotes && !quotes.stale ? quotes.as_of_epoch : null}
+        scoresLive={Boolean(liveScores)}
       />
       <div className="flex items-start gap-5">
         <FilterSidebar
