@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
+import { FilingAnswersPanel } from '@/components/deepdive/FilingAnswersPanel'
 import { FilingSummaryPanel } from '@/components/deepdive/FilingSummaryPanel'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { EventsPanel } from '@/components/deepdive/EventsPanel'
@@ -118,6 +119,8 @@ export function DeepDivePage() {
       />
 
       <EventsPanel ticker={header.ticker} />
+
+      <FilingAnswersPanel ticker={header.ticker} />
 
       <InsiderPanel ticker={header.ticker} />
 

@@ -206,6 +206,38 @@ class EventsResponse(BaseModel):
     events: list[MaterialEvent]       # newest first
 
 
+# ── filing diligence Q&A (Phase 14 — context only) ────────────────────────────
+
+class FilingTopicAnswer(BaseModel):
+    topic: str
+    disclosed: bool
+    finding: str
+    evidence: str
+
+
+class FilingAnswersContent(BaseModel):
+    executive_read: str
+    topics: list[FilingTopicAnswer]
+    notable_disclosures: list[str]
+    unanswered: list[str]
+
+
+class FilingAnswers(BaseModel):
+    accession_no: str
+    form: str | None
+    answers: FilingAnswersContent
+    model: str | None
+    generated_at: datetime
+
+
+class FilingQaStatusResponse(BaseModel):
+    ticker: str
+    has_filing: bool
+    latest_accession: str | None
+    latest_filed_date: date | None
+    answers: FilingAnswers | None     # cached diligence answers if generated
+
+
 # ── watchlist ─────────────────────────────────────────────────────────────────
 
 class WatchlistRow(BaseModel):

@@ -8,6 +8,8 @@ from api.schemas import (
     DecisionBrief,
     EventsResponse,
     FactorTrendPoint,
+    FilingAnswers,
+    FilingQaStatusResponse,
     FilingRow,
     FilingSummary,
     FundamentalPoint,
@@ -22,6 +24,7 @@ from api.schemas import (
 )
 from engine import brief as brief_engine
 from engine import events as events_engine
+from engine import filing_qa as filing_qa_engine
 from engine import queries, summarize
 
 router = APIRouter()
@@ -134,6 +137,67 @@ def get_events(ticker: str) -> EventsResponse:
         for r in rows
     ]
     return EventsResponse(ticker=ticker, events=events)
+
+
+def _to_filing_qa(cached: dict) -> FilingAnswers:
+    return FilingAnswers(
+        accession_no=cached["accession_no"],
+        form=cached.get("form"),
+        answers=cached["answers"],
+        model=cached.get("model"),
+        generated_at=cached["generated_at"],
+    )
+
+
+@router.get("/{ticker}/filing-qa", response_model=FilingQaStatusResponse)
+def get_filing_qa(ticker: str) -> FilingQaStatusResponse:
+    """Deep filing-diligence status: whether a 10-K exists and whether cached
+    answers are available (read-only, never generates)."""
+    ticker = ticker.upper()
+    filing = queries.latest_filing(ticker, form="10-K")
+    if filing is None:
+        return FilingQaStatusResponse(
+            ticker=ticker, has_filing=False,
+            latest_accession=None, latest_filed_date=None, answers=None,
+        )
+    cached = queries.get_cached_filing_qa(
+        filing["accession_no"], filing_qa_engine.PROMPT_VERSION,
+        filing_qa_engine.SCHEMA_VERSION,
+    )
+    return FilingQaStatusResponse(
+        ticker=ticker,
+        has_filing=True,
+        latest_accession=filing["accession_no"],
+        latest_filed_date=filing["filed_date"],
+        answers=_to_filing_qa(cached) if cached else None,
+    )
+
+
+# TODO(auth): the deepest/most expensive call in the app (Opus over a large
+# filing context) — gate this endpoint (auth + rate limit) before public.
+@router.post("/{ticker}/filing-qa", response_model=FilingAnswers)
+def generate_filing_qa(
+    ticker: str,
+    force: bool = Query(False, description="Re-generate even if cached."),
+) -> FilingAnswers:
+    """Run (or return cached) the deep filing-diligence analysis: reads the
+    latest 10-K (Items 1/1A/7/7A) + 10-Q MD&A and answers the diligence
+    framework, strictly grounded in the filing text."""
+    ticker = ticker.upper()
+    try:
+        cached = filing_qa_engine.get_or_generate_filing_qa(ticker, force=force)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Could not fetch the filing from SEC: {exc}"
+        ) from exc
+
+    if cached is None:
+        raise HTTPException(
+            status_code=404, detail=f"No 10-K on file for {ticker!r} to analyze"
+        )
+    return _to_filing_qa(cached)
 
 
 def _to_brief(cached: dict) -> DecisionBrief:

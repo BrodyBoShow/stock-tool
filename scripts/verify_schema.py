@@ -34,6 +34,7 @@ EXPECTED_TABLES = [
     "theses",
     "ai_summaries",
     "decision_briefs",
+    "filing_answers",
     "insider_transactions",
     "material_events",
     "macro_series",

@@ -30,7 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from engine import brief, queries, summarize  # noqa: E402
+from engine import brief, filing_qa, queries, summarize  # noqa: E402
 from engine.db import get_connection  # noqa: E402
 from engine.jobs import finish_job, start_job  # noqa: E402
 
@@ -68,8 +68,13 @@ def main() -> int:
     )
     conn.close()
 
+    # Deep filing analysis is Opus over a large filing — far costlier than the
+    # Sonnet brief/summary — so warm it ONLY for the (small) watchlist, not the
+    # whole top-N. Cached by accession, so this is once per annual filing.
+    watchlist = set(queries.watchlist_tickers())
+
     warnings: list[str] = []
-    briefs_done = summaries_done = 0
+    briefs_done = summaries_done = filing_qa_done = 0
     for i, t in enumerate(tickers, start=1):
         # Summary first: the brief reads the cached 10-K summary as context,
         # so warming it first makes the brief strictly better-grounded.
@@ -83,19 +88,25 @@ def main() -> int:
                 briefs_done += 1
         except Exception as exc:  # noqa: BLE001
             warnings.append(f"{t}: brief failed - {exc!r}")
+        if t in watchlist:
+            try:
+                if filing_qa.get_or_generate_filing_qa(t) is not None:
+                    filing_qa_done += 1
+            except Exception as exc:  # noqa: BLE001
+                warnings.append(f"{t}: filing_qa failed - {exc!r}")
         print(f"  [{i}/{len(tickers)}] {t} done", flush=True)
 
     conn = get_connection()
     finish_job(
         conn, job_id,
         status="success",  # per-ticker issues are warnings, not job failure
-        rows_affected=briefs_done + summaries_done,
+        rows_affected=briefs_done + summaries_done + filing_qa_done,
         warnings=warnings or None,
     )
     conn.close()
 
-    print(f"\nWarm: {briefs_done} briefs, {summaries_done} summaries "
-          f"({len(warnings)} warnings)")
+    print(f"\nWarm: {briefs_done} briefs, {summaries_done} summaries, "
+          f"{filing_qa_done} deep filing analyses ({len(warnings)} warnings)")
     for w in warnings:
         print(f"  WARN {w}")
     return 0

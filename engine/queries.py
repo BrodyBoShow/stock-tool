@@ -699,6 +699,76 @@ def save_filing_summary(
         conn.close()
 
 
+# ── filing diligence Q&A (Phase 14 — context only) ────────────────────────────
+
+def get_cached_filing_qa(
+    accession_no: str, prompt_version: str, schema_version: str
+) -> dict[str, Any] | None:
+    """Cached deep filing answers for a 10-K (by accession + versions)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT accession_no, form, answers, model, generated_at
+                FROM filing_answers
+                WHERE accession_no = %s AND prompt_version = %s AND schema_version = %s
+                LIMIT 1
+                """,
+                (accession_no, prompt_version, schema_version),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    d = dict(zip(cols, row, strict=True))
+    if isinstance(d.get("answers"), str):
+        d["answers"] = json.loads(d["answers"])
+    return d
+
+
+def save_filing_qa(
+    *,
+    security_id: int,
+    accession_no: str,
+    form: str | None,
+    answers: dict[str, Any],
+    model: str,
+    prompt_version: str,
+    schema_version: str,
+    input_tokens: int | None,
+    output_tokens: int | None,
+) -> None:
+    """Upsert generated diligence answers into the filing_answers cache."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO filing_answers
+                  (security_id, accession_no, form, answers, model,
+                   prompt_version, schema_version, input_tokens, output_tokens)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (accession_no, prompt_version, schema_version)
+                DO UPDATE SET
+                  answers = EXCLUDED.answers,
+                  model = EXCLUDED.model,
+                  input_tokens = EXCLUDED.input_tokens,
+                  output_tokens = EXCLUDED.output_tokens,
+                  generated_at = NOW()
+                """,
+                (
+                    security_id, accession_no, form, json.dumps(answers), model,
+                    prompt_version, schema_version, input_tokens, output_tokens,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # ── material events (Phase 13 — 8-K, context only) ────────────────────────────
 
 def events_for_ticker(ticker: str, months: int = 12, limit: int = 60) -> list[dict[str, Any]]:

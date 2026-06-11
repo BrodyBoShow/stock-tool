@@ -2,6 +2,8 @@ import type {
   BriefStatusResponse,
   DecisionBrief,
   EventsResponse,
+  FilingAnswers,
+  FilingQaStatusResponse,
   FilingSummary,
   InsiderResponse,
   MacroLatestResponse,
@@ -130,6 +132,20 @@ export function getInsiders(ticker: string): Promise<InsiderResponse> {
 export function getEvents(ticker: string): Promise<EventsResponse> {
   return getJson<EventsResponse>(
     `/securities/${encodeURIComponent(ticker)}/events`,
+  )
+}
+
+export function getFilingQaStatus(ticker: string): Promise<FilingQaStatusResponse> {
+  return getJson<FilingQaStatusResponse>(
+    `/securities/${encodeURIComponent(ticker)}/filing-qa`,
+  )
+}
+
+// TODO(auth): the deepest/most expensive call (Opus over a large filing) — gate before public.
+export function generateFilingQa(ticker: string): Promise<FilingAnswers> {
+  return sendJson<FilingAnswers>(
+    'POST',
+    `/securities/${encodeURIComponent(ticker)}/filing-qa`,
   )
 }
 

@@ -179,6 +179,36 @@ export interface InsiderResponse {
   transactions: InsiderTransaction[] // newest first
 }
 
+export interface FilingTopicAnswer {
+  topic: string
+  disclosed: boolean
+  finding: string
+  evidence: string
+}
+
+export interface FilingAnswersContent {
+  executive_read: string
+  topics: FilingTopicAnswer[]
+  notable_disclosures: string[]
+  unanswered: string[]
+}
+
+export interface FilingAnswers {
+  accession_no: string
+  form: string | null
+  answers: FilingAnswersContent
+  model: string | null
+  generated_at: string
+}
+
+export interface FilingQaStatusResponse {
+  ticker: string
+  has_filing: boolean
+  latest_accession: string | null
+  latest_filed_date: string | null
+  answers: FilingAnswers | null
+}
+
 export interface MaterialEvent {
   event_date: string | null
   filed_date: string
