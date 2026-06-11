@@ -206,7 +206,9 @@ def run_bulk_backfill(
     only_missing: bool = True,
     log_every: int = 25,
     cooldowns: tuple[int, ...] = (60, 120, 300, 600, 900),
-    max_consecutive_rate_limits: int = 8,
+    max_consecutive_rate_limits: int = 5,
+    long_ban_sleep: int = 1800,
+    max_long_waits: int = 24,
 ) -> dict:
     """One-time historical backfill tuned for the large expanded universe.
 
@@ -232,6 +234,7 @@ def run_bulk_backfill(
     warnings: list[str] = []
     loaded = empty = failed = 0
     total_rows = total_splits = total_dividends = 0
+    long_waits = 0  # global "sustained ban" sleeps consumed (across all tickers)
 
     conn = get_connection()
     job_id = start_job(
@@ -251,16 +254,24 @@ def run_bulk_backfill(
             if start >= end:
                 continue
 
-            # Rate-limit-aware fetch: retry the SAME ticker through escalating
-            # cooldowns; only a non-rate-limit error or a true empty moves on.
+            # Rate-limit-aware fetch: NEVER skip a ticker because of a throttle.
+            # Short escalating cooldowns first; if those are exhausted we're in a
+            # sustained ban, so take a long global cooldown and keep retrying the
+            # SAME ticker. Only a non-rate-limit error or a true empty moves on.
+            # A bounded number of long waits guards against an indefinite ban.
             df = None
             rl_hits = 0
+            give_up = False
             while True:
                 try:
                     df = provider.fetch(ticker, start, end)
                     break
                 except Exception as exc:  # noqa: BLE001
-                    if _is_rate_limit(exc) and rl_hits < max_consecutive_rate_limits:
+                    if not _is_rate_limit(exc):
+                        failed += 1
+                        warnings.append(f"{ticker}: fetch failed - {exc!r}")
+                        break
+                    if rl_hits < max_consecutive_rate_limits:
                         nap = cooldowns[min(rl_hits, len(cooldowns) - 1)]
                         print(
                             f"[bulk] rate-limited at #{i} {ticker}; "
@@ -270,10 +281,26 @@ def run_bulk_backfill(
                         time.sleep(nap)
                         rl_hits += 1
                         continue
-                    failed += 1
-                    warnings.append(f"{ticker}: fetch failed - {exc!r}")
-                    df = None
-                    break
+                    # Sustained ban: long global cooldown, then keep trying.
+                    if long_waits >= max_long_waits:
+                        failed += 1
+                        warnings.append(f"{ticker}: gave up after {long_waits} long bans")
+                        give_up = True
+                        break
+                    long_waits += 1
+                    print(
+                        f"[bulk] SUSTAINED BAN at #{i} {ticker}; long cooldown "
+                        f"{long_ban_sleep}s ({long_waits}/{max_long_waits})",
+                        flush=True,
+                    )
+                    time.sleep(long_ban_sleep)
+                    rl_hits = 0  # reset short-cooldown ladder and retry same ticker
+                    continue
+            if give_up:
+                # Ban outlasted our patience budget — stop the run cleanly so it
+                # can be resumed later (only_missing picks up where we left off).
+                warnings.append("run aborted: sustained ban exceeded patience budget")
+                break
 
             if df is None:
                 time.sleep(THROTTLE_SECONDS)
