@@ -417,6 +417,15 @@ def compute_company_metrics(
         ocf_ttm, _, _ = ttm(snap, "operating_cash_flow")
         capex_ttm, _, _ = ttm(snap, "capex")
         da_ttm, _, _ = ttm(snap, "depreciation_amortization")
+        # Many large filers (MSFT, GOOGL, TSLA, AVGO, ORCL, ...) report no
+        # combined D&A line, only separate Depreciation + AmortizationOfIntangibles.
+        # Reconstruct from the components, but only when the combined tag is
+        # absent — summing on top of it would double-count.
+        if da_ttm is None:
+            dep_ttm, _, _ = ttm(snap, "depreciation")
+            amort_ttm, _, _ = ttm(snap, "amortization")
+            if dep_ttm is not None or amort_ttm is not None:
+                da_ttm = (dep_ttm or 0.0) + (amort_ttm or 0.0)
         tax_ttm, _, _ = ttm(snap, "income_tax_expense")
         pretax_ttm, _, _ = ttm(snap, "pretax_income")
 
