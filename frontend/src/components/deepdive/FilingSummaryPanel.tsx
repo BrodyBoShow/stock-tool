@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateSummary, getSummaryStatus } from '@/lib/api'
 import { fmtDate } from '@/lib/format'
 import type { FilingRow, FilingSummary } from '@/types/api'
+
+// Module-scoped so the "auto-generate once per ticker" guard survives React
+// StrictMode's dev double-mount — without it a deep-dive open would fire two
+// (paid) Claude calls. Only a successful/attempted auto-gen marks the ticker;
+// the explicit Regenerate / Try-again buttons bypass this set.
+const autoTriggered = new Set<string>()
 
 const LABEL =
   'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
@@ -101,6 +108,21 @@ export function FilingSummaryPanel({
       ),
   })
 
+  // Auto-generate on open: if a 10-K exists with no cached summary, kick off
+  // generation once. Cached after the first open, so this only pays on the
+  // first visit to each company.
+  useEffect(() => {
+    if (
+      data?.has_filing &&
+      !data.summary &&
+      !gen.isPending &&
+      !autoTriggered.has(ticker)
+    ) {
+      autoTriggered.add(ticker)
+      gen.mutate()
+    }
+  }, [data, ticker, gen])
+
   // SEC link for the summarized 10-K (match by accession when we know it)
   const docUrl =
     filings.find(
@@ -142,17 +164,15 @@ export function FilingSummaryPanel({
           </p>
         ) : data.summary ? (
           <SummaryBody summary={data.summary} docUrl={docUrl} />
-        ) : (
-          <div className="rounded-xl border border-dashed border-[#cbd5e1] bg-[#fafbff] p-5 text-center">
-            <p className="text-[0.85rem] font-semibold text-[#374151]">
-              No summary generated yet
+        ) : gen.isError ? (
+          <div className="rounded-xl border border-dashed border-[#fecaca] bg-[#fff7f7] p-5 text-center">
+            <p className="text-[0.85rem] font-semibold text-[#b91c1c]">
+              Couldn’t generate the summary
             </p>
             <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-[#9ca3af]">
-              Generate a plain-language read of {ticker}’s latest 10-K
-              {data.latest_filed_date
-                ? ` (filed ${fmtDate(data.latest_filed_date)})`
-                : ''}{' '}
-              — overview, what changed, key risks, and key metrics.
+              {gen.error instanceof ApiError
+                ? gen.error.message
+                : 'Something went wrong reaching the model or the filing.'}
             </p>
             <button
               type="button"
@@ -160,8 +180,19 @@ export function FilingSummaryPanel({
               disabled={gen.isPending}
               className="mt-3 inline-flex items-center rounded-lg bg-[#4f46e5] px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca] disabled:opacity-60"
             >
-              {gen.isPending ? 'Generating… (up to a minute)' : 'Generate AI summary'}
+              {gen.isPending ? 'Generating…' : 'Try again'}
             </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafbff] p-5">
+            <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
+            <p className="text-[0.85rem] text-[#475569]">
+              Reading {ticker}’s latest 10-K
+              {data.latest_filed_date
+                ? ` (filed ${fmtDate(data.latest_filed_date)})`
+                : ''}{' '}
+              and writing the summary — this can take up to a minute.
+            </p>
           </div>
         )}
       </div>
