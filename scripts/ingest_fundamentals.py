@@ -24,10 +24,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Ingest SEC fundamentals (filings + facts).")
     parser.add_argument("--limit", type=int, default=None, help="Only first N companies.")
     parser.add_argument("--tickers", type=str, default=None, help="Comma-separated tickers.")
+    parser.add_argument(
+        "--all", action="store_true",
+        help="Include staged-inactive securities (expanded-universe backfill).",
+    )
     args = parser.parse_args()
 
     tickers = [t.strip().upper() for t in args.tickers.split(",")] if args.tickers else None
-    summary = run(limit=args.limit, tickers=tickers)
+    summary = run(limit=args.limit, tickers=tickers, include_inactive=args.all)
 
     print("\n=== Fundamentals ingestion summary ===")
     print(f"  Companies (unique CIKs)   : {summary['companies_total']}")

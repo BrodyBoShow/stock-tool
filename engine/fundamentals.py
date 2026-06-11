@@ -369,8 +369,18 @@ def _coverage_warnings(
     return out
 
 
-def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
-    """Ingest filings + facts for the universe. Returns a summary dict."""
+def run(
+    limit: int | None = None,
+    tickers: list[str] | None = None,
+    include_inactive: bool = False,
+) -> dict:
+    """Ingest filings + facts for the universe. Returns a summary dict.
+
+    ``include_inactive`` widens the scope to staged-inactive securities — used
+    by the one-time expanded-universe backfill, where new names are kept
+    is_active=false until they 'graduate' with full data. Nightly leaves it
+    False so it only touches the live in-scope universe.
+    """
     today = datetime.now(UTC).date()
     cutoff = today - timedelta(days=int(365.25 * WINDOW_YEARS))
     map_version, mappings = load_concept_map()
@@ -378,17 +388,18 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
     conn = get_connection()
     n_synced = sync_concept_map(conn, map_version, mappings)
 
+    active_clause = "" if include_inactive else "is_active AND "
     with conn.cursor() as cur:
         if tickers:
             cur.execute(
-                "SELECT security_id, ticker, cik FROM securities "
-                "WHERE is_active AND ticker = ANY(%s) ORDER BY ticker",
+                f"SELECT security_id, ticker, cik FROM securities "
+                f"WHERE {active_clause}ticker = ANY(%s) ORDER BY ticker",
                 (tickers,),
             )
         else:
             cur.execute(
-                "SELECT security_id, ticker, cik FROM securities "
-                "WHERE is_active ORDER BY ticker"
+                f"SELECT security_id, ticker, cik FROM securities "
+                f"WHERE {'TRUE' if include_inactive else 'is_active'} ORDER BY ticker"
             )
         universe = cur.fetchall()
     if limit is not None:

@@ -121,6 +121,17 @@ def _load_universe(cur) -> list[tuple[int, str]]:
     return cur.fetchall()
 
 
+def _load_all_securities(cur) -> list[tuple[int, str]]:
+    """All securities regardless of is_active — for the one-time bulk backfill.
+
+    The expanded-universe names are staged is_active=false until they have full
+    data and 'graduate'. The backfill must still fetch their prices, so it loads
+    the whole securities table rather than the live is_active scope.
+    """
+    cur.execute("SELECT security_id, ticker FROM securities ORDER BY ticker")
+    return cur.fetchall()
+
+
 def _latest_dates(cur) -> dict[int, date]:
     cur.execute("SELECT security_id, max(date) FROM prices_daily GROUP BY security_id")
     return {sid: d for sid, d in cur.fetchall()}
@@ -180,6 +191,151 @@ def _upsert_actions(cur, security_id: int, df: pd.DataFrame) -> tuple[int, int]:
     if divs:
         cur.executemany(sql, divs)
     return len(splits), len(divs)
+
+
+def _is_rate_limit(exc: BaseException) -> bool:
+    """True if an exception looks like a yfinance/Yahoo rate-limit signal."""
+    name = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    return "ratelimit" in name or "too many requests" in msg or "rate limited" in msg
+
+
+def run_bulk_backfill(
+    provider: PriceProvider | None = None,
+    *,
+    only_missing: bool = True,
+    log_every: int = 25,
+    cooldowns: tuple[int, ...] = (60, 120, 300, 600, 900),
+    max_consecutive_rate_limits: int = 8,
+) -> dict:
+    """One-time historical backfill tuned for the large expanded universe.
+
+    The standard per-ticker ``run()`` treats a rate-limited fetch the same as a
+    genuinely empty one — it backs off only briefly, marks the ticker empty, and
+    moves on, so under Yahoo's throttle it churns the whole universe loading
+    nothing. This runner instead *recognizes* a rate-limit (YFRateLimitError /
+    "Too Many Requests"), sleeps through a long escalating cooldown, and retries
+    the SAME ticker rather than skipping it.
+
+    - ``only_missing``: skip securities that already have any price rows (the
+      original S&P 500 names) so we spend requests only on the new universe.
+    - Commits per ticker, so it is fully resumable: stop and restart freely and
+      it picks up where the DB left off.
+    - Prints a progress line every ``log_every`` tickers so the background run
+      can be monitored from the DB or stdout.
+    """
+    provider = provider or YFinanceProvider()
+    today = datetime.now(UTC).date()
+    end = today + timedelta(days=1)
+    backfill_start = today - timedelta(days=365 * BACKFILL_YEARS)
+
+    warnings: list[str] = []
+    loaded = empty = failed = 0
+    total_rows = total_splits = total_dividends = 0
+
+    conn = get_connection()
+    job_id = start_job(
+        conn, JOB_NAME, job_version=JOB_VERSION, data_date=today,
+    )
+    try:
+        with conn.cursor() as cur:
+            universe = _load_all_securities(cur)
+            latest = _latest_dates(cur)
+        if only_missing:
+            universe = [(sid, t) for sid, t in universe if sid not in latest]
+        scope = len(universe)
+        print(f"[bulk] backfilling {scope} tickers (only_missing={only_missing})", flush=True)
+
+        for i, (security_id, ticker) in enumerate(universe, start=1):
+            start = latest.get(security_id) or backfill_start
+            if start >= end:
+                continue
+
+            # Rate-limit-aware fetch: retry the SAME ticker through escalating
+            # cooldowns; only a non-rate-limit error or a true empty moves on.
+            df = None
+            rl_hits = 0
+            while True:
+                try:
+                    df = provider.fetch(ticker, start, end)
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    if _is_rate_limit(exc) and rl_hits < max_consecutive_rate_limits:
+                        nap = cooldowns[min(rl_hits, len(cooldowns) - 1)]
+                        print(
+                            f"[bulk] rate-limited at #{i} {ticker}; "
+                            f"cooldown {nap}s (hit {rl_hits + 1})",
+                            flush=True,
+                        )
+                        time.sleep(nap)
+                        rl_hits += 1
+                        continue
+                    failed += 1
+                    warnings.append(f"{ticker}: fetch failed - {exc!r}")
+                    df = None
+                    break
+
+            if df is None:
+                time.sleep(THROTTLE_SECONDS)
+                continue
+            if df.empty:
+                empty += 1
+                time.sleep(THROTTLE_SECONDS)
+                continue
+
+            try:
+                with conn.cursor() as cur:
+                    n = _upsert_prices(cur, security_id, df)
+                    s, d = _upsert_actions(cur, security_id, df)
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001
+                conn.rollback()
+                failed += 1
+                warnings.append(f"{ticker}: db write failed - {exc!r}")
+                time.sleep(THROTTLE_SECONDS)
+                continue
+
+            loaded += 1
+            total_rows += n
+            total_splits += s
+            total_dividends += d
+            if i % log_every == 0:
+                print(
+                    f"[bulk] {i}/{scope} processed | loaded={loaded} "
+                    f"empty={empty} failed={failed} rows={total_rows}",
+                    flush=True,
+                )
+            time.sleep(THROTTLE_SECONDS)
+
+        finish_job(
+            conn, job_id, status="success",
+            rows_affected=total_rows, warnings=warnings or None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        conn.rollback()
+        finish_job(conn, job_id, status="failed", error=str(exc), warnings=warnings or None)
+        conn.close()
+        raise
+    finally:
+        if not conn.closed:
+            conn.close()
+
+    print(
+        f"[bulk] DONE: loaded={loaded} empty={empty} failed={failed} "
+        f"rows={total_rows} splits={total_splits} divs={total_dividends}",
+        flush=True,
+    )
+    return {
+        "tickers_total": scope,
+        "tickers_loaded": loaded,
+        "tickers_empty": empty,
+        "tickers_failed": failed,
+        "price_rows_upserted": total_rows,
+        "splits_captured": total_splits,
+        "dividends_captured": total_dividends,
+        "warnings": warnings,
+        "job_id": job_id,
+    }
 
 
 def run(provider: PriceProvider | None = None, limit: int | None = None) -> dict:
