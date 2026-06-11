@@ -369,10 +369,27 @@ def _coverage_warnings(
     return out
 
 
+def _reopen(conn):
+    """Close a possibly-stale connection best-effort and return a fresh one.
+
+    Same Windows/Supabase-pooler hazard as the price backfill: libpq keepalive
+    tuning is ignored on Windows, so a dropped idle connection leaves a half-open
+    socket the next write blocks on. Reopening defensively avoids the hang.
+    """
+    try:
+        if conn is not None and not conn.closed:
+            conn.close()
+    except Exception:  # noqa: BLE001
+        pass
+    return get_connection()
+
+
 def run(
     limit: int | None = None,
     tickers: list[str] | None = None,
     include_inactive: bool = False,
+    resume: bool = True,
+    reconnect_every: int = 200,
 ) -> dict:
     """Ingest filings + facts for the universe. Returns a summary dict.
 
@@ -380,6 +397,11 @@ def run(
     by the one-time expanded-universe backfill, where new names are kept
     is_active=false until they 'graduate' with full data. Nightly leaves it
     False so it only touches the live in-scope universe.
+
+    ``resume`` skips CIKs whose primary security already has xbrl_facts rows, so
+    a re-run after an interruption doesn't redo completed companies. ``tickers``
+    overrides resume (explicit re-fetch). ``reconnect_every`` reopens the DB
+    connection periodically to bound its age against pooler recycling.
     """
     today = datetime.now(UTC).date()
     cutoff = today - timedelta(days=int(365.25 * WINDOW_YEARS))
@@ -411,6 +433,22 @@ def run(
     for security_id, ticker, cik in universe:
         by_cik.setdefault(cik, []).append((security_id, ticker))
 
+    # Resume: drop CIKs whose primary security already has facts (completed on a
+    # prior run). Skipped when explicit tickers are requested (force re-fetch).
+    skipped_resume = 0
+    if resume and not tickers:
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT security_id FROM xbrl_facts")
+            done_sids = {r[0] for r in cur.fetchall()}
+        before = len(by_cik)
+        by_cik = {
+            cik: members
+            for cik, members in by_cik.items()
+            if min(sid for sid, _ in members) not in done_sids
+        }
+        skipped_resume = before - len(by_cik)
+        print(f"[fundamentals] resume: skipping {skipped_resume} already-loaded CIKs", flush=True)
+
     job_id = start_job(
         conn,
         JOB_NAME,
@@ -436,6 +474,9 @@ def run(
 
     try:
         for i, (cik, members) in enumerate(sorted(by_cik.items()), start=1):
+            # Bound connection age so the pooler can't recycle it mid-write.
+            if i % reconnect_every == 0:
+                conn = _reopen(conn)
             members = sorted(members)  # lowest security_id first
             primary_sid = members[0][0]
             ticker_label = "/".join(t for _, t in members)
@@ -460,7 +501,14 @@ def run(
                 dropped_ytd += stats["dropped_ytd_duration"]
                 companies_processed += 1
             except Exception as exc:  # noqa: BLE001
-                conn.rollback()
+                # On a dropped/half-open socket, reopen so the next company can
+                # write; a clean per-company error just rolls back and continues.
+                try:
+                    conn.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
+                if conn.closed:
+                    conn = _reopen(conn)
                 companies_failed += 1
                 warnings.append(f"{ticker_label} (CIK {cik}): failed - {exc!r}")
 
@@ -474,6 +522,8 @@ def run(
         stored_warnings = warnings[:MAX_STORED_WARNINGS]
         if len(warnings) > MAX_STORED_WARNINGS:
             stored_warnings.append(f"... {len(warnings) - MAX_STORED_WARNINGS} more truncated")
+        if conn.closed:
+            conn = _reopen(conn)
         finish_job(
             conn,
             job_id,
@@ -482,18 +532,25 @@ def run(
             warnings=stored_warnings or None,
         )
     except Exception as exc:  # noqa: BLE001
-        conn.rollback()
-        finish_job(conn, job_id, status="failed", error=str(exc), warnings=warnings or None)
+        try:
+            conn = _reopen(conn)
+            finish_job(conn, job_id, status="failed", error=str(exc), warnings=warnings or None)
+        except Exception:  # noqa: BLE001
+            pass
         raise
     finally:
         client.close()
-        if not conn.closed:
-            conn.close()
+        try:
+            if conn is not None and not conn.closed:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
 
     return {
         "companies_total": len(by_cik),
         "companies_processed": companies_processed,
         "companies_failed": companies_failed,
+        "skipped_resume": skipped_resume,
         "filings_rows": filings_rows_total,
         "fact_rows": fact_rows_total,
         "mapped_tags": n_synced,

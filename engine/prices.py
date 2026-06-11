@@ -200,6 +200,23 @@ def _is_rate_limit(exc: BaseException) -> bool:
     return "ratelimit" in name or "too many requests" in msg or "rate limited" in msg
 
 
+def _reopen(conn):
+    """Close a (possibly stale) connection best-effort and return a fresh one.
+
+    On Windows, libpq's keepalives_idle/interval are ignored, so a Supabase
+    pooler that silently drops an idle connection leaves a half-open socket the
+    next write blocks on for up to the OS keepalive default (~2h). For a
+    multi-hour backfill we therefore never trust a long-lived or recently-idle
+    connection — we reopen it (cheap relative to the work) instead of hanging.
+    """
+    try:
+        if conn is not None and not conn.closed:
+            conn.close()
+    except Exception:  # noqa: BLE001
+        pass
+    return get_connection()
+
+
 def run_bulk_backfill(
     provider: PriceProvider | None = None,
     *,
@@ -209,6 +226,8 @@ def run_bulk_backfill(
     max_consecutive_rate_limits: int = 5,
     long_ban_sleep: int = 1800,
     max_long_waits: int = 24,
+    reconnect_every: int = 250,
+    stale_after_seconds: float = 25.0,
 ) -> dict:
     """One-time historical backfill tuned for the large expanded universe.
 
@@ -249,7 +268,13 @@ def run_bulk_backfill(
         scope = len(universe)
         print(f"[bulk] backfilling {scope} tickers (only_missing={only_missing})", flush=True)
 
+        last_db = time.monotonic()  # when the conn was last known-good
         for i, (security_id, ticker) in enumerate(universe, start=1):
+            # Periodic reconnect bounds connection age so the pooler can't recycle
+            # it out from under us mid-write.
+            if i % reconnect_every == 0:
+                conn = _reopen(conn)
+                last_db = time.monotonic()
             start = latest.get(security_id) or backfill_start
             if start >= end:
                 continue
@@ -310,15 +335,35 @@ def run_bulk_backfill(
                 time.sleep(THROTTLE_SECONDS)
                 continue
 
-            try:
-                with conn.cursor() as cur:
-                    n = _upsert_prices(cur, security_id, df)
-                    s, d = _upsert_actions(cur, security_id, df)
-                conn.commit()
-            except Exception as exc:  # noqa: BLE001
-                conn.rollback()
-                failed += 1
-                warnings.append(f"{ticker}: db write failed - {exc!r}")
+            # If the connection has been idle past the staleness window (e.g. we
+            # just slept through a rate-limit cooldown), reopen it before writing
+            # so we never block on a pooler-dropped half-open socket.
+            if conn.closed or (time.monotonic() - last_db) > stale_after_seconds:
+                conn = _reopen(conn)
+                last_db = time.monotonic()
+
+            wrote = False
+            for db_attempt in range(2):  # one reconnect-and-retry on write failure
+                try:
+                    with conn.cursor() as cur:
+                        n = _upsert_prices(cur, security_id, df)
+                        s, d = _upsert_actions(cur, security_id, df)
+                    conn.commit()
+                    wrote = True
+                    last_db = time.monotonic()
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    try:
+                        conn.rollback()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    if db_attempt == 0:
+                        conn = _reopen(conn)  # stale/broken socket — retry fresh
+                        last_db = time.monotonic()
+                        continue
+                    failed += 1
+                    warnings.append(f"{ticker}: db write failed - {exc!r}")
+            if not wrote:
                 time.sleep(THROTTLE_SECONDS)
                 continue
 
@@ -334,18 +379,25 @@ def run_bulk_backfill(
                 )
             time.sleep(THROTTLE_SECONDS)
 
+        if conn.closed or (time.monotonic() - last_db) > stale_after_seconds:
+            conn = _reopen(conn)
         finish_job(
             conn, job_id, status="success",
             rows_affected=total_rows, warnings=warnings or None,
         )
     except Exception as exc:  # noqa: BLE001
-        conn.rollback()
-        finish_job(conn, job_id, status="failed", error=str(exc), warnings=warnings or None)
-        conn.close()
+        try:
+            conn = _reopen(conn)  # ensure a live connection to record the failure
+            finish_job(conn, job_id, status="failed", error=str(exc), warnings=warnings or None)
+        except Exception:  # noqa: BLE001
+            pass
         raise
     finally:
-        if not conn.closed:
-            conn.close()
+        try:
+            if conn is not None and not conn.closed:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
 
     print(
         f"[bulk] DONE: loaded={loaded} empty={empty} failed={failed} "
