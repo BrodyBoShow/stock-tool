@@ -1,8 +1,12 @@
-# Nightly pipeline: incremental price refresh -> price sanity -> factor scoring.
+# Nightly pipeline: incremental price refresh -> price sanity -> factor scoring,
+# then a best-effort FRED macro-context refresh (rates / VIX / CPI).
 #
 # Schedule: 23:30 UTC every day (~6:30 PM US Eastern when DST is off,
 # ~7:30 PM when DST is on). GitHub Actions cron is always UTC and does not
 # adjust for DST; the ~1-hour seasonal shift is acceptable for this batch job.
+#
+# The macro step is non-blocking (continue-on-error) and runs only when the
+# FRED_API_KEY secret is set, so it never breaks the critical scoring run.
 #
 # On failure GitHub automatically emails the repository owner via the default
 # Actions notification settings — no extra configuration required.
@@ -22,6 +26,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
 
     steps:
       - name: Checkout
@@ -38,3 +43,11 @@ jobs:
 
       - name: Run nightly pipeline
         run: python scripts/run_nightly.py
+
+      # Macro is CONTEXT ONLY (writes macro_series, never the scoring tables).
+      # Best-effort: skipped if the FRED key isn't set, and a FRED outage won't
+      # fail the workflow or the scoring run above.
+      - name: Refresh macro context (FRED)
+        if: ${{ env.FRED_API_KEY != '' }}
+        continue-on-error: true
+        run: python scripts/ingest_macro.py
