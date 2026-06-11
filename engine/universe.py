@@ -246,6 +246,139 @@ def run_broad(universe_name: str = "us_listed") -> dict:
     }
 
 
+def _sic_to_sector(sic: int) -> str | None:
+    """Map an SEC SIC code to a GICS-like sector label (approximate).
+
+    Used only to fill sector for expanded-universe names where it is NULL —
+    S&P 500 names keep their real GICS sector from Wikipedia. Specific ranges
+    are checked before broad ones; order matters.
+    """
+    if 1300 <= sic <= 1389 or sic in (2911, 5171, 5172, 4922, 4923, 4924):
+        return "Energy"
+    if 4900 <= sic <= 4991:
+        return "Utilities"
+    if 6500 <= sic <= 6599 or sic == 6798:
+        return "Real Estate"
+    if 6000 <= sic <= 6799:
+        return "Financials"
+    if 2830 <= sic <= 2839 or 3841 <= sic <= 3851 or 8000 <= sic <= 8099:
+        return "Health Care"
+    if (3570 <= sic <= 3579 or 3670 <= sic <= 3679 or 7370 <= sic <= 7379
+            or sic in (3661, 3663, 3674, 3812, 3825, 3827)):
+        return "Information Technology"
+    if 4810 <= sic <= 4899 or 2710 <= sic <= 2799 or 7800 <= sic <= 7841 or sic == 7310:
+        return "Communication Services"
+    if (2000 <= sic <= 2199 or 2840 <= sic <= 2844 or 5400 <= sic <= 5499
+            or sic in (5122, 5912, 5180, 5181, 5182)):
+        return "Consumer Staples"
+    if (2800 <= sic <= 2899 or 1000 <= sic <= 1119 or 1400 <= sic <= 1499
+            or 2600 <= sic <= 2679 or 3200 <= sic <= 3399):
+        return "Materials"
+    if (5200 <= sic <= 5999 or 3711 <= sic <= 3716 or 7000 <= sic <= 7099
+            or 2300 <= sic <= 2399 or 2500 <= sic <= 2599 or 3000 <= sic <= 3199
+            or 7900 <= sic <= 7999):
+        return "Consumer Discretionary"
+    if (1500 <= sic <= 1799 or 2400 <= sic <= 2499 or 3400 <= sic <= 3799
+            or 4000 <= sic <= 4789 or 5000 <= sic <= 5199 or 7300 <= sic <= 7399
+            or 8700 <= sic <= 8799 or 100 <= sic <= 999):
+        return "Industrials"
+    return None
+
+
+def backfill_sectors_from_sic(commit_every: int = 50, reconnect_every: int = 200) -> dict:
+    """Fill sector/industry from SEC SIC codes for securities missing them.
+
+    One submissions-JSON read per CIK (same source the filings/events ingestion
+    uses). Only rows with sector IS NULL are touched, so real GICS data is
+    never overwritten. Progress prints flush per batch (supervisor-friendly).
+    """
+    from engine.fundamentals import SUBMISSIONS_URL, SecClient, _reopen
+
+    conn = get_connection()
+    today = datetime.now(UTC).date()
+    job_id = start_job(conn, JOB_NAME, job_version=JOB_VERSION,
+                       params={"step": "sector_from_sic"}, data_date=today)
+    client = SecClient()
+    updated = no_sic = unmapped = failed = 0
+    warnings: list[str] = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id, ticker, cik FROM securities "
+                "WHERE sector IS NULL ORDER BY cik"
+            )
+            todo = cur.fetchall()
+        # One fetch per CIK; apply to every share class of that CIK.
+        by_cik: dict[str, list[tuple[int, str]]] = {}
+        for sid, ticker, cik in todo:
+            by_cik.setdefault(cik, []).append((sid, ticker))
+        print(f"[sectors] {len(todo)} securities / {len(by_cik)} CIKs missing sector",
+              flush=True)
+
+        pending = 0
+        for i, (cik, members) in enumerate(sorted(by_cik.items()), start=1):
+            if i % reconnect_every == 0:
+                conn.commit()
+                conn = _reopen(conn)
+                pending = 0
+            try:
+                root = client.get_json(SUBMISSIONS_URL.format(name=f"CIK{cik.zfill(10)}.json"))
+            except Exception as exc:  # noqa: BLE001
+                failed += 1
+                warnings.append(f"CIK {cik}: submissions fetch failed - {exc!r}")
+                continue
+            sic_raw = (root or {}).get("sic")
+            desc = (root or {}).get("sicDescription") or None
+            if not sic_raw:
+                no_sic += 1
+                continue
+            sector = _sic_to_sector(int(sic_raw))
+            if sector is None:
+                unmapped += 1
+                warnings.append(f"CIK {cik}: unmapped SIC {sic_raw} ({desc})")
+                continue
+            with conn.cursor() as cur:
+                for sid, _t in members:
+                    cur.execute(
+                        "UPDATE securities SET sector=%s, industry=COALESCE(industry,%s) "
+                        "WHERE security_id=%s AND sector IS NULL",
+                        (sector, desc, sid),
+                    )
+                    updated += cur.rowcount
+            pending += 1
+            if pending >= commit_every:
+                conn.commit()
+                pending = 0
+            if i % 100 == 0:
+                conn.commit()
+                pending = 0
+                print(f"[sectors] {i}/{len(by_cik)} CIKs | updated={updated} "
+                      f"no_sic={no_sic} unmapped={unmapped} failed={failed}", flush=True)
+        conn.commit()
+        if conn.closed:
+            conn = _reopen(conn)
+        finish_job(conn, job_id, status="success", rows_affected=updated,
+                   warnings=warnings[:200] or None)
+    except Exception as exc:  # noqa: BLE001
+        try:
+            conn = _reopen(conn)
+            finish_job(conn, job_id, status="failed", error=str(exc))
+        except Exception:  # noqa: BLE001
+            pass
+        raise
+    finally:
+        client.close()
+        try:
+            if not conn.closed:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+    print(f"[sectors] DONE: updated={updated} no_sic={no_sic} "
+          f"unmapped={unmapped} failed={failed}", flush=True)
+    return {"updated": updated, "no_sic": no_sic, "unmapped": unmapped,
+            "failed": failed, "job_id": job_id}
+
+
 def _upsert_membership_named(cur, security_id: int, today, universe_name: str) -> bool:
     cur.execute(
         """
