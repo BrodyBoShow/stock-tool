@@ -10,6 +10,9 @@ from api.schemas import (
     FilingRow,
     FilingSummary,
     FundamentalPoint,
+    InsiderResponse,
+    InsiderTransaction,
+    InsiderWindow,
     PricePoint,
     SecurityHeader,
     SecurityResponse,
@@ -81,6 +84,26 @@ def get_summary(ticker: str) -> SummaryStatusResponse:
         latest_accession=filing["accession_no"],
         latest_filed_date=filing["filed_date"],
         summary=_to_summary(cached) if cached else None,
+    )
+
+
+@router.get("/{ticker}/insiders", response_model=InsiderResponse)
+def get_insiders(ticker: str) -> InsiderResponse:
+    """Form 4 insider activity: 3m/12m open-market buy/sell aggregates plus
+    the recent transaction list. Context only — never feeds factor scores."""
+    ticker = ticker.upper()
+    header = queries.security_header(ticker)
+    if header is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found or inactive")
+
+    rows = queries.insider_rows(ticker, months=12)
+    return InsiderResponse(
+        ticker=ticker,
+        windows=[
+            InsiderWindow(**queries.insider_summary(rows, months=3)),
+            InsiderWindow(**queries.insider_summary(rows, months=12)),
+        ],
+        transactions=[InsiderTransaction(**r) for r in rows[:60]],
     )
 
 

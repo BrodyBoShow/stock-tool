@@ -146,6 +146,42 @@ class BriefStatusResponse(BaseModel):
     brief: DecisionBrief | None       # cached brief for the latest snapshot
 
 
+# ── insider transactions (Phase 12 — context only) ───────────────────────────
+
+class InsiderTransaction(BaseModel):
+    transaction_date: date | None
+    filed_date: date
+    owner_name: str
+    owner_title: str | None
+    is_director: bool
+    is_officer: bool
+    is_ten_pct: bool
+    transaction_code: str             # P, S, A, M, F, G, ... (SEC Form 4 codes)
+    acquired_disposed: str | None     # 'A' | 'D'
+    shares: float | None
+    price: float | None
+    value: float | None
+    plan_10b5_1: bool | None          # Rule 10b5-1(c) plan trade (None pre-2023)
+    form: str
+
+
+class InsiderWindow(BaseModel):
+    months: int
+    buy_count: int                    # open-market purchases (code P) only
+    sell_count: int                   # open-market sales (code S) only
+    buy_value: float | None
+    sell_value: float | None
+    distinct_buyers: int
+    distinct_sellers: int
+    sells_under_plan: int
+
+
+class InsiderResponse(BaseModel):
+    ticker: str
+    windows: list[InsiderWindow]      # [3m, 12m]
+    transactions: list[InsiderTransaction]  # newest first
+
+
 # ── watchlist ─────────────────────────────────────────────────────────────────
 
 class WatchlistRow(BaseModel):

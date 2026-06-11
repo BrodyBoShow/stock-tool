@@ -146,6 +146,15 @@ class SecClient:
 
     def get_json(self, url: str) -> dict | None:
         """GET a JSON document. Returns None on 404. Retries on rate limits."""
+        resp = self._get(url)
+        return None if resp is None else resp.json()
+
+    def get_text(self, url: str) -> str | None:
+        """GET a text document (e.g. Form 4 XML). Returns None on 404."""
+        resp = self._get(url)
+        return None if resp is None else resp.text
+
+    def _get(self, url: str) -> httpx.Response | None:
         last_exc: Exception | None = None
         for attempt in range(len(RETRY_BACKOFF) + 1):
             self._throttle()
@@ -158,7 +167,7 @@ class SecClient:
                         f"status {resp.status_code}", request=resp.request, response=resp
                     )
                 resp.raise_for_status()
-                return resp.json()
+                return resp
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 if attempt < len(RETRY_BACKOFF):

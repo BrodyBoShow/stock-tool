@@ -2,6 +2,7 @@ import type {
   BriefStatusResponse,
   DecisionBrief,
   FilingSummary,
+  InsiderResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
   ScreenerResponse,
@@ -116,6 +117,12 @@ export function generateSummary(ticker: string): Promise<FilingSummary> {
   return sendJson<FilingSummary>(
     'POST',
     `/securities/${encodeURIComponent(ticker)}/summary`,
+  )
+}
+
+export function getInsiders(ticker: string): Promise<InsiderResponse> {
+  return getJson<InsiderResponse>(
+    `/securities/${encodeURIComponent(ticker)}/insiders`,
   )
 }
 

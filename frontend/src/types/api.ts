@@ -139,6 +139,40 @@ export interface BriefStatusResponse {
   brief: DecisionBrief | null
 }
 
+export interface InsiderTransaction {
+  transaction_date: string | null
+  filed_date: string
+  owner_name: string
+  owner_title: string | null
+  is_director: boolean
+  is_officer: boolean
+  is_ten_pct: boolean
+  transaction_code: string // P, S, A, M, F, G, ... (SEC Form 4 codes)
+  acquired_disposed: string | null
+  shares: number | null
+  price: number | null
+  value: number | null
+  plan_10b5_1: boolean | null // Rule 10b5-1(c) plan trade (null pre-2023)
+  form: string
+}
+
+export interface InsiderWindow {
+  months: number
+  buy_count: number // open-market purchases (P) only
+  sell_count: number // open-market sales (S) only
+  buy_value: number | null
+  sell_value: number | null
+  distinct_buyers: number
+  distinct_sellers: number
+  sells_under_plan: number
+}
+
+export interface InsiderResponse {
+  ticker: string
+  windows: InsiderWindow[] // [3m, 12m]
+  transactions: InsiderTransaction[] // newest first
+}
+
 export interface WatchlistRow {
   ticker: string
   name: string | null

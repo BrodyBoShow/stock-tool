@@ -853,3 +853,79 @@ def save_brief(
         conn.commit()
     finally:
         conn.close()
+
+
+# ── insider transactions (Phase 12 — context only) ────────────────────────────
+
+def insider_rows(ticker: str, months: int = 12, limit: int = 2000) -> list[dict[str, Any]]:
+    """Recent Form 4 transactions for one ticker, newest first.
+
+    The default limit is sized so the window's aggregates are computed over
+    ALL rows even for heavy plan-sellers (NVDA files ~700 lines/year); the
+    API truncates the displayed list separately.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT it.transaction_date, it.filed_date, it.owner_name,
+                       it.owner_title, it.is_director, it.is_officer,
+                       it.is_ten_pct, it.transaction_code, it.acquired_disposed,
+                       it.shares, it.price, it.value, it.plan_10b5_1, it.form
+                FROM insider_transactions it
+                JOIN securities s ON s.security_id = it.security_id
+                WHERE s.ticker = %s
+                  AND it.transaction_date >= CURRENT_DATE - %s * INTERVAL '1 month'
+                ORDER BY it.transaction_date DESC, it.filed_date DESC, it.id DESC
+                LIMIT %s
+                """,
+                (ticker, months, limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+
+    out = []
+    for row in rows:
+        d = dict(zip(cols, row, strict=True))
+        for k in ("shares", "price", "value"):
+            d[k] = _f(d.get(k))
+        out.append(d)
+    return out
+
+
+def insider_summary(rows: list[dict[str, Any]], months: int) -> dict[str, Any]:
+    """Open-market buy/sell aggregates over the trailing `months` window.
+
+    Pure function over insider_rows() output (newest first) so the API can
+    compute 3m and 12m windows from one query. Only codes P (open-market
+    purchase) and S (open-market sale) count — awards, exercises, tax
+    withholding and gifts are reported in the table but carry no buy/sell
+    intent signal.
+    """
+    floor = date.today() - timedelta(days=int(months * 30.44))
+
+    buys = [r for r in rows
+            if r["transaction_code"] == "P"
+            and r["transaction_date"] and r["transaction_date"] >= floor]
+    sells = [r for r in rows
+             if r["transaction_code"] == "S"
+             and r["transaction_date"] and r["transaction_date"] >= floor]
+
+    def _tot(xs):
+        vals = [r["value"] for r in xs if r["value"] is not None]
+        return sum(vals) if vals else None
+
+    sell_plan = [r for r in sells if r["plan_10b5_1"]]
+    return {
+        "months": months,
+        "buy_count": len(buys),
+        "sell_count": len(sells),
+        "buy_value": _tot(buys),
+        "sell_value": _tot(sells),
+        "distinct_buyers": len({r["owner_name"] for r in buys}),
+        "distinct_sellers": len({r["owner_name"] for r in sells}),
+        "sells_under_plan": len(sell_plan),
+    }

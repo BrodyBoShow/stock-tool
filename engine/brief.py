@@ -35,7 +35,7 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # small quant snapshot (~3-4k tokens). Switch to claude-opus-4-8 for the
 # highest-quality synthesis.
 MODEL = "claude-sonnet-4-6"
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"  # v2: added Form 4 insider-activity context
 SCHEMA_VERSION = "v1"
 
 BRIEF_SCHEMA: dict[str, Any] = {
@@ -161,6 +161,16 @@ def build_context(ticker: str) -> dict[str, Any] | None:
             "pct_of_range": (last - lo) / (hi - lo) if hi > lo else None,
         }
 
+    # Form 4 insider activity (context only) — open-market buy/sell windows
+    insider_rows = queries.insider_rows(ticker, months=12)
+    insiders = {
+        "windows": [
+            queries.insider_summary(insider_rows, months=3),
+            queries.insider_summary(insider_rows, months=12),
+        ],
+        "ingested": bool(insider_rows),
+    }
+
     # cached 10-K summary only — never trigger a (paid, slow) generation here
     filing_summary = None
     filing = queries.latest_filing(ticker, form="10-K")
@@ -180,6 +190,7 @@ def build_context(ticker: str) -> dict[str, Any] | None:
         "history": history,
         "peers": peers,
         "price_pos": price_pos,
+        "insiders": insiders,
         "filing_summary": filing_summary,
     }
 
@@ -225,6 +236,27 @@ def render_prompt(ctx: dict[str, Any]) -> str:
             f"({pp['pct_of_range']:.0%} of range)" if pp["pct_of_range"] is not None
             else f"## 52-week price: last {pp['last']:.2f} (flat range)",
         ]
+
+    ins = ctx["insiders"]
+    if ins["ingested"]:
+        parts += ["", "## Insider activity (SEC Form 4, open-market P buys / "
+                      "S sells only; awards and option exercises excluded)"]
+        for w in ins["windows"]:
+            plan = (
+                f", {w['sells_under_plan']} of the sells under pre-scheduled "
+                "10b5-1 plans (weak signal)"
+                if w["sell_count"] else ""
+            )
+            bv = f" totaling ${w['buy_value']:,.0f}" if w["buy_value"] else ""
+            sv = f" totaling ${w['sell_value']:,.0f}" if w["sell_value"] else ""
+            parts.append(
+                f"  last {w['months']}m: {w['buy_count']} buys by "
+                f"{w['distinct_buyers']} insiders{bv}; {w['sell_count']} sells "
+                f"by {w['distinct_sellers']} insiders{sv}{plan}"
+            )
+    else:
+        parts += ["", "## Insider activity: not ingested for this name yet — "
+                      "do not draw conclusions from its absence."]
 
     fs = ctx["filing_summary"]
     if fs:

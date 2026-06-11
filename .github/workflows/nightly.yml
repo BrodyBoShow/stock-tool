@@ -53,6 +53,14 @@ jobs:
         continue-on-error: true
         run: python scripts/ingest_macro.py
 
+      # Insider transactions (Form 4) — CONTEXT ONLY, never scoring tables.
+      # Incremental by accession, so nightly deltas are small; --max-fetches
+      # bounds the run so an unfinished backfill rolls to the next night.
+      # Runs BEFORE AI pre-generation so fresh insider data grounds the briefs.
+      - name: Refresh insider transactions (Form 4)
+        continue-on-error: true
+        run: python scripts/ingest_insiders.py --max-fetches 6000
+
       # Pre-generate Decision Briefs + 10-K summaries for the watchlist and
       # top screener names, so deep-dive pages open warm instead of showing a
       # spinner. Runs AFTER scoring (briefs are keyed by score_date). Costs a
