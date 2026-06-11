@@ -8,12 +8,18 @@ Run:
 
 Swagger UI: http://localhost:8000/docs
 
-SECURITY — required before any public deploy:
-  - Restrict CORS origins to the deployed frontend domain.
-  - Add authentication to all write endpoints (marked TODO below).
-  - Rate-limit write endpoints.
+Access control (deploy):
+  - CORS origins come from ALLOWED_ORIGINS (comma-separated); localhost dev
+    origins are always allowed.
+  - APP_ACCESS_PASSWORD gates every endpoint behind an X-App-Password header.
+    Set it -> private (only holders of the password get in). Unset it ->
+    public. Flipping this one env var is the private<->public switch; no code
+    change or redeploy of the image is needed.
 """
 from __future__ import annotations
+
+import os
+import secrets
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,13 +35,44 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# TODO: restrict origins + add auth before any public deploy
+# Paths reachable without the access password: health (host liveness probes)
+# and the API docs. NOTE: /auth/check is intentionally NOT here — it must stay
+# gated so it returns 401 when locked, which is how the frontend detects that a
+# password is required (and 200 in public mode, where the middleware no-ops).
+_OPEN_PATHS = ("/health", "/docs", "/openapi.json", "/redoc")
+
+
+@app.middleware("http")
+async def _access_password(request: Request, call_next):
+    """Require X-App-Password when APP_ACCESS_PASSWORD is set (private mode).
+
+    No-ops when the env var is empty (public mode). CORS preflight (OPTIONS)
+    and the open paths always pass so the browser handshake and host health
+    checks work even while locked.
+    """
+    password = os.getenv("APP_ACCESS_PASSWORD", "")
+    if (
+        password
+        and request.method != "OPTIONS"
+        and not request.url.path.startswith(_OPEN_PATHS)
+    ):
+        provided = request.headers.get("X-App-Password", "")
+        if not secrets.compare_digest(provided, password):
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    return await call_next(request)
+
+
+def _allowed_origins() -> list[str]:
+    """Deployed frontend origins from env + always-on localhost dev origins."""
+    origins = ["http://localhost:5173", "http://localhost:3000"]
+    extra = os.getenv("ALLOWED_ORIGINS", "")
+    origins += [o.strip() for o in extra.split(",") if o.strip()]
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite React dev
-        "http://localhost:3000",  # CRA / Next dev
-    ],
+    allow_origins=_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,6 +83,16 @@ app.add_middleware(
 async def _generic_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch-all: never leak DB connection strings or internal stack traces."""
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+@app.get("/auth/check", tags=["meta"])
+def auth_check() -> dict:
+    """Returns 200 when the request is authorized (or no password is set).
+
+    The access middleware returns 401 first when a password is required and the
+    header is missing/wrong, so the frontend uses this as its login probe.
+    """
+    return {"ok": True, "authRequired": bool(os.getenv("APP_ACCESS_PASSWORD", ""))}
 
 
 app.include_router(screener.router, prefix="/screener", tags=["screener"])

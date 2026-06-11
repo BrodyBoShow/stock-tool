@@ -24,6 +24,37 @@ import type {
 const API_URL: string =
   (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
 
+const APP_PW_KEY = 'stockbud.appPassword'
+
+/** Access password (private-mode gate). Stored locally; sent on every call. */
+export function getAppPassword(): string {
+  return localStorage.getItem(APP_PW_KEY) ?? ''
+}
+export function setAppPassword(pw: string): void {
+  if (pw) localStorage.setItem(APP_PW_KEY, pw)
+  else localStorage.removeItem(APP_PW_KEY)
+}
+
+/** Headers common to every request, including the access password when set. */
+function authHeaders(base: Record<string, string>): Record<string, string> {
+  const pw = getAppPassword()
+  return pw ? { ...base, 'X-App-Password': pw } : base
+}
+
+/** Probe the auth gate. ok=false means a password is required and missing/wrong. */
+export async function checkAuth(): Promise<{ ok: boolean; authRequired: boolean }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/check`, {
+      headers: authHeaders({ Accept: 'application/json' }),
+    })
+    if (res.status === 401) return { ok: false, authRequired: true }
+    if (!res.ok) return { ok: false, authRequired: false }
+    return (await res.json()) as { ok: boolean; authRequired: boolean }
+  } catch {
+    return { ok: false, authRequired: false }
+  }
+}
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -38,7 +69,7 @@ async function getJson<T>(path: string): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${API_URL}${path}`, {
-      headers: { Accept: 'application/json' },
+      headers: authHeaders({ Accept: 'application/json' }),
     })
   } catch {
     throw new ApiError(0, 'API unreachable — is the FastAPI server running?')
@@ -83,7 +114,7 @@ async function sendJson<T>(
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {

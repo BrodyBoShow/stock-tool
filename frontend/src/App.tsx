@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 
+import { AuthGate } from '@/components/AuthGate'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { TopNav } from '@/components/TopNav'
 import { DeepDivePage } from '@/pages/DeepDivePage'
@@ -9,7 +10,7 @@ import { WatchlistPage } from '@/pages/WatchlistPage'
 
 export default function App() {
   return (
-    <>
+    <AuthGate>
       <TopNav />
       <main className="mx-auto w-full max-w-[1760px] px-6 py-6 lg:px-8">
         <ErrorBoundary>
@@ -29,6 +30,6 @@ export default function App() {
           </Routes>
         </ErrorBoundary>
       </main>
-    </>
+    </AuthGate>
   )
 }

@@ -1,0 +1,27 @@
+# Render blueprint for the StockBud FastAPI backend.
+# Connect this repo at https://dashboard.render.com → New → Blueprint.
+# Set the marked secrets in the Render dashboard (sync:false = not in git).
+services:
+  - type: web
+    name: stockbud-api
+    runtime: python
+    plan: starter          # ~$7/mo, always-on, 512MB+; use "free" to trial (sleeps + tighter RAM)
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DATABASE_URL          # Supabase pooler URI (port 6543)
+        sync: false
+      - key: SEC_USER_AGENT        # "Your Name your@email" — SEC requires it
+        sync: false
+      - key: ANTHROPIC_API_KEY     # powers on-demand AI deep-dives
+        sync: false
+      - key: FRED_API_KEY          # optional: macro strip
+        sync: false
+      - key: APP_ACCESS_PASSWORD   # SET = private. Remove this var = public.
+        sync: false
+      - key: ALLOWED_ORIGINS       # your Vercel URL, e.g. https://stockbud.vercel.app
+        sync: false
