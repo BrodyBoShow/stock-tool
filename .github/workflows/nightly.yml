@@ -27,6 +27,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
     steps:
       - name: Checkout
@@ -51,3 +52,13 @@ jobs:
         if: ${{ env.FRED_API_KEY != '' }}
         continue-on-error: true
         run: python scripts/ingest_macro.py
+
+      # Pre-generate Decision Briefs + 10-K summaries for the watchlist and
+      # top screener names, so deep-dive pages open warm instead of showing a
+      # spinner. Runs AFTER scoring (briefs are keyed by score_date). Costs a
+      # few cents per night on Sonnet; skipped without the ANTHROPIC_API_KEY
+      # secret, and a model outage never fails the pipeline.
+      - name: Pre-generate AI briefs + summaries
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        continue-on-error: true
+        run: python scripts/pregenerate_ai.py
