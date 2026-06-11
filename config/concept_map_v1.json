@@ -68,6 +68,10 @@
     "DepreciationAmortizationAndAccretionNet": "depreciation_amortization",
     "DepreciationAndAmortization": "depreciation_amortization",
 
+    "Depreciation": "depreciation",
+    "AmortizationOfIntangibleAssets": "amortization",
+    "AmortizationOfAcquiredIntangibleAssets": "amortization",
+
     "IncomeTaxExpenseBenefit": "income_tax_expense",
 
     "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest": "pretax_income",

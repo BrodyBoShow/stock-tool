@@ -82,6 +82,8 @@ FACTOR_DEFS = {
 SCORE_TIME_CONCEPTS = (
     "operating_income",
     "depreciation_amortization",
+    "depreciation",   # fallback components when no combined D&A line is reported
+    "amortization",   # (many large caps tag Depreciation + intangible amort separately)
     "total_equity",
     "total_debt",
     "cash_and_equivalents",
@@ -182,6 +184,15 @@ def _load_score_time_fundamentals(cur) -> pd.DataFrame:
         snap = snapshot(facts, max(f.filed for f in facts))
         oi_ttm, _, _ = ttm(snap, "operating_income")
         da_ttm, _, _ = ttm(snap, "depreciation_amortization")
+        if da_ttm is None:
+            # No combined D&A line — reconstruct from separately-tagged components
+            # (Depreciation + intangible amortization), as MSFT/GOOGL/TSLA/AVGO/etc.
+            # report them. Components are summed only when the combined tag is
+            # absent, so a filer that reports both is never double-counted.
+            dep_ttm, _, _ = ttm(snap, "depreciation")
+            amort_ttm, _, _ = ttm(snap, "amortization")
+            if dep_ttm is not None or amort_ttm is not None:
+                da_ttm = (dep_ttm or 0.0) + (amort_ttm or 0.0)
         equity_pt = latest_instant(snap, "total_equity")
         anchor = equity_pt[0] if equity_pt else None
         equity = equity_pt[1] if equity_pt else None
