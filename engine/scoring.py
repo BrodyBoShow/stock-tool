@@ -69,7 +69,7 @@ JOB_VERSION = "v1"
 # Which config the nightly/weekly default run writes, and which the read layer
 # (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v2_linear' at
 # cutover; until then the package ships dormant and the app keeps serving v1.
-DEFAULT_CONFIG_VERSION = "v1_linear"
+DEFAULT_CONFIG_VERSION = "v2_linear"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the

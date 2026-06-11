@@ -23,7 +23,7 @@ MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
 # versions per score_date (e.g. v1_linear and v2_linear side by side); every
 # read below pins to this one so the screener/deep-dive never double-count.
 # Flip to 'v2_linear' at cutover (after the v2 universe re-score lands).
-ACTIVE_CONFIG_VERSION = "v1_linear"
+ACTIVE_CONFIG_VERSION = "v2_linear"
 
 
 def _f(v) -> float | None:
