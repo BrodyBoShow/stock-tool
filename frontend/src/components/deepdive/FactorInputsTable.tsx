@@ -59,7 +59,8 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
   const inputs = details.inputs ?? {}
   const subPctls = details.sub_pctls ?? {}
   const roicIsProxy = details.flags?.roic_pool === 'roa_proxy'
-  const momentumBasis = Boolean(details.flags?.momentum_basis)
+  const momentumBasis = details.flags?.momentum_basis ?? null
+  const momentum12m1 = momentumBasis?.includes('12_minus_1') ?? false
 
   const factors = Object.keys(FACTOR_DEFS) as Array<keyof typeof FACTOR_DEFS>
 
@@ -127,7 +128,13 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                 )
               }
 
-              return FACTOR_DEFS[factor].map(([metricKey, direction], i) => (
+              // Render only the sub-metrics actually present in this snapshot
+              // (sub_pctls carries every ranked column for the served config
+              // version), so the union FACTOR_DEFS works for both v1 and v2.
+              const shown = FACTOR_DEFS[factor].filter(
+                ([metricKey]) => metricKey in subPctls,
+              )
+              return shown.map(([metricKey, direction], i) => (
                 <tr key={`${factor}-${metricKey}`} className="border-b border-[#f3f4f6]">
                   <td className={TD}>{i === 0 ? dot : null}</td>
                   <td className={`${TD} text-[#374151]`}>
@@ -164,8 +171,9 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
           )}
           {momentumBasis && (
             <p>
-              Momentum = cross-sectional ranking of raw 3/6/12-month adj-close
-              returns within the universe (no benchmark subtraction in v1).
+              {momentum12m1
+                ? 'Momentum = cross-sectional ranking of 3- and 6-month returns plus 12-minus-1 momentum (the 12-month return skipping the most recent month, which tends to mean-revert). No benchmark subtraction.'
+                : 'Momentum = cross-sectional ranking of raw 3/6/12-month adj-close returns within the universe (no benchmark subtraction).'}
             </p>
           )}
         </div>

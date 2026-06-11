@@ -19,6 +19,12 @@ from engine.db import get_connection
 
 MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
 
+# Which scoring config the app serves. factor_scores can hold several config
+# versions per score_date (e.g. v1_linear and v2_linear side by side); every
+# read below pins to this one so the screener/deep-dive never double-count.
+# Flip to 'v2_linear' at cutover (after the v2 universe re-score lands).
+ACTIVE_CONFIG_VERSION = "v1_linear"
+
 
 def _f(v) -> float | None:
     """Coerce Decimal/None/NaN to float."""
@@ -41,7 +47,10 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT max(score_date) FROM factor_scores")
+            cur.execute(
+                "SELECT max(score_date) FROM factor_scores WHERE config_version = %s",
+                (ACTIVE_CONFIG_VERSION,),
+            )
             score_date = cur.fetchone()[0]
             cur.execute(
                 """
@@ -54,6 +63,7 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
                 FROM securities s
                 JOIN factor_scores fs
                     ON fs.security_id = s.security_id AND fs.score_date = %s
+                    AND fs.config_version = %s
                 LEFT JOIN LATERAL (
                     SELECT close FROM prices_daily p
                     WHERE p.security_id = s.security_id
@@ -67,7 +77,7 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
                 WHERE s.is_active
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
-                (score_date,),
+                (score_date, ACTIVE_CONFIG_VERSION),
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -108,7 +118,9 @@ def security_header(ticker: str) -> dict[str, Any] | None:
                 FROM securities s
                 LEFT JOIN factor_scores fs
                     ON fs.security_id = s.security_id
-                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                    AND fs.config_version = %s
+                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                         WHERE config_version = %s)
                 LEFT JOIN LATERAL (
                     SELECT close, date FROM prices_daily p
                     WHERE p.security_id = s.security_id
@@ -116,7 +128,7 @@ def security_header(ticker: str) -> dict[str, Any] | None:
                 ) lp ON true
                 WHERE s.ticker = %s AND s.is_active
                 """,
-                (ticker,),
+                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, ticker),
             )
             row = cur.fetchone()
             if row is None:
@@ -301,14 +313,17 @@ def watchlist_rows() -> list[dict[str, Any]]:
                 JOIN securities s ON s.security_id = w.security_id
                 LEFT JOIN factor_scores fs
                     ON fs.security_id = s.security_id
-                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                    AND fs.config_version = %s
+                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                         WHERE config_version = %s)
                 LEFT JOIN LATERAL (
                     SELECT close FROM prices_daily p
                     WHERE p.security_id = s.security_id
                     ORDER BY p.date DESC LIMIT 1
                 ) lp ON true
                 ORDER BY w.added_at DESC
-                """
+                """,
+                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -386,10 +401,13 @@ def all_theses_rows() -> list[dict[str, Any]]:
                 JOIN securities s ON s.security_id = t.security_id
                 LEFT JOIN factor_scores fs
                     ON fs.security_id = s.security_id
-                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                    AND fs.config_version = %s
+                    AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                         WHERE config_version = %s)
                 WHERE t.status = 'active'
                 ORDER BY t.review_date ASC NULLS LAST, t.updated_at DESC
-                """
+                """,
+                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -714,7 +732,7 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
                            ) AS univ_rank
                     FROM factor_scores fs
                     JOIN securities s ON s.security_id = fs.security_id
-                    WHERE s.is_active
+                    WHERE s.is_active AND fs.config_version = %s
                 )
                 SELECT r.score_date, r.composite, r.growth_pctl, r.value_pctl,
                        r.quality_pctl, r.momentum_pctl, r.univ_rank
@@ -724,7 +742,7 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
                 ORDER BY r.score_date DESC
                 LIMIT %s
                 """,
-                (ticker, limit),
+                (ACTIVE_CONFIG_VERSION, ticker, limit),
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -758,9 +776,11 @@ def sector_metric_medians(sector: str) -> dict[str, Any]:
                 FROM factor_scores fs
                 JOIN securities s ON s.security_id = fs.security_id
                 WHERE s.is_active AND s.sector = %s
-                  AND fs.score_date = (SELECT max(score_date) FROM factor_scores)
+                  AND fs.config_version = %s
+                  AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                       WHERE config_version = %s)
                 """,
-                (sector,),
+                (sector, ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
             )
             rows = cur.fetchall()
     finally:

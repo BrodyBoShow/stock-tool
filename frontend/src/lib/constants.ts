@@ -62,17 +62,24 @@ export const FACTOR_DEFS: Record<
     ['ev_ebitda', 'lower'],
     ['fcf_yield', 'higher'],
   ],
+  // Union of v1 + v2 sub-metrics. FactorInputsTable renders only the rows
+  // actually present in the served snapshot's sub_pctls, so the same table
+  // works whether the backend is on v1_linear or v2_linear.
   quality: [
     ['gross_margin', 'higher'],
     ['operating_margin', 'higher'],
     ['roic', 'higher'],
     ['debt_to_equity', 'lower'],
     ['net_debt_ebitda', 'lower'],
+    ['accruals', 'lower'], // v2
+    ['share_count_trend', 'lower'], // v2
+    ['insider_net_buy', 'higher'], // v2
   ],
   momentum: [
     ['r3m', 'higher'],
     ['r6m', 'higher'],
-    ['r12m', 'higher'],
+    ['r12m', 'higher'], // v1
+    ['r12_1m', 'higher'], // v2 (12-minus-1)
   ],
 }
 
@@ -91,6 +98,10 @@ export const INPUT_LABELS: Record<string, string> = {
   r3m: '3-Month Return',
   r6m: '6-Month Return',
   r12m: '12-Month Return',
+  r12_1m: '12-1 Momentum',
+  accruals: 'Accruals (Sloan)',
+  share_count_trend: 'Net Share Issuance',
+  insider_net_buy: 'Insider Net Buy',
 }
 
 export const METRIC_DISPLAY_ORDER = [

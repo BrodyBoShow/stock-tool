@@ -40,9 +40,9 @@ Methodology decisions (documented because scores depend on them):
 - Tax rate for NOPAT = TTM income_tax_expense / TTM pretax_income clamped
   to [0, 0.5]; statutory 21% when unreported (counted in the summary).
 
-Metrics written (12): ttm_revenue, fcf, ttm_eps, gross_margin,
+Metrics written (13): ttm_revenue, fcf, ttm_eps, gross_margin,
 operating_margin, roic, debt_to_equity, net_debt_ebitda, current_ratio,
-eps_growth, revenue_cagr, share_count_trend.
+eps_growth, revenue_cagr, share_count_trend, accruals.
 """
 
 from __future__ import annotations
@@ -113,6 +113,16 @@ TTM_EPS_DEFINITION = {
         "companies): TTM net_income / weighted-average diluted shares"
     ),
     "unit": "currency_per_share",
+}
+
+ACCRUALS_DEFINITION = {
+    "inputs": ["net_income", "operating_cash_flow", "total_assets"],
+    "formula": (
+        "balance-sheet accruals (Sloan 1996): (TTM net_income - TTM operating "
+        "cash flow) / latest total_assets. Lower (cash-backed earnings) is the "
+        "better, higher-quality direction; high positive accruals mean-revert."
+    ),
+    "unit": "ratio",
 }
 
 
@@ -488,6 +498,14 @@ def compute_company_metrics(
             if ebitda > 0:
                 m["net_debt_ebitda"] = (debt - cash) / ebitda
 
+        # Balance-sheet accruals (Sloan 1996): the portion of earnings not
+        # backed by operating cash flow, scaled by assets. High positive
+        # accruals (earnings >> cash) are a documented quality red flag — such
+        # earnings mean-revert. Lower (cash-backed) is better. TTM net income
+        # vs TTM operating cash flow over the latest balance-sheet assets.
+        if ni_ttm is not None and ocf_ttm is not None and assets is not None and assets > 0:
+            m["accruals"] = (ni_ttm - ocf_ttm) / assets
+
         # --- per-share, split-adjusted to current basis ---
         # TTM EPS series from the first productive single-tag candidate
         # (diluted preferred, basic fallback). Sum-of-quarters EPS is the
@@ -584,24 +602,31 @@ def _shares_series(
 # Orchestration
 # --------------------------------------------------------------------------
 
-def _ensure_ttm_eps_definition(conn) -> None:
-    """Idempotently add the ttm_eps definition to metric_config v1."""
+def _ensure_metric_definitions(conn) -> None:
+    """Idempotently add additive metric definitions to metric_config v1.
+
+    Both ttm_eps and accruals were introduced after the seed config; they are
+    purely additive (new keys), so existing metrics' semantics are unchanged
+    and no metric_version bump is required.
+    """
+    additions = {"ttm_eps": TTM_EPS_DEFINITION, "accruals": ACCRUALS_DEFINITION}
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            UPDATE metric_config
-            SET definitions = definitions || %s::jsonb
-            WHERE metric_version = %s AND NOT definitions ? 'ttm_eps'
-            """,
-            (json.dumps({"ttm_eps": TTM_EPS_DEFINITION}), METRIC_VERSION),
-        )
+        for name, definition in additions.items():
+            cur.execute(
+                """
+                UPDATE metric_config
+                SET definitions = definitions || %s::jsonb
+                WHERE metric_version = %s AND NOT definitions ? %s
+                """,
+                (json.dumps({name: definition}), METRIC_VERSION, name),
+            )
     conn.commit()
 
 
 def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
     today = datetime.now(UTC).date()
     conn = get_connection()
-    _ensure_ttm_eps_definition(conn)
+    _ensure_metric_definitions(conn)
 
     with conn.cursor() as cur:
         if tickers:
@@ -637,7 +662,7 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
     ALL_METRICS = [
         "ttm_revenue", "fcf", "ttm_eps", "gross_margin", "operating_margin",
         "roic", "debt_to_equity", "net_debt_ebitda", "current_ratio",
-        "eps_growth", "revenue_cagr", "share_count_trend",
+        "eps_growth", "revenue_cagr", "share_count_trend", "accruals",
     ]
 
     try:
