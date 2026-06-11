@@ -372,10 +372,57 @@ def generate_brief(ctx: dict[str, Any]) -> tuple[dict[str, Any], int | None, int
     return brief, getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None)
 
 
-def get_or_generate_brief(ticker: str, *, force: bool = False) -> dict[str, Any] | None:
-    """Return the cached brief for the latest scoring snapshot, or generate one.
+# Smart-refresh thresholds: a cached brief is reused until something material
+# changes, rather than regenerated every nightly score_date.
+RANK_MOVE_THRESHOLD = 10   # composite-rank places; bigger move => regenerate
+MAX_BRIEF_AGE_DAYS = 7     # backstop: never serve a brief older than this
 
-    Returns None if the ticker is unknown/inactive or has no factor scores yet.
+
+def _brief_still_valid(cached: dict[str, Any], ctx: dict[str, Any],
+                       security_id: int) -> bool:
+    """Is a previously-cached brief still good enough to reuse?
+
+    Reuse UNLESS: (a) a new filing / 8-K / Form 4 arrived since the brief's
+    snapshot (new material info the brief can't reflect), (b) the composite
+    rank has moved more than RANK_MOVE_THRESHOLD places, or (c) the brief is
+    older than MAX_BRIEF_AGE_DAYS (a freshness backstop). This ties the
+    brief's freshness to real events, not the clock — so it's never materially
+    outdated, but it isn't needlessly regenerated when nothing has changed.
+    """
+    cached_sd = cached.get("score_date")
+    current_sd = ctx["header"].get("score_date")
+    if cached_sd is None or current_sd is None:
+        return False
+
+    # (c) age backstop
+    if (current_sd - cached_sd).days > MAX_BRIEF_AGE_DAYS:
+        return False
+
+    # (a) new material information since the cached snapshot
+    latest_material = queries.latest_material_filing_date(security_id)
+    if latest_material is not None and latest_material > cached_sd:
+        return False
+
+    # (b) meaningful rank move between the cached snapshot and now
+    ranks = {h["score_date"]: h["rank"] for h in ctx["history"]}
+    cur_rank, old_rank = ranks.get(current_sd), ranks.get(cached_sd)
+    if (
+        cur_rank is not None and old_rank is not None
+        and abs(cur_rank - old_rank) > RANK_MOVE_THRESHOLD
+    ):
+        return False
+
+    return True
+
+
+def get_or_generate_brief(ticker: str, *, force: bool = False) -> dict[str, Any] | None:
+    """Return a still-valid cached brief, or generate a fresh one.
+
+    Smart refresh: rather than regenerating on every nightly score_date, the
+    most recent cached brief is reused until a material change (new filing/
+    event, a big rank move, or the age backstop) invalidates it — see
+    _brief_still_valid. Returns None if the ticker is unknown/inactive or has
+    no factor scores yet.
     """
     ticker = ticker.upper()
     ctx = build_context(ticker)
@@ -385,10 +432,8 @@ def get_or_generate_brief(ticker: str, *, force: bool = False) -> dict[str, Any]
     security_id = ctx["header"]["security_id"]
     score_date = ctx["header"]["score_date"]
     if not force:
-        cached = queries.get_cached_brief(
-            security_id, score_date, PROMPT_VERSION, SCHEMA_VERSION
-        )
-        if cached is not None:
+        cached = queries.latest_brief(security_id, PROMPT_VERSION, SCHEMA_VERSION)
+        if cached is not None and _brief_still_valid(cached, ctx, security_id):
             return cached
 
     brief, in_tok, out_tok = generate_brief(ctx)

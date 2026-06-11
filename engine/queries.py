@@ -938,6 +938,66 @@ def get_cached_brief(
     return d
 
 
+def latest_brief(
+    security_id: int, prompt_version: str, schema_version: str
+) -> dict[str, Any] | None:
+    """Most recent cached brief for a security (any score_date) at these
+    versions. Used by the smart-refresh check, which decides whether that
+    brief is still valid rather than keying strictly on today's score_date.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT score_date, brief, model,
+                       prompt_version, schema_version, generated_at
+                FROM decision_briefs
+                WHERE security_id = %s AND prompt_version = %s AND schema_version = %s
+                ORDER BY score_date DESC
+                LIMIT 1
+                """,
+                (security_id, prompt_version, schema_version),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    d = dict(zip(cols, row, strict=True))
+    if isinstance(d.get("brief"), str):
+        d["brief"] = json.loads(d["brief"])
+    return d
+
+
+def latest_material_filing_date(security_id: int) -> date | None:
+    """Most recent filed_date across filings, 8-K events and Form 4s for a
+    security — i.e. the last time genuinely new material information arrived.
+    The smart-refresh check regenerates a brief when this is newer than the
+    cached brief's snapshot.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT max(d) FROM (
+                    SELECT max(filed_date) AS d FROM filings WHERE security_id = %s
+                    UNION ALL
+                    SELECT max(filed_date) FROM material_events WHERE security_id = %s
+                    UNION ALL
+                    SELECT max(filed_date) FROM insider_transactions WHERE security_id = %s
+                ) t
+                """,
+                (security_id, security_id, security_id),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+    return row[0] if row else None
+
+
 def save_brief(
     *,
     security_id: int,
