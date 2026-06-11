@@ -6,6 +6,7 @@ export interface Filters {
   sector: string // "All" = no sector filter
   mins: Record<FactorKey, number> // 0 = "Any"
   minMarketCap: number // dollars; 0 = "Any"
+  completeOnly: boolean // only rank names with all 4 component factors (server-side)
 }
 
 export const DEFAULT_FILTERS: Filters = {
@@ -13,6 +14,7 @@ export const DEFAULT_FILTERS: Filters = {
   sector: 'All',
   mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 0 },
   minMarketCap: 0,
+  completeOnly: true,
 }
 
 /** Market-cap floor presets (label, dollars). */

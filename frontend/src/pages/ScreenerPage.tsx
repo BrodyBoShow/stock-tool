@@ -28,9 +28,13 @@ function ScreenerSkeleton() {
 }
 
 export function ScreenerPage() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
+
+  // "Complete factors only" is a server-side filter (it rebuilds the rank over
+  // the complete-data set), so it lives in the query key, not applyFilters.
   const { data, isPending, error, refetch } = useQuery({
-    queryKey: ['screener'],
-    queryFn: getScreener,
+    queryKey: ['screener', filters.completeOnly],
+    queryFn: () => getScreener(filters.completeOnly),
     staleTime: 5 * 60 * 1000, // nightly data — 5 min client cache
   })
 
@@ -54,8 +58,6 @@ export function ScreenerPage() {
     refetchInterval: 90 * 1000,
     refetchOnWindowFocus: true,
   })
-
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
 
   // Overlay live prices AND live factor scores onto each row, then re-rank by
   // the live composite so the screener reflects intraday. The EOD scores from

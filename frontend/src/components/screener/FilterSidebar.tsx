@@ -65,8 +65,27 @@ export function FilterSidebar({
         </div>
       </div>
 
+      {/* complete-factors toggle — the most consequential setting, up top */}
+      <label className="mt-3.5 flex cursor-pointer items-start gap-2.5">
+        <input
+          type="checkbox"
+          checked={filters.completeOnly}
+          onChange={(e) => onChange({ ...filters, completeOnly: e.target.checked })}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[#4f46e5]"
+        />
+        <span>
+          <span className="block text-[0.8rem] font-semibold text-[#374151]">
+            Complete factors only
+          </span>
+          <span className="mt-0.5 block text-[0.68rem] leading-snug text-[#9ca3af]">
+            Rank only names scored on all four factors (recommended). Off = include
+            partial names like momentum-only micro-caps.
+          </span>
+        </span>
+      </label>
+
       {/* search */}
-      <div className="mt-3.5">
+      <div className="mt-4">
         <div className={SECTION}>Search</div>
         <input
           type="text"

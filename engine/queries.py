@@ -50,11 +50,21 @@ def active_tickers() -> list[str]:
         conn.close()
 
 
-def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
-    """All active securities at the latest score_date with last two prices.
+def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], date | None]:
+    """Active securities at the latest score_date with last two prices.
+
+    complete_only (default True): restrict to names that have all four component
+    factors present, so the composite ranking is apples-to-apples. Names missing
+    any factor are excluded; rank rebuilds 1..N over the returned set.
 
     Returns (rows, score_date). Each row is a plain dict; rank starts at 1.
     """
+    complete_clause = (
+        " AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL"
+        " AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL"
+        if complete_only
+        else ""
+    )
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -64,7 +74,7 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
             )
             score_date = cur.fetchone()[0]
             cur.execute(
-                """
+                f"""
                 SELECT s.ticker, s.name, s.sector, s.exchange,
                        fs.composite,
                        fs.growth_pctl, fs.value_pctl, fs.quality_pctl, fs.momentum_pctl,
@@ -92,7 +102,7 @@ def screener_rows() -> tuple[list[dict[str, Any]], date | None]:
                       AND f.normalized_concept = 'shares_outstanding'
                     ORDER BY f.period_end DESC LIMIT 1
                 ) sh ON true
-                WHERE s.is_active
+                WHERE s.is_active{complete_clause}
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
                 (score_date, ACTIVE_CONFIG_VERSION),

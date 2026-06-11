@@ -95,8 +95,8 @@ export function getLiveScores(): Promise<LiveScoresResponse> {
   return getJson<LiveScoresResponse>('/screener/live')
 }
 
-export function getScreener(): Promise<ScreenerResponse> {
-  return getJson<ScreenerResponse>('/screener')
+export function getScreener(completeOnly = true): Promise<ScreenerResponse> {
+  return getJson<ScreenerResponse>(`/screener?complete_only=${completeOnly}`)
 }
 
 export function getSecurity(ticker: string, days?: number): Promise<SecurityResponse> {
