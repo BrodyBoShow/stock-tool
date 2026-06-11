@@ -50,6 +50,37 @@ def active_tickers() -> list[str]:
         conn.close()
 
 
+def top_quote_tickers(limit: int = 300) -> list[str]:
+    """Top-N active tickers by latest composite — the bounded set for the live
+    overlay. Fetching live quotes for the whole ~5.5k universe is slow (yfinance)
+    and rate-limit-prone, so only the names at the top of the board (the ones the
+    user actually looks at) get intraday prices/scores; the long tail shows the
+    nightly close. Falls back to all active tickers if no scores exist yet.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.ticker
+                FROM securities s
+                JOIN factor_scores fs
+                  ON fs.security_id = s.security_id
+                  AND fs.config_version = %s
+                  AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                       WHERE config_version = %s)
+                WHERE s.is_active
+                ORDER BY fs.composite DESC NULLS LAST
+                LIMIT %s
+                """,
+                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, limit),
+            )
+            rows = [r[0] for r in cur.fetchall()]
+            return rows or active_tickers()
+    finally:
+        conn.close()
+
+
 def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], date | None]:
     """Active securities at the latest score_date with last two prices.
 
@@ -853,26 +884,32 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                WITH ranked AS (
-                    SELECT fs.security_id, fs.score_date, fs.composite,
-                           fs.growth_pctl, fs.value_pctl,
-                           fs.quality_pctl, fs.momentum_pctl,
+                -- Rank within the COMPLETE-factor set per score_date (same basis
+                -- as the screener), so the deep-dive rank matches the board and
+                -- isn't distorted by partial momentum-only names. Partial names
+                -- get a NULL rank (LEFT JOIN) rather than dropping out.
+                WITH complete_ranked AS (
+                    SELECT fs.security_id, fs.score_date,
                            RANK() OVER (PARTITION BY fs.score_date
-                                        ORDER BY fs.composite DESC NULLS LAST
+                                        ORDER BY fs.composite DESC
                            ) AS univ_rank
                     FROM factor_scores fs
                     JOIN securities s ON s.security_id = fs.security_id
                     WHERE s.is_active AND fs.config_version = %s
+                      AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
+                      AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
                 )
-                SELECT r.score_date, r.composite, r.growth_pctl, r.value_pctl,
-                       r.quality_pctl, r.momentum_pctl, r.univ_rank
-                FROM ranked r
-                JOIN securities s ON s.security_id = r.security_id
-                WHERE s.ticker = %s
-                ORDER BY r.score_date DESC
+                SELECT fs.score_date, fs.composite, fs.growth_pctl, fs.value_pctl,
+                       fs.quality_pctl, fs.momentum_pctl, cr.univ_rank
+                FROM factor_scores fs
+                JOIN securities s ON s.security_id = fs.security_id
+                LEFT JOIN complete_ranked cr
+                    ON cr.security_id = fs.security_id AND cr.score_date = fs.score_date
+                WHERE s.ticker = %s AND fs.config_version = %s
+                ORDER BY fs.score_date DESC
                 LIMIT %s
                 """,
-                (ACTIVE_CONFIG_VERSION, ticker, limit),
+                (ACTIVE_CONFIG_VERSION, ticker, ACTIVE_CONFIG_VERSION, limit),
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]

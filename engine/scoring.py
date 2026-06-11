@@ -609,11 +609,26 @@ _live_cache: dict[str, dict] = {}
 def _live_score_map(config_version: str) -> dict:
     # active securities + their tickers, to map live quotes (by ticker) to the
     # security_id space the scorer works in.
+    # Only the top names by composite get a live quote (bounded for speed on the
+    # full universe); the rest keep their close-based score. Mirrors the bounded
+    # /quotes overlay so both share the quotes cache.
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT security_id, ticker FROM securities WHERE is_active"
+                """
+                SELECT s.security_id, s.ticker
+                FROM securities s
+                JOIN factor_scores fs
+                  ON fs.security_id = s.security_id
+                  AND fs.config_version = %s
+                  AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                       WHERE config_version = %s)
+                WHERE s.is_active
+                ORDER BY fs.composite DESC NULLS LAST
+                LIMIT 300
+                """,
+                (config_version, config_version),
             )
             pairs = cur.fetchall()
     finally:

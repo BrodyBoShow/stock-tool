@@ -11,9 +11,10 @@ router = APIRouter()
 
 @router.get("", response_model=QuotesResponse)
 def get_quotes() -> QuotesResponse:
-    """Latest (delayed ~15m) intraday quotes for the active universe, server-
-    cached for a short TTL. Display overlay only — never feeds factor scores."""
-    payload = quotes_engine.get_quotes(queries.active_tickers())
+    """Latest (delayed ~15m) intraday quotes for the top names by composite,
+    server-cached for a short TTL. Bounded so the overlay stays fast on the full
+    ~5.5k universe. Display overlay only — never feeds factor scores."""
+    payload = quotes_engine.get_quotes(queries.top_quote_tickers())
     return QuotesResponse(
         as_of_epoch=payload["as_of_epoch"],
         age_seconds=payload["age_seconds"],
