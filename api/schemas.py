@@ -122,8 +122,14 @@ class DataConfidence(BaseModel):
     reason: str
 
 
+class ScoreRead(BaseModel):
+    drivers: str          # what mechanically drove the composite rank
+    blind_spot: str       # the biggest real-world driver the score can't see
+
+
 class DecisionBriefContent(BaseModel):
     one_liner: str
+    score_read: ScoreRead
     bull_case: list[str]
     bear_case: list[str]
     key_catalyst: str

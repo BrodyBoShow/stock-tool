@@ -36,8 +36,8 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # small quant snapshot (~3-4k tokens). Switch to claude-opus-4-8 for the
 # highest-quality synthesis.
 MODEL = "claude-sonnet-4-6"
-PROMPT_VERSION = "v3"  # v2: Form 4 insider context; v3: recent 8-K events
-SCHEMA_VERSION = "v1"
+PROMPT_VERSION = "v4"  # v2: insider; v3: 8-K events; v4: score_read meta-layer
+SCHEMA_VERSION = "v2"  # v2: added score_read {drivers, blind_spot}
 
 BRIEF_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -46,6 +46,36 @@ BRIEF_SCHEMA: dict[str, Any] = {
             "type": "string",
             "description": "One sentence: what kind of setup this stock is "
                            "right now, strictly per the data provided.",
+        },
+        "score_read": {
+            "type": "object",
+            "description": "A plain-English reality check on the composite score "
+                           "itself — what mechanically drove the rank, and the "
+                           "single most important thing the quant score CANNOT "
+                           "capture for this specific company.",
+            "properties": {
+                "drivers": {
+                    "type": "string",
+                    "description": "One sentence: which factors and specific "
+                                   "metrics are pulling this composite rank up "
+                                   "or down (cite the percentiles), framed as "
+                                   "'the score is high/low mainly because…'.",
+                },
+                "blind_spot": {
+                    "type": "string",
+                    "description": "One-two sentences: the most important driver "
+                                   "of this company's actual outcome that the "
+                                   "score structurally can't see, PLUS any "
+                                   "sector caveat — e.g. a cheap commodity "
+                                   "producer's multiple is low because earnings "
+                                   "are price-dependent (possible value trap); "
+                                   "a bank/insurer's null margins mean Quality "
+                                   "rests on fewer inputs; a high multiple "
+                                   "prices in growth the score can't verify.",
+                },
+            },
+            "required": ["drivers", "blind_spot"],
+            "additionalProperties": False,
         },
         "bull_case": {
             "type": "array",
@@ -91,7 +121,7 @@ BRIEF_SCHEMA: dict[str, Any] = {
         },
     },
     "required": [
-        "one_liner", "bull_case", "bear_case", "key_catalyst",
+        "one_liner", "score_read", "bull_case", "bear_case", "key_catalyst",
         "main_risk", "data_confidence", "next_questions",
     ],
     "additionalProperties": False,
@@ -109,7 +139,18 @@ SYSTEM_PROMPT = (
     "applicable, never speculate about them, and reflect heavy gaps in "
     "data_confidence. Do NOT give investment advice, price targets, or "
     "buy/sell/hold language — describe what the evidence shows and what would "
-    "need checking. Write plainly and concretely for an informed investor."
+    "need checking. Write plainly and concretely for an informed investor.\n\n"
+    "Pay special attention to score_read: the composite is a mechanical "
+    "weighted average of factor percentiles, nothing more. State plainly what "
+    "drove this particular rank, then name the single biggest real-world driver "
+    "the score is blind to — and apply sector judgment. A very cheap valuation "
+    "in a cyclical or commodity business (energy, miners, homebuilders, autos) "
+    "is often structurally cheap because earnings are price/cycle-dependent, so "
+    "flag possible value-trap risk rather than treating cheapness as free "
+    "upside. For banks/insurers/REITs, note that null margins mean Quality and "
+    "Value rest on fewer inputs. For richly-valued names, note the multiple "
+    "prices in growth the backward-looking score can't confirm. Be specific to "
+    "THIS company, not generic."
 )
 
 

@@ -115,8 +115,14 @@ export interface DataConfidence {
   reason: string
 }
 
+export interface ScoreRead {
+  drivers: string
+  blind_spot: string
+}
+
 export interface DecisionBriefContent {
   one_liner: string
+  score_read: ScoreRead
   bull_case: string[]
   bear_case: string[]
   key_catalyst: string

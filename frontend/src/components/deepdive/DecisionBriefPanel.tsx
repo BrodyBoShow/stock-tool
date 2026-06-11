@@ -143,6 +143,26 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
         {b.one_liner}
       </p>
 
+      {b.score_read && (
+        <div className="rounded-xl border border-[#e0e7ff] bg-[#f5f7ff] p-3.5">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#4338ca]">
+            How to read this score
+          </div>
+          <p className="mt-1.5 text-[0.85rem] leading-relaxed text-[#1e293b]">
+            <span className="font-semibold text-[#3730a3]">
+              Drives the rank:{' '}
+            </span>
+            {b.score_read.drivers}
+          </p>
+          <p className="mt-1.5 text-[0.85rem] leading-relaxed text-[#1e293b]">
+            <span className="font-semibold text-[#b45309]">
+              What the score can’t see:{' '}
+            </span>
+            {b.score_read.blind_spot}
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-[#d1fae5] bg-[#f7fefb] p-3.5">
           <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#047857]">
