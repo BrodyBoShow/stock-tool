@@ -142,6 +142,127 @@ def upsert_membership(cur, security_id: int, today, source: str = "wikipedia") -
     return cur.fetchone() is not None
 
 
+def fetch_sec_listed() -> list[dict]:
+    """All SEC filers from company_tickers_exchange.json (cik, name, ticker, exchange)."""
+    ua = os.getenv("SEC_USER_AGENT")
+    if not ua:
+        raise RuntimeError("SEC_USER_AGENT is not set in .env (name + email).")
+    resp = httpx.get(SEC_EXCHANGE_URL, headers={"User-Agent": ua}, timeout=60)
+    resp.raise_for_status()
+    payload = resp.json()
+    f = payload["fields"]
+    ci, ni, ti, ei = (f.index(k) for k in ("cik", "name", "ticker", "exchange"))
+    out = []
+    for row in payload["data"]:
+        out.append({
+            "cik": int(row[ci]),
+            "name": row[ni],
+            "ticker": row[ti],
+            "exchange": row[ei],
+        })
+    return out
+
+
+def run_broad(universe_name: str = "us_listed") -> dict:
+    """Expand the universe to ALL NYSE/Nasdaq filers from SEC's exchange file.
+
+    Inserts every NYSE/Nasdaq-listed ticker as an active security (sector left
+    NULL — backfilled later from SEC SIC codes). ETFs/funds with no 10-K simply
+    won't get fundamentals downstream; an optional prune step can deactivate
+    names with no usable filings. Idempotent upserts; logged to job_runs.
+    """
+    today = datetime.now(UTC).date()
+    listed = fetch_sec_listed()
+
+    # Filter to NYSE/Nasdaq, dedupe by ticker. sector/industry are NOT set here:
+    # new rows default to NULL (backfilled from SIC later); existing S&P names
+    # keep their GICS data because the upsert only touches cik/name/exchange.
+    rows: list[tuple] = []
+    seen: set[str] = set()
+    dropped = 0
+    for r in listed:
+        exchange = normalize_exchange(r["exchange"])
+        if exchange is None:  # OTC / CBOE / blank
+            dropped += 1
+            continue
+        ticker = normalize_ticker(r["ticker"])
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        rows.append((str(r["cik"]), ticker, r["name"], exchange))
+
+    conn = get_connection()
+    job_id = start_job(
+        conn, JOB_NAME, job_version=JOB_VERSION,
+        params={"universe": universe_name, "source": "sec_exchange"},
+        data_date=today,
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO securities (cik, ticker, name, exchange, is_active)
+                VALUES (%s, %s, %s, %s, true)
+                ON CONFLICT (ticker) WHERE is_active DO UPDATE
+                  SET cik = EXCLUDED.cik, name = EXCLUDED.name,
+                      exchange = EXCLUDED.exchange
+                """,
+                rows,
+            )
+            # Open a `universe_name` membership for every active security that
+            # doesn't already have one — one set-based statement.
+            cur.execute(
+                """
+                INSERT INTO universe_membership
+                  (security_id, universe_name, start_date, end_date, source)
+                SELECT s.security_id, %s, %s, NULL, 'sec_exchange'
+                FROM securities s
+                WHERE s.is_active AND NOT EXISTS (
+                    SELECT 1 FROM universe_membership m
+                    WHERE m.security_id = s.security_id
+                      AND m.universe_name = %s AND m.end_date IS NULL
+                )
+                ON CONFLICT (security_id, universe_name, start_date) DO NOTHING
+                """,
+                (universe_name, today, universe_name),
+            )
+            membership_new = cur.rowcount
+        conn.commit()
+        finish_job(conn, job_id, status="success", rows_affected=len(rows))
+    except Exception as exc:  # noqa: BLE001
+        conn.rollback()
+        finish_job(conn, job_id, status="failed", error=str(exc))
+        conn.close()
+        raise
+    finally:
+        if not conn.closed:
+            conn.close()
+    return {
+        "listed_total": len(listed),
+        "upserted_securities": len(rows),
+        "new_membership_rows": membership_new,
+        "dropped_not_nyse_nasdaq": dropped,
+        "job_id": job_id,
+    }
+
+
+def _upsert_membership_named(cur, security_id: int, today, universe_name: str) -> bool:
+    cur.execute(
+        """
+        INSERT INTO universe_membership (security_id, universe_name, start_date, end_date, source)
+        SELECT %s, %s, %s, NULL, 'sec_exchange'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM universe_membership
+            WHERE security_id = %s AND universe_name = %s AND end_date IS NULL
+        )
+        ON CONFLICT (security_id, universe_name, start_date) DO NOTHING
+        RETURNING security_id
+        """,
+        (security_id, universe_name, today, security_id, universe_name),
+    )
+    return cur.fetchone() is not None
+
+
 def run() -> dict:
     """Execute the universe ingestion. Returns a summary dict."""
     today = datetime.now(UTC).date()
