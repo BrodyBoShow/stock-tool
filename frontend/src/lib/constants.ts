@@ -124,6 +124,22 @@ export const METRIC_LABELS: Record<string, string> = {
 }
 
 /** Metrics that don't apply to banks / insurance / REITs. */
+/** Which direction is "good" for each fundamental metric (drives heatmap color). */
+export const HIGHER_IS_BETTER: Record<string, boolean> = {
+  ttm_revenue: true,
+  fcf: true,
+  ttm_eps: true,
+  gross_margin: true,
+  operating_margin: true,
+  roic: true,
+  debt_to_equity: false,
+  net_debt_ebitda: false,
+  current_ratio: true,
+  revenue_cagr: true,
+  eps_growth: true,
+  share_count_trend: false, // shrinking share count (buybacks) is the good direction
+}
+
 export const FINANCIAL_NULL_METRICS = new Set([
   'gross_margin',
   'operating_margin',

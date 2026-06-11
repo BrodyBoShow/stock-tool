@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 
+import { heatBg } from '@/lib/colors'
 import {
   FINANCIAL_NULL_METRICS,
   FINANCIAL_SECTORS,
+  HIGHER_IS_BETTER,
   METRIC_DISPLAY_ORDER,
   METRIC_LABELS,
 } from '@/lib/constants'
@@ -41,6 +43,18 @@ export function FundamentalsTable({
     }
     return { dates: allDates, byMetric: m }
   }, [fundamentals])
+
+  // per-metric min/max over the shown periods, for the heatmap shading
+  const ranges = useMemo(() => {
+    const r = new Map<string, { min: number; max: number }>()
+    for (const [metric, row] of byMetric) {
+      const vals = [...row.values()].filter((x): x is number => x !== null)
+      if (vals.length >= 2) {
+        r.set(metric, { min: Math.min(...vals), max: Math.max(...vals) })
+      }
+    }
+    return r
+  }, [byMetric])
 
   const showFinancialNa =
     isFinancial &&
@@ -115,10 +129,16 @@ export function FundamentalsTable({
                     } else {
                       cell = fmtMetric(metric, v, metric === 'roic' && roicIsProxy)
                     }
+                    const range = ranges.get(metric)
+                    const tint =
+                      v !== null && range
+                        ? heatBg(v, range.min, range.max, HIGHER_IS_BETTER[metric] ?? true)
+                        : undefined
                     return (
                       <td
                         key={d}
                         className="whitespace-nowrap px-3 py-2 text-right text-[0.82rem] text-[#111827] tabular-nums"
+                        style={tint ? { background: tint } : undefined}
                       >
                         {cell}
                       </td>
@@ -129,6 +149,22 @@ export function FundamentalsTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-[#6b7280]">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(16,185,129,0.5)' }} />
+          stronger
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(239,68,68,0.45)' }} />
+          weaker
+        </span>
+        <span className="text-[#9ca3af]">
+          — each cell shaded against that metric’s own range over these periods
+          (green = the better direction for the metric); a quick read of each
+          metric’s trajectory, not a cross-company score.
+        </span>
       </div>
 
       <div className="mt-3 space-y-1 text-[0.72rem] text-[#9ca3af]">

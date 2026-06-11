@@ -1,11 +1,34 @@
+import { rankColor } from '@/lib/colors'
 import {
   FACTOR_DEFS,
   FACTOR_TABLE,
   INPUT_LABELS,
   type FactorKey,
 } from '@/lib/constants'
-import { DASH, fmtInput, fmtPctl } from '@/lib/format'
+import { DASH, fmtInput } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
+
+function RankPill({ rank }: { rank: number | null | undefined }) {
+  const r = rank == null || Number.isNaN(rank) ? null : rank
+  const { bg, fg } = rankColor(r)
+  return (
+    <span
+      className="inline-block min-w-[42px] rounded-md px-2 py-0.5 text-[0.8rem] font-bold tabular-nums"
+      style={{ background: bg, color: fg }}
+    >
+      {r === null ? DASH : r.toFixed(1)}
+    </span>
+  )
+}
+
+function Swatch({ color }: { color: string }) {
+  return (
+    <span
+      className="inline-block h-2.5 w-2.5 rounded-sm"
+      style={{ background: color }}
+    />
+  )
+}
 
 const VALUE_NA_REASON =
   'No market cap or share count available — likely a multi-class share ' +
@@ -46,6 +69,21 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
       <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
         The raw inputs behind each factor, with their own percentile ranks within
         the universe.
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-[#6b7280]">
+        <span className="flex items-center gap-1.5">
+          <Swatch color="rgba(16,185,129,0.5)" /> Strong (rank ≥ 67)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Swatch color="#e2e8f0" /> Middle
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Swatch color="rgba(239,68,68,0.45)" /> Weak (rank ≤ 33)
+        </span>
+        <span className="text-[#9ca3af]">
+          — direction-adjusted percentile within the S&amp;P 500, so green is always good
+        </span>
       </div>
 
       <div className="mt-3 overflow-x-auto">
@@ -102,8 +140,8 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                       metricKey === 'roic' && roicIsProxy,
                     )}
                   </td>
-                  <td className={`${TD} text-right text-[#374151] tabular-nums`}>
-                    {fmtPctl(subPctls[metricKey])}
+                  <td className={`${TD} text-right`}>
+                    <RankPill rank={subPctls[metricKey]} />
                   </td>
                   <td className={`${TD} text-[#6b7280]`}>
                     {direction === 'higher' ? '↑ higher' : '↓ lower'}

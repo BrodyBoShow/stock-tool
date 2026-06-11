@@ -35,9 +35,9 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-# Per the claude-api skill: default to the most capable model; the user can
-# switch to claude-sonnet-4-6 here to roughly halve cost on these large docs.
-MODEL = "claude-opus-4-8"
+# Sonnet 4.6 — chosen for cost on these large 10-K docs (~halves the per-summary
+# spend vs Opus). Switch to claude-opus-4-8 for the highest-quality summaries.
+MODEL = "claude-sonnet-4-6"
 PROMPT_VERSION = "v1"
 SCHEMA_VERSION = "v1"
 
