@@ -62,18 +62,14 @@ jobs:
         run: python scripts/ingest_insiders.py --max-fetches 6000
 
       # 8-K material events — CONTEXT ONLY. One submissions read per company
-      # (no document fetch), incremental by accession. Also before AI pre-gen
-      # so fresh events ground the briefs and the deep-dive timeline.
+      # (no document fetch), incremental by accession.
       - name: Refresh material events (8-K)
         continue-on-error: true
         run: python scripts/ingest_events.py --max-fetches 1200
 
-      # Pre-generate Decision Briefs + 10-K summaries for the watchlist and
-      # top screener names, so deep-dive pages open warm instead of showing a
-      # spinner. Runs AFTER scoring (briefs are keyed by score_date). Costs a
-      # few cents per night on Sonnet; skipped without the ANTHROPIC_API_KEY
-      # secret, and a model outage never fails the pipeline.
-      - name: Pre-generate AI briefs + summaries
-        if: ${{ env.ANTHROPIC_API_KEY != '' }}
-        continue-on-error: true
-        run: python scripts/pregenerate_ai.py
+      # NOTE: AI pre-generation (Decision Briefs, 10-K summaries, deep filing
+      # analysis) is intentionally NOT run nightly — it would spend on the
+      # Anthropic API every night regardless of use. Instead, all AI artifacts
+      # generate ON DEMAND when a deep-dive page is first opened and are cached
+      # (briefs by score_date, summaries/filing-analysis by accession), so spend
+      # tracks actual usage. To warm them manually, run scripts/pregenerate_ai.py.
