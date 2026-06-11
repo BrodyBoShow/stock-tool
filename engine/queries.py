@@ -555,3 +555,126 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
         conn.close()
 
     return deleted, ("deleted" if deleted else "not_found_thesis")
+
+
+# ── filings + AI summaries (read; summaries written via save_filing_summary) ────
+
+def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:
+    """Recent filings for a ticker (newest first)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT f.accession_no, f.form, f.filed_date,
+                       f.period_of_report, f.primary_doc_url
+                FROM filings f
+                JOIN securities s ON s.security_id = f.security_id
+                WHERE s.ticker = %s AND s.is_active
+                ORDER BY f.filed_date DESC
+                LIMIT %s
+                """,
+                (ticker, limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    return [dict(zip(cols, r, strict=True)) for r in rows]
+
+
+def latest_filing(ticker: str, form: str = "10-K") -> dict[str, Any] | None:
+    """Most recent filing of a given form for a ticker (incl. security_id)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.security_id, f.accession_no, f.form, f.filed_date,
+                       f.period_of_report, f.primary_doc_url
+                FROM filings f
+                JOIN securities s ON s.security_id = f.security_id
+                WHERE s.ticker = %s AND s.is_active AND f.form = %s
+                ORDER BY f.filed_date DESC
+                LIMIT 1
+                """,
+                (ticker, form),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    return dict(zip(cols, row, strict=True))
+
+
+def get_cached_summary(
+    accession_no: str, prompt_version: str, schema_version: str
+) -> dict[str, Any] | None:
+    """Cached AI summary for a filing (by accession + prompt/schema version)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT accession_no, form, summary, model,
+                       prompt_version, schema_version, generated_at
+                FROM ai_summaries
+                WHERE accession_no = %s AND prompt_version = %s AND schema_version = %s
+                LIMIT 1
+                """,
+                (accession_no, prompt_version, schema_version),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    d = dict(zip(cols, row, strict=True))
+    if isinstance(d.get("summary"), str):
+        d["summary"] = json.loads(d["summary"])
+    return d
+
+
+def save_filing_summary(
+    *,
+    security_id: int,
+    accession_no: str,
+    form: str | None,
+    summary: dict[str, Any],
+    model: str,
+    prompt_version: str,
+    schema_version: str,
+    input_tokens: int | None,
+    output_tokens: int | None,
+) -> None:
+    """Upsert a generated AI summary into the ai_summaries cache."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ai_summaries
+                  (security_id, accession_no, form, summary, model,
+                   prompt_version, schema_version, input_tokens, output_tokens,
+                   validation_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'valid')
+                ON CONFLICT (accession_no, prompt_version, schema_version)
+                DO UPDATE SET
+                  summary = EXCLUDED.summary,
+                  model = EXCLUDED.model,
+                  input_tokens = EXCLUDED.input_tokens,
+                  output_tokens = EXCLUDED.output_tokens,
+                  validation_status = 'valid',
+                  generated_at = NOW()
+                """,
+                (
+                    security_id, accession_no, form, json.dumps(summary), model,
+                    prompt_version, schema_version, input_tokens, output_tokens,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()

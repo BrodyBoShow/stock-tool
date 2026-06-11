@@ -65,11 +65,44 @@ class FundamentalPoint(BaseModel):
     value: float | None
 
 
+class FilingRow(BaseModel):
+    accession_no: str
+    form: str
+    filed_date: date
+    period_of_report: date | None
+    primary_doc_url: str | None
+
+
 class SecurityResponse(BaseModel):
     header: SecurityHeader
     prices: list[PricePoint]
     fundamentals: list[FundamentalPoint]
-    filings: list[Any]
+    filings: list[FilingRow]
+
+
+# ── AI filing summaries (Phase 10) ────────────────────────────────────────────
+
+class FilingSummaryContent(BaseModel):
+    overview: str
+    what_changed: list[str]
+    risk_factors: list[str]
+    key_metrics: list[str]
+
+
+class FilingSummary(BaseModel):
+    accession_no: str
+    form: str | None
+    summary: FilingSummaryContent
+    model: str | None
+    generated_at: datetime
+
+
+class SummaryStatusResponse(BaseModel):
+    ticker: str
+    has_filing: bool                  # is there a 10-K to summarize?
+    latest_accession: str | None
+    latest_filed_date: date | None
+    summary: FilingSummary | None     # cached summary if one exists
 
 
 # ── watchlist ─────────────────────────────────────────────────────────────────

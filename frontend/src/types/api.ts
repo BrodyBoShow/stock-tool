@@ -62,11 +62,42 @@ export interface FundamentalPoint {
   value: number | null
 }
 
+export interface FilingRow {
+  accession_no: string
+  form: string
+  filed_date: string
+  period_of_report: string | null
+  primary_doc_url: string | null
+}
+
 export interface SecurityResponse {
   header: SecurityHeader
   prices: PricePoint[]
   fundamentals: FundamentalPoint[]
-  filings: unknown[]
+  filings: FilingRow[]
+}
+
+export interface FilingSummaryContent {
+  overview: string
+  what_changed: string[]
+  risk_factors: string[]
+  key_metrics: string[]
+}
+
+export interface FilingSummary {
+  accession_no: string
+  form: string | null
+  summary: FilingSummaryContent
+  model: string | null
+  generated_at: string
+}
+
+export interface SummaryStatusResponse {
+  ticker: string
+  has_filing: boolean
+  latest_accession: string | null
+  latest_filed_date: string | null
+  summary: FilingSummary | null
 }
 
 export interface WatchlistRow {

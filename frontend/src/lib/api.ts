@@ -1,8 +1,10 @@
 import type {
+  FilingSummary,
   MacroLatestResponse,
   MacroSeriesResponse,
   ScreenerResponse,
   SecurityResponse,
+  SummaryStatusResponse,
   ThesesResponse,
   ThesisMutationResponse,
   ThesisUpsertRequest,
@@ -99,6 +101,20 @@ export function getMacroLatest(): Promise<MacroLatestResponse> {
 
 export function getMacroSeries(seriesId: string): Promise<MacroSeriesResponse> {
   return getJson<MacroSeriesResponse>(`/macro/series/${encodeURIComponent(seriesId)}`)
+}
+
+export function getSummaryStatus(ticker: string): Promise<SummaryStatusResponse> {
+  return getJson<SummaryStatusResponse>(
+    `/securities/${encodeURIComponent(ticker)}/summary`,
+  )
+}
+
+// TODO(auth): generation hits the Anthropic API and costs money — gate before public.
+export function generateSummary(ticker: string): Promise<FilingSummary> {
+  return sendJson<FilingSummary>(
+    'POST',
+    `/securities/${encodeURIComponent(ticker)}/summary`,
+  )
 }
 
 // TODO(auth): the write endpoints below are "auth-required before public" —
