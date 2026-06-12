@@ -49,11 +49,16 @@ def active_tickers() -> list[str]:
 
 
 def top_quote_tickers(limit: int = 300) -> list[str]:
-    """Top-N active tickers by latest composite — the bounded set for the live
-    overlay. Fetching live quotes for the whole ~5.5k universe is slow (yfinance)
-    and rate-limit-prone, so only the names at the top of the board (the ones the
-    user actually looks at) get intraday prices/scores; the long tail shows the
-    nightly close. Falls back to all active tickers if no scores exist yet.
+    """Top-N active tickers by latest composite, PLUS anything currently held
+    in the portfolio ledger — the bounded set for the live overlay. Fetching
+    live quotes for the whole ~5.5k universe is slow (yfinance) and rate-limit-
+    prone, so only the names at the top of the board and the user's own
+    holdings get intraday prices; the long tail shows the nightly close. Falls
+    back to all active tickers if no scores exist yet.
+
+    The held-shares check is raw buy-sell sums (no split adjustment) — a name
+    whose post-split sell zeroes the position could linger in the set, which
+    only costs one extra quote fetch.
     """
     conn = get_connection()
     try:
@@ -74,6 +79,20 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
                 (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, limit),
             )
             rows = [r[0] for r in cur.fetchall()]
+            cur.execute(
+                """
+                SELECT s.ticker
+                FROM portfolio_transactions t
+                JOIN securities s ON s.security_id = t.security_id
+                WHERE t.txn_type IN ('buy', 'sell')
+                GROUP BY s.ticker
+                HAVING SUM(CASE WHEN t.txn_type = 'buy' THEN t.shares
+                                ELSE -t.shares END) > 0
+                """
+            )
+            held = [r[0] for r in cur.fetchall()]
+            seen = set(rows)
+            rows += [t for t in held if t not in seen]
             return rows or active_tickers()
     finally:
         conn.close()

@@ -98,6 +98,9 @@ export function TopNav() {
           <NavLink to="/watchlist" className={link}>
             Watchlist
           </NavLink>
+          <NavLink to="/portfolio" className={link}>
+            Portfolio
+          </NavLink>
           <NavLink to="/theses" className={link}>
             Theses
           </NavLink>

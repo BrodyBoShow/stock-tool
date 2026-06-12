@@ -336,6 +336,62 @@ class ThesisMutationResponse(BaseModel):
     status: str  # "created" | "updated"
 
 
+# ── portfolio tracker (derived from the user ledger, migration 0014) ─────────
+
+class PortfolioTransactionCreate(BaseModel):
+    txn_type: str                     # buy|sell|dividend|deposit|withdrawal|fee
+    trade_date: date
+    ticker: str | None = None         # required for buy/sell/dividend
+    shares: float | None = None       # buy/sell
+    price: float | None = None        # buy/sell (per share)
+    amount: float | None = None       # cash moved (required for cash types)
+    note: str | None = None
+
+
+class PortfolioTransactionsCreateRequest(BaseModel):
+    transactions: list[PortfolioTransactionCreate]
+
+
+class PortfolioTransactionRow(BaseModel):
+    id: int
+    txn_type: str
+    trade_date: str
+    ticker: str | None
+    name: str | None
+    shares: float | None
+    price: float | None
+    amount: float | None
+    note: str | None
+
+
+class PortfolioTransactionsResponse(BaseModel):
+    rows: list[PortfolioTransactionRow]
+
+
+class PortfolioMutationResponse(BaseModel):
+    inserted: int
+    errors: list[str]
+
+
+class PortfolioResponse(BaseModel):
+    """Everything on the Portfolio tab, computed in one pass from the ledger.
+
+    summary/performance/allocation/factor_tilt/income are the engine's
+    self-contained document — typed loosely as dicts (same convention as
+    BacktestRunResponse); the frontend owns the chart-shaped typing.
+    """
+    has_transactions: bool
+    cash_tracking: bool | None = None
+    summary: dict | None = None
+    holdings: list[dict] = []
+    performance: dict | None = None
+    allocation: dict | None = None
+    factor_tilt: dict | None = None
+    income: dict | None = None
+    flags: list[dict] = []
+    warnings: list[str] = []
+
+
 # ── macro (FRED context — never feeds factor scores) ──────────────────────────
 
 class MacroObservation(BaseModel):

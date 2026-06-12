@@ -321,6 +321,144 @@ export interface HealthResponse {
   db: string
 }
 
+// ── Portfolio tracker (derived from the user ledger) ─────────────────────────
+
+export type PortfolioTxnType =
+  | 'buy'
+  | 'sell'
+  | 'dividend'
+  | 'deposit'
+  | 'withdrawal'
+  | 'fee'
+
+export interface PortfolioTransactionCreate {
+  txn_type: PortfolioTxnType
+  trade_date: string
+  ticker?: string | null
+  shares?: number | null
+  price?: number | null
+  amount?: number | null
+  note?: string | null
+}
+
+export interface PortfolioTransactionRow {
+  id: number
+  txn_type: PortfolioTxnType
+  trade_date: string
+  ticker: string | null
+  name: string | null
+  shares: number | null
+  price: number | null
+  amount: number | null
+  note: string | null
+}
+
+export interface PortfolioTransactionsResponse {
+  rows: PortfolioTransactionRow[]
+}
+
+export interface PortfolioMutationResponse {
+  inserted: number
+  errors: string[]
+}
+
+export interface PortfolioHolding {
+  security_id: number
+  ticker: string | null
+  name: string | null
+  sector: string | null
+  shares: number
+  avg_cost: number | null
+  cost_basis: number
+  last_price: number | null
+  prev_close: number | null
+  price_date: string | null
+  day_change_pct: number | null
+  market_value: number | null
+  weight: number | null
+  unrealized_pl: number | null
+  unrealized_pl_pct: number | null
+  realized_pl: number
+  dividends_received: number
+  composite: number | null
+  growth_pctl: number | null
+  value_pctl: number | null
+  quality_pctl: number | null
+  momentum_pctl: number | null
+}
+
+export interface PortfolioSummary {
+  total_value: number
+  positions_value: number
+  cash: number | null
+  cost_basis: number
+  net_invested: number
+  unrealized_pl: number
+  realized_pl: number
+  dividends_received: number
+  day_change: number | null
+  day_change_pct: number | null
+  first_date: string
+  as_of: string
+  twr_total: number | null
+  twr_cagr: number | null
+  volatility: number | null
+  sharpe: number | null
+  sortino: number | null
+  max_drawdown: number | null
+  beta: number | null
+  mwr: number | null
+  spy_total: number | null
+}
+
+export interface PortfolioPerformance {
+  dates: string[]
+  value: number[]
+  net_invested: number[]
+  twr_curve: number[]
+  spy_curve: number[]
+}
+
+export interface PortfolioAllocation {
+  sectors: { sector: string; value: number; weight: number | null }[]
+  cash: number | null
+}
+
+export interface PortfolioFactorTilt {
+  coverage: number
+  composite?: number
+  growth_pctl?: number
+  value_pctl?: number
+  quality_pctl?: number
+  momentum_pctl?: number
+}
+
+export interface PortfolioIncome {
+  ttm_received: number
+  forward_12m: number
+  yield_on_cost: number | null
+  yield_on_value: number | null
+}
+
+export interface PortfolioFlag {
+  level: 'warn' | 'info'
+  kind: string
+  text: string
+}
+
+export interface PortfolioResponse {
+  has_transactions: boolean
+  cash_tracking: boolean | null
+  summary: PortfolioSummary | null
+  holdings: PortfolioHolding[]
+  performance: PortfolioPerformance | null
+  allocation: PortfolioAllocation | null
+  factor_tilt: PortfolioFactorTilt | null
+  income: PortfolioIncome | null
+  flags: PortfolioFlag[]
+  warnings: string[]
+}
+
 // ── Factor Lab (stored backtest) ──────────────────────────────────────────────
 
 export interface BacktestCurveSet {

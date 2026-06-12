@@ -9,6 +9,10 @@ import type {
   InsiderResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
+  PortfolioMutationResponse,
+  PortfolioResponse,
+  PortfolioTransactionCreate,
+  PortfolioTransactionsResponse,
   QuotesResponse,
   ScreenerResponse,
   SecurityResponse,
@@ -228,4 +232,24 @@ export function upsertThesis(
 
 export function deleteThesis(ticker: string): Promise<void> {
   return sendJson<void>('DELETE', `/theses/${encodeURIComponent(ticker)}`)
+}
+
+export function getPortfolio(): Promise<PortfolioResponse> {
+  return getJson<PortfolioResponse>('/portfolio')
+}
+
+export function getPortfolioTransactions(): Promise<PortfolioTransactionsResponse> {
+  return getJson<PortfolioTransactionsResponse>('/portfolio/transactions')
+}
+
+export function addPortfolioTransactions(
+  transactions: PortfolioTransactionCreate[],
+): Promise<PortfolioMutationResponse> {
+  return sendJson<PortfolioMutationResponse>('POST', '/portfolio/transactions', {
+    transactions,
+  })
+}
+
+export function deletePortfolioTransaction(id: number): Promise<void> {
+  return sendJson<void>('DELETE', `/portfolio/transactions/${id}`)
 }
