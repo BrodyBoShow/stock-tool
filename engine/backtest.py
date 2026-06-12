@@ -46,18 +46,29 @@ def _rebalance_dates(start: date, end: date) -> list[date]:
     return out
 
 
-def _prices_at(cur, on: date, lookback_days: int = 7) -> dict[int, float]:
-    """Latest adj_close on/before `on` (within lookback) per security."""
-    cur.execute(
-        """
-        SELECT DISTINCT ON (security_id) security_id, adj_close
-        FROM prices_daily
-        WHERE date <= %s AND date >= %s AND adj_close IS NOT NULL
-        ORDER BY security_id, date DESC
-        """,
-        (on, on - timedelta(days=lookback_days)),
-    )
-    return {sid: float(ac) for sid, ac in cur.fetchall()}
+def _prices_at(on: date, lookback_days: int = 7) -> dict[int, float]:
+    """Latest adj_close on/before `on` (within lookback) per security.
+
+    Opens its own short-lived connection: scoring each rebalance date uses a
+    separate connection and takes seconds, so a long-lived one held across the
+    loop would be killed by the idle-in-transaction timeout.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT ON (security_id) security_id, adj_close
+                FROM prices_daily
+                WHERE date <= %s AND date >= %s AND adj_close IS NOT NULL
+                ORDER BY security_id, date DESC
+                """,
+                (on, on - timedelta(days=lookback_days)),
+            )
+            return {sid: float(ac) for sid, ac in cur.fetchall()}
+    finally:
+        if not conn.closed:
+            conn.close()
 
 
 def _bucket_returns(
@@ -167,29 +178,31 @@ def run_backtest(
         with conn.cursor() as cur:
             cur.execute("SELECT min(date), max(date) FROM prices_daily")
             pmin, pmax = cur.fetchone()
-            start = start or (pmin + timedelta(days=400))  # need 12m history for momentum
-            end = end or pmax
-            rebal = _rebalance_dates(start, end)
-            if len(rebal) < 4:
-                raise RuntimeError("backtest window too short")
-
-            print(f"[backtest] {config_version}: {len(rebal)} monthly rebalances "
-                  f"{rebal[0]}..{rebal[-1]}", flush=True)
-
-            scores: dict[date, pd.DataFrame] = {}
-            px: dict[date, dict[int, float]] = {}
-            factor_cols = list(FACTOR_DEFS_BY_VERSION[config_version].keys())
-            for i, t in enumerate(rebal, 1):
-                rep = score_run(config_version, write=False, log_job=False, as_of=t)["report"]
-                if complete_only:
-                    rep = rep.dropna(subset=factor_cols)
-                scores[t] = rep
-                px[t] = _prices_at(cur, t)
-                if i % 6 == 0:
-                    print(f"[backtest] scored {i}/{len(rebal)} ({t})", flush=True)
     finally:
         if not conn.closed:
             conn.close()
+    start = start or (pmin + timedelta(days=400))  # need 12m history for momentum
+    end = end or pmax
+    rebal = _rebalance_dates(start, end)
+    if len(rebal) < 4:
+        raise RuntimeError("backtest window too short")
+
+    print(f"[backtest] {config_version}: {len(rebal)} monthly rebalances "
+          f"{rebal[0]}..{rebal[-1]}", flush=True)
+
+    # Each iteration uses fresh short-lived connections (score_run owns its own,
+    # _prices_at owns its own) — nothing is held idle across the slow scoring.
+    scores: dict[date, pd.DataFrame] = {}
+    px: dict[date, dict[int, float]] = {}
+    factor_cols = list(FACTOR_DEFS_BY_VERSION[config_version].keys())
+    for i, t in enumerate(rebal, 1):
+        rep = score_run(config_version, write=False, log_job=False, as_of=t)["report"]
+        if complete_only:
+            rep = rep.dropna(subset=factor_cols)
+        scores[t] = rep
+        px[t] = _prices_at(t)
+        if i % 6 == 0:
+            print(f"[backtest] scored {i}/{len(rebal)} ({t})", flush=True)
 
     keys = {"composite": _backtest_key(rebal, scores, px, "composite", n_buckets, cost_bps)}
     for f in factor_cols:

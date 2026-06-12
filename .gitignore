@@ -17,3 +17,4 @@ __pycache__/
 # Local Streamlit run logs
 streamlit_out.txt
 streamlit_err.txt
+backtest_full.log
