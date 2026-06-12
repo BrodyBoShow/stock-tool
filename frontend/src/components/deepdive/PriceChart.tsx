@@ -15,11 +15,23 @@ import { MACRO_DISPLAY } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
 import type { MacroObservation, PricePoint } from '@/types/api'
 
-export const RANGES = [
-  { label: '1Y', days: 365 },
-  { label: '3Y', days: 1095 },
-  { label: '5Y', days: 1825 },
-] as const
+/** Range presets. YTD is computed at render (days since Jan 1) so it stays
+ *  correct over time. 5Y already covers the full ~5-year price history (a
+ *  separate "Max" added nothing and was dropped). */
+function buildRanges(): { label: string; days: number }[] {
+  const now = new Date()
+  const jan1 = new Date(now.getFullYear(), 0, 1)
+  const ytd = Math.max(1, Math.ceil((now.getTime() - jan1.getTime()) / 86_400_000))
+  return [
+    { label: '1M', days: 30 },
+    { label: '3M', days: 90 },
+    { label: '6M', days: 180 },
+    { label: 'YTD', days: ytd },
+    { label: '1Y', days: 365 },
+    { label: '3Y', days: 1095 },
+    { label: '5Y', days: 1825 },
+  ]
+}
 
 const OVERLAY_COLOR = '#7c3aed' // violet — distinct from the blue price line
 
@@ -100,6 +112,7 @@ export function PriceChart({
 }) {
   const [overlayOn, setOverlayOn] = useState(false)
   const [seriesId, setSeriesId] = useState('VIXCLS')
+  const ranges = useMemo(buildRanges, [])
 
   const priceRows = useMemo<ChartRow[]>(
     () =>
@@ -141,8 +154,8 @@ export function PriceChart({
             Adjusted close (splits &amp; dividends) · nightly data
           </div>
         </div>
-        <div className="flex gap-1 rounded-lg bg-[#f1f5f9] p-1">
-          {RANGES.map((r) => (
+        <div className="flex flex-wrap gap-1 rounded-lg bg-[#f1f5f9] p-1">
+          {ranges.map((r) => (
             <button
               key={r.label}
               type="button"
