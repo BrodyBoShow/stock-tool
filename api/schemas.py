@@ -397,10 +397,13 @@ class PortfolioResponse(BaseModel):
 class MarketOverviewResponse(BaseModel):
     """Self-contained market-overview document (same loose-dict convention as
     BacktestRunResponse/PortfolioResponse — the frontend owns display typing).
-    brief is computed sentences, NOT AI-generated (free + deterministic)."""
+    brief is computed sentences, NOT AI-generated (free + deterministic).
+    ai_brief is the cached once-per-day Haiku narrative, or null until the tab
+    is first opened that day (the frontend then POSTs /market/brief to make it)."""
     as_of: str
     cache_age_seconds: float
     brief: list[str]
+    ai_brief: dict | None = None
     market: dict
     sectors: list[dict]
     breadth: dict
@@ -409,6 +412,13 @@ class MarketOverviewResponse(BaseModel):
     filings: list[dict]
     insider_buys: list[dict]
     headlines: list[dict]
+
+
+class MarketBriefResponse(BaseModel):
+    """Result of generating (or fetching today's cached) AI market brief.
+    ai_brief is null only if generation failed (e.g. no API key/credits) — the
+    page keeps showing the computed brief in that case."""
+    ai_brief: dict | None = None
 
 
 # ── macro (FRED context — never feeds factor scores) ──────────────────────────

@@ -1,12 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getMarketOverview, getQuotes } from '@/lib/api'
+import { generateMarketBrief, getMarketOverview, getQuotes } from '@/lib/api'
 import { fmtDate, fmtMoney } from '@/lib/format'
 import type {
+  MarketAiBrief,
   MarketMacroCard,
   MarketMover,
   MarketOverviewResponse,
@@ -200,7 +202,87 @@ function timeAgo(epoch: number): string {
   return hrs < 24 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`
 }
 
+/** AI market brief — the narrative read. Falls back to the computed bullets
+ *  (shown by the caller) when it's not yet generated. */
+function AiBrief({
+  brief,
+  computed,
+  generating,
+}: {
+  brief: MarketAiBrief | null
+  computed: string[]
+  generating: boolean
+}) {
+  if (!brief) {
+    return (
+      <div>
+        {generating && (
+          <div className="mb-3 flex items-center gap-2 text-[0.78rem] font-semibold text-[#4f46e5]">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#4f46e5]" />
+            Writing today's market summary…
+          </div>
+        )}
+        <ul className="space-y-2">
+          {computed.map((s) => (
+            <li key={s} className="flex items-start gap-2.5 text-[0.9rem] leading-relaxed text-[#334155]">
+              <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#94a3b8]" />
+              {s}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-[#eef2ff] px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wide text-[#4f46e5]">
+          {brief.regime.label}
+        </span>
+        <span className="text-[0.72rem] text-[#94a3b8]">{brief.regime.rationale}</span>
+      </div>
+      <p className="mt-2.5 text-[1.05rem] font-bold leading-snug text-[#0f172a]">
+        {brief.headline}
+      </p>
+      <div className="mt-3 space-y-2.5">
+        {brief.narrative.map((p) => (
+          <p key={p} className="text-[0.9rem] leading-relaxed text-[#334155]">{p}</p>
+        ))}
+      </div>
+      {brief.watch.length > 0 && (
+        <div className="mt-4 rounded-lg border border-[#eef1f6] bg-[#f8fafc] p-3.5">
+          <div className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+            What to watch next
+          </div>
+          <ul className="mt-1.5 space-y-1.5">
+            {brief.watch.map((w) => (
+              <li key={w} className="flex items-start gap-2 text-[0.84rem] leading-relaxed text-[#475569]">
+                <span className="mt-[0.4rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#4f46e5]" />
+                {w}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <details className="mt-3 border-t border-[#f1f5f9] pt-2.5">
+        <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-[#9ca3af] hover:text-[#64748b]">
+          By the numbers
+        </summary>
+        <ul className="mt-1.5 space-y-1 pl-1">
+          {computed.map((s) => (
+            <li key={s} className="flex items-start gap-2 text-[0.78rem] text-[#64748b]">
+              <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-[#cbd5e1]" />
+              {s}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  )
+}
+
 export function MarketPage() {
+  const qc = useQueryClient()
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ['market', 'overview'],
     queryFn: getMarketOverview,
@@ -213,6 +295,25 @@ export function MarketPage() {
     queryFn: getQuotes,
     staleTime: 5 * 60 * 1000,
   })
+
+  // Auto-generate the day's AI brief ONCE when the tab is first opened and
+  // today's isn't cached. One attempt per page mount (a null result = no
+  // credits/key) so a dry balance never loops; success refetches the overview
+  // so the cached brief renders.
+  const briefMut = useMutation({
+    mutationFn: generateMarketBrief,
+    onSuccess: (res) => {
+      if (res.ai_brief) void qc.invalidateQueries({ queryKey: ['market', 'overview'] })
+    },
+  })
+  const attempted = useRef(false)
+  const aiBrief = data?.ai_brief ?? null
+  useEffect(() => {
+    if (data && !aiBrief && !attempted.current) {
+      attempted.current = true
+      briefMut.mutate()
+    }
+  }, [data, aiBrief, briefMut])
 
   if (isPending) {
     return (
@@ -284,19 +385,16 @@ export function MarketPage() {
         </div>
       </header>
 
-      {/* morning brief */}
+      {/* morning brief (AI narrative, generated once/day; computed fallback) */}
       <SectionCard
         title="Morning brief"
-        hint="Assembled from the numbers on this page — computed, not AI-generated, so it's free and always current."
+        hint={
+          aiBrief
+            ? 'AI-written once per day from the numbers on this page (Haiku) — grounded only in this data, not advice.'
+            : "Assembled from the numbers on this page. The AI narrative writes once when you open the tab."
+        }
       >
-        <ul className="space-y-2">
-          {d.brief.map((s) => (
-            <li key={s} className="flex items-start gap-2.5 text-[0.9rem] leading-relaxed text-[#334155]">
-              <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#4f46e5]" />
-              {s}
-            </li>
-          ))}
-        </ul>
+        <AiBrief brief={aiBrief} computed={d.brief} generating={briefMut.isPending} />
       </SectionCard>
 
       {/* sectors */}

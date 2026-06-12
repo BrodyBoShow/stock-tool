@@ -400,6 +400,24 @@ export interface MarketHeadline {
   published_epoch: number
 }
 
+export interface MarketAiBrief {
+  headline: string
+  narrative: string[]
+  regime: { label: string; rationale: string }
+  watch: string[]
+  _meta?: {
+    model: string | null
+    input_tokens: number | null
+    output_tokens: number | null
+    est_cost_usd: number | null
+    generated_at: string | null
+  }
+}
+
+export interface MarketBriefResponse {
+  ai_brief: MarketAiBrief | null
+}
+
 export interface MarketOverviewResponse {
   as_of: string
   cache_age_seconds: number
@@ -409,6 +427,7 @@ export interface MarketOverviewResponse {
     spy_r1d: number | null
     universe_ew_r1d: number | null
   }
+  ai_brief: MarketAiBrief | null
   sectors: MarketSectorRow[]
   breadth: MarketBreadth
   movers: { gainers: MarketMover[]; losers: MarketMover[] }

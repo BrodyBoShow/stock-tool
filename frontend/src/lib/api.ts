@@ -9,6 +9,7 @@ import type {
   InsiderResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
+  MarketBriefResponse,
   MarketOverviewResponse,
   PortfolioMutationResponse,
   PortfolioResponse,
@@ -237,6 +238,11 @@ export function deleteThesis(ticker: string): Promise<void> {
 
 export function getMarketOverview(): Promise<MarketOverviewResponse> {
   return getJson<MarketOverviewResponse>('/market/overview')
+}
+
+// TODO(auth): generation hits the Anthropic API — gate before public.
+export function generateMarketBrief(): Promise<MarketBriefResponse> {
+  return sendJson<MarketBriefResponse>('POST', '/market/brief')
 }
 
 export function getPortfolio(): Promise<PortfolioResponse> {
