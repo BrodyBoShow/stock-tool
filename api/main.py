@@ -25,7 +25,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.routers import macro, quotes, screener, securities, theses, watchlist
+from api.routers import lab, macro, quotes, screener, securities, theses, watchlist
 from api.schemas import HealthResponse
 from engine.db import healthcheck
 
@@ -101,6 +101,7 @@ app.include_router(watchlist.router, prefix="/watchlist", tags=["watchlist"])
 app.include_router(theses.router, prefix="/theses", tags=["theses"])
 app.include_router(macro.router, prefix="/macro", tags=["macro"])
 app.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
+app.include_router(lab.router, prefix="/lab", tags=["lab"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])

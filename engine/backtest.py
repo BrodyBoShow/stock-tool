@@ -21,6 +21,7 @@ This validates the RANKING METHODOLOGY directionally. It is not a strategy.
 
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 import numpy as np
@@ -104,6 +105,20 @@ def _curve_stats(period_returns: list[float]) -> dict:
     }
 
 
+def _cum_curve(returns: list[float | None]) -> list[float]:
+    """Cumulative growth-of-$1 from per-period returns (None treated as flat)."""
+    out, level = [], 1.0
+    for r in returns:
+        level *= 1.0 + (r or 0.0)
+        out.append(round(level, 4))
+    return out
+
+
+def _win_rate(returns: list[float | None]) -> float | None:
+    r = [x for x in returns if x is not None]
+    return round(sum(1 for x in r if x > 0) / len(r), 4) if r else None
+
+
 def _backtest_key(
     rebal: list[date], scores: dict[date, pd.DataFrame], px: dict[date, dict[int, float]],
     rank_col: str, n_buckets: int, cost_bps: float,
@@ -114,6 +129,7 @@ def _backtest_key(
     turnovers: list[float] = []
     prev_top: set[int] = set()
     avg_counts: dict[int, list[int]] = {b: [] for b in range(1, n_buckets + 1)}
+    dates: list[str] = []  # period END dates, aligned with the series above
 
     for t, t_next in zip(rebal[:-1], rebal[1:], strict=False):
         rep = scores.get(t)
@@ -130,6 +146,7 @@ def _backtest_key(
         means, counts = _bucket_returns(ranks.loc[common], fwd.loc[common], n_buckets)
         if not means:
             continue
+        dates.append(str(t_next))
         # turnover of the top bucket vs last period (round-trip cost estimate)
         rk = ranks.loc[common].rank(method="first")
         top_ids = set(rk[pd.qcut(rk, n_buckets, labels=False) + 1 == n_buckets].index)
@@ -156,7 +173,85 @@ def _backtest_key(
         "long_short": _curve_stats(ls_series),
         "avg_turnover": float(np.mean(turnovers)) if turnovers else None,
         "periods": len(ls_series),
+        "win_rate_top": _win_rate(bucket_series[n_buckets]),
+        "win_rate_ls": _win_rate(ls_series),
+        "curves": {
+            "dates": dates,
+            "top": _cum_curve(bucket_series[n_buckets]),
+            "bottom": _cum_curve(bucket_series[1]),
+            "long_short": _cum_curve(ls_series),
+        },
+        "bucket_cagrs": {b: buckets[b].get("cagr") for b in range(1, n_buckets + 1)},
     }
+
+
+def _benchmark_curves(rebal: list[date], px: dict[date, dict[int, float]],
+                      scores: dict[date, pd.DataFrame]) -> dict:
+    """Growth-of-$1 curves for SPY and the equal-weight scored universe."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT security_id FROM securities WHERE ticker = 'SPY' LIMIT 1")
+            row = cur.fetchone()
+            spy_sid = row[0] if row else None
+    finally:
+        if not conn.closed:
+            conn.close()
+
+    dates: list[str] = []
+    spy_rets: list[float | None] = []
+    ew_rets: list[float | None] = []
+    for t, t_next in zip(rebal[:-1], rebal[1:], strict=False):
+        p0, p1 = px[t], px[t_next]
+        dates.append(str(t_next))
+        spy_rets.append(
+            p1[spy_sid] / p0[spy_sid] - 1.0
+            if spy_sid is not None and spy_sid in p0 and spy_sid in p1 else None
+        )
+        rep = scores.get(t)
+        if rep is not None:
+            sids = [s for s in rep.index if s in p0 and s in p1 and p0[s] > 0]
+            ew_rets.append(
+                float(np.mean([p1[s] / p0[s] - 1.0 for s in sids])) if sids else None
+            )
+        else:
+            ew_rets.append(None)
+    return {
+        "dates": dates,
+        "spy": _cum_curve(spy_rets),
+        "universe_ew": _cum_curve(ew_rets),
+        "spy_stats": _curve_stats(spy_rets),
+        "universe_ew_stats": _curve_stats(ew_rets),
+    }
+
+
+def store_results(out: dict) -> int:
+    """Persist a run to backtest_results (the Lab page reads the latest row)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO backtest_results
+                  (config_version, start_date, end_date, params, results)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING backtest_id
+                """,
+                (
+                    out["config_version"], out["start"], out["end"],
+                    json.dumps({"n_buckets": out["n_buckets"],
+                                "cost_bps": out["cost_bps"],
+                                "rebalances": out["rebalances"]}),
+                    json.dumps({"results": out["results"],
+                                "benchmarks": out.get("benchmarks")}),
+                ),
+            )
+            bid = cur.fetchone()[0]
+        conn.commit()
+        return int(bid)
+    finally:
+        if not conn.closed:
+            conn.close()
 
 
 def run_backtest(
@@ -207,6 +302,7 @@ def run_backtest(
     keys = {"composite": _backtest_key(rebal, scores, px, "composite", n_buckets, cost_bps)}
     for f in factor_cols:
         keys[f] = _backtest_key(rebal, scores, px, f, n_buckets, cost_bps)
+    benchmarks = _benchmark_curves(rebal, px, scores)
 
     return {
         "config_version": config_version,
@@ -216,4 +312,5 @@ def run_backtest(
         "n_buckets": n_buckets,
         "cost_bps": cost_bps,
         "results": keys,
+        "benchmarks": benchmarks,
     }

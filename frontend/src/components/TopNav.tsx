@@ -101,6 +101,9 @@ export function TopNav() {
           <NavLink to="/theses" className={link}>
             Theses
           </NavLink>
+          <NavLink to="/lab" className={link}>
+            Lab
+          </NavLink>
           <span className="h-5 w-px bg-[#e5e7eb]" aria-hidden="true" />
           <RefreshButton />
         </div>

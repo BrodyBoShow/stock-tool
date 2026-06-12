@@ -320,3 +320,54 @@ export interface HealthResponse {
   status: string
   db: string
 }
+
+// ── Factor Lab (stored backtest) ──────────────────────────────────────────────
+
+export interface BacktestCurveSet {
+  dates: string[] // period-end dates, aligned with the value arrays
+  top: number[] // growth of $1, top quintile
+  bottom: number[]
+  long_short: number[]
+}
+
+export interface BacktestCurveStats {
+  total_return: number | null
+  cagr: number | null
+  sharpe: number | null
+  max_drawdown: number | null
+}
+
+export interface BacktestBucketStats extends BacktestCurveStats {
+  avg_names: number
+}
+
+export interface BacktestKeyResult {
+  buckets: Record<string, BacktestBucketStats> // "1".."5"
+  long_short: BacktestCurveStats
+  avg_turnover: number | null
+  periods: number
+  win_rate_top: number | null
+  win_rate_ls: number | null
+  curves: BacktestCurveSet
+  bucket_cagrs: Record<string, number | null>
+}
+
+export interface BacktestBenchmarks {
+  dates: string[]
+  spy: number[]
+  universe_ew: number[]
+  spy_stats: BacktestCurveStats
+  universe_ew_stats: BacktestCurveStats
+}
+
+export interface BacktestRunResponse {
+  has_results: boolean
+  backtest_id: number | null
+  config_version: string | null
+  generated_at: string | null
+  start_date: string | null
+  end_date: string | null
+  params: { n_buckets: number; cost_bps: number; rebalances: number } | null
+  results: Record<string, BacktestKeyResult> | null
+  benchmarks: BacktestBenchmarks | null
+}

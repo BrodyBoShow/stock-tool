@@ -79,6 +79,44 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
         conn.close()
 
 
+def latest_backtest(config_version: str = ACTIVE_CONFIG_VERSION) -> dict[str, Any] | None:
+    """Most recent stored backtest run for the Lab page; None if never run."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT backtest_id, config_version, generated_at,
+                       start_date, end_date, params, results
+                FROM backtest_results
+                WHERE config_version = %s
+                ORDER BY generated_at DESC
+                LIMIT 1
+                """,
+                (config_version,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return None
+    bid, cv, gen, sd, ed, params, results = row
+    if isinstance(params, str):
+        params = json.loads(params)
+    if isinstance(results, str):
+        results = json.loads(results)
+    return {
+        "backtest_id": int(bid),
+        "config_version": cv,
+        "generated_at": gen.isoformat(),
+        "start_date": str(sd),
+        "end_date": str(ed),
+        "params": params,
+        "results": results.get("results", {}),
+        "benchmarks": results.get("benchmarks"),
+    }
+
+
 def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], date | None]:
     """Active securities at the latest score_date with last two prices.
 

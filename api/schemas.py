@@ -49,6 +49,24 @@ class QuotesResponse(BaseModel):
     quotes: dict[str, QuoteRow] # ticker -> latest (delayed ~15m) quote
 
 
+class BacktestRunResponse(BaseModel):
+    """Latest stored backtest run for the Lab page.
+
+    results/benchmarks are the engine's self-contained jsonb document (bucket
+    stats, win rates, growth-of-$1 curves; SPY + universe equal-weight). Typed
+    loosely as dicts — the frontend owns the chart-shaped typing.
+    """
+    has_results: bool
+    backtest_id: int | None = None
+    config_version: str | None = None
+    generated_at: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    params: dict | None = None
+    results: dict | None = None
+    benchmarks: dict | None = None
+
+
 # ── securities (deep-dive) ────────────────────────────────────────────────────
 
 class SecurityHeader(BaseModel):

@@ -4,6 +4,7 @@ import { AuthGate } from '@/components/AuthGate'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { TopNav } from '@/components/TopNav'
 import { DeepDivePage } from '@/pages/DeepDivePage'
+import { LabPage } from '@/pages/LabPage'
 import { ScreenerPage } from '@/pages/ScreenerPage'
 import { ThesesPage } from '@/pages/ThesesPage'
 import { WatchlistPage } from '@/pages/WatchlistPage'
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/securities/:ticker" element={<DeepDivePage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/theses" element={<ThesesPage />} />
+            <Route path="/lab" element={<LabPage />} />
             <Route
               path="*"
               element={

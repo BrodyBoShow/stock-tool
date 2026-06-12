@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from engine.backtest import run_backtest  # noqa: E402
+from engine.backtest import run_backtest, store_results  # noqa: E402
 from engine.queries import ACTIVE_CONFIG_VERSION  # noqa: E402
 
 
@@ -126,6 +126,8 @@ def main() -> int:
     ap.add_argument("--cost-bps", type=float, default=10.0)
     ap.add_argument("--config", default=ACTIVE_CONFIG_VERSION)
     ap.add_argument("--out", type=Path, default=None, help="Write a Markdown report here.")
+    ap.add_argument("--store", action="store_true",
+                    help="Persist results to backtest_results (feeds the Lab page).")
     args = ap.parse_args()
 
     out = run_backtest(
@@ -137,6 +139,9 @@ def main() -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(build_markdown(out), encoding="utf-8")
         print(f"\n[backtest] wrote {args.out}")
+    if args.store:
+        bid = store_results(out)
+        print(f"[backtest] stored backtest_results id {bid}")
     return 0
 
 

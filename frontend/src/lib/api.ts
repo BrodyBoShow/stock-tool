@@ -1,4 +1,5 @@
 import type {
+  BacktestRunResponse,
   BriefStatusResponse,
   DecisionBrief,
   EventsResponse,
@@ -92,6 +93,10 @@ export function getQuotes(): Promise<QuotesResponse> {
 
 export function getScreener(completeOnly = true): Promise<ScreenerResponse> {
   return getJson<ScreenerResponse>(`/screener?complete_only=${completeOnly}`)
+}
+
+export function getBacktest(): Promise<BacktestRunResponse> {
+  return getJson<BacktestRunResponse>('/lab/backtest')
 }
 
 export function getSecurity(ticker: string, days?: number): Promise<SecurityResponse> {

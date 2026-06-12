@@ -38,8 +38,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run backtest -> reports/backtest_latest.md
-        run: python scripts/run_backtest.py --out reports/backtest_latest.md
+      # --store feeds the Lab page (backtest_results table); --out keeps the
+      # repo-viewable Markdown report.
+      - name: Run backtest -> Lab page + reports/backtest_latest.md
+        run: python scripts/run_backtest.py --store --out reports/backtest_latest.md
 
       - name: Commit refreshed report (only if it changed)
         run: |
