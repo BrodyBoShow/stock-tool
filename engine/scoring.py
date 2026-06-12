@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -167,16 +167,22 @@ def _load_weights(cur, config_version: str) -> dict[str, float]:
     return {k: float(v) for k, v in row[0].items()}
 
 
-def _load_latest_metrics(cur) -> pd.DataFrame:
-    """Latest value per (security, metric) from fundamental_metrics."""
+def _load_latest_metrics(cur, as_of: date | None = None) -> pd.DataFrame:
+    """Latest value per (security, metric) from fundamental_metrics.
+
+    as_of restricts to snapshots known by that date (as_of_date <= as_of) —
+    the point-in-time view the backtester needs; None = newest available.
+    """
     cur.execute(
         """
         SELECT DISTINCT ON (m.security_id, m.metric)
                m.security_id, m.metric, m.value
         FROM fundamental_metrics m
         WHERE m.metric_version = 'v1'
+          AND (%s::date IS NULL OR m.as_of_date <= %s)
         ORDER BY m.security_id, m.metric, m.as_of_date DESC
-        """
+        """,
+        (as_of, as_of),
     )
     df = pd.DataFrame(cur.fetchall(), columns=["security_id", "metric", "value"])
     if df.empty:
@@ -188,12 +194,13 @@ def _load_latest_metrics(cur) -> pd.DataFrame:
 def _load_price_inputs(cur, score_date) -> pd.DataFrame:
     """Latest close + 3/6/12-month total returns per security."""
     start = score_date - timedelta(days=max(MOMENTUM_WINDOWS.values()) + 40)
+    # Cap at score_date so a backtest never sees a future price (no look-ahead).
     cur.execute(
         """
         SELECT security_id, date, close, adj_close
-        FROM prices_daily WHERE date >= %s
+        FROM prices_daily WHERE date >= %s AND date <= %s
         """,
-        (start,),
+        (start, score_date),
     )
     px = pd.DataFrame(cur.fetchall(), columns=["security_id", "date", "close", "adj_close"])
     px["close"] = px["close"].astype(float)
@@ -227,7 +234,7 @@ def _load_price_inputs(cur, score_date) -> pd.DataFrame:
     return pd.DataFrame.from_dict(out, orient="index")
 
 
-def _load_insider_signal(cur) -> pd.DataFrame:
+def _load_insider_signal(cur, as_of: date | None = None) -> pd.DataFrame:
     """Discretionary insider net-buy value per security over the window.
 
     Open-market buys (code P) minus sells (code S), EXCLUDING pre-scheduled
@@ -236,8 +243,10 @@ def _load_insider_signal(cur) -> pd.DataFrame:
     else is absent (NaN), so the sparse signal never penalizes the ~80% of
     names with no insider trading. Scaled by market cap in run(), where it's
     available. Buys are the documented signal; the asymmetry is preserved by
-    netting at value and letting buys push the rank up.
+    netting at value and letting buys push the rank up. as_of (point-in-time)
+    bounds the window to [as_of - window, as_of] and to filings known by then.
     """
+    eff = as_of or date.today()
     cur.execute(
         """
         SELECT s.security_id,
@@ -251,10 +260,12 @@ def _load_insider_signal(cur) -> pd.DataFrame:
         JOIN securities s ON s.security_id = it.security_id
         WHERE it.transaction_code IN ('P', 'S')
           AND coalesce(it.plan_10b5_1, false) = false
-          AND it.transaction_date >= CURRENT_DATE - %s * INTERVAL '1 month'
+          AND it.transaction_date >= %s::date - %s * INTERVAL '1 month'
+          AND it.transaction_date <= %s::date
+          AND it.filed_date <= %s::date
         GROUP BY s.security_id
         """,
-        (INSIDER_WINDOW_MONTHS,),
+        (eff, INSIDER_WINDOW_MONTHS, eff, eff),
     )
     out = {}
     for sid, buy_v, sell_v, buy_n, sell_n in cur.fetchall():
@@ -266,19 +277,23 @@ def _load_insider_signal(cur) -> pd.DataFrame:
     return pd.DataFrame.from_dict(out, orient="index")
 
 
-def _load_score_time_fundamentals(cur) -> pd.DataFrame:
+def _load_score_time_fundamentals(cur, as_of: date | None = None) -> pd.DataFrame:
     """Per-security shares, debt, cash, EBITDA and the ROIC-pool flag.
 
     Recomputed from xbrl_facts at each security's latest snapshot using the
     Phase 5 helpers (same hygiene, same debt composition, same anchoring).
+    as_of restricts to facts filed by that date so the snapshot anchors at the
+    latest filing then known — point-in-time for the backtester; None = newest.
     """
     cur.execute(
         """
         SELECT security_id, concept, normalized_concept, unit, value,
                period_start, period_end, fiscal_period, filed_date
-        FROM xbrl_facts WHERE normalized_concept = ANY(%s)
+        FROM xbrl_facts
+        WHERE normalized_concept = ANY(%s)
+          AND (%s::date IS NULL OR filed_date <= %s)
         """,
-        (list(SCORE_TIME_CONCEPTS),),
+        (list(SCORE_TIME_CONCEPTS), as_of, as_of),
     )
     by_sid: dict[int, list[Fact]] = defaultdict(list)
     for row in cur.fetchall():
@@ -289,8 +304,11 @@ def _load_score_time_fundamentals(cur) -> pd.DataFrame:
     cur.execute(
         """
         SELECT security_id, ex_date, ratio FROM corporate_actions
-        WHERE action_type = 'split' AND ratio IS NOT NULL ORDER BY ex_date
-        """
+        WHERE action_type = 'split' AND ratio IS NOT NULL
+          AND (%s::date IS NULL OR ex_date <= %s)
+        ORDER BY ex_date
+        """,
+        (as_of, as_of),
     )
     splits_by_sid: dict[int, list] = defaultdict(list)
     for sid, ex, ratio in cur.fetchall():
@@ -352,6 +370,7 @@ def run(
     config_version: str = DEFAULT_CONFIG_VERSION,
     write: bool = True,
     log_job: bool = True,
+    as_of: date | None = None,
 ) -> dict:
     """Score the universe under `config_version`.
 
@@ -359,6 +378,12 @@ def run(
     (score_config). write=False is a dry run: everything is computed and the
     report returned, but factor_scores is NOT written — used to validate a
     config before cutover. log_job=False skips the job_runs bookkeeping.
+
+    as_of (a past date) reconstructs the point-in-time scores known then: the
+    score_date becomes the latest price bar on/before as_of, and every loader is
+    restricted to data filed/dated by then (no look-ahead). The backtester calls
+    run(as_of=T, write=False, log_job=False) across a grid of dates. as_of=None
+    is the normal "score today" path.
     """
     factor_defs = FACTOR_DEFS_BY_VERSION.get(config_version)
     if factor_defs is None:
@@ -372,8 +397,13 @@ def run(
     conn = get_connection()
     with conn.cursor() as cur:
         weights = _load_weights(cur, config_version)
-        cur.execute("SELECT max(date) FROM prices_daily")
+        if as_of is None:
+            cur.execute("SELECT max(date) FROM prices_daily")
+        else:
+            cur.execute("SELECT max(date) FROM prices_daily WHERE date <= %s", (as_of,))
         score_date = cur.fetchone()[0]
+        if score_date is None:
+            raise RuntimeError(f"no price data on/before as_of={as_of}")
         cur.execute(
             "SELECT security_id, ticker FROM securities WHERE is_active ORDER BY ticker"
         )
@@ -393,10 +423,10 @@ def run(
 
     try:
         with conn.cursor() as cur:
-            metrics = _load_latest_metrics(cur)
+            metrics = _load_latest_metrics(cur, as_of)
             prices = _load_price_inputs(cur, score_date)
-            fundamentals = _load_score_time_fundamentals(cur)
-            insiders = _load_insider_signal(cur) if uses_insider else pd.DataFrame()
+            fundamentals = _load_score_time_fundamentals(cur, as_of)
+            insiders = _load_insider_signal(cur, as_of) if uses_insider else pd.DataFrame()
 
         df = metrics.join(prices, how="outer").join(fundamentals, how="outer")
         if not insiders.empty:
