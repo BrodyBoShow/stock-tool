@@ -1,8 +1,6 @@
 """Shared data-access layer — pure SQL functions over the DB.
 
-No Streamlit dependency. Returns plain Python dicts/lists/frozensets.
-Called directly by api/ routers. web/app.py continues to use its own
-cached wrappers (it is being retired as a dev harness).
+Returns plain Python dicts/lists/frozensets. Called directly by api/ routers.
 
 Write operations are scoped strictly to `watchlist`, `theses`, and the AI
 result caches (`ai_summaries`, `decision_briefs`). Pipeline tables (securities,

@@ -7,7 +7,6 @@ anthropic
 pydantic
 beautifulsoup4
 lxml
-streamlit
 plotly
 fastapi
 uvicorn
