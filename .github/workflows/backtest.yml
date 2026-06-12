@@ -1,0 +1,54 @@
+# Monthly point-in-time factor backtest. Runs in the cloud (nobody runs it by
+# hand) and commits the latest results to reports/backtest_latest.md, so you
+# just open that file on GitHub to see how the model is holding up.
+#
+# Schedule: 06:00 UTC on the 2nd of each month — after a new month of prices
+# and any month-end filings have landed, so the new rebalance has real data.
+# Also runnable on demand (workflow_dispatch) right after you change weights.
+
+name: Monthly factor backtest
+
+on:
+  schedule:
+    - cron: "0 6 2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to commit the refreshed report
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90   # ~47 monthly re-scores of the full universe
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backtest -> reports/backtest_latest.md
+        run: python scripts/run_backtest.py --out reports/backtest_latest.md
+
+      - name: Commit refreshed report (only if it changed)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/backtest_latest.md
+          if git diff --cached --quiet; then
+            echo "No change in backtest report."
+          else
+            git commit -m "Backtest: refresh reports/backtest_latest.md [skip ci]"
+            git push
+          fi
