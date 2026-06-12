@@ -95,6 +95,9 @@ export function TopNav() {
           <NavLink to="/" end className={link}>
             Screener
           </NavLink>
+          <NavLink to="/market" className={link}>
+            Market
+          </NavLink>
           <NavLink to="/watchlist" className={link}>
             Watchlist
           </NavLink>

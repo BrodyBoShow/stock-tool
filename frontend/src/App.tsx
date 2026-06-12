@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { TopNav } from '@/components/TopNav'
 import { DeepDivePage } from '@/pages/DeepDivePage'
 import { LabPage } from '@/pages/LabPage'
+import { MarketPage } from '@/pages/MarketPage'
 import { PortfolioPage } from '@/pages/PortfolioPage'
 import { ScreenerPage } from '@/pages/ScreenerPage'
 import { ThesesPage } from '@/pages/ThesesPage'
@@ -18,6 +19,7 @@ export default function App() {
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<ScreenerPage />} />
+            <Route path="/market" element={<MarketPage />} />
             <Route path="/securities/:ticker" element={<DeepDivePage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />

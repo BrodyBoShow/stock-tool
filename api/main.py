@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
 from api.routers import (
     lab,
     macro,
+    market,
     portfolio,
     quotes,
     screener,
@@ -94,6 +95,15 @@ async def _generic_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
+@app.on_event("startup")
+def _warm_market_cache() -> None:
+    """Start the ~20s market-overview computation in a background thread at
+    boot, so the Market tab is usually instant by the time the browser opens."""
+    from engine import market as market_engine
+
+    market_engine.warm()
+
+
 @app.get("/auth/check", tags=["meta"])
 def auth_check() -> dict:
     """Returns 200 when the request is authorized (or no password is set).
@@ -112,6 +122,7 @@ app.include_router(macro.router, prefix="/macro", tags=["macro"])
 app.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
 app.include_router(lab.router, prefix="/lab", tags=["lab"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
+app.include_router(market.router, prefix="/market", tags=["market"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])

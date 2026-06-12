@@ -321,6 +321,108 @@ export interface HealthResponse {
   db: string
 }
 
+// ── Market overview (Market tab) ──────────────────────────────────────────────
+
+export interface MarketSectorRow {
+  sector: string
+  n: number
+  r1d: number | null
+  r1w: number | null
+  r1m: number | null
+  r3m: number | null
+  rytd: number | null
+  adv_pct: number | null
+}
+
+export interface MarketBreadth {
+  advancers: number
+  decliners: number
+  unchanged: number
+  n: number
+  pct_above_ma50: number | null
+  pct_above_ma200: number | null
+  new_highs: number
+  new_lows: number
+}
+
+export interface MarketMover {
+  security_id: number
+  ticker: string
+  name: string | null
+  sector: string | null
+  market_cap: number | null
+  r1d: number
+  close: number
+}
+
+export interface MarketMacroCard {
+  id: string
+  label: string
+  unit: string
+  dec: number
+  latest: number
+  as_of: string
+  delta: number | null
+  spark_dates: string[]
+  spark_values: number[]
+}
+
+export interface MarketFilingRow {
+  security_id: number
+  ticker: string | null
+  name: string | null
+  sector: string | null
+  market_cap: number | null
+  filed_date: string
+  event_date: string | null
+  form: string
+  items: string[]
+  labels: string[]
+  primary_doc_url: string | null
+  accession_no: string
+}
+
+export interface MarketInsiderBuy {
+  security_id: number
+  ticker: string | null
+  name: string | null
+  sector: string | null
+  market_cap: number | null
+  total_value: number | null
+  buyers: number
+  last_filed: string
+}
+
+export interface MarketHeadline {
+  source: string
+  title: string
+  url: string
+  published_epoch: number
+}
+
+export interface MarketOverviewResponse {
+  as_of: string
+  cache_age_seconds: number
+  brief: string[]
+  market: {
+    spy_close: number | null
+    spy_r1d: number | null
+    universe_ew_r1d: number | null
+  }
+  sectors: MarketSectorRow[]
+  breadth: MarketBreadth
+  movers: { gainers: MarketMover[]; losers: MarketMover[] }
+  macro: {
+    cards: MarketMacroCard[]
+    curve_bps: number | null
+    cpi_yoy: number | null
+    cpi_as_of: string | null
+  }
+  filings: MarketFilingRow[]
+  insider_buys: MarketInsiderBuy[]
+  headlines: MarketHeadline[]
+}
+
 // ── Portfolio tracker (derived from the user ledger) ─────────────────────────
 
 export type PortfolioTxnType =

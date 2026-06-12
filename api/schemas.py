@@ -392,6 +392,25 @@ class PortfolioResponse(BaseModel):
     warnings: list[str] = []
 
 
+# ── market overview (Market tab — whole-market context, never feeds scores) ──
+
+class MarketOverviewResponse(BaseModel):
+    """Self-contained market-overview document (same loose-dict convention as
+    BacktestRunResponse/PortfolioResponse — the frontend owns display typing).
+    brief is computed sentences, NOT AI-generated (free + deterministic)."""
+    as_of: str
+    cache_age_seconds: float
+    brief: list[str]
+    market: dict
+    sectors: list[dict]
+    breadth: dict
+    movers: dict
+    macro: dict
+    filings: list[dict]
+    insider_buys: list[dict]
+    headlines: list[dict]
+
+
 # ── macro (FRED context — never feeds factor scores) ──────────────────────────
 
 class MacroObservation(BaseModel):

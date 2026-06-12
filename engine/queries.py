@@ -93,6 +93,9 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
             held = [r[0] for r in cur.fetchall()]
             seen = set(rows)
             rows += [t for t in held if t not in seen]
+            # SPY rides along as the market pulse for the Market tab header.
+            if "SPY" not in seen and "SPY" not in held:
+                rows.append("SPY")
             return rows or active_tickers()
     finally:
         conn.close()

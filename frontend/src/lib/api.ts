@@ -9,6 +9,7 @@ import type {
   InsiderResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
+  MarketOverviewResponse,
   PortfolioMutationResponse,
   PortfolioResponse,
   PortfolioTransactionCreate,
@@ -232,6 +233,10 @@ export function upsertThesis(
 
 export function deleteThesis(ticker: string): Promise<void> {
   return sendJson<void>('DELETE', `/theses/${encodeURIComponent(ticker)}`)
+}
+
+export function getMarketOverview(): Promise<MarketOverviewResponse> {
+  return getJson<MarketOverviewResponse>('/market/overview')
 }
 
 export function getPortfolio(): Promise<PortfolioResponse> {
