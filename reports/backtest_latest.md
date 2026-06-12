@@ -1,6 +1,6 @@
 # Factor backtest — latest run
 
-_Generated 2026-06-12 01:48 UTC • auto-updated by `.github/workflows/backtest.yml`; do not edit by hand._
+_Generated 2026-06-12 02:47 UTC • auto-updated by `.github/workflows/backtest.yml`; do not edit by hand._
 
 **Config** `v2_linear` • **Window** 2022-08-01 → 2026-06-01 (47 monthly rebalances) • **Buckets** 5 • **Cost** 10.0bps/side • equal-weight
 
