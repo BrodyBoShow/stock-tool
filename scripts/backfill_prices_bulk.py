@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from engine.prices import run_bulk_backfill  # noqa: E402
+from engine.prices import make_provider, run_bulk_backfill  # noqa: E402
 
 
 def main() -> int:
@@ -29,9 +29,14 @@ def main() -> int:
         "--all", action="store_true",
         help="Also re-touch tickers that already have prices (default: only missing).",
     )
+    ap.add_argument(
+        "--provider", default="yfinance", choices=["yfinance", "tiingo"],
+        help="Price source. tiingo needs TIINGO_API_KEY; its FREE tier caps at "
+             "~500 unique symbols/month, so use it for small scopes unless paid.",
+    )
     args = ap.parse_args()
 
-    s = run_bulk_backfill(only_missing=not args.all)
+    s = run_bulk_backfill(make_provider(args.provider), only_missing=not args.all)
     print("\n=== Bulk price backfill summary ===")
     print(f"  Tickers in scope        : {s['tickers_total']}")
     print(f"  Tickers loaded          : {s['tickers_loaded']}")

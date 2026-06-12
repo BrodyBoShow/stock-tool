@@ -13,11 +13,13 @@ the split basis with fundamentals happens later in Phase 5.
 from __future__ import annotations
 
 import math
+import os
 import time
 from abc import ABC, abstractmethod
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
+import httpx
 import pandas as pd
 import yfinance as yf
 from dotenv import load_dotenv
@@ -114,6 +116,93 @@ class YFinanceProvider(PriceProvider):
             if col not in df.columns:
                 df[col] = None
         return df[PRICE_COLUMNS]
+
+
+class TiingoProvider(PriceProvider):
+    """Tiingo EOD provider (official API, requires TIINGO_API_KEY in .env).
+
+    Free-tier limits (verified 2026-06): ~500 UNIQUE SYMBOLS/MONTH and ~50
+    symbols/hour — fine for watchlist-scale jobs and as a resilient fallback,
+    NOT for the full ~5.5k-name nightly (that stays on yfinance unless on a
+    paid Tiingo plan). Returns the same normalized frame as YFinanceProvider:
+    raw OHLC + adjClose, divCash as dividend, splitFactor as split (their
+    "no split" is 1.0, ours is 0 — mapped below so corporate_actions doesn't
+    get a fake split row every day).
+    """
+
+    name = "tiingo"
+    BASE = "https://api.tiingo.com/tiingo/daily/{ticker}/prices"
+
+    def __init__(self) -> None:
+        self._token = os.getenv("TIINGO_API_KEY")
+        if not self._token:
+            raise RuntimeError("TIINGO_API_KEY is not set in .env (free key: tiingo.com).")
+        self._client = httpx.Client(
+            timeout=30,
+            headers={"Accept": "application/json"},
+        )
+
+    def fetch(self, ticker: str, start: date, end: date) -> pd.DataFrame:
+        params = {
+            "startDate": start.isoformat(),
+            "endDate": end.isoformat(),
+            "format": "json",
+            "token": self._token,
+        }
+        last_exc: Exception | None = None
+        for attempt in range(len(RETRY_BACKOFF) + 1):
+            try:
+                resp = self._client.get(self.BASE.format(ticker=ticker), params=params)
+                if resp.status_code == 404:
+                    return pd.DataFrame(columns=PRICE_COLUMNS)
+                if resp.status_code == 429:
+                    # Normalized message so _is_rate_limit() recognizes it.
+                    raise RuntimeError(f"Too Many Requests (Tiingo 429) for {ticker}")
+                resp.raise_for_status()
+                rows = resp.json()
+                if not rows:
+                    return pd.DataFrame(columns=PRICE_COLUMNS)
+                return self._normalize(rows)
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                if attempt < len(RETRY_BACKOFF):
+                    time.sleep(RETRY_BACKOFF[attempt])
+        raise last_exc  # type: ignore[misc]
+
+    @staticmethod
+    def _normalize(rows: list[dict]) -> pd.DataFrame:
+        out = []
+        for r in rows:
+            split = _f(r.get("splitFactor"))
+            out.append({
+                "date": pd.to_datetime(r["date"]).date(),
+                "open": _f(r.get("open")),
+                "high": _f(r.get("high")),
+                "low": _f(r.get("low")),
+                "close": _f(r.get("close")),
+                "adj_close": _f(r.get("adjClose")),
+                "volume": _f(r.get("volume")),
+                "dividend": _f(r.get("divCash")),
+                # Tiingo emits splitFactor=1.0 on every non-split day; our
+                # schema uses 0/None for "no split" (only >0 rows become
+                # corporate_actions).
+                "split": 0.0 if split is None or split == 1.0 else split,
+            })
+        return pd.DataFrame(out, columns=PRICE_COLUMNS)
+
+    def close(self) -> None:
+        self._client.close()
+
+
+PROVIDERS = {"yfinance": YFinanceProvider, "tiingo": TiingoProvider}
+
+
+def make_provider(name: str | None) -> PriceProvider:
+    """Instantiate a provider by name; default yfinance."""
+    cls = PROVIDERS.get((name or "yfinance").lower())
+    if cls is None:
+        raise ValueError(f"Unknown price provider {name!r}; options: {sorted(PROVIDERS)}")
+    return cls()
 
 
 def _load_universe(cur) -> list[tuple[int, str]]:
