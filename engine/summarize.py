@@ -37,7 +37,7 @@ load_dotenv(_PROJECT_ROOT / ".env")
 
 # Sonnet 4.6 — chosen for cost on these large 10-K docs (~halves the per-summary
 # spend vs Opus). Switch to claude-opus-4-8 for the highest-quality summaries.
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-haiku-4-5"  # budget model (cost choice 2026-06-11); see brief.py note
 PROMPT_VERSION = "v1"
 SCHEMA_VERSION = "v1"
 

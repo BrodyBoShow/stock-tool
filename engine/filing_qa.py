@@ -34,7 +34,8 @@ from engine.summarize import _largest_span, fetch_filing_text
 
 # Opus 4.8 — this is the one place we spend for maximum depth and reasoning
 # over a large filing context. Cached by accession so it's paid once per filing.
-MODEL = "claude-opus-4-8"
+MODEL = "claude-haiku-4-5"  # was Opus — ~80% cheaper (cost choice 2026-06-11). The
+# deep-diligence read loses some nuance; one-line change back if it disappoints.
 PROMPT_VERSION = "v1"
 SCHEMA_VERSION = "v1"
 

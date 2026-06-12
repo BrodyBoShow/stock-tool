@@ -35,7 +35,8 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # Sonnet 4.6 — matches the filing summarizer's cost choice; the input here is a
 # small quant snapshot (~3-4k tokens). Switch to claude-opus-4-8 for the
 # highest-quality synthesis.
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-haiku-4-5"  # budget model: ~70% cheaper than Sonnet; quality is
+# good for this structured task. Bump back to claude-sonnet-4-6 if briefs feel thin.
 PROMPT_VERSION = "v4"  # v2: insider; v3: 8-K events; v4: score_read meta-layer
 SCHEMA_VERSION = "v2"  # v2: added score_read {drivers, blind_spot}
 
