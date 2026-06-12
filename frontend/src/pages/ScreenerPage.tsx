@@ -84,7 +84,6 @@ export function ScreenerPage() {
         scoreDate={data.score_date}
         rows={rows}
         quotesAsOfEpoch={quotes && !quotes.stale ? quotes.as_of_epoch : null}
-        scoresLive={false}
       />
       <div className="flex items-start gap-5">
         <FilterSidebar

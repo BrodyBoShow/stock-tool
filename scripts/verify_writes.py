@@ -194,7 +194,7 @@ finally:
 
 rows = thesis_rows(sid)
 if len(rows) == 1 and rows[0]["summary"] == "Test thesis body":
-    ok(f"save -> 1 row, summary correct")
+    ok("save -> 1 row, summary correct")
 else:
     fail(f"save -> {rows}")
 
@@ -233,7 +233,7 @@ if r["summary"] != "Updated thesis":
     fail(f"upsert summary wrong: {r['summary']}")
 if r["updated_at"] == original_updated_at:
     fail("upsert did not change updated_at")
-ok(f"edit (upsert) -> still 1 row, summary updated, updated_at changed")
+ok("edit (upsert) -> still 1 row, summary updated, updated_at changed")
 
 # Check that review_date was updated to future_date
 rd = r.get("review_date")

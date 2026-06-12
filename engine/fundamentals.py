@@ -43,6 +43,7 @@ import httpx
 from dotenv import load_dotenv
 
 from engine.db import get_connection
+from engine.db import reopen as _reopen
 from engine.jobs import finish_job, start_job
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -367,21 +368,6 @@ def _coverage_warnings(
             f"candidate raw tags: {candidates or 'none found'}"
         )
     return out
-
-
-def _reopen(conn):
-    """Close a possibly-stale connection best-effort and return a fresh one.
-
-    Same Windows/Supabase-pooler hazard as the price backfill: libpq keepalive
-    tuning is ignored on Windows, so a dropped idle connection leaves a half-open
-    socket the next write blocks on. Reopening defensively avoids the hang.
-    """
-    try:
-        if conn is not None and not conn.closed:
-            conn.close()
-    except Exception:  # noqa: BLE001
-        pass
-    return get_connection()
 
 
 def run(

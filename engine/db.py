@@ -79,6 +79,23 @@ def get_connection() -> psycopg.Connection:
     return conn
 
 
+def reopen(conn: psycopg.Connection | None) -> psycopg.Connection:
+    """Close a possibly-stale connection best-effort and return a fresh one.
+
+    On Windows, libpq ignores fine-grained TCP keepalives and tcp_user_timeout
+    is Linux-only, so when the Supabase pooler (or a network blip) drops a
+    connection the next use can block inside a socket read with no timeout.
+    Long-running jobs therefore never trust a long-lived or recently-idle
+    connection — they call this instead of hanging.
+    """
+    try:
+        if conn is not None and not conn.closed:
+            conn.close()
+    except Exception:  # noqa: BLE001
+        pass
+    return get_connection()
+
+
 def healthcheck() -> bool:
     """Run `SELECT 1` against the database and return True on success.
 

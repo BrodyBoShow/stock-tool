@@ -25,6 +25,7 @@ import yfinance as yf
 from dotenv import load_dotenv
 
 from engine.db import get_connection
+from engine.db import reopen as _reopen
 from engine.jobs import finish_job, start_job
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -289,23 +290,6 @@ def _is_rate_limit(exc: BaseException) -> bool:
     return "ratelimit" in name or "too many requests" in msg or "rate limited" in msg
 
 
-def _reopen(conn):
-    """Close a (possibly stale) connection best-effort and return a fresh one.
-
-    On Windows, libpq's keepalives_idle/interval are ignored, so a Supabase
-    pooler that silently drops an idle connection leaves a half-open socket the
-    next write blocks on for up to the OS keepalive default (~2h). For a
-    multi-hour backfill we therefore never trust a long-lived or recently-idle
-    connection — we reopen it (cheap relative to the work) instead of hanging.
-    """
-    try:
-        if conn is not None and not conn.closed:
-            conn.close()
-    except Exception:  # noqa: BLE001
-        pass
-    return get_connection()
-
-
 def run_bulk_backfill(
     provider: PriceProvider | None = None,
     *,
@@ -318,15 +302,15 @@ def run_bulk_backfill(
     max_long_waits: int = 24,
     reconnect_every: int = 250,
     stale_after_seconds: float = 25.0,
+    limit: int | None = None,
 ) -> dict:
     """One-time historical backfill tuned for the large expanded universe.
 
-    The standard per-ticker ``run()`` treats a rate-limited fetch the same as a
-    genuinely empty one — it backs off only briefly, marks the ticker empty, and
-    moves on, so under Yahoo's throttle it churns the whole universe loading
-    nothing. This runner instead *recognizes* a rate-limit (YFRateLimitError /
-    "Too Many Requests"), sleeps through a long escalating cooldown, and retries
-    the SAME ticker rather than skipping it.
+    The single price loop in the codebase (the nightly refresh and one-time
+    backfills both use it). A naive per-ticker loop treats a rate-limited fetch
+    the same as a genuinely empty one and skips it; this runner *recognizes* a
+    rate-limit (YFRateLimitError / "Too Many Requests"), sleeps through a long
+    escalating cooldown, and retries the SAME ticker rather than skipping it.
 
     - ``only_missing``: skip securities that already have any price rows (the
       original S&P 500 names) so we spend requests only on the new universe.
@@ -355,6 +339,8 @@ def run_bulk_backfill(
             latest = _latest_dates(cur)
         if only_missing:
             universe = [(sid, t) for sid, t in universe if sid not in latest]
+        if limit is not None:
+            universe = universe[:limit]
         scope = len(universe)
         print(f"[bulk] backfilling {scope} tickers (only_missing={only_missing}, "
               f"active_only={active_only})", flush=True)
@@ -500,99 +486,6 @@ def run_bulk_backfill(
         "tickers_loaded": loaded,
         "tickers_empty": empty,
         "tickers_failed": failed,
-        "price_rows_upserted": total_rows,
-        "splits_captured": total_splits,
-        "dividends_captured": total_dividends,
-        "warnings": warnings,
-        "job_id": job_id,
-    }
-
-
-def run(provider: PriceProvider | None = None, limit: int | None = None) -> dict:
-    """Ingest prices + corporate actions for the universe. Returns a summary."""
-    provider = provider or YFinanceProvider()
-    today = datetime.now(UTC).date()
-    end = today + timedelta(days=1)  # yfinance end is exclusive
-    backfill_start = today - timedelta(days=365 * BACKFILL_YEARS)
-
-    warnings: list[str] = []
-    tickers_loaded = 0
-    tickers_failed = 0
-    tickers_empty = 0
-    total_rows = 0
-    total_splits = 0
-    total_dividends = 0
-
-    conn = get_connection()
-    job_id = start_job(conn, JOB_NAME, job_version=JOB_VERSION, data_date=today)
-
-    try:
-        with conn.cursor() as cur:
-            universe = _load_universe(cur)
-            latest = _latest_dates(cur)
-
-        if limit is not None:
-            universe = universe[:limit]
-
-        for security_id, ticker in universe:
-            start = latest.get(security_id)
-            # Incremental: refetch from last stored date (re-upsert it) forward.
-            start = start if start is not None else backfill_start
-            if start >= end:
-                continue
-            try:
-                df = provider.fetch(ticker, start, end)
-            except Exception as exc:  # noqa: BLE001
-                tickers_failed += 1
-                warnings.append(f"{ticker}: fetch failed - {exc!r}")
-                time.sleep(THROTTLE_SECONDS)
-                continue
-
-            if df is None or df.empty:
-                tickers_empty += 1
-                warnings.append(f"{ticker}: no data returned for {start}..{today}")
-                time.sleep(THROTTLE_SECONDS)
-                continue
-
-            try:
-                with conn.cursor() as cur:
-                    n = _upsert_prices(cur, security_id, df)
-                    s, d = _upsert_actions(cur, security_id, df)
-                conn.commit()
-            except Exception as exc:  # noqa: BLE001
-                conn.rollback()
-                tickers_failed += 1
-                warnings.append(f"{ticker}: db write failed - {exc!r}")
-                time.sleep(THROTTLE_SECONDS)
-                continue
-
-            tickers_loaded += 1
-            total_rows += n
-            total_splits += s
-            total_dividends += d
-            time.sleep(THROTTLE_SECONDS)
-
-        finish_job(
-            conn,
-            job_id,
-            status="success",
-            rows_affected=total_rows,
-            warnings=warnings or None,
-        )
-    except Exception as exc:  # noqa: BLE001
-        conn.rollback()
-        finish_job(conn, job_id, status="failed", error=str(exc), warnings=warnings or None)
-        conn.close()
-        raise
-    finally:
-        if not conn.closed:
-            conn.close()
-
-    return {
-        "tickers_total": len(universe),
-        "tickers_loaded": tickers_loaded,
-        "tickers_empty": tickers_empty,
-        "tickers_failed": tickers_failed,
         "price_rows_upserted": total_rows,
         "splits_captured": total_splits,
         "dividends_captured": total_dividends,

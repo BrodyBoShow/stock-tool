@@ -346,7 +346,8 @@ def backfill_sectors_from_sic(commit_every: int = 50, reconnect_every: int = 200
     uses). Only rows with sector IS NULL are touched, so real GICS data is
     never overwritten. Progress prints flush per batch (supervisor-friendly).
     """
-    from engine.fundamentals import SUBMISSIONS_URL, SecClient, _reopen
+    from engine.db import reopen as _reopen
+    from engine.fundamentals import SUBMISSIONS_URL, SecClient
 
     conn = get_connection()
     today = datetime.now(UTC).date()
@@ -431,23 +432,6 @@ def backfill_sectors_from_sic(commit_every: int = 50, reconnect_every: int = 200
           f"unmapped={unmapped} failed={failed}", flush=True)
     return {"updated": updated, "no_sic": no_sic, "unmapped": unmapped,
             "failed": failed, "job_id": job_id}
-
-
-def _upsert_membership_named(cur, security_id: int, today, universe_name: str) -> bool:
-    cur.execute(
-        """
-        INSERT INTO universe_membership (security_id, universe_name, start_date, end_date, source)
-        SELECT %s, %s, %s, NULL, 'sec_exchange'
-        WHERE NOT EXISTS (
-            SELECT 1 FROM universe_membership
-            WHERE security_id = %s AND universe_name = %s AND end_date IS NULL
-        )
-        ON CONFLICT (security_id, universe_name, start_date) DO NOTHING
-        RETURNING security_id
-        """,
-        (security_id, universe_name, today, security_id, universe_name),
-    )
-    return cur.fetchone() is not None
 
 
 def run() -> dict:
