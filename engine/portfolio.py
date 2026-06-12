@@ -394,6 +394,7 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     xirr_flows: list[tuple[date, float]] = []
     prev_value: float | None = None
     prev_spy: float | None = None
+    last_flow = 0.0  # final day's external flow, for a flow-adjusted day change
 
     def cash_amt(t: dict) -> float:
         """Actual cash moved by a buy/sell (broker total wins over shares×price)."""
@@ -515,6 +516,7 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
             values.append(round(value, 2))
             invested_series.append(round(net_invested, 2))
         prev_value = value
+        last_flow = flow
 
     # ── snapshot: holdings as of the last day ────────────────────────────────
     last_day = timeline[-1]
@@ -584,7 +586,14 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     total_unreal = sum(h["unrealized_pl"] or 0 for h in holdings)
     total_real = sum(realized.values())
     total_divs = sum(div_received.values())
+    # day change is FLOW-ADJUSTED (the last day's TWR return): buying shares on
+    # the final day must not show up as a "gain", so the base is prior value +
+    # that day's external flow.
     prev_day_value = values[-2] if len(values) >= 2 else None
+    day_change = day_change_pct = None
+    if twr_rets and prev_day_value is not None:
+        day_change_pct = round(twr_rets[-1], 6)
+        day_change = round((prev_day_value + last_flow) * twr_rets[-1], 2)
 
     summary = {
         "total_value": round(total_value, 2),
@@ -595,10 +604,8 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
         "unrealized_pl": round(total_unreal, 2),
         "realized_pl": round(total_real, 2),
         "dividends_received": round(total_divs, 2),
-        "day_change": (round(total_value - prev_day_value, 2)
-                       if prev_day_value else None),
-        "day_change_pct": (round(total_value / prev_day_value - 1.0, 6)
-                           if prev_day_value else None),
+        "day_change": day_change,
+        "day_change_pct": day_change_pct,
         "first_date": str(first_date),
         "as_of": str(last_day),
         **stats,

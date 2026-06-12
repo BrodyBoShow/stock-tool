@@ -770,15 +770,6 @@ export function PortfolioPage() {
         </div>
       </header>
 
-      {data.warnings.map((w) => (
-        <div
-          key={w}
-          className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-[0.82rem] text-amber-800"
-        >
-          {w}
-        </div>
-      ))}
-
       {/* summary stats */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
@@ -929,6 +920,19 @@ export function PortfolioPage() {
         <div className="mt-4">
           <LedgerTable rows={ledgerRows} />
         </div>
+        {data.warnings.length > 0 && (
+          <details className="mt-3 border-t border-[#f1f5f9] pt-2.5">
+            <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-[#9ca3af] hover:text-[#64748b]">
+              Data notes ({data.warnings.length}) — minor ledger gaps, e.g.
+              broker reinvest rows not imported
+            </summary>
+            <ul className="mt-1.5 space-y-1 pl-4 text-[0.72rem] text-[#9ca3af]">
+              {data.warnings.map((w) => (
+                <li key={w} className="list-disc">{w}</li>
+              ))}
+            </ul>
+          </details>
+        )}
       </SectionCard>
 
       <p className="pb-2 text-center text-xs text-[#9ca3af]">
