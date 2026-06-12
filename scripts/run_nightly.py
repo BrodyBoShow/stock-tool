@@ -3,7 +3,15 @@
 Steps (in order):
   1. Incremental price refresh          (engine.prices)
   2. Price sanity check                 (engine.price_sanity)  ← HALT if fails
-  3. Factor scoring                     (engine.scoring)
+  3. Fundamentals refresh               (engine.fundamentals)
+  4. Derived metrics                    (engine.metrics)
+  5. Factor scoring                     (engine.scoring)
+
+Fundamentals + metrics moved into the nightly on 2026-06-12: companies file
+10-Qs/10-Ks every day (especially in earnings season), and waiting for the
+Sunday weekly left ranks computed on stale numbers — plus the weekly's old
+resume=True bug meant existing companies were never refreshed at all. The two
+steps add ~30-45 min, well inside the workflow timeout.
 
 Usage:
     python scripts/run_nightly.py
@@ -19,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from engine import price_sanity, prices, scoring  # noqa: E402
+from engine import fundamentals, metrics, price_sanity, prices, scoring  # noqa: E402
 
 
 def main() -> int:
@@ -66,8 +74,35 @@ def main() -> int:
 
     print("  Sanity gate PASSED.")
 
-    # --- step 3: factor scoring ---
-    print("\n=== [3/3] Factor scoring ===")
+    # --- step 3: fundamentals refresh ---
+    # resume=False: re-fetch every active company so new 10-Q/10-K facts land
+    # daily (resume=True is a backfill flag that would skip everyone).
+    print("\n=== [3/5] Fundamentals refresh ===")
+    fi = fundamentals.run(resume=False)
+    print(
+        f"  Companies {fi['companies_processed']}/{fi['companies_total']}  "
+        f"filings {fi['filings_rows']}  facts {fi['fact_rows']}  "
+        f"failed {fi['companies_failed']}  "
+        f"job_runs id {fi['job_id']}"
+    )
+    if fi["warnings"]:
+        print(f"  Warnings: {len(fi['warnings'])} (see job_runs id {fi['job_id']})")
+
+    # --- step 4: derived metrics ---
+    print("\n=== [4/5] Derived metrics ===")
+    me = metrics.run()
+    print(
+        f"  Companies {me['companies_done']}/{me['companies_total']}  "
+        f"metric rows {me['metric_rows']}  "
+        f"non-USD filers {me.get('non_usd_companies', 0)}  "
+        f"failed {me['companies_failed']}  "
+        f"job_runs id {me['job_id']}"
+    )
+    if me["warnings"]:
+        print(f"  Warnings: {len(me['warnings'])} (see job_runs id {me['job_id']})")
+
+    # --- step 5: factor scoring ---
+    print("\n=== [5/5] Factor scoring ===")
     sc = scoring.run()
     print(
         f"  score_date {sc['score_date']}  "

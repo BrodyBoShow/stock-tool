@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -90,8 +90,10 @@ UNIT_RULES = {
     "eps_diluted": "USD/shares",
     "shares_outstanding": "shares",
 }
-DEFAULT_UNIT = "USD"  # every other normalized concept is a USD money amount
+DEFAULT_UNIT = "USD"  # money default; foreign filers use their dominant currency
 EPS_FACT_BOUND = 1000.0
+# JPY/KRW-scale EPS can legitimately run to tens of thousands per share.
+EPS_FACT_BOUND_NON_USD = 100_000.0
 MARGIN_BOUNDS = (-1.0, 1.0)
 
 MAX_STORED_WARNINGS = 200
@@ -162,16 +164,49 @@ class Fact:
         return self.ps is None
 
 
-def fact_is_clean(f: Fact) -> bool:
-    """Unit + plausibility hygiene; quarantines filer tagging errors."""
-    expected_unit = UNIT_RULES.get(f.normalized, DEFAULT_UNIT)
+def fact_is_clean(f: Fact, ccy: str = "USD") -> bool:
+    """Unit + plausibility hygiene; quarantines filer tagging errors.
+
+    `ccy` is the company's dominant reporting currency: foreign private
+    issuers (ASML EUR, SONY JPY, ENB CAD, ...) file in their home currency,
+    and rejecting those facts wholesale (the old USD-only rule) zeroed out
+    every metric for them. Mixed-currency strays still get quarantined —
+    only the dominant currency's facts pass. Callers that must stay USD-only
+    (scoring's EV/EBITDA inputs, which cross with USD prices) use the default.
+    """
+    if f.normalized == "shares_outstanding":
+        expected_unit = "shares"
+    elif f.normalized in ("eps_basic", "eps_diluted"):
+        expected_unit = f"{ccy}/shares"
+    else:
+        expected_unit = ccy
     if f.unit != expected_unit:
         return False
-    if f.normalized in ("eps_basic", "eps_diluted") and abs(f.value) > EPS_FACT_BOUND:
+    bound = EPS_FACT_BOUND if ccy == "USD" else EPS_FACT_BOUND_NON_USD
+    if f.normalized in ("eps_basic", "eps_diluted") and abs(f.value) > bound:
         return False
     if f.normalized == "shares_outstanding" and f.value < 0:
         return False
     return True
+
+
+def dominant_currency(facts: list[Fact]) -> str:
+    """The company's reporting currency: the most common money unit across its
+    facts. USD wins whenever it has a substantial share (>= 40%) — dual-currency
+    filers like PDD report USD alongside the home currency, and choosing USD
+    enables the price-based metrics."""
+    counts: Counter[str] = Counter()
+    for f in facts:
+        if f.normalized in ("eps_basic", "eps_diluted"):
+            if "/" in f.unit:
+                counts[f.unit.split("/", 1)[0]] += 1
+        elif f.normalized != "shares_outstanding":
+            counts[f.unit] += 1
+    if not counts:
+        return "USD"
+    if counts.get("USD", 0) >= 0.4 * sum(counts.values()):
+        return "USD"
+    return counts.most_common(1)[0][0]
 
 
 def snapshot(facts: list[Fact], as_of: date) -> list[Fact]:
@@ -395,9 +430,19 @@ def total_debt_at(snap: list[Fact], pe: date) -> float | None:
 # --------------------------------------------------------------------------
 
 def compute_company_metrics(
-    facts: list[Fact], splits: list[tuple[date, float]], as_of_dates: list[date]
+    facts: list[Fact],
+    splits: list[tuple[date, float]],
+    as_of_dates: list[date],
+    usd: bool = True,
 ) -> tuple[dict[date, dict[str, float]], dict]:
-    """Compute all metrics at each as_of date. Returns (results, diagnostics)."""
+    """Compute all metrics at each as_of date. Returns (results, diagnostics).
+
+    usd=False (foreign-currency filer): the absolute-money metrics
+    (ttm_revenue, fcf, ttm_eps) are NOT written — downstream they divide USD
+    prices/market cap, which would silently mix currencies. All the
+    same-currency ratios (margins, ROIC, leverage, growth, accruals) are
+    computed normally in the native currency.
+    """
     results: dict[date, dict[str, float]] = {}
     diag = {
         "recon_issues": set(),
@@ -417,7 +462,7 @@ def compute_company_metrics(
         rev_ttm, _rev_end, rev_issue = ttm(snap, "revenue")
         if rev_issue:
             diag["recon_issues"].add(rev_issue)
-        if rev_ttm is not None:
+        if rev_ttm is not None and usd:
             m["ttm_revenue"] = rev_ttm
 
         gp_ttm, _, _ = ttm(snap, "gross_profit")
@@ -454,7 +499,7 @@ def compute_company_metrics(
                 del m[margin]
                 diag["margin_nulled"].add(margin)
 
-        if ocf_ttm is not None:
+        if ocf_ttm is not None and usd:
             m["fcf"] = ocf_ttm - (capex_ttm or 0.0)
 
         # --- balance sheet (anchored on equity's newest period_end) ---
@@ -537,7 +582,8 @@ def compute_company_metrics(
                 diag["eps_proxy_dates"].add(as_of)
 
         if eps_ttm_series:
-            m["ttm_eps"] = eps_ttm_series[-1][1]
+            if usd:
+                m["ttm_eps"] = eps_ttm_series[-1][1]
             pair = yoy_pair(eps_ttm_series)
             if pair and pair[1][1] > 0:
                 m["eps_growth"] = pair[0][1] / pair[1][1] - 1.0
@@ -656,6 +702,7 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
     companies_done = 0
     companies_failed = 0
     full_coverage = 0
+    non_usd_companies = 0
     eps_proxy_companies: list[str] = []
     roic_proxy_companies: list[str] = []
     recon_companies: list[str] = []
@@ -684,9 +731,9 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                         """,
                         (security_id,),
                     )
-                    facts = [
-                        f for f in (Fact(*row) for row in cur.fetchall()) if fact_is_clean(f)
-                    ]
+                    facts_all = [Fact(*row) for row in cur.fetchall()]
+                    ccy = dominant_currency(facts_all)
+                    facts = [f for f in facts_all if fact_is_clean(f, ccy)]
                     cur.execute(
                         """
                         SELECT ex_date, ratio FROM corporate_actions
@@ -706,7 +753,11 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
 
                 # --- compute: pure Python, no DB transaction open ---
                 as_of_dates = sorted({f.filed for f in facts})
-                results, diag = compute_company_metrics(facts, splits, as_of_dates)
+                results, diag = compute_company_metrics(
+                    facts, splits, as_of_dates, usd=(ccy == "USD")
+                )
+                if ccy != "USD":
+                    non_usd_companies += 1
 
                 write_rows = [
                     (security_id, as_of, metric, value, METRIC_VERSION)
@@ -839,6 +890,7 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
         "companies_failed": companies_failed,
         "metric_rows": rows_written,
         "full_coverage": full_coverage,
+        "non_usd_companies": non_usd_companies,
         "eps_proxy_companies": eps_proxy_companies,
         "roic_proxy_companies": roic_proxy_companies,
         "recon_companies": recon_companies,

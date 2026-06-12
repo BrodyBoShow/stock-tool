@@ -25,8 +25,12 @@ from engine import fundamentals, metrics, quality, scoring  # noqa: E402
 
 def main() -> int:
     # --- step 1: fundamentals refresh ---
+    # resume=False is REQUIRED here: resume=True is a backfill flag that skips
+    # every company that already has facts, which silently freezes existing
+    # companies' fundamentals forever (found 2026-06-12: ~2,800 names missing
+    # ttm_eps because their newest filings were never re-ingested).
     print("\n=== [1/4] Fundamentals refresh ===")
-    fi = fundamentals.run()
+    fi = fundamentals.run(resume=False)
     print(
         f"  Companies {fi['companies_processed']}/{fi['companies_total']}  "
         f"filings {fi['filings_rows']}  facts {fi['fact_rows']}  "
