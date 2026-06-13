@@ -1,9 +1,14 @@
-# Nightly pipeline: incremental price refresh -> price sanity -> factor scoring,
-# then a best-effort FRED macro-context refresh (rates / VIX / CPI).
+# Nightly pipeline: price refresh -> price sanity -> fundamentals refresh ->
+# derived metrics -> factor scoring, then best-effort context refreshes.
 #
 # Schedule: 23:30 UTC every day (~6:30 PM US Eastern when DST is off,
 # ~7:30 PM when DST is on). GitHub Actions cron is always UTC and does not
 # adjust for DST; the ~1-hour seasonal shift is acceptable for this batch job.
+#
+# Fundamentals (resume=False) + metrics were added to the nightly on 2026-06-12
+# so new 10-Q/10-K facts land in ranks the next morning. They add ~30-90 min
+# on a CI IP (SEC allows 10 req/s with a proper user agent), well within the
+# 300-minute timeout.
 #
 # The macro step is non-blocking (continue-on-error) and runs only when the
 # FRED_API_KEY secret is set, so it never breaks the critical scoring run.

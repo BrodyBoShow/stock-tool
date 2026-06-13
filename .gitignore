@@ -18,3 +18,6 @@ __pycache__/
 streamlit_out.txt
 streamlit_err.txt
 backtest_full.log
+
+# Local pipeline run logs (regenerated each run)
+logs/

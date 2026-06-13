@@ -37,7 +37,7 @@ def main() -> int:
     # writes) replaced the original per-ticker run() when the universe grew to
     # ~6k names: from a CI IP, yfinance throttling is routine, and the old
     # runner skipped throttled tickers as "empty".
-    print("\n=== [1/3] Price refresh ===")
+    print("\n=== [1/5] Price refresh ===")
     px = prices.run_bulk_backfill(only_missing=False, active_only=True)
     print(
         f"  Tickers {px['tickers_loaded']}/{px['tickers_total']} loaded  "
@@ -50,7 +50,7 @@ def main() -> int:
         print(f"  Warnings: {len(px['warnings'])} (see job_runs id {px['job_id']})")
 
     # --- step 2: price sanity check ---
-    print("\n=== [2/3] Price sanity check ===")
+    print("\n=== [2/5] Price sanity check ===")
     sanity = price_sanity.run()
     d = sanity["detail"]
     print(

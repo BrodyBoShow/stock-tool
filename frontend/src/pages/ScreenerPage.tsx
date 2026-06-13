@@ -35,7 +35,9 @@ export function ScreenerPage() {
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ['screener', filters.completeOnly],
     queryFn: () => getScreener(filters.completeOnly),
-    staleTime: 5 * 60 * 1000, // nightly data — 5 min client cache
+    staleTime: 5 * 60 * 1000,       // nightly data — 5 min client cache
+    refetchOnWindowFocus: true,      // re-fetch on tab focus so the date badge
+    refetchOnMount: true,            // and rankings stay current after nightly
   })
 
   // Live intraday quotes overlay. The factor scores stay end-of-day; only the
