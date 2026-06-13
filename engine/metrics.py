@@ -57,6 +57,7 @@ import psycopg
 from dotenv import load_dotenv
 
 from engine.db import get_connection
+from engine.db import reopen as _reopen
 from engine.jobs import finish_job, start_job
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -669,7 +670,11 @@ def _ensure_metric_definitions(conn) -> None:
     conn.commit()
 
 
-def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
+def run(
+    limit: int | None = None,
+    tickers: list[str] | None = None,
+    reconnect_every: int = 200,
+) -> dict:
     today = datetime.now(UTC).date()
     conn = get_connection()
     _ensure_metric_definitions(conn)
@@ -718,6 +723,15 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
         pending: list[tuple] = []
 
         for i, (security_id, ticker) in enumerate(universe, start=1):
+            # Bound connection age so a long run can't be killed by a pooler
+            # drop mid-pass. Safe here: each company commits its read txn below,
+            # and `pending` lives in Python memory, not on the connection — so
+            # reopening between companies never loses accumulated writes. This is
+            # the same guard fundamentals.run() uses; its absence is what let a
+            # stale connection hang (and the nightly's supervisor relaunch then
+            # recompute metrics on partially-refreshed fundamentals).
+            if i % reconnect_every == 0:
+                conn = _reopen(conn)
             try:
                 # --- fetch: read transaction committed immediately so the
                 # connection is NOT idle-in-transaction during compute. ---
@@ -772,6 +786,10 @@ def run(limit: int | None = None, tickers: list[str] | None = None) -> dict:
                     conn.rollback()
                 except Exception:
                     pass
+                # A dropped/half-open socket closes the connection; reopen so the
+                # next company can read instead of erroring in a cascade.
+                if conn.closed:
+                    conn = _reopen(conn)
                 companies_failed += 1
                 warnings.append(f"{ticker}: failed - {exc!r}")
 
