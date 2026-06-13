@@ -96,12 +96,15 @@ async def _generic_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 @app.on_event("startup")
-def _warm_market_cache() -> None:
-    """Start the ~20s market-overview computation in a background thread at
-    boot, so the Market tab is usually instant by the time the browser opens."""
+def _warm_caches() -> None:
+    """Start the heavy computations in background threads at boot so the first
+    open is usually instant: the ~20s market overview and the ~15s screener
+    (both complete-only and full variants)."""
     from engine import market as market_engine
+    from engine import queries
 
     market_engine.warm()
+    queries.warm_screener()
 
 
 @app.get("/auth/check", tags=["meta"])

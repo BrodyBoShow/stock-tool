@@ -10,6 +10,8 @@ never touched here.
 from __future__ import annotations
 
 import json
+import threading
+import time
 from datetime import date, timedelta
 from typing import Any
 
@@ -212,6 +214,98 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
             row[k] = _f(row.get(k))
         row["rank"] = rank
         rows.append(row)
+    return rows, score_date
+
+
+# ── screener cache (stale-while-revalidate, keyed on score_date) ────────────────
+# screener_rows runs three correlated lookups per company (last price, prev
+# close, shares) across the full ~5.5k universe — ~15s cold. But its payload
+# (factor scores + EOD prices + market cap) is IMMUTABLE for a given score_date:
+# it only changes when the nightly writes a new one. So we cache per
+# complete_only and key-check on score_date. A hit serves instantly; a new
+# score_date serves the prior snapshot while a background thread recomputes
+# (so the morning's first open is never blocked); a cold cache computes inline
+# once. Live intraday prices ride a separate /quotes overlay, so caching EOD
+# here never makes the visible price stale.
+_screener_lock = threading.Lock()
+_screener_cache: dict[bool, dict[str, Any]] = {}
+_screener_refreshing: set[bool] = set()
+
+
+def _latest_screen_score_date() -> date | None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT max(score_date) FROM factor_scores WHERE config_version = %s",
+                (ACTIVE_CONFIG_VERSION,),
+            )
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _refresh_screener(complete_only: bool) -> None:
+    """Recompute one variant into the cache (runs inline or in a daemon thread)."""
+    try:
+        rows, score_date = screener_rows(complete_only=complete_only)
+        with _screener_lock:
+            _screener_cache[complete_only] = {
+                "score_date": score_date,
+                "rows": rows,
+                "t": time.monotonic(),
+            }
+    finally:
+        with _screener_lock:
+            _screener_refreshing.discard(complete_only)
+
+
+def _start_screener_refresh(complete_only: bool) -> None:
+    """Spawn a background recompute for one variant if not already running."""
+    with _screener_lock:
+        if complete_only in _screener_refreshing:
+            return
+        _screener_refreshing.add(complete_only)
+    threading.Thread(target=_refresh_screener, args=(complete_only,), daemon=True).start()
+
+
+def warm_screener() -> None:
+    """Pre-warm both screener variants in the background (called at API startup)
+    so the first open after boot is usually instant."""
+    _start_screener_refresh(True)
+    _start_screener_refresh(False)
+
+
+def screener_rows_cached(
+    complete_only: bool = True,
+) -> tuple[list[dict[str, Any]], date | None]:
+    """Cached screener_rows. See the cache note above.
+
+    Replaces a ~15s full query with a ~100ms score_date probe + in-memory serve
+    on every request except the once-per-day recompute (which runs in the
+    background, never blocking a request once any snapshot exists)."""
+    score_date = _latest_screen_score_date()
+    with _screener_lock:
+        entry = _screener_cache.get(complete_only)
+
+    if entry is not None and entry["score_date"] == score_date:
+        return entry["rows"], score_date  # hit
+
+    if entry is not None:
+        # new score_date landed (nightly ran): serve the prior snapshot now,
+        # recompute in the background — the frontend's refetch-on-focus picks
+        # up the fresh date moments later without anyone waiting ~15s.
+        _start_screener_refresh(complete_only)
+        return entry["rows"], entry["score_date"]
+
+    # cold cache (first request after boot, before warm finished): compute inline.
+    rows, score_date = screener_rows(complete_only=complete_only)
+    with _screener_lock:
+        _screener_cache[complete_only] = {
+            "score_date": score_date,
+            "rows": rows,
+            "t": time.monotonic(),
+        }
     return rows, score_date
 
 

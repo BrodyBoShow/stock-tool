@@ -18,7 +18,7 @@ def get_screener(complete_only: bool = True) -> ScreenerResponse:
     are excluded and the rank rebuilds 1..N over the complete set. Pass
     complete_only=false to rank the full universe (partial composites included).
     """
-    rows, score_date = queries.screener_rows(complete_only=complete_only)
+    rows, score_date = queries.screener_rows_cached(complete_only=complete_only)
     return ScreenerResponse(
         score_date=score_date,
         rows=[ScreenerRow(**r) for r in rows],
