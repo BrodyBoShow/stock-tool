@@ -104,6 +104,50 @@ export const INPUT_LABELS: Record<string, string> = {
   insider_net_buy: 'Insider Net Buy',
 }
 
+/**
+ * Why a sub-metric is blank. Shown as a tooltip on the "n/a" cell so a dash
+ * reads as intentional, not a broken pipeline. These describe the *common*
+ * reasons honestly (we don't assert a single per-company cause): most blanks
+ * are structural — a metric that doesn't exist for the business (banks have no
+ * gross margin, pre-revenue firms have no P/E) — or a line the company simply
+ * doesn't break out in its SEC filings.
+ */
+export const METRIC_NA_REASON: Record<string, string> = {
+  revenue_cagr:
+    'Needs 3 years of revenue history. Blank for recent listings, or when revenue is zero/negative (e.g. a pre-revenue company).',
+  eps_growth:
+    "Prior-period EPS isn't available or was ~zero, so a year-over-year growth rate can't be computed.",
+  pe: 'Earnings are negative or not reported — a negative P/E carries no meaning, so it is left blank rather than shown as a misleading number.',
+  ps: 'No revenue reported (e.g. a pre-commercial biotech), so price-to-sales is undefined.',
+  ev_ebitda:
+    'EBITDA is negative or not reported, so the multiple would be meaningless.',
+  fcf_yield:
+    "Operating cash flow or market cap isn't available to compute free-cash-flow yield.",
+  gross_margin:
+    'No cost-of-revenue line in the filings — normal for banks, insurers, and REITs (no COGS), or for pre-revenue firms. Some companies report cost under custom tags we may not capture.',
+  operating_margin:
+    'No revenue, or no operating-income subtotal reported (some financials present their P&L differently).',
+  roic:
+    "No invested-capital or operating-income basis reported for this company's structure.",
+  debt_to_equity:
+    'No interest-bearing debt on the balance sheet (often equity-funded), or shareholders’ equity is negative/unreported.',
+  net_debt_ebitda:
+    'No debt reported, or EBITDA is negative/unavailable.',
+  accruals:
+    "Balance-sheet or cash-flow inputs the accruals calc needs aren't reported.",
+  share_count_trend:
+    'Not enough share-count history yet to measure net issuance.',
+  insider_net_buy:
+    'No insider (Form 4) transactions recorded for this company in the lookback window. Coverage is still backfilling across the expanded universe.',
+  r3m: 'Not enough price history for a 3-month return (e.g. a recent listing).',
+  r6m: 'Not enough price history for a 6-month return (e.g. a recent listing).',
+  r12m: 'Not enough price history for a 12-month return (e.g. a recent listing).',
+  r12_1m: 'Not enough price history for 12-minus-1 momentum (needs ~13 months).',
+}
+
+export const METRIC_NA_REASON_FALLBACK =
+  "Not reported in this company's filings, or not applicable to its business model."
+
 export const METRIC_DISPLAY_ORDER = [
   'ttm_revenue',
   'fcf',

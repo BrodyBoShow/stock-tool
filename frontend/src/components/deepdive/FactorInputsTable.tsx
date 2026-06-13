@@ -3,6 +3,8 @@ import {
   FACTOR_DEFS,
   FACTOR_TABLE,
   INPUT_LABELS,
+  METRIC_NA_REASON,
+  METRIC_NA_REASON_FALLBACK,
   type FactorKey,
 } from '@/lib/constants'
 import { DASH, fmtInput } from '@/lib/format'
@@ -134,27 +136,38 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
               const shown = FACTOR_DEFS[factor].filter(
                 ([metricKey]) => metricKey in subPctls,
               )
-              return shown.map(([metricKey, direction], i) => (
-                <tr key={`${factor}-${metricKey}`} className="border-b border-[#f3f4f6]">
-                  <td className={TD}>{i === 0 ? dot : null}</td>
-                  <td className={`${TD} text-[#374151]`}>
-                    {INPUT_LABELS[metricKey] ?? metricKey}
-                  </td>
-                  <td className={`${TD} text-right font-semibold text-[#111827] tabular-nums`}>
-                    {fmtInput(
-                      metricKey,
-                      inputs[metricKey],
-                      metricKey === 'roic' && roicIsProxy,
-                    )}
-                  </td>
-                  <td className={`${TD} text-right`}>
-                    <RankPill rank={subPctls[metricKey]} />
-                  </td>
-                  <td className={`${TD} text-[#6b7280]`}>
-                    {direction === 'higher' ? '↑ higher' : '↓ lower'}
-                  </td>
-                </tr>
-              ))
+              return shown.map(([metricKey, direction], i) => {
+                const raw = inputs[metricKey]
+                const missing = raw === null || raw === undefined
+                return (
+                  <tr key={`${factor}-${metricKey}`} className="border-b border-[#f3f4f6]">
+                    <td className={TD}>{i === 0 ? dot : null}</td>
+                    <td className={`${TD} text-[#374151]`}>
+                      {INPUT_LABELS[metricKey] ?? metricKey}
+                    </td>
+                    <td className={`${TD} text-right font-semibold tabular-nums`}>
+                      {missing ? (
+                        <span
+                          className="cursor-help font-medium text-[#9ca3af] underline decoration-dotted decoration-[#cbd5e1] underline-offset-2"
+                          title={METRIC_NA_REASON[metricKey] ?? METRIC_NA_REASON_FALLBACK}
+                        >
+                          n/a
+                        </span>
+                      ) : (
+                        <span className="text-[#111827]">
+                          {fmtInput(metricKey, raw, metricKey === 'roic' && roicIsProxy)}
+                        </span>
+                      )}
+                    </td>
+                    <td className={`${TD} text-right`}>
+                      <RankPill rank={subPctls[metricKey]} />
+                    </td>
+                    <td className={`${TD} text-[#6b7280]`}>
+                      {direction === 'higher' ? '↑ higher' : '↓ lower'}
+                    </td>
+                  </tr>
+                )
+              })
             })}
           </tbody>
         </table>
