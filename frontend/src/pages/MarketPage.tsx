@@ -281,6 +281,62 @@ function AiBrief({
   )
 }
 
+/**
+ * Market-closure awareness for the brief framing.
+ *
+ * The brief recaps the latest *session* (d.as_of), but the page can be opened on
+ * a day the market never traded — a weekend or holiday — or outside RTH. Compute
+ * the real ET status so the heading + a one-line note say "recap" (and why it's
+ * closed) instead of presenting a stale session as if it were live. Pure
+ * wall-clock + the session date; no data claim, costs nothing, and never
+ * triggers an AI regen (the brief stays cached per data date).
+ */
+function marketStatus(asOf: string | null): {
+  openNow: boolean
+  title: string
+  note: string | null
+} {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    weekday: 'short',
+    hour12: false,
+  })
+  const o: Record<string, string> = {}
+  for (const p of fmt.formatToParts(new Date())) o[p.type] = p.value
+  if (o.hour === '24') o.hour = '00'
+  const weekend = o.weekday === 'Sat' || o.weekday === 'Sun'
+  const minutes = Number(o.hour) * 60 + Number(o.minute)
+  const openNow = !weekend && minutes >= 570 && minutes < 960 // 09:30–16:00 ET
+  const todayET = `${o.year}-${o.month}-${o.day}`
+  const sessionToday = asOf === todayET
+  const session = asOf ? ` — ${fmtDate(asOf)}` : ''
+
+  if (openNow) return { openNow, title: 'Market brief', note: null }
+  if (weekend)
+    return {
+      openNow,
+      title: 'Weekend recap',
+      note: `Markets are closed for the weekend. This recaps the most recent session${session}.`,
+    }
+  if (sessionToday)
+    return {
+      openNow,
+      title: "Today's session recap",
+      note: `Regular trading is closed for the day. Recapping today's session${session}.`,
+    }
+  // weekday, market not open now, no session dated today: pre-open or a holiday.
+  return {
+    openNow,
+    title: 'Latest session recap',
+    note: `Markets are closed right now. Latest completed session${session}.`,
+  }
+}
+
 export function MarketPage() {
   const qc = useQueryClient()
   const { data, isPending, error, refetch } = useQuery({
@@ -332,6 +388,7 @@ export function MarketPage() {
   const d: MarketOverviewResponse = data
   const spyLive = quotesData?.quotes?.SPY
   const b = d.breadth
+  const mkt = marketStatus(d.as_of)
 
   return (
     <div className="space-y-5">
@@ -385,15 +442,23 @@ export function MarketPage() {
         </div>
       </header>
 
-      {/* morning brief (AI narrative, generated once/day; computed fallback) */}
+      {/* session brief (AI narrative, generated once/day; computed fallback).
+          Title + note adapt to whether the market is open, closed for the
+          weekend, or between sessions, so a recap never reads as live. */}
       <SectionCard
-        title="Morning brief"
+        title={mkt.title}
         hint={
           aiBrief
             ? 'AI-written once per day from the numbers on this page (Haiku) — grounded only in this data, not advice.'
-            : "Assembled from the numbers on this page. The AI narrative writes once when you open the tab."
+            : 'Assembled from the numbers on this page. The AI narrative writes once when you open the tab.'
         }
       >
+        {mkt.note && (
+          <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[0.78rem] font-medium text-slate-600">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+            {mkt.note}
+          </div>
+        )}
         <AiBrief brief={aiBrief} computed={d.brief} generating={briefMut.isPending} />
       </SectionCard>
 
