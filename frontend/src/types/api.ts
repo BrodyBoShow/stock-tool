@@ -55,6 +55,7 @@ export interface PricePoint {
   date: string
   adj_close: number | null
   close: number | null
+  volume: number | null
 }
 
 export interface FundamentalPoint {

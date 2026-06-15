@@ -358,7 +358,7 @@ def security_header(ticker: str) -> dict[str, Any] | None:
 
 
 def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, Any]]:
-    """Adj_close + close price history for one ticker, ordered ascending.
+    """Adj_close + close + volume price history for one ticker, ordered ascending.
 
     If days is provided, returns only the most recent N calendar days.
     """
@@ -372,7 +372,7 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
             if cutoff is not None:
                 cur.execute(
                     """
-                    SELECT p.date, p.adj_close, p.close
+                    SELECT p.date, p.adj_close, p.close, p.volume
                     FROM prices_daily p
                     JOIN securities s ON s.security_id = p.security_id
                     WHERE s.ticker = %s AND s.is_active AND p.date >= %s
@@ -383,7 +383,7 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
             else:
                 cur.execute(
                     """
-                    SELECT p.date, p.adj_close, p.close
+                    SELECT p.date, p.adj_close, p.close, p.volume
                     FROM prices_daily p
                     JOIN securities s ON s.security_id = p.security_id
                     WHERE s.ticker = %s AND s.is_active
@@ -395,7 +395,7 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
     finally:
         release(conn)
 
-    return [{"date": r[0], "adj_close": _f(r[1]), "close": _f(r[2])} for r in rows]
+    return [{"date": r[0], "adj_close": _f(r[1]), "close": _f(r[2]), "volume": int(r[3]) if r[3] is not None else None} for r in rows]
 
 
 def fundamental_metric_rows(ticker: str) -> list[dict[str, Any]]:
