@@ -3,9 +3,10 @@
 Steps (in order):
   1. Incremental price refresh          (engine.prices)
   2. Price sanity check                 (engine.price_sanity)  ← HALT if fails
-  3. Fundamentals refresh               (engine.fundamentals)
-  4. Derived metrics                    (engine.metrics)
-  5. Factor scoring                     (engine.scoring)
+  3. Universe hygiene                   (engine.universe.deactivate_derivative_listings)
+  4. Fundamentals refresh               (engine.fundamentals)
+  5. Derived metrics                    (engine.metrics)
+  6. Factor scoring                     (engine.scoring)
 
 Fundamentals + metrics moved into the nightly on 2026-06-12: companies file
 10-Qs/10-Ks every day (especially in earnings season), and waiting for the
@@ -27,7 +28,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from engine import fundamentals, metrics, price_sanity, prices, scoring  # noqa: E402
+from engine import (  # noqa: E402
+    fundamentals,
+    metrics,
+    price_sanity,
+    prices,
+    scoring,
+    universe,
+)
 
 
 def main() -> int:
@@ -37,7 +45,7 @@ def main() -> int:
     # writes) replaced the original per-ticker run() when the universe grew to
     # ~6k names: from a CI IP, yfinance throttling is routine, and the old
     # runner skipped throttled tickers as "empty".
-    print("\n=== [1/5] Price refresh ===")
+    print("\n=== [1/6] Price refresh ===")
     px = prices.run_bulk_backfill(only_missing=False, active_only=True)
     print(
         f"  Tickers {px['tickers_loaded']}/{px['tickers_total']} loaded  "
@@ -50,7 +58,7 @@ def main() -> int:
         print(f"  Warnings: {len(px['warnings'])} (see job_runs id {px['job_id']})")
 
     # --- step 2: price sanity check ---
-    print("\n=== [2/5] Price sanity check ===")
+    print("\n=== [2/6] Price sanity check ===")
     sanity = price_sanity.run()
     d = sanity["detail"]
     print(
@@ -74,10 +82,19 @@ def main() -> int:
 
     print("  Sanity gate PASSED.")
 
-    # --- step 3: fundamentals refresh ---
+    # --- step 3: universe hygiene ---
+    # Deactivate warrant/unit/right listings that share a parent CIK (they
+    # inherit the parent's fundamentals and otherwise top the screener on pure
+    # momentum). Idempotent — a no-op once clean; runs before fundamentals so
+    # any newly-graduated derivative is excluded from the heavy work below.
+    print("\n=== [3/6] Universe hygiene (deactivate derivative listings) ===")
+    deactivated = universe.deactivate_derivative_listings()
+    print(f"  Deactivated {deactivated} warrant/unit/right listing(s).")
+
+    # --- step 4: fundamentals refresh ---
     # resume=False: re-fetch every active company so new 10-Q/10-K facts land
     # daily (resume=True is a backfill flag that would skip everyone).
-    print("\n=== [3/5] Fundamentals refresh ===")
+    print("\n=== [4/6] Fundamentals refresh ===")
     fi = fundamentals.run(resume=False)
     print(
         f"  Companies {fi['companies_processed']}/{fi['companies_total']}  "
@@ -88,8 +105,8 @@ def main() -> int:
     if fi["warnings"]:
         print(f"  Warnings: {len(fi['warnings'])} (see job_runs id {fi['job_id']})")
 
-    # --- step 4: derived metrics ---
-    print("\n=== [4/5] Derived metrics ===")
+    # --- step 5: derived metrics ---
+    print("\n=== [5/6] Derived metrics ===")
     me = metrics.run()
     print(
         f"  Companies {me['companies_done']}/{me['companies_total']}  "
@@ -101,8 +118,8 @@ def main() -> int:
     if me["warnings"]:
         print(f"  Warnings: {len(me['warnings'])} (see job_runs id {me['job_id']})")
 
-    # --- step 5: factor scoring ---
-    print("\n=== [5/5] Factor scoring ===")
+    # --- step 6: factor scoring ---
+    print("\n=== [6/6] Factor scoring ===")
     sc = scoring.run()
     print(
         f"  score_date {sc['score_date']}  "
