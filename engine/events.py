@@ -21,6 +21,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 
 from engine.db import get_connection
+from engine.db import reopen as _reopen
 from engine.fundamentals import (
     PRIMARY_DOC_URL,
     SecClient,
@@ -225,7 +226,14 @@ def run(
                     filings_total += len(new)
                 companies_done += 1
             except Exception as exc:  # noqa: BLE001 — isolate per company
-                conn.rollback()
+                # Guard the rollback: on a dead connection (the pooler drop this
+                # job must survive) a bare rollback() raises and masks `exc`.
+                try:
+                    conn.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
+                if conn.closed:
+                    conn = _reopen(conn)
                 companies_failed += 1
                 warnings.append(f"{ticker_label} (CIK {cik}): failed - {exc!r}")
 
@@ -247,7 +255,12 @@ def run(
         finish_job(conn, job_id, status="success",
                    rows_affected=rows_total, warnings=stored or None)
     except Exception as exc:  # noqa: BLE001
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+        if conn.closed:
+            conn = _reopen(conn)
         finish_job(conn, job_id, status="failed", error=str(exc),
                    warnings=warnings or None)
         raise
