@@ -49,6 +49,32 @@ class QuotesResponse(BaseModel):
     quotes: dict[str, QuoteRow] # ticker -> latest (delayed ~15m) quote
 
 
+# ── live-adjusted factor scores (Phase 16 — intraday overlay, display only) ───
+
+class FactorSet(BaseModel):
+    growth: float | None
+    value: float | None
+    quality: float | None
+    momentum: float | None
+    composite: float | None
+
+
+class LiveFactorsResponse(BaseModel):
+    """Live-adjusted factor view for one security: price-driven Value & Momentum
+    (and the composite) recomputed from the live price against last night's
+    frozen cross-section; Growth & Quality held nightly. `live` is false when no
+    live price applied (market closed / quote outage / at the close), in which
+    case live_factors == nightly. Display only — never feeds factor_scores."""
+    ticker: str
+    has_scores: bool
+    live: bool
+    price: float | None
+    as_of_epoch: float | None
+    stale: bool
+    live_factors: FactorSet | None  # live-adjusted (== nightly when live=False)
+    nightly: FactorSet | None       # last night's baseline, for comparison
+
+
 class BacktestRunResponse(BaseModel):
     """Latest stored backtest run for the Lab page.
 

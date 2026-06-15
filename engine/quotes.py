@@ -21,10 +21,16 @@ import pandas as pd
 import yfinance as yf
 
 # Short server-side cache: one fetch serves all opens within this window, so
-# the data is never more than ~TTL + source-delay stale.
+# the data is never more than ~TTL + source-delay stale. Keyed by the requested
+# ticker-set so distinct callers (screener top-N, a single deep-dive name, a
+# portfolio's holdings) don't overwrite each other's payloads.
 _TTL_SECONDS = 90
 _lock = threading.Lock()
-_cache: dict[str, Any] = {"fetched_monotonic": 0.0, "payload": None}
+_cache: dict[str, dict[str, Any]] = {}  # cache_key -> {fetched_monotonic, payload}
+
+
+def _cache_key(tickers: list[str]) -> str:
+    return "|".join(sorted(set(tickers)))
 
 
 def _fetch(tickers: list[str]) -> dict[str, Any]:
@@ -68,32 +74,50 @@ def get_quotes(tickers: list[str], *, force: bool = False) -> dict[str, Any]:
     """Cached live quotes for the given tickers.
 
     Serves a cached payload if it's younger than the TTL, else refetches under a
-    lock (so concurrent opens trigger a single upstream call). Returns
-    {quotes, as_of_epoch, age_seconds, stale}.
+    lock (so concurrent opens trigger a single upstream call). Cache is keyed by
+    the ticker-set, so a single-name lookup never evicts the screener's top-N
+    payload. Returns {quotes, as_of_epoch, age_seconds, stale}.
     """
+    key = _cache_key(tickers)
     now = time.monotonic()
-    cached = _cache["payload"]
-    age = now - _cache["fetched_monotonic"]
-    if not force and cached is not None and age < _TTL_SECONDS:
-        return {**cached, "age_seconds": round(age, 1), "stale": False}
+    entry = _cache.get(key)
+    if not force and entry is not None and (now - entry["fetched_monotonic"]) < _TTL_SECONDS:
+        return {**entry["payload"], "age_seconds": round(now - entry["fetched_monotonic"], 1),
+                "stale": False}
 
     with _lock:
         # Re-check inside the lock: another thread may have just refreshed.
         now = time.monotonic()
-        age = now - _cache["fetched_monotonic"]
-        if not force and _cache["payload"] is not None and age < _TTL_SECONDS:
-            return {**_cache["payload"], "age_seconds": round(age, 1), "stale": False}
+        entry = _cache.get(key)
+        if not force and entry is not None and (now - entry["fetched_monotonic"]) < _TTL_SECONDS:
+            return {**entry["payload"], "age_seconds": round(now - entry["fetched_monotonic"], 1),
+                    "stale": False}
         try:
             payload = _fetch(tickers)
-            _cache["payload"] = payload
-            _cache["fetched_monotonic"] = time.monotonic()
+            _cache[key] = {"fetched_monotonic": time.monotonic(), "payload": payload}
             return {**payload, "age_seconds": 0.0, "stale": False}
         except Exception:  # noqa: BLE001 — never let a quote outage break the page
-            if _cache["payload"] is not None:
+            if entry is not None:
                 return {
-                    **_cache["payload"],
-                    "age_seconds": round(time.monotonic() - _cache["fetched_monotonic"], 1),
+                    **entry["payload"],
+                    "age_seconds": round(time.monotonic() - entry["fetched_monotonic"], 1),
                     "stale": True,
                 }
             return {"quotes": {}, "as_of_epoch": time.time(), "age_seconds": 0.0,
                     "stale": True}
+
+
+def get_quote_one(ticker: str) -> dict[str, Any]:
+    """Live quote for a single ticker (its own cache slot). Returns
+    {price, prev_close, change_pct, as_of_epoch, stale} — price is None if the
+    source had nothing for it."""
+    t = ticker.upper()
+    payload = get_quotes([t])
+    row = payload["quotes"].get(t, {})
+    return {
+        "price": row.get("price"),
+        "prev_close": row.get("prev_close"),
+        "change_pct": row.get("change_pct"),
+        "as_of_epoch": payload["as_of_epoch"],
+        "stale": payload["stale"],
+    }

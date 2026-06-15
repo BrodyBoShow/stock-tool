@@ -188,6 +188,25 @@ export interface QuoteRow {
   change_pct: number | null
 }
 
+export interface FactorSet {
+  growth: number | null
+  value: number | null
+  quality: number | null
+  momentum: number | null
+  composite: number | null
+}
+
+export interface LiveFactorsResponse {
+  ticker: string
+  has_scores: boolean
+  live: boolean // true when a live price was actually applied
+  price: number | null
+  as_of_epoch: number | null
+  stale: boolean
+  live_factors: FactorSet | null // live-adjusted (== nightly when live=false)
+  nightly: FactorSet | null // last night's baseline
+}
+
 export interface QuotesResponse {
   as_of_epoch: number
   age_seconds: number

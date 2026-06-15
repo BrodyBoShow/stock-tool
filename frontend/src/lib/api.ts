@@ -7,6 +7,7 @@ import type {
   FilingQaStatusResponse,
   FilingSummary,
   InsiderResponse,
+  LiveFactorsResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
   MarketBriefResponse,
@@ -199,6 +200,12 @@ export function generateFilingQa(ticker: string): Promise<FilingAnswers> {
 export function getBriefStatus(ticker: string): Promise<BriefStatusResponse> {
   return getJson<BriefStatusResponse>(
     `/securities/${encodeURIComponent(ticker)}/brief`,
+  )
+}
+
+export function getLiveFactors(ticker: string): Promise<LiveFactorsResponse> {
+  return getJson<LiveFactorsResponse>(
+    `/securities/${encodeURIComponent(ticker)}/live-factors`,
   )
 }
 

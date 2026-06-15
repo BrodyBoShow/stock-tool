@@ -5,12 +5,11 @@ import logging
 import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
-log = logging.getLogger(__name__)
-
 from api.schemas import (
     BriefStatusResponse,
     DecisionBrief,
     EventsResponse,
+    FactorSet,
     FactorTrendPoint,
     FilingAnswers,
     FilingQaStatusResponse,
@@ -20,6 +19,7 @@ from api.schemas import (
     InsiderResponse,
     InsiderTransaction,
     InsiderWindow,
+    LiveFactorsResponse,
     MaterialEvent,
     PricePoint,
     SecurityHeader,
@@ -29,7 +29,10 @@ from api.schemas import (
 from engine import brief as brief_engine
 from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
-from engine import queries, summarize
+from engine import live_factors, queries, summarize
+from engine import quotes as quotes_engine
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -60,6 +63,40 @@ def get_security(
         prices=[PricePoint(**p) for p in prices],
         fundamentals=[FundamentalPoint(**f) for f in fundamentals],
         filings=[FilingRow(**f) for f in filings],
+    )
+
+
+@router.get("/{ticker}/live-factors", response_model=LiveFactorsResponse)
+def get_live_factors(ticker: str) -> LiveFactorsResponse:
+    """Live-adjusted Value/Momentum/Composite for one security: the price-driven
+    sub-signals recomputed from the latest (~15m delayed) quote against last
+    night's frozen cross-section. Growth/Quality are held nightly. Display only."""
+    ticker = ticker.upper()
+    header = queries.security_header(ticker)
+    if header is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found or inactive")
+
+    quote = quotes_engine.get_quote_one(ticker)
+    adj = live_factors.live_adjust(header["security_id"], quote["price"])
+    if adj is None:
+        # Not scored yet — no factor view to adjust.
+        return LiveFactorsResponse(
+            ticker=ticker, has_scores=False, live=False,
+            price=quote["price"], as_of_epoch=quote["as_of_epoch"], stale=quote["stale"],
+            live_factors=None, nightly=None,
+        )
+    return LiveFactorsResponse(
+        ticker=ticker,
+        has_scores=True,
+        live=adj["live"],
+        price=adj["price"],
+        as_of_epoch=quote["as_of_epoch"],
+        stale=quote["stale"],
+        live_factors=FactorSet(
+            growth=adj["growth"], value=adj["value"], quality=adj["quality"],
+            momentum=adj["momentum"], composite=adj["composite"],
+        ),
+        nightly=FactorSet(**adj["nightly"]),
     )
 
 
