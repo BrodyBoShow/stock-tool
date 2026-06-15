@@ -142,9 +142,6 @@ MOMENTUM_BASIS_BY_VERSION = {
 # Discretionary insider net-buy signal window (trailing months).
 INSIDER_WINDOW_MONTHS = 12
 
-# Back-compat alias for any external importer of the v1 factor map.
-FACTOR_DEFS = FACTOR_DEFS_V1
-
 SCORE_TIME_CONCEPTS = (
     "operating_income",
     "depreciation_amortization",

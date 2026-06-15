@@ -316,11 +316,6 @@ export interface MacroSeriesResponse {
   observations: MacroObservation[]
 }
 
-export interface HealthResponse {
-  status: string
-  db: string
-}
-
 // ── Market overview (Market tab) ──────────────────────────────────────────────
 
 export interface MarketSectorRow {

@@ -569,33 +569,6 @@ def watchlist_tickers() -> frozenset[str]:
     return frozenset(r[0] for r in rows)
 
 
-def thesis_for_ticker(ticker: str) -> dict[str, Any] | None:
-    """Active thesis for one ticker, or None."""
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT t.id, t.security_id, t.summary, t.invalidation_rules,
-                       t.review_date, t.conviction, t.status,
-                       t.created_at, t.updated_at
-                FROM theses t
-                JOIN securities s ON s.security_id = t.security_id
-                WHERE s.ticker = %s AND t.status = 'active'
-                ORDER BY t.updated_at DESC
-                LIMIT 1
-                """,
-                (ticker,),
-            )
-            row = cur.fetchone()
-            if row is None:
-                return None
-            cols = [d[0] for d in cur.description]
-    finally:
-        conn.close()
-    return dict(zip(cols, row, strict=True))
-
-
 def all_theses_rows() -> list[dict[str, Any]]:
     """All active theses joined with securities + latest composite score."""
     conn = get_connection()
