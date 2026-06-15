@@ -18,6 +18,7 @@ import {
 import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getBacktest } from '@/lib/api'
+import { fmtDate } from '@/lib/format'
 import type { BacktestKeyResult, BacktestRunResponse } from '@/types/api'
 
 const KEY_LABELS: Record<string, string> = {
@@ -50,22 +51,34 @@ function SectionCard({
   )
 }
 
-/** Equity curves: top-quintile strategy vs S&P 500 (SPY) vs universe EW. */
-function EquityChart({ data }: { data: BacktestRunResponse }) {
+/** Equity curves: selected factor's top quintile (+ optional long-short) vs
+ * S&P 500 (SPY) vs universe EW. */
+function EquityChart({
+  data,
+  sel,
+  factorLabel,
+  showLongShort,
+}: {
+  data: BacktestRunResponse
+  sel: BacktestKeyResult
+  factorLabel: string
+  showLongShort: boolean
+}) {
   const points = useMemo(() => {
-    const comp = data.results?.composite
     const bench = data.benchmarks
-    if (!comp || !bench) return []
-    // Benchmark dates are the full grid; the composite curve aligns to its own
+    if (!sel || !bench) return []
+    // Benchmark dates are the full grid; the strategy curves align to their own
     // dates — index both by date so gaps never misalign.
-    const top = new Map(comp.curves.dates.map((d, i) => [d, comp.curves.top[i]]))
+    const top = new Map(sel.curves.dates.map((d, i) => [d, sel.curves.top[i]]))
+    const ls = new Map(sel.curves.dates.map((d, i) => [d, sel.curves.long_short[i]]))
     return bench.dates.map((d, i) => ({
       date: d.slice(0, 7),
       strategy: top.get(d) ?? null,
+      longshort: ls.get(d) ?? null,
       spy: bench.spy[i] ?? null,
       universe: bench.universe_ew[i] ?? null,
     }))
-  }, [data])
+  }, [data, sel])
 
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -83,14 +96,39 @@ function EquityChart({ data }: { data: BacktestRunResponse }) {
           contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line type="monotone" dataKey="strategy" name="Top quintile (composite)"
+        <Line type="monotone" dataKey="strategy" name={`Top quintile (${factorLabel})`}
           stroke="#4f46e5" strokeWidth={2.2} dot={false} connectNulls />
+        {showLongShort && (
+          <Line type="monotone" dataKey="longshort" name="Long-short (top − bottom)"
+            stroke="#16a34a" strokeWidth={1.8} strokeDasharray="5 3" dot={false} connectNulls />
+        )}
         <Line type="monotone" dataKey="spy" name="S&P 500 (SPY)"
           stroke="#0ea5e9" strokeWidth={1.8} dot={false} connectNulls />
         <Line type="monotone" dataKey="universe" name="Universe equal-weight"
           stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
       </LineChart>
     </ResponsiveContainer>
+  )
+}
+
+/** Compact KPI tile for the selected factor's headline stats. */
+function Kpi({ label, value, sub, tone }: {
+  label: string
+  value: string
+  sub?: string
+  tone?: 'good' | 'bad' | 'neutral'
+}) {
+  const color = tone === 'good' ? '#059669' : tone === 'bad' ? '#dc2626' : '#0f172a'
+  return (
+    <div className="rounded-card border border-[#e5e7eb] bg-white p-3.5 shadow-card">
+      <div className="text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+        {label}
+      </div>
+      <div className="mt-1 text-[1.35rem] font-extrabold tabular-nums" style={{ color }}>
+        {value}
+      </div>
+      {sub && <div className="mt-0.5 text-[0.68rem] text-[#9ca3af]">{sub}</div>}
+    </div>
   )
 }
 
@@ -160,6 +198,7 @@ export function LabPage() {
     staleTime: 60 * 60 * 1000, // refreshed monthly by the workflow
   })
   const [factorKey, setFactorKey] = useState('composite')
+  const [showLongShort, setShowLongShort] = useState(false)
 
   if (isPending) {
     return (
@@ -192,6 +231,31 @@ export function LabPage() {
   const comp = results.composite
   const keys = ['composite', ...Object.keys(results).filter((k) => k !== 'composite')]
   const sel = results[factorKey] ?? comp
+  const selLabel = KEY_LABELS[factorKey] ?? factorKey
+  const selTop = sel.buckets['5'] ?? sel.buckets[String(Object.keys(sel.buckets).length)]
+
+  const FactorPills = (
+    <div className="flex flex-wrap gap-[5px]">
+      {keys.map((k) => {
+        const selected = factorKey === k
+        return (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setFactorKey(k)}
+            className="rounded-full px-[11px] py-[3px] text-[0.72rem] font-semibold transition-shadow"
+            style={
+              selected
+                ? { background: '#eef2ff', color: '#4f46e5', boxShadow: 'inset 0 0 0 1.5px #4f46e5' }
+                : { background: '#ffffff', color: '#64748b', boxShadow: 'inset 0 0 0 1px #e5e7eb' }
+            }
+          >
+            {KEY_LABELS[k] ?? k}
+          </button>
+        )
+      })}
+    </div>
+  )
 
   return (
     <div className="space-y-5">
@@ -210,8 +274,14 @@ export function LabPage() {
           <p className="mt-2 text-[0.9rem] text-[#64748b]">
             Point-in-time backtest of <code>{data.config_version}</code> ·{' '}
             {data.start_date} → {data.end_date} · {data.params?.rebalances} monthly rebalances ·
-            quintiles, equal-weight, {data.params?.cost_bps}bps/side · refreshed monthly
+            quintiles, equal-weight, {data.params?.cost_bps}bps/side
           </p>
+          {data.generated_at && (
+            <p className="mt-1 text-[0.74rem] text-[#94a3b8]">
+              Computed {fmtDate(data.generated_at.slice(0, 10))} · served from store (no
+              recompute on load) · refreshes monthly
+            </p>
+          )}
         </div>
       </header>
 
@@ -223,48 +293,93 @@ export function LabPage() {
         ranking methodology; it is not a tradeable track record.
       </div>
 
+      {/* factor selector — drives every chart below */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+            Ranking
+          </span>
+          {FactorPills}
+        </div>
+      </div>
+
+      {/* KPI row — headline stats for the selected ranking */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label={`${selLabel} top-Q CAGR`}
+          value={fmtPct(selTop?.cagr)}
+          sub={`vs SPY ${fmtPct(data.benchmarks?.spy_stats.cagr)}`}
+          tone={
+            selTop?.cagr != null && data.benchmarks?.spy_stats.cagr != null
+              ? selTop.cagr >= data.benchmarks.spy_stats.cagr
+                ? 'good'
+                : 'bad'
+              : 'neutral'
+          }
+        />
+        <Kpi label="Top-Q Sharpe" value={fmtSharpe(selTop?.sharpe)} sub="risk-adjusted" />
+        <Kpi
+          label="Win rate (top-Q)"
+          value={fmtPct(sel.win_rate_top, false)}
+          sub="% months positive"
+        />
+        <Kpi
+          label="Long-short Sharpe"
+          value={fmtSharpe(sel.long_short.sharpe)}
+          sub="top − bottom spread"
+          tone={
+            sel.long_short.sharpe != null
+              ? sel.long_short.sharpe > 0.3
+                ? 'good'
+                : sel.long_short.sharpe < 0
+                  ? 'bad'
+                  : 'neutral'
+              : 'neutral'
+          }
+        />
+      </div>
+
       {/* equity curve */}
       <SectionCard
-        title="Growth of $1 — top quintile vs benchmarks"
-        hint="Composite top quintile (rebalanced monthly, net of cost estimate) vs SPY total return and the equal-weight scored universe."
+        title={`Growth of $1 — ${selLabel} top quintile vs benchmarks`}
+        hint="Top quintile (rebalanced monthly, net of cost estimate) vs SPY total return and the equal-weight scored universe. Toggle the long-short spread — the survivor-bias-resistant signal."
       >
-        <EquityChart data={data} />
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => setShowLongShort((s) => !s)}
+            className="rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors"
+            style={
+              showLongShort
+                ? { borderColor: '#16a34a', background: '#f0fdf4', color: '#16a34a' }
+                : { borderColor: '#e5e7eb', background: '#ffffff', color: '#64748b' }
+            }
+          >
+            {showLongShort ? '✓ ' : ''}Show long-short spread
+          </button>
+        </div>
+        <EquityChart
+          data={data}
+          sel={sel}
+          factorLabel={selLabel}
+          showLongShort={showLongShort}
+        />
       </SectionCard>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        {/* drawdown */}
+        {/* drawdown — follows the selected ranking */}
         <SectionCard
-          title="Top-quintile drawdown"
+          title={`${selLabel} top-quintile drawdown`}
           hint="Peak-to-trough of the strategy curve — the pain you'd have sat through."
         >
-          <DrawdownChart comp={comp} />
+          <DrawdownChart comp={sel} />
         </SectionCard>
 
-        {/* quintile spread with factor selector */}
+        {/* quintile spread */}
         <SectionCard
-          title="CAGR by quintile"
+          title={`${selLabel}: CAGR by quintile`}
           hint="A working signal steps up left to right. Flat or U-shaped = no ranking power (or survivor noise in the bottom bucket)."
         >
-          <div className="mb-3 flex flex-wrap gap-[5px]">
-            {keys.map((k) => {
-              const selected = factorKey === k
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setFactorKey(k)}
-                  className="rounded-full px-[11px] py-[3px] text-[0.72rem] font-semibold transition-shadow"
-                  style={
-                    selected
-                      ? { background: '#eef2ff', color: '#4f46e5', boxShadow: 'inset 0 0 0 1.5px #4f46e5' }
-                      : { background: '#ffffff', color: '#64748b', boxShadow: 'inset 0 0 0 1px #e5e7eb' }
-                  }
-                >
-                  {KEY_LABELS[k] ?? k}
-                </button>
-              )
-            })}
-          </div>
           <QuintileChart res={sel} />
         </SectionCard>
       </div>
@@ -293,9 +408,20 @@ export function LabPage() {
                 const r = results[k]
                 const top = r.buckets['5'] ?? r.buckets[String(Object.keys(r.buckets).length)]
                 const lsSharpe = r.long_short.sharpe
+                const isSel = factorKey === k
                 return (
-                  <tr key={k} className="border-b border-[#f8fafc]">
-                    <td className="py-2.5 pr-4 font-bold text-[#1e293b]">{KEY_LABELS[k] ?? k}</td>
+                  <tr
+                    key={k}
+                    onClick={() => setFactorKey(k)}
+                    className={
+                      'cursor-pointer border-b border-[#f8fafc] transition-colors hover:bg-[#f8fafc] ' +
+                      (isSel ? 'bg-[#eef2ff]' : '')
+                    }
+                  >
+                    <td className="py-2.5 pr-4 font-bold text-[#1e293b]">
+                      {isSel && <span className="mr-1 text-[#4f46e5]">▸</span>}
+                      {KEY_LABELS[k] ?? k}
+                    </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(top?.cagr)}</td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtSharpe(top?.sharpe)}</td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.win_rate_top, false)}</td>
