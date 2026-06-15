@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
 
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateBrief, getBriefStatus } from '@/lib/api'
@@ -10,10 +9,6 @@ import type {
   FactorTrendPoint,
 } from '@/types/api'
 
-// Module-scoped so the "auto-generate once per ticker" guard survives React
-// StrictMode's dev double-mount — same pattern as FilingSummaryPanel: without
-// it a deep-dive open would fire two (paid) Claude calls.
-const autoTriggered = new Set<string>()
 
 const LABEL =
   'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
@@ -243,20 +238,6 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
       ),
   })
 
-  // Auto-generate on open: scored company with no cached brief for the latest
-  // snapshot. Cached per score_date, so this pays at most once per nightly
-  // re-score — and only for companies actually opened.
-  useEffect(() => {
-    if (
-      data?.has_scores &&
-      !data.brief &&
-      !gen.isPending &&
-      !autoTriggered.has(ticker)
-    ) {
-      autoTriggered.add(ticker)
-      gen.mutate()
-    }
-  }, [data, ticker, gen])
 
   return (
     <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
@@ -296,32 +277,46 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
             <TrendChips trend={data.trend} />
             {data.brief ? (
               <BriefBody cached={data.brief} />
+            ) : gen.isPending ? (
+              <div className="flex items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafbff] p-4">
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
+                <p className="text-[0.85rem] text-[#475569]">
+                  Synthesizing {ticker}&apos;s decision brief — typically 15–30 seconds…
+                </p>
+              </div>
             ) : gen.isError ? (
               <div className="rounded-xl border border-dashed border-[#fecaca] bg-[#fff7f7] p-5 text-center">
                 <p className="text-[0.85rem] font-semibold text-[#b91c1c]">
-                  Couldn’t generate the brief
+                  Couldn&apos;t generate the brief
                 </p>
                 <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-[#9ca3af]">
                   {gen.error instanceof ApiError
                     ? gen.error.message
-                    : 'Something went wrong reaching the model.'}
+                    : "Something went wrong reaching the model."}
                 </p>
                 <button
                   type="button"
                   onClick={() => gen.mutate()}
-                  disabled={gen.isPending}
-                  className="mt-3 inline-flex items-center rounded-lg bg-[#4f46e5] px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca] disabled:opacity-60"
+                  className="mt-3 inline-flex items-center rounded-lg bg-[#4f46e5] px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca]"
                 >
-                  {gen.isPending ? 'Generating…' : 'Try again'}
+                  Try again
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafbff] p-4">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
+              <div className="rounded-xl border border-dashed border-[#e0e7ff] bg-[#fafbff] p-5">
                 <p className="text-[0.85rem] text-[#475569]">
-                  Synthesizing {ticker}&apos;s decision brief from its factor
-                  data — a few seconds.
+                  No brief cached yet for this scoring snapshot.
                 </p>
+                <p className="mt-1 text-[0.78rem] text-[#9ca3af]">
+                  Generates a structured bull/bear/catalyst/risk analysis from StockBud&apos;s own data via Claude Haiku (~$0.001, 15–30 sec).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => gen.mutate()}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#4f46e5] px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca]"
+                >
+                  Generate decision brief
+                </button>
               </div>
             )}
           </>
