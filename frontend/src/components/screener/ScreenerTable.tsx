@@ -13,7 +13,7 @@ import {
   type FactorKey,
 } from '@/lib/constants'
 import { DASH, fmtPrice } from '@/lib/format'
-import type { ScreenerRow } from '@/types/api'
+import type { QuoteRow, ScreenerRow } from '@/types/api'
 
 type SortKey =
   | 'rank'
@@ -91,6 +91,7 @@ export function ScreenerTable({
   scoreDate,
   rowAccessory,
   onRowClick,
+  liveByTicker,
 }: {
   rows: ScreenerRow[]
   scoreDate: string | null
@@ -98,6 +99,8 @@ export function ScreenerTable({
   rowAccessory?: (ticker: string) => React.ReactNode
   /** When provided, clicking the row body calls this instead of navigating. Ticker link still navigates. */
   onRowClick?: (row: ScreenerRow) => void
+  /** Live-adjusted scores by ticker (display overlay; rank/sort stay nightly). */
+  liveByTicker?: Record<string, QuoteRow>
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
     key: 'composite',
@@ -133,6 +136,10 @@ export function ScreenerTable({
   const gridCols = rowAccessory ? `${SCREENER_GRID} 44px` : SCREENER_GRID
   const minW = rowAccessory ? 'min-w-[864px]' : 'min-w-[820px]'
 
+  const hasLive = liveByTicker
+    ? Object.values(liveByTicker).some((q) => q.composite_live != null)
+    : false
+
   return (
     <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-[#e5e7eb] bg-white shadow-card">
       {/* card header */}
@@ -158,7 +165,12 @@ export function ScreenerTable({
           ))}
         </div>
         <span className="whitespace-nowrap text-[0.7rem] italic text-[#9ca3af]">
-          Bars are percentile ranks (0–100) within the universe · click row = preview · click ticker = deep dive
+          {hasLive && (
+            <span className="not-italic text-[#0369a1]">
+              <span className="align-super text-[0.7em] text-[#38bdf8]">●</span> live-adjusted ·{' '}
+            </span>
+          )}
+          Bars are percentile ranks (0–100) · click row = preview · click ticker = deep dive
         </span>
       </div>
 
@@ -260,11 +272,23 @@ export function ScreenerTable({
                   <div className="flex h-full min-w-0 items-center px-3 py-1.5">
                     <SectorPill sector={r.sector} />
                   </div>
-                  <ScoreCell factor="composite" value={r.composite} />
+                  <ScoreCell
+                    factor="composite"
+                    value={r.composite}
+                    live={liveByTicker?.[r.ticker]?.composite_live}
+                  />
                   <ScoreCell factor="growth" value={r.growth_pctl} />
-                  <ScoreCell factor="value" value={r.value_pctl} />
+                  <ScoreCell
+                    factor="value"
+                    value={r.value_pctl}
+                    live={liveByTicker?.[r.ticker]?.value_live}
+                  />
                   <ScoreCell factor="quality" value={r.quality_pctl} />
-                  <ScoreCell factor="momentum" value={r.momentum_pctl} />
+                  <ScoreCell
+                    factor="momentum"
+                    value={r.momentum_pctl}
+                    live={liveByTicker?.[r.ticker]?.momentum_live}
+                  />
                   <PriceCell row={r} />
                   {rowAccessory && (
                     <div className="flex h-full items-center justify-center">

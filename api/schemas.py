@@ -40,6 +40,13 @@ class QuoteRow(BaseModel):
     price: float | None
     prev_close: float | None
     change_pct: float | None
+    # Live-adjusted factor percentiles (Phase 16), present only for names that
+    # got a live price; null otherwise. Display overlay for the screener cells —
+    # the board's rank/sort stays on the nightly score. Growth/Quality are
+    # filing-driven, so they're never live-adjusted (no fields here).
+    composite_live: float | None = None
+    value_live: float | None = None
+    momentum_live: float | None = None
 
 
 class QuotesResponse(BaseModel):

@@ -186,6 +186,11 @@ export interface QuoteRow {
   price: number | null
   prev_close: number | null
   change_pct: number | null
+  // Live-adjusted factor percentiles (null unless a live price was applied).
+  // Display overlay for the screener cells; the board's rank/sort stays nightly.
+  composite_live: number | null
+  value_live: number | null
+  momentum_live: number | null
 }
 
 export interface FactorSet {

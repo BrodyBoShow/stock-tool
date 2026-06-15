@@ -38,6 +38,7 @@ import threading
 import time
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from engine.queries import ACTIVE_CONFIG_VERSION, acquire, release
@@ -61,25 +62,34 @@ _DIRECTION = {
 }
 
 # Price-driven sub-metrics we recompute from the live price, by factor. The
-# remaining sub-metrics in each factor are held at their nightly percentile.
+# remaining sub-metrics in each factor (value's ev_ebitda, momentum's r12_1m)
+# are held at their nightly percentile.
 _VALUE_LIVE = ("pe", "ps", "fcf_yield")   # ev_ebitda held nightly
-_VALUE_ALL = ("pe", "ps", "ev_ebitda", "fcf_yield")
 _MOMENTUM_LIVE = ("r3m", "r6m")           # r12_1m held nightly
-_MOMENTUM_ALL = ("r3m", "r6m", "r12_1m")
 
 # Raw nightly inputs needed to rebuild the distributions + per-name scaling.
 _DIST_INPUTS = ("pe", "ps", "fcf_yield", "r3m", "r6m")
 
 
 class _Snapshot:
-    """The frozen nightly cross-section for one score_date."""
+    """The frozen nightly cross-section for one score_date.
+
+    `sorted_vals` holds each sub-metric's nightly values pre-sorted ascending,
+    so a live percentile is an O(log n) searchsorted instead of an O(n log n)
+    re-rank — what makes the 300-name screener overlay cheap.
+    """
 
     def __init__(self, score_date: str, dist: pd.DataFrame, meta: dict[int, dict],
-                 weights: dict[str, float]):
+                 weights: dict[str, float], by_ticker: dict[str, int]):
         self.score_date = score_date
         self.dist = dist            # index=security_id, cols=_DIST_INPUTS (raw values)
         self.meta = meta            # security_id -> per-name nightly fields
         self.weights = weights
+        self.by_ticker = by_ticker  # ticker -> security_id (for the screener overlay)
+        self.sorted_vals: dict[str, np.ndarray] = {
+            col: np.sort(dist[col].dropna().to_numpy(dtype=float))
+            for col in _DIST_INPUTS
+        }
 
 
 _lock = threading.Lock()
@@ -126,7 +136,7 @@ def _load_snapshot() -> _Snapshot | None:
                 return snap
             cur.execute(
                 """
-                SELECT fs.security_id, fs.growth_pctl, fs.value_pctl,
+                SELECT fs.security_id, s.ticker, fs.growth_pctl, fs.value_pctl,
                        fs.quality_pctl, fs.momentum_pctl, fs.composite, fs.details
                 FROM factor_scores fs
                 JOIN securities s ON s.security_id = fs.security_id
@@ -140,13 +150,15 @@ def _load_snapshot() -> _Snapshot | None:
 
     dist_rows: dict[int, dict[str, float]] = {}
     meta: dict[int, dict] = {}
+    by_ticker: dict[str, int] = {}
     weights: dict[str, float] = {}
-    for sid, g, v, q, m, comp, details in rows:
+    for sid, ticker, g, v, q, m, comp, details in rows:
         d = _coerce_details(details)
         inputs = d.get("inputs") or {}
         sub = d.get("sub_pctls") or {}
         if not weights and d.get("weights"):
             weights = {k: float(x) for k, x in d["weights"].items()}
+        by_ticker[ticker] = sid
         dist_rows[sid] = {k: inputs.get(k) for k in _DIST_INPUTS}
         meta[sid] = {
             "close": inputs.get("close"),
@@ -161,25 +173,34 @@ def _load_snapshot() -> _Snapshot | None:
 
     dist = pd.DataFrame.from_dict(dist_rows, orient="index", columns=list(_DIST_INPUTS))
     dist = dist.apply(pd.to_numeric, errors="coerce")
-    snap = _Snapshot(str(latest), dist, meta, weights)
+    snap = _Snapshot(str(latest), dist, meta, weights, by_ticker)
     with _lock:
         _cache["snap"] = snap
         _cache["checked_monotonic"] = time.monotonic()
     return snap
 
 
-def _pctl_of(series: pd.Series, sid: int, value: float, direction: str) -> float:
-    """Percentile (0-100) of `value` placed at `sid` in the frozen distribution.
+def _pctl_of(sorted_asc: np.ndarray, value: float, direction: str) -> float:
+    """Percentile (0-100) of `value` within a pre-sorted nightly distribution.
 
-    Replicates engine.scoring._pctl exactly: rank among non-null holders, average
-    method, higher=better unless direction='lower'. Replacing the focal name's
-    own nightly value means that at the close (value == nightly) this reproduces
-    the stored sub-percentile.
+    Reproduces engine.scoring._pctl's average-rank semantics via searchsorted:
+    for a value present in the set, rank = (#below) + (1 + #equal)/2, then
+    rank/N*100 (counted from the top when direction='lower'). At the close, the
+    focal name's own nightly value is in the array, so this returns exactly its
+    stored sub-percentile (see scripts/verify_live_factors.py). Intraday it
+    ranks the live value against the frozen cross-section — the focal's stale
+    entry is left in the array, a ≤1/N (≈0.02 pctl) effect that's invisible at
+    the one-decimal precision shown.
     """
-    s = series.dropna().copy()
-    s.loc[sid] = value
-    ranks = s.rank(ascending=(direction == "higher"), pct=True, method="average") * 100.0
-    return float(ranks.loc[sid])
+    n = sorted_asc.size
+    if n == 0:
+        return float("nan")
+    lo = int(np.searchsorted(sorted_asc, value, side="left"))   # count strictly below
+    hi = int(np.searchsorted(sorted_asc, value, side="right"))  # count <= value
+    n_eq = hi - lo
+    below = lo if direction == "higher" else n - hi             # "worse" side
+    rank = below + (1 + n_eq) / 2.0
+    return rank / n * 100.0
 
 
 def _mean_available(vals: list[float | None]) -> float | None:
@@ -260,7 +281,7 @@ def live_adjust(security_id: int, live_price: float | None) -> dict[str, Any] | 
     for metric in _VALUE_LIVE:
         lv = live_raw(metric)
         if lv is not None:
-            value_subs.append(_pctl_of(snap.dist[metric], security_id, lv, _DIRECTION[metric]))
+            value_subs.append(_pctl_of(snap.sorted_vals[metric], lv, _DIRECTION[metric]))
         else:
             value_subs.append(None)
     value_subs.append(m["ev_ebitda_pctl"])  # held nightly
@@ -273,7 +294,7 @@ def live_adjust(security_id: int, live_price: float | None) -> dict[str, Any] | 
     for metric in _MOMENTUM_LIVE:
         lv = live_raw(metric)
         if lv is not None:
-            mom_subs.append(_pctl_of(snap.dist[metric], security_id, lv, _DIRECTION[metric]))
+            mom_subs.append(_pctl_of(snap.sorted_vals[metric], lv, _DIRECTION[metric]))
         else:
             mom_subs.append(None)
     mom_subs.append(m["r12_1m_pctl"])  # held nightly
@@ -308,4 +329,25 @@ def live_adjust_many(price_by_sid: dict[int, float | None]) -> dict[int, dict[st
         res = live_adjust(sid, price)
         if res is not None:
             out[sid] = res
+    return out
+
+
+def live_adjust_many_by_ticker(
+    price_by_ticker: dict[str, float | None],
+) -> dict[str, dict[str, Any]]:
+    """Batch live_adjust keyed by ticker (the screener has tickers, not sids).
+    Only names that both appear in the latest snapshot and got a live
+    adjustment (live=True) are returned, so callers can treat presence as
+    'has a live value'. ~25ms for the ~300-name quoted set."""
+    snap = _load_snapshot()
+    if snap is None:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for ticker, price in price_by_ticker.items():
+        sid = snap.by_ticker.get(ticker)
+        if sid is None:
+            continue
+        res = live_adjust(sid, price)
+        if res is not None and res["live"]:
+            out[ticker] = res
     return out

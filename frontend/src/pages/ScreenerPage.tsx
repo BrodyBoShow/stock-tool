@@ -101,6 +101,7 @@ export function ScreenerPage() {
         <ScreenerTable
           rows={filtered}
           scoreDate={data.score_date}
+          liveByTicker={quotes?.quotes}
           rowAccessory={(ticker) => <WatchlistButton ticker={ticker} variant="icon" />}
           onRowClick={(row) => setDrawerRow(row)}
         />
