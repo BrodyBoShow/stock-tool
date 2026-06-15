@@ -15,7 +15,7 @@ import time
 from datetime import date, timedelta
 from typing import Any
 
-from engine.db import get_connection
+from engine.db import acquire, release
 
 MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
 
@@ -41,13 +41,13 @@ def _f(v) -> float | None:
 
 def active_tickers() -> list[str]:
     """Tickers of all active securities (for the live-quote overlay)."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT ticker FROM securities WHERE is_active ORDER BY ticker")
             return [r[0] for r in cur.fetchall()]
     finally:
-        conn.close()
+        release(conn)
 
 
 def top_quote_tickers(limit: int = 300) -> list[str]:
@@ -62,7 +62,7 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
     whose post-split sell zeroes the position could linger in the set, which
     only costs one extra quote fetch.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -100,12 +100,12 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
                 rows.append("SPY")
             return rows or active_tickers()
     finally:
-        conn.close()
+        release(conn)
 
 
 def latest_backtest(config_version: str = ACTIVE_CONFIG_VERSION) -> dict[str, Any] | None:
     """Most recent stored backtest run for the Lab page; None if never run."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -121,7 +121,7 @@ def latest_backtest(config_version: str = ACTIVE_CONFIG_VERSION) -> dict[str, An
             )
             row = cur.fetchone()
     finally:
-        conn.close()
+        release(conn)
     if row is None:
         return None
     bid, cv, gen, sd, ed, params, results = row
@@ -156,7 +156,7 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
         if complete_only
         else ""
     )
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -201,7 +201,7 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
 
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl",
@@ -233,7 +233,7 @@ _screener_refreshing: set[bool] = set()
 
 
 def _latest_screen_score_date() -> date | None:
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -242,7 +242,7 @@ def _latest_screen_score_date() -> date | None:
             )
             return cur.fetchone()[0]
     finally:
-        conn.close()
+        release(conn)
 
 
 def _refresh_screener(complete_only: bool) -> None:
@@ -314,7 +314,7 @@ def security_header(ticker: str) -> dict[str, Any] | None:
 
     Returns None if the ticker is not found or inactive.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -346,7 +346,7 @@ def security_header(ticker: str) -> dict[str, Any] | None:
                 return None
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
 
     d = dict(zip(cols, row, strict=True))
     if isinstance(d.get("details"), str):
@@ -366,7 +366,7 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
     if days is not None:
         cutoff = date.today() - timedelta(days=days)
 
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             if cutoff is not None:
@@ -393,7 +393,7 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
                 )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
 
     return [{"date": r[0], "adj_close": _f(r[1]), "close": _f(r[2])} for r in rows]
 
@@ -403,7 +403,7 @@ def fundamental_metric_rows(ticker: str) -> list[dict[str, Any]]:
 
     Returns flat list of {as_of_date, metric, value}, ordered by date DESC.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -418,7 +418,7 @@ def fundamental_metric_rows(ticker: str) -> list[dict[str, Any]]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
 
     return [{"as_of_date": r[0], "metric": r[1], "value": _f(r[2])} for r in rows]
 
@@ -429,7 +429,7 @@ def macro_latest_rows() -> dict[str, list[dict[str, Any]]]:
     Returns {series_id: [{"date": d, "value": v}, ...]}, latest first.
     MACRO IS CONTEXT ONLY — never feeds factor scores.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -449,7 +449,7 @@ def macro_latest_rows() -> dict[str, list[dict[str, Any]]]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
 
     out: dict[str, list[dict[str, Any]]] = {}
     for sid, d, v in rows:
@@ -459,7 +459,7 @@ def macro_latest_rows() -> dict[str, list[dict[str, Any]]]:
 
 def macro_series_rows(series_id: str) -> list[dict[str, Any]]:
     """Full history for one macro series (for chart overlays)."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -468,7 +468,7 @@ def macro_series_rows(series_id: str) -> list[dict[str, Any]]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
 
     return [{"date": r[0], "value": _f(r[1])} for r in rows]
 
@@ -477,7 +477,7 @@ def sparkline_rows(tickers: list[str], n: int = 30) -> dict[str, list[float]]:
     """Last n adj_close points per ticker, oldest→newest. Used for sparklines."""
     if not tickers:
         return {}
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -498,7 +498,7 @@ def sparkline_rows(tickers: list[str], n: int = 30) -> dict[str, list[float]]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
 
     out: dict[str, list[float]] = {t: [] for t in tickers}
     for ticker, adj_close in rows:
@@ -510,7 +510,7 @@ def sparkline_rows(tickers: list[str], n: int = 30) -> dict[str, list[float]]:
 
 def watchlist_rows() -> list[dict[str, Any]]:
     """Watchlist rows joined with securities + latest factor scores."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -539,7 +539,7 @@ def watchlist_rows() -> list[dict[str, Any]]:
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
 
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl",
@@ -556,7 +556,7 @@ def watchlist_rows() -> list[dict[str, Any]]:
 
 def watchlist_tickers() -> frozenset[str]:
     """Frozenset of tickers currently in the watchlist."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -565,13 +565,13 @@ def watchlist_tickers() -> frozenset[str]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
     return frozenset(r[0] for r in rows)
 
 
 def all_theses_rows() -> list[dict[str, Any]]:
     """All active theses joined with securities + latest composite score."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -596,7 +596,7 @@ def all_theses_rows() -> list[dict[str, Any]]:
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
 
     result = []
     for raw in db_rows:
@@ -616,7 +616,7 @@ def watchlist_add_by_ticker(ticker: str) -> tuple[str, int | None]:
       "already_present" — ticker was already in the watchlist
       "not_found"       — ticker not in securities or inactive
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -636,7 +636,7 @@ def watchlist_add_by_ticker(ticker: str) -> tuple[str, int | None]:
             added = cur.rowcount > 0
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
     return ("added" if added else "already_present"), security_id
 
@@ -649,7 +649,7 @@ def watchlist_remove_by_ticker(ticker: str) -> tuple[bool, str]:
       "not_in_watchlist" — ticker found but not in watchlist
       "not_found"        — ticker not in securities or inactive
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -665,7 +665,7 @@ def watchlist_remove_by_ticker(ticker: str) -> tuple[bool, str]:
             deleted = cur.rowcount > 0
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
     return deleted, ("removed" if deleted else "not_in_watchlist")
 
@@ -683,7 +683,7 @@ def thesis_upsert_by_ticker(
       "updated"   — existing thesis row updated
       "not_found" — ticker not in securities or inactive
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -723,7 +723,7 @@ def thesis_upsert_by_ticker(
                 status = "created"
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
     return status, security_id
 
@@ -736,7 +736,7 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
       "not_found_thesis"  — ticker found but no active thesis
       "not_found_ticker"  — ticker not in securities or inactive
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -755,7 +755,7 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
             deleted = cur.rowcount > 0
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
     return deleted, ("deleted" if deleted else "not_found_thesis")
 
@@ -764,7 +764,7 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
 
 def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:
     """Recent filings for a ticker (newest first)."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -782,13 +782,13 @@ def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     return [dict(zip(cols, r, strict=True)) for r in rows]
 
 
 def latest_filing(ticker: str, form: str = "10-K") -> dict[str, Any] | None:
     """Most recent filing of a given form for a ticker (incl. security_id)."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -808,7 +808,7 @@ def latest_filing(ticker: str, form: str = "10-K") -> dict[str, Any] | None:
                 return None
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     return dict(zip(cols, row, strict=True))
 
 
@@ -816,7 +816,7 @@ def get_cached_summary(
     accession_no: str, prompt_version: str, schema_version: str
 ) -> dict[str, Any] | None:
     """Cached AI summary for a filing (by accession + prompt/schema version)."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -834,7 +834,7 @@ def get_cached_summary(
                 return None
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     d = dict(zip(cols, row, strict=True))
     if isinstance(d.get("summary"), str):
         d["summary"] = json.loads(d["summary"])
@@ -854,7 +854,7 @@ def save_filing_summary(
     output_tokens: int | None,
 ) -> None:
     """Upsert a generated AI summary into the ai_summaries cache."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -880,7 +880,7 @@ def save_filing_summary(
             )
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
 
 # ── filing diligence Q&A (Phase 14 — context only) ────────────────────────────
@@ -889,7 +889,7 @@ def get_cached_filing_qa(
     accession_no: str, prompt_version: str, schema_version: str
 ) -> dict[str, Any] | None:
     """Cached deep filing answers for a 10-K (by accession + versions)."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -906,7 +906,7 @@ def get_cached_filing_qa(
                 return None
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     d = dict(zip(cols, row, strict=True))
     if isinstance(d.get("answers"), str):
         d["answers"] = json.loads(d["answers"])
@@ -926,7 +926,7 @@ def save_filing_qa(
     output_tokens: int | None,
 ) -> None:
     """Upsert generated diligence answers into the filing_answers cache."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -950,7 +950,7 @@ def save_filing_qa(
             )
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
 
 # ── material events (Phase 13 — 8-K, context only) ────────────────────────────
@@ -961,7 +961,7 @@ def events_for_ticker(ticker: str, months: int = 12, limit: int = 60) -> list[di
     Returns raw rows (item codes + dates + doc url); the API layer attaches
     plain-English labels and the high-signal flag from engine.events.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -981,7 +981,7 @@ def events_for_ticker(ticker: str, months: int = 12, limit: int = 60) -> list[di
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     return [dict(zip(cols, r, strict=True)) for r in rows]
 
 
@@ -1004,7 +1004,7 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
     most recent `limit` snapshots, oldest first. History accrues one row per
     scoring run, so trend windows lengthen automatically over time.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1039,7 +1039,7 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
 
     out: list[dict[str, Any]] = []
     for row in reversed(rows):  # newest-first query result -> oldest-first list
@@ -1059,7 +1059,7 @@ def sector_metric_medians(sector: str) -> dict[str, Any]:
     Reads factor_scores.details.inputs for every active security in the
     sector. Returns {"n": peer_count, "medians": {metric: median_or_None}}.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1076,7 +1076,7 @@ def sector_metric_medians(sector: str) -> dict[str, Any]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
 
     values: dict[str, list[float]] = {m: [] for m in BRIEF_METRICS}
     for (details,) in rows:
@@ -1102,7 +1102,7 @@ def get_cached_brief(
     security_id: int, score_date: date, prompt_version: str, schema_version: str
 ) -> dict[str, Any] | None:
     """Cached Decision Brief for one security at one scoring snapshot."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1121,7 +1121,7 @@ def get_cached_brief(
                 return None
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     d = dict(zip(cols, row, strict=True))
     if isinstance(d.get("brief"), str):
         d["brief"] = json.loads(d["brief"])
@@ -1135,7 +1135,7 @@ def latest_brief(
     versions. Used by the smart-refresh check, which decides whether that
     brief is still valid rather than keying strictly on today's score_date.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1154,7 +1154,7 @@ def latest_brief(
                 return None
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
     d = dict(zip(cols, row, strict=True))
     if isinstance(d.get("brief"), str):
         d["brief"] = json.loads(d["brief"])
@@ -1167,7 +1167,7 @@ def latest_material_filing_date(security_id: int) -> date | None:
     The smart-refresh check regenerates a brief when this is newer than the
     cached brief's snapshot.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1184,7 +1184,7 @@ def latest_material_filing_date(security_id: int) -> date | None:
             )
             row = cur.fetchone()
     finally:
-        conn.close()
+        release(conn)
     return row[0] if row else None
 
 
@@ -1200,7 +1200,7 @@ def save_brief(
     output_tokens: int | None,
 ) -> None:
     """Upsert a generated Decision Brief into the decision_briefs cache."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1224,7 +1224,7 @@ def save_brief(
             )
         conn.commit()
     finally:
-        conn.close()
+        release(conn)
 
 
 # ── insider transactions (Phase 12 — context only) ────────────────────────────
@@ -1236,7 +1236,7 @@ def insider_rows(ticker: str, months: int = 12, limit: int = 2000) -> list[dict[
     ALL rows even for heavy plan-sellers (NVDA files ~700 lines/year); the
     API truncates the displayed list separately.
     """
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -1257,7 +1257,7 @@ def insider_rows(ticker: str, months: int = 12, limit: int = 2000) -> list[dict[
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
     finally:
-        conn.close()
+        release(conn)
 
     out = []
     for row in rows:

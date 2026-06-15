@@ -97,14 +97,24 @@ async def _generic_handler(request: Request, exc: Exception) -> JSONResponse:
 
 @app.on_event("startup")
 def _warm_caches() -> None:
-    """Start the heavy computations in background threads at boot so the first
-    open is usually instant: the ~20s market overview and the ~15s screener
-    (both complete-only and full variants)."""
+    """Open the DB read pool, then start the heavy computations in background
+    threads at boot so the first open is usually instant: the ~20s market
+    overview and the ~15s screener (both complete-only and full variants).
+    The pool must open first — the warm threads borrow from it."""
+    from engine import db, queries
     from engine import market as market_engine
-    from engine import queries
 
+    db.init_pool()
     market_engine.warm()
     queries.warm_screener()
+
+
+@app.on_event("shutdown")
+def _close_pool() -> None:
+    """Release pooled DB connections on shutdown."""
+    from engine import db
+
+    db.close_pool()
 
 
 @app.get("/auth/check", tags=["meta"])
