@@ -395,7 +395,15 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
     finally:
         release(conn)
 
-    return [{"date": r[0], "adj_close": _f(r[1]), "close": _f(r[2]), "volume": int(r[3]) if r[3] is not None else None} for r in rows]
+    return [
+        {
+            "date": r[0],
+            "adj_close": _f(r[1]),
+            "close": _f(r[2]),
+            "volume": int(r[3]) if r[3] is not None else None,
+        }
+        for r in rows
+    ]
 
 
 def fundamental_metric_rows(ticker: str) -> list[dict[str, Any]]:
@@ -532,6 +540,80 @@ def watchlist_tickers() -> frozenset[str]:
     finally:
         release(conn)
     return frozenset(r[0] for r in rows)
+
+
+def watchlist_change_core(baseline_days: int = 25) -> list[dict[str, Any]]:
+    """Per-watchlist-name nightly rank/composite move + thesis review date.
+
+    Ranks ONLY the latest snapshot and the most recent one at least
+    `baseline_days` old (over the complete-factor universe, same basis as the
+    screener), so this is two RANK() passes — not the whole history. comp_base/
+    rank_base are NULL when no snapshot that old exists yet (young history).
+    The 8-K / insider / live-price parts are layered on in the API router.
+    """
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH d AS (
+                    SELECT max(score_date) AS latest
+                    FROM factor_scores WHERE config_version = %s
+                ),
+                b AS (
+                    SELECT max(score_date) AS base
+                    FROM factor_scores
+                    WHERE config_version = %s
+                      AND score_date <= (SELECT latest FROM d) - (%s || ' days')::interval
+                ),
+                ranked AS (
+                    SELECT fs.security_id, fs.score_date, fs.composite,
+                           RANK() OVER (PARTITION BY fs.score_date
+                                        ORDER BY fs.composite DESC) AS rk
+                    FROM factor_scores fs
+                    JOIN securities s ON s.security_id = fs.security_id
+                    WHERE s.is_active AND fs.config_version = %s
+                      AND fs.score_date IN ((SELECT latest FROM d), (SELECT base FROM b))
+                      AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
+                      AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
+                )
+                SELECT w.security_id, s.ticker, s.name, s.sector, w.added_at,
+                       (SELECT latest FROM d) AS latest_date,
+                       (SELECT base FROM b) AS base_date,
+                       ln.composite AS comp_now, ln.rk AS rank_now,
+                       bn.composite AS comp_base, bn.rk AS rank_base,
+                       t.review_date
+                FROM watchlist w
+                JOIN securities s ON s.security_id = w.security_id
+                LEFT JOIN ranked ln
+                    ON ln.security_id = w.security_id
+                    AND ln.score_date = (SELECT latest FROM d)
+                LEFT JOIN ranked bn
+                    ON bn.security_id = w.security_id
+                    AND bn.score_date = (SELECT base FROM b)
+                LEFT JOIN theses t
+                    ON t.security_id = w.security_id AND t.status = 'active'
+                ORDER BY w.added_at DESC
+                """,
+                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, str(baseline_days),
+                 ACTIVE_CONFIG_VERSION),
+            )
+            db_rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+
+    out = []
+    for raw in db_rows:
+        row = dict(zip(cols, raw, strict=True))
+        for k in ("comp_now", "comp_base"):
+            row[k] = _f(row.get(k))
+        for k in ("rank_now", "rank_base"):
+            row[k] = int(row[k]) if row.get(k) is not None else None
+        for k in ("latest_date", "base_date", "review_date"):
+            row[k] = str(row[k]) if row.get(k) is not None else None
+        out.append(row)
+    return out
 
 
 def all_theses_rows() -> list[dict[str, Any]]:

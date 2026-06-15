@@ -24,6 +24,7 @@ import type {
   ThesisMutationResponse,
   ThesisUpsertRequest,
   WatchlistMutationResponse,
+  WatchlistChangesResponse,
   WatchlistResponse,
 } from '@/types/api'
 
@@ -143,6 +144,10 @@ async function sendJson<T>(
 
 export function getWatchlist(): Promise<WatchlistResponse> {
   return getJson<WatchlistResponse>('/watchlist')
+}
+
+export function getWatchlistChanges(): Promise<WatchlistChangesResponse> {
+  return getJson<WatchlistChangesResponse>('/watchlist/changes')
 }
 
 export function getTheses(): Promise<ThesesResponse> {

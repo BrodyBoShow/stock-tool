@@ -3,14 +3,25 @@ import { Link } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { WatchlistChanges } from '@/components/WatchlistChanges'
 import { WatchlistTable } from '@/components/WatchlistTable'
-import { getWatchlist } from '@/lib/api'
+import { getWatchlist, getWatchlistChanges } from '@/lib/api'
 
 export function WatchlistPage() {
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ['watchlist'],
     queryFn: getWatchlist,
     staleTime: 5 * 60 * 1000,
+  })
+
+  // "What changed" digest — recent rank/score moves, 8-Ks, insider buys, review
+  // due. Live-quote-backed, so refetch on a short cadence like the screener.
+  const { data: changes } = useQuery({
+    queryKey: ['watchlist', 'changes'],
+    queryFn: getWatchlistChanges,
+    staleTime: 60 * 1000,
+    refetchInterval: 90 * 1000,
+    refetchOnWindowFocus: true,
   })
 
   if (isPending) {
@@ -56,7 +67,12 @@ export function WatchlistPage() {
           </Link>
         </div>
       ) : (
-        <WatchlistTable rows={rows} />
+        <div className="space-y-5">
+          {changes && changes.rows.length > 0 && (
+            <WatchlistChanges rows={changes.rows} />
+          )}
+          <WatchlistTable rows={rows} />
+        </div>
       )}
     </div>
   )

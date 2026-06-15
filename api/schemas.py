@@ -328,6 +328,38 @@ class WatchlistResponse(BaseModel):
     rows: list[WatchlistRow]
 
 
+class WatchlistChange(BaseModel):
+    """One watchlist name's recent material changes — the decision-layer digest.
+    All read-only/derived from existing data (factor history, 8-Ks, Form 4,
+    thesis review date, live quote). Display only."""
+    security_id: int
+    ticker: str
+    name: str | None
+    sector: str | None
+    # nightly rank/composite move vs the ~1-month-ago snapshot
+    composite: float | None
+    composite_prior: float | None
+    rank: int | None
+    rank_prior: int | None
+    baseline_date: str | None
+    # live-adjusted composite (today's price vs frozen cross-section), if quoted
+    composite_live: float | None
+    # high-signal 8-K material events in the last 30 days
+    new_events: int
+    latest_event_label: str | None
+    latest_event_date: str | None
+    # open-market insider buys, trailing 3 months
+    insider_buy_count: int
+    insider_buy_value: float | None
+    # thesis review is due (review_date on/before today)
+    review_due: bool
+
+
+class WatchlistChangesResponse(BaseModel):
+    as_of_epoch: float | None       # live-quote fetch time, if any quotes applied
+    rows: list[WatchlistChange]     # most recently added first
+
+
 class WatchlistAddRequest(BaseModel):
     ticker: str
 

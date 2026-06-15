@@ -286,6 +286,30 @@ export interface WatchlistResponse {
   rows: WatchlistRow[]
 }
 
+export interface WatchlistChange {
+  security_id: number
+  ticker: string
+  name: string | null
+  sector: string | null
+  composite: number | null
+  composite_prior: number | null
+  rank: number | null
+  rank_prior: number | null
+  baseline_date: string | null
+  composite_live: number | null
+  new_events: number
+  latest_event_label: string | null
+  latest_event_date: string | null
+  insider_buy_count: number
+  insider_buy_value: number | null
+  review_due: boolean
+}
+
+export interface WatchlistChangesResponse {
+  as_of_epoch: number | null
+  rows: WatchlistChange[]
+}
+
 export interface WatchlistMutationResponse {
   ticker: string
   security_id: number
