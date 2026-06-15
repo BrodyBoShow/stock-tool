@@ -223,8 +223,11 @@ def get_brief(ticker: str) -> BriefStatusResponse:
     has_scores = header.get("score_date") is not None
     cached = None
     if has_scores:
-        cached = queries.get_cached_brief(
-            header["security_id"], header["score_date"],
+        # Use latest_brief (any score_date) so smart-refresh reuse is visible:
+        # the POST may serve a still-valid brief from a prior snapshot date,
+        # and get_cached_brief (exact score_date) would miss it.
+        cached = queries.latest_brief(
+            header["security_id"],
             brief_engine.PROMPT_VERSION, brief_engine.SCHEMA_VERSION,
         )
     return BriefStatusResponse(
