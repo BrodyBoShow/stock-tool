@@ -247,7 +247,7 @@ export function LabPage() {
             style={
               selected
                 ? { background: '#eef2ff', color: '#4f46e5', boxShadow: 'inset 0 0 0 1.5px #4f46e5' }
-                : { background: '#ffffff', color: '#64748b', boxShadow: 'inset 0 0 0 1px #e5e7eb' }
+                : { background: '#ffffff', color: '#334155', boxShadow: 'inset 0 0 0 1px #cbd5e1' }
             }
           >
             {KEY_LABELS[k] ?? k}
@@ -296,7 +296,7 @@ export function LabPage() {
       {/* factor selector — drives every chart below */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
             Ranking
           </span>
           {FactorPills}

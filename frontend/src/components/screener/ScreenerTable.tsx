@@ -238,7 +238,7 @@ export function ScreenerTable({
                   }}
                   onClick={handleRowClick}
                 >
-                  <div className="flex h-full items-center justify-end pr-2 text-[0.7rem] text-[#cbd5e1]">
+                  <div className="flex h-full items-center justify-end pr-2 text-[0.74rem] font-semibold tabular-nums text-[#64748b]">
                     {r.rank}
                   </div>
                   <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1.5">
