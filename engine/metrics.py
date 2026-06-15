@@ -136,7 +136,17 @@ ACCRUALS_DEFINITION = {
 class Fact:
     __slots__ = ("concept", "normalized", "unit", "value", "ps", "pe", "fp", "filed")
 
-    def __init__(self, concept, normalized, unit, value, ps, pe, fp, filed):
+    def __init__(
+        self,
+        concept: str,
+        normalized: str | None,
+        unit: str,
+        value: float,
+        ps: date | None,
+        pe: date,
+        fp: str | None,
+        filed: date,
+    ) -> None:
         self.concept = concept
         self.normalized = normalized
         self.unit = unit
