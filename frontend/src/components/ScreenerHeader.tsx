@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { getMacroLatest } from '@/lib/api'
-import { fmtDate, fmtShortDate } from '@/lib/format'
+import { fmtShortDate } from '@/lib/format'
 import type { ScreenerRow } from '@/types/api'
 
 /** ET wall-clock parts via Intl — never the user's local zone. */
@@ -24,14 +24,6 @@ function etParts(now: Date) {
   return o
 }
 
-/** Whole days between the ET calendar date and score_date (YYYY-MM-DD). */
-function staleDaysET(scoreDate: string, now: Date): number {
-  const p = etParts(now)
-  const todayUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day))
-  const [y, m, d] = scoreDate.split('-').map(Number)
-  const scoreUtc = Date.UTC(y, m - 1, d)
-  return Math.round((todayUtc - scoreUtc) / 86_400_000)
-}
 
 function Stat({
   label,
@@ -70,11 +62,9 @@ function Stat({
  * not an index feed. VIX shows "—" — the API exposes no macro endpoint yet.
  */
 export function ScreenerHeader({
-  scoreDate,
   rows,
   quotesAsOfEpoch,
 }: {
-  scoreDate: string | null
   rows: ScreenerRow[]
   quotesAsOfEpoch?: number | null
 }) {
@@ -93,8 +83,13 @@ export function ScreenerHeader({
   const weekday = p.weekday !== 'Sat' && p.weekday !== 'Sun'
   const open = weekday && mins >= 570 && mins < 960 // 09:30–16:00 ET regular session
 
-  const staleDays = scoreDate ? staleDaysET(scoreDate, now) : null
-  const fresh = staleDays === null || staleDays <= 3
+  // ET calendar date for display under the clock
+  const etDateLabel = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(now)
 
   // Live-price stamp (intraday overlay). Prices are ~15-min delayed (free
   // yfinance); scores remain end-of-day. Show the quote date + time in ET.
@@ -184,34 +179,16 @@ export function ScreenerHeader({
               <span>
                 Factor rankings across {rows.length} companies
               </span>
-              {liveNow ? (
-                <>
+              {liveNow && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-sky-700"
+                  title="Prices are ~15-min delayed. Factor scores are official nightly closes."
+                >
                   <span
-                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-sky-700"
-                    title="Prices are live (~15-min delayed). Factor scores are official nightly closes."
-                  >
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-sky-500"
-                      style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
-                    />
-                    Live prices · {liveDate}, {liveStamp} ET
-                  </span>
-                  <span className="text-[0.72rem] text-[#94a3b8]">
-                    scores · official close · {fmtDate(scoreDate)}
-                  </span>
-                </>
-              ) : fresh ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-emerald-700">
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                    className="h-1.5 w-1.5 rounded-full bg-sky-500"
                     style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
                   />
-                  Updated {fmtDate(scoreDate)}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-amber-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Stale · {fmtDate(scoreDate)}
+                  Live prices · {liveDate}, {liveStamp} ET
                 </span>
               )}
             </div>
@@ -240,7 +217,7 @@ export function ScreenerHeader({
                 {clock}
               </div>
               <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
-                New York · ET
+                {etDateLabel} · New York · ET
               </div>
             </div>
           </div>

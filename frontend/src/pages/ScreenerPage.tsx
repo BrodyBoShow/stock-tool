@@ -86,7 +86,6 @@ export function ScreenerPage() {
   return (
     <div className="space-y-5">
       <ScreenerHeader
-        scoreDate={data.score_date}
         rows={rows}
         quotesAsOfEpoch={quotes && !quotes.stale ? quotes.as_of_epoch : null}
       />
