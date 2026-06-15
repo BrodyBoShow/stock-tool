@@ -1,0 +1,157 @@
+import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
+
+import { ScoreWaterfall } from '@/components/deepdive/ScoreWaterfall'
+import { SectorPill } from '@/components/screener/SectorPill'
+import { WatchlistButton } from '@/components/WatchlistButton'
+import { getSecurity } from '@/lib/api'
+import { DASH, fmtDate, fmtPrice } from '@/lib/format'
+import type { ScreenerRow } from '@/types/api'
+
+export function ScreenerDrawer({
+  row,
+  onClose,
+}: {
+  row: ScreenerRow
+  onClose: () => void
+}) {
+  // close on ESC
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const { data, isPending } = useQuery({
+    queryKey: ['security', row.ticker.toUpperCase(), 30],
+    queryFn: () => getSecurity(row.ticker, 30),
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const header = data?.header
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Drawer panel */}
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[420px] flex-col bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#f1f5f9] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-[0.9rem] font-extrabold text-white"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+            >
+              {row.ticker.slice(0, 2)}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[1.1rem] font-extrabold text-[#111827]">
+                  {row.ticker}
+                </span>
+                <SectorPill sector={row.sector} />
+              </div>
+              <div className="text-[0.78rem] text-[#6b7280]">
+                {row.name ?? DASH}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <WatchlistButton ticker={row.ticker} variant="icon" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-[#9ca3af] hover:bg-[#f1f5f9] hover:text-[#374151]"
+              aria-label="Close"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Price strip */}
+        <div className="flex items-center gap-6 border-b border-[#f1f5f9] px-5 py-3">
+          <div>
+            <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-[#9ca3af]">
+              Price
+            </div>
+            <div className="text-[1.05rem] font-extrabold tabular-nums text-[#0f172a]">
+              {fmtPrice(row.last_price)}
+            </div>
+            {row.last_price != null && row.prev_close != null && row.prev_close !== 0 && (
+              <div
+                className="text-[0.72rem] font-semibold tabular-nums"
+                style={{
+                  color:
+                    row.last_price >= row.prev_close ? '#059669' : '#dc2626',
+                }}
+              >
+                {row.last_price >= row.prev_close ? '▲' : '▼'}{' '}
+                {(
+                  Math.abs((row.last_price - row.prev_close) / row.prev_close) * 100
+                ).toFixed(2)}
+                %
+              </div>
+            )}
+          </div>
+          {header && (
+            <div>
+              <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-[#9ca3af]">
+                Scores as of
+              </div>
+              <div className="text-[0.88rem] font-semibold text-[#374151]">
+                {fmtDate(header.score_date)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {isPending ? (
+            <div className="space-y-3">
+              {[80, 60, 75, 55].map((w, i) => (
+                <div
+                  key={i}
+                  className="h-4 animate-pulse rounded bg-[#f1f5f9]"
+                  style={{ width: `${w}%` }}
+                />
+              ))}
+            </div>
+          ) : header ? (
+            <ScoreWaterfall header={header} />
+          ) : (
+            <p className="text-[0.85rem] text-[#9ca3af]">
+              Could not load score detail.
+            </p>
+          )}
+        </div>
+
+        {/* Footer CTA */}
+        <div className="border-t border-[#f1f5f9] px-5 py-4">
+          <Link
+            to={`/securities/${row.ticker}`}
+            onClick={onClose}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-4 py-3 text-[0.88rem] font-bold text-white transition-colors hover:bg-[#0f172a]"
+          >
+            Open full deep-dive
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" />
+            </svg>
+          </Link>
+        </div>
+      </div>
+    </>
+  )
+}

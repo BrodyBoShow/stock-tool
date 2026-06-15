@@ -202,6 +202,104 @@ function timeAgo(epoch: number): string {
   return hrs < 24 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`
 }
 
+function cacheAgeLabel(seconds: number): string {
+  if (seconds < 60) return `${seconds}s ago`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`
+  return `${Math.round(seconds / 3600)}h ago`
+}
+
+/** Regime strip — 5 quick signals derived from existing market data. */
+function RegimeStrip({
+  d,
+}: {
+  d: MarketOverviewResponse
+}) {
+  const spy1d = d.market.spy_r1d
+  const breadth = d.breadth.pct_above_ma50
+
+  // find VIX and 10Y from macro cards
+  const vixCard = d.macro.cards.find((c) => c.id === 'VIXCLS')
+  const dgs10Card = d.macro.cards.find((c) => c.id === 'DGS10')
+  const vix = vixCard?.latest ?? null
+  const rates10yDelta = dgs10Card?.delta ?? null
+
+  // top sector by 1D return
+  const topSector = [...d.sectors].sort((a, b) => (b.r1d ?? -Infinity) - (a.r1d ?? -Infinity))[0]
+
+  const signals: Array<{ label: string; value: string; color: string; bg: string }> = [
+    {
+      label: 'Risk',
+      value: spy1d == null ? '—' : spy1d >= 0.005 ? 'Risk-On' : spy1d <= -0.005 ? 'Risk-Off' : 'Neutral',
+      color: spy1d == null ? '#94a3b8' : spy1d >= 0.005 ? '#059669' : spy1d <= -0.005 ? '#dc2626' : '#64748b',
+      bg: spy1d == null ? '#f1f5f9' : spy1d >= 0.005 ? '#ecfdf5' : spy1d <= -0.005 ? '#fef2f2' : '#f8fafc',
+    },
+    {
+      label: 'Breadth',
+      value: breadth == null ? '—' : breadth >= 0.6 ? `Healthy (${(breadth * 100).toFixed(0)}%)` : breadth >= 0.4 ? `Moderate (${(breadth * 100).toFixed(0)}%)` : `Narrow (${(breadth * 100).toFixed(0)}%)`,
+      color: breadth == null ? '#94a3b8' : breadth >= 0.6 ? '#059669' : breadth >= 0.4 ? '#d97706' : '#dc2626',
+      bg: breadth == null ? '#f1f5f9' : breadth >= 0.6 ? '#ecfdf5' : breadth >= 0.4 ? '#fffbeb' : '#fef2f2',
+    },
+    {
+      label: 'Rates',
+      value: rates10yDelta == null ? '—' : rates10yDelta > 0.05 ? `Rising (${dgs10Card!.latest.toFixed(2)}%)` : rates10yDelta < -0.05 ? `Falling (${dgs10Card!.latest.toFixed(2)}%)` : `Stable (${dgs10Card!.latest.toFixed(2)}%)`,
+      color: rates10yDelta == null ? '#94a3b8' : Math.abs(rates10yDelta) <= 0.05 ? '#059669' : '#d97706',
+      bg: rates10yDelta == null ? '#f1f5f9' : Math.abs(rates10yDelta) <= 0.05 ? '#ecfdf5' : '#fffbeb',
+    },
+    {
+      label: 'VIX',
+      value: vix == null ? '—' : vix < 18 ? `Low (${vix.toFixed(1)})` : vix < 25 ? `Moderate (${vix.toFixed(1)})` : `Elevated (${vix.toFixed(1)})`,
+      color: vix == null ? '#94a3b8' : vix < 18 ? '#059669' : vix < 25 ? '#d97706' : '#dc2626',
+      bg: vix == null ? '#f1f5f9' : vix < 18 ? '#ecfdf5' : vix < 25 ? '#fffbeb' : '#fef2f2',
+    },
+    {
+      label: 'Leading',
+      value: topSector?.sector ?? '—',
+      color: topSector?.r1d != null && topSector.r1d >= 0 ? '#059669' : '#dc2626',
+      bg: topSector?.r1d != null && topSector.r1d >= 0 ? '#ecfdf5' : '#fef2f2',
+    },
+  ]
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {signals.map((s) => (
+        <div
+          key={s.label}
+          className="flex items-center gap-2 rounded-full border border-[#e5e7eb] px-3 py-1.5"
+          style={{ background: s.bg }}
+        >
+          <span className="text-[0.67rem] font-bold uppercase tracking-[0.08em] text-[#9ca3af]">
+            {s.label}
+          </span>
+          <span className="text-[0.78rem] font-bold" style={{ color: s.color }}>
+            {s.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Freshness row — summarizes when all the page data was last computed. */
+function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
+  const age = d.cache_age_seconds
+  const isStale = age > 600 // > 10 min
+  return (
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-3 py-2 text-[0.72rem] ${
+      isStale
+        ? 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]'
+        : 'border-[#e5e7eb] bg-[#f9fafb] text-[#6b7280]'
+    }`}>
+      <span>
+        <span className={`font-bold ${isStale ? 'text-[#d97706]' : 'text-[#374151]'}`}>
+          Internals cached {cacheAgeLabel(age)}
+        </span>
+        {isStale && ' — may be stale, refresh the page to re-compute'}
+      </span>
+      <span className="text-[#9ca3af]">Closes through {fmtDate(d.as_of)}</span>
+    </div>
+  )
+}
+
 /** AI market brief — the narrative read. Falls back to the computed bullets
  *  (shown by the caller) when it's not yet generated. */
 function AiBrief({
@@ -436,9 +534,14 @@ export function MarketPage() {
             </div>
           </div>
           <p className="mt-1.5 text-[0.8rem] text-[#94a3b8]">
-            Internals computed across the full {b.n.toLocaleString()}-name active universe ·
-            nightly closes through {fmtDate(d.as_of)}
+            Internals computed across the full {b.n.toLocaleString()}-name active universe
           </p>
+        </div>
+        <div className="border-t border-[#f1f5f9] px-7 py-3">
+          <RegimeStrip d={d} />
+        </div>
+        <div className="border-t border-[#f1f5f9] px-7 py-2">
+          <FreshnessRow d={d} />
         </div>
       </header>
 

@@ -94,6 +94,7 @@ function role(t: InsiderTransaction): string {
  */
 export function InsiderPanel({ ticker }: { ticker: string }) {
   const [expanded, setExpanded] = useState(false)
+  const [openMarketOnly, setOpenMarketOnly] = useState(false)
   const { data, isPending, error } = useQuery({
     queryKey: ['insiders', ticker],
     queryFn: () => getInsiders(ticker),
@@ -101,7 +102,10 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
   })
 
   const txns = data?.transactions ?? []
-  const shown = expanded ? txns : txns.slice(0, SHOWN_DEFAULT)
+  const filteredTxns = openMarketOnly
+    ? txns.filter((t) => t.transaction_code === 'P' || t.transaction_code === 'S')
+    : txns
+  const shown = expanded ? filteredTxns : filteredTxns.slice(0, SHOWN_DEFAULT)
 
   return (
     <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
@@ -115,13 +119,27 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
             awards and plan sales mostly don&apos;t. Context, not advice.
           </div>
         </div>
-        {data && txns.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {data.windows.map((w) => (
-              <WindowChip key={w.months} w={w} />
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {data && txns.length > 0 && (
+            <>
+              {data.windows.map((w) => (
+                <WindowChip key={w.months} w={w} />
+              ))}
+              <label className="ml-1 flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1 text-[0.72rem] font-semibold text-[#475569] hover:bg-[#f1f5f9]">
+                <input
+                  type="checkbox"
+                  checked={openMarketOnly}
+                  onChange={(e) => {
+                    setOpenMarketOnly(e.target.checked)
+                    setExpanded(false)
+                  }}
+                  className="h-3 w-3 accent-[#4f46e5]"
+                />
+                Open market only
+              </label>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="mt-3">
@@ -193,7 +211,7 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
               </table>
             </div>
 
-            {txns.length > SHOWN_DEFAULT && (
+            {filteredTxns.length > SHOWN_DEFAULT && (
               <button
                 type="button"
                 onClick={() => setExpanded((x) => !x)}
@@ -201,7 +219,7 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
               >
                 {expanded
                   ? 'Show fewer'
-                  : `Show all ${txns.length} transactions`}
+                  : `Show all ${filteredTxns.length} transactions`}
               </button>
             )}
 

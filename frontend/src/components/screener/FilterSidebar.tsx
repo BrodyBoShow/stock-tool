@@ -5,7 +5,7 @@ import {
   sectorPillColors,
   type FactorKey,
 } from '@/lib/constants'
-import { activeFilterCount, MARKET_CAP_OPTIONS, type Filters } from '@/lib/filters'
+import { activeFilterCount, DEFAULT_FILTERS, MARKET_CAP_OPTIONS, type Filters } from '@/lib/filters'
 
 const FACTOR_LABEL: Record<FactorKey, string> = {
   composite: 'Composite',
@@ -17,6 +17,35 @@ const FACTOR_LABEL: Record<FactorKey, string> = {
 
 const SECTION =
   'text-[0.67rem] font-bold uppercase tracking-[0.07em] text-[#6b7280]'
+
+interface Preset {
+  label: string
+  emoji: string
+  apply: Partial<Filters>
+}
+
+const PRESETS: Preset[] = [
+  {
+    label: 'Quality Growth',
+    emoji: '🏆',
+    apply: { mins: { composite: 0, growth: 70, value: 0, quality: 70, momentum: 0 } },
+  },
+  {
+    label: 'Deep Value',
+    emoji: '💎',
+    apply: { mins: { composite: 0, growth: 0, value: 80, quality: 50, momentum: 0 } },
+  },
+  {
+    label: 'Momentum',
+    emoji: '🚀',
+    apply: { mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 80 } },
+  },
+  {
+    label: 'All Stars',
+    emoji: '⭐',
+    apply: { mins: { composite: 80, growth: 0, value: 0, quality: 0, momentum: 0 } },
+  },
+]
 
 export function FilterSidebar({
   filters,
@@ -62,6 +91,35 @@ export function FilterSidebar({
             {resultCount}
           </span>{' '}
           of {totalCount} companies
+        </div>
+      </div>
+
+      {/* preset buttons */}
+      <div className="mt-3.5">
+        <div className={SECTION}>Presets</div>
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {PRESETS.map((p) => {
+            const isActive =
+              JSON.stringify(p.apply.mins) === JSON.stringify(filters.mins) &&
+              filters.sector === 'All' && filters.search === '' && filters.minMarketCap === 0
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() =>
+                  onChange(isActive ? DEFAULT_FILTERS : { ...DEFAULT_FILTERS, ...p.apply })
+                }
+                className={`rounded-lg border px-2 py-1.5 text-left text-[0.72rem] font-semibold transition-all ${
+                  isActive
+                    ? 'border-[#4f46e5] bg-[#eef2ff] text-[#4f46e5]'
+                    : 'border-[#e5e7eb] bg-white text-[#475569] hover:border-[#c7d2fe] hover:bg-[#f5f7ff]'
+                }`}
+              >
+                <span className="mr-1">{p.emoji}</span>
+                {p.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

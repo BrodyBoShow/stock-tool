@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateSummary, getSummaryStatus } from '@/lib/api'
@@ -86,6 +86,7 @@ export function FilingSummaryPanel({
   ticker: string
   filings: FilingRow[]
 }) {
+  const [collapsed, setCollapsed] = useState(false)
   const qc = useQueryClient()
   const toast = useToast()
 
@@ -132,10 +133,27 @@ export function FilingSummaryPanel({
   return (
     <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-base font-bold text-[#111827]">Filing summary</div>
-          <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
-            AI summary of the latest 10-K (MD&amp;A + Risk Factors) — context, not advice.
+        <div className="flex flex-1 items-start gap-3">
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="mt-0.5 shrink-0 text-[#9ca3af] hover:text-[#64748b]"
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
+          >
+            <svg
+              className={`h-4 w-4 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+              viewBox="0 0 20 20" fill="currentColor"
+            >
+              <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+          </button>
+          <div>
+            <div className="text-base font-bold text-[#111827]">Filing summary</div>
+            {!collapsed && (
+              <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+                AI summary of the latest 10-K (MD&amp;A + Risk Factors) — context, not advice.
+              </div>
+            )}
           </div>
         </div>
         {data?.summary && (
@@ -150,7 +168,7 @@ export function FilingSummaryPanel({
         )}
       </div>
 
-      <div className="mt-4">
+      {!collapsed && <div className="mt-4">
         {isPending ? (
           <p className="text-[0.85rem] text-[#9ca3af]">Loading…</p>
         ) : error ? (
@@ -195,7 +213,7 @@ export function FilingSummaryPanel({
             </p>
           </div>
         )}
-      </div>
+      </div>}
     </section>
   )
 }

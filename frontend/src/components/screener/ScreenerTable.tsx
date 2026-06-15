@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { MouseEvent } from 'react'
 
 import { ScoreCell } from '@/components/screener/ScoreCell'
 import { SectorPill } from '@/components/screener/SectorPill'
@@ -41,7 +42,7 @@ const FACTOR_HEAD: Record<FactorKey, string> = {
   momentum: 'Mom',
 }
 
-const ROW_H = 52
+const ROW_H = 44
 
 const TH =
   'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
@@ -89,11 +90,14 @@ export function ScreenerTable({
   rows,
   scoreDate,
   rowAccessory,
+  onRowClick,
 }: {
   rows: ScreenerRow[]
   scoreDate: string | null
   /** Optional trailing per-row control (e.g. add-to-watchlist star). */
   rowAccessory?: (ticker: string) => React.ReactNode
+  /** When provided, clicking the row body calls this instead of navigating. Ticker link still navigates. */
+  onRowClick?: (row: ScreenerRow) => void
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
     key: 'composite',
@@ -154,8 +158,7 @@ export function ScreenerTable({
           ))}
         </div>
         <span className="whitespace-nowrap text-[0.7rem] italic text-[#9ca3af]">
-          Bars are percentile ranks (0–100) within the universe · click a row for the
-          deep dive
+          Bars are percentile ranks (0–100) within the universe · click row = preview · click ticker = deep dive
         </span>
       </div>
 
@@ -203,29 +206,58 @@ export function ScreenerTable({
           >
             {virtualizer.getVirtualItems().map((vi) => {
               const r = visible[vi.index]
+              const handleRowClick = onRowClick
+                ? (e: MouseEvent) => {
+                    // don't intercept clicks on the ticker Link or accessory
+                    const target = e.target as HTMLElement
+                    if (target.closest('a') || target.closest('button')) return
+                    onRowClick(r)
+                  }
+                : undefined
               return (
-                <Link
+                <div
                   key={r.security_id}
-                  to={`/securities/${r.ticker}`}
-                  className="absolute left-0 grid w-full cursor-pointer border-b border-[#f3f4f6] text-inherit no-underline transition-[box-shadow,background] duration-100 hover:bg-[#f8fafc] hover:shadow-[inset_3px_0_0_#1e293b]"
+                  className="absolute left-0 grid w-full border-b border-[#f3f4f6] transition-[box-shadow,background] duration-100 hover:bg-[#f8fafc] hover:shadow-[inset_3px_0_0_#1e293b]"
                   style={{
                     gridTemplateColumns: gridCols,
                     height: vi.size,
                     transform: `translateY(${vi.start}px)`,
+                    cursor: onRowClick ? 'pointer' : 'default',
                   }}
+                  onClick={handleRowClick}
                 >
                   <div className="flex h-full items-center justify-end pr-2 text-[0.7rem] text-[#cbd5e1]">
                     {r.rank}
                   </div>
-                  <div className="flex h-full min-w-0 flex-col justify-center px-3 py-2">
-                    <span className="text-[0.88rem] font-bold leading-[1.15] text-[#111827]">
-                      {r.ticker}
-                    </span>
-                    <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-[#9ca3af]">
-                      {r.name ?? DASH}
-                    </span>
+                  <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1.5">
+                    {onRowClick ? (
+                      <>
+                        <Link
+                          to={`/securities/${r.ticker}`}
+                          className="text-[0.88rem] font-bold leading-[1.15] text-[#111827] hover:text-[#4f46e5] hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {r.ticker}
+                        </Link>
+                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-[#9ca3af]">
+                          {r.name ?? DASH}
+                        </span>
+                      </>
+                    ) : (
+                      <Link
+                        to={`/securities/${r.ticker}`}
+                        className="contents text-inherit no-underline"
+                      >
+                        <span className="text-[0.88rem] font-bold leading-[1.15] text-[#111827]">
+                          {r.ticker}
+                        </span>
+                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-[#9ca3af]">
+                          {r.name ?? DASH}
+                        </span>
+                      </Link>
+                    )}
                   </div>
-                  <div className="flex h-full min-w-0 items-center px-3 py-2">
+                  <div className="flex h-full min-w-0 items-center px-3 py-1.5">
                     <SectorPill sector={r.sector} />
                   </div>
                   <ScoreCell factor="composite" value={r.composite} />
@@ -239,7 +271,7 @@ export function ScreenerTable({
                       {rowAccessory(r.ticker)}
                     </div>
                   )}
-                </Link>
+                </div>
               )
             })}
           </div>

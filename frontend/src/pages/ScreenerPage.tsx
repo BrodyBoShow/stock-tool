@@ -3,12 +3,14 @@ import { useMemo, useState } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { FilterSidebar } from '@/components/screener/FilterSidebar'
+import { ScreenerDrawer } from '@/components/screener/ScreenerDrawer'
 import { ScreenerHeader } from '@/components/ScreenerHeader'
 import { ScreenerTable } from '@/components/screener/ScreenerTable'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getQuotes, getScreener } from '@/lib/api'
 import { applyFilters, DEFAULT_FILTERS, type Filters } from '@/lib/filters'
+import type { ScreenerRow } from '@/types/api'
 
 function ScreenerSkeleton() {
   return (
@@ -29,6 +31,7 @@ function ScreenerSkeleton() {
 
 export function ScreenerPage() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
+  const [drawerRow, setDrawerRow] = useState<ScreenerRow | null>(null)
 
   // "Complete factors only" is a server-side filter (it rebuilds the rank over
   // the complete-data set), so it lives in the query key, not applyFilters.
@@ -100,12 +103,17 @@ export function ScreenerPage() {
           rows={filtered}
           scoreDate={data.score_date}
           rowAccessory={(ticker) => <WatchlistButton ticker={ticker} variant="icon" />}
+          onRowClick={(row) => setDrawerRow(row)}
         />
       </div>
       <p className="pb-2 text-center text-xs text-[#9ca3af]">
         Factor scores are cross-sectional percentile rankings within the US-listed
         (NYSE/Nasdaq) universe, refreshed nightly — not investment advice.
+        Click a row to preview score breakdown · click the ticker to open the full deep-dive.
       </p>
+      {drawerRow && (
+        <ScreenerDrawer row={drawerRow} onClose={() => setDrawerRow(null)} />
+      )}
     </div>
   )
 }
