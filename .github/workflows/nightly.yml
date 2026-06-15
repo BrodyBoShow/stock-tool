@@ -85,9 +85,16 @@ jobs:
         continue-on-error: true
         run: python scripts/ingest_events.py --max-fetches 1200
 
-      # NOTE: AI pre-generation (Decision Briefs, 10-K summaries, deep filing
-      # analysis) is intentionally NOT run nightly — it would spend on the
-      # Anthropic API every night regardless of use. Instead, all AI artifacts
-      # generate ON DEMAND when a deep-dive page is first opened and are cached
-      # (briefs by score_date, summaries/filing-analysis by accession), so spend
-      # tracks actual usage. To warm them manually, run scripts/pregenerate_ai.py.
+      # AI warm: pre-generate Decision Briefs for the WATCHLIST only
+      # (--top-n 0 --briefs-only) so the stocks you track open instantly instead
+      # of showing "Synthesizing…" on first open. Briefs cache per scoring
+      # snapshot — one Haiku call each (~$0.006), idempotent, so this is
+      # pennies/month for a small watchlist. Everything else (briefs for
+      # non-watchlist names, 10-K summaries, deep filing analysis) stays ON
+      # DEMAND, cached on first page open, so spend still tracks actual usage.
+      # Gated on the key; continue-on-error so a model outage never breaks the
+      # pipeline. Runs last, after scoring, so briefs reflect the night's ranks.
+      - name: Warm watchlist Decision Briefs (Haiku)
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        continue-on-error: true
+        run: python scripts/pregenerate_ai.py --top-n 0 --briefs-only

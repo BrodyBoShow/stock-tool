@@ -1,24 +1,25 @@
-"""Nightly AI pre-generation — briefs + filing summaries served warm.
+"""Nightly AI pre-generation — briefs (+ optionally filing summaries) served warm.
 
-Pre-generates the Decision Brief (cached per scoring snapshot) and the 10-K
-filing summary (cached per accession — effectively one-time per filing) for
-the names a user is most likely to open: everything on the watchlist plus the
-top N screener names by composite. Everything else still generates on first
-page open, exactly as before.
+Pre-generates the Decision Brief (cached per scoring snapshot) and, unless
+--briefs-only, the 10-K filing summary (cached per accession — effectively
+one-time per filing) for the names a user is most likely to open: the watchlist
+plus the top N screener names by composite. Everything else still generates on
+first page open, exactly as before.
 
-Cost control (the whole point of the target list):
-- Briefs: ~$0.02 each on Sonnet; watchlist + top 15 is well under $1/night.
-- Summaries: cached by accession, so after the first warm-up run a night only
-  pays when one of the target names files a new 10-K.
-- Both generators check the cache first — re-running this script is free.
+Cost control (all generators run on Haiku, and check the cache first — re-running
+is free):
+- Briefs: ~$0.006 each on Haiku, cached per scoring snapshot (once/day at most).
+- Summaries / deep filing analysis: cached by accession, so they only cost when a
+  target name files a new 10-K. --briefs-only skips them entirely.
 
 Usage:
-    python scripts/pregenerate_ai.py            # watchlist + top 15
-    python scripts/pregenerate_ai.py --top-n 30 # widen the screener slice
+    python scripts/pregenerate_ai.py                       # watchlist + top 15
+    python scripts/pregenerate_ai.py --top-n 30            # widen the slice
+    python scripts/pregenerate_ai.py --top-n 0 --briefs-only  # watchlist briefs only
 
-Requires ANTHROPIC_API_KEY (and SEC_USER_AGENT for first-time summaries).
-Runs nightly in GitHub Actions AFTER scoring, gated on the ANTHROPIC_API_KEY
-secret, continue-on-error — a model outage never breaks the pipeline.
+The nightly wires the last form (watchlist briefs only) AFTER scoring, gated on
+the ANTHROPIC_API_KEY secret, continue-on-error — a model outage never breaks the
+pipeline, and the bounded watchlist scope keeps spend at pennies/month.
 """
 from __future__ import annotations
 
@@ -51,6 +52,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--top-n", type=int, default=DEFAULT_TOP_N,
                         help=f"screener names to include (default {DEFAULT_TOP_N})")
+    parser.add_argument("--briefs-only", action="store_true",
+                        help="warm Decision Briefs only; skip 10-K summaries and "
+                             "deep filing analysis (the nightly watchlist warm)")
     args = parser.parse_args()
 
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -78,17 +82,18 @@ def main() -> int:
     for i, t in enumerate(tickers, start=1):
         # Summary first: the brief reads the cached 10-K summary as context,
         # so warming it first makes the brief strictly better-grounded.
-        try:
-            if summarize.get_or_generate_summary(t) is not None:
-                summaries_done += 1
-        except Exception as exc:  # noqa: BLE001 - isolate per ticker
-            warnings.append(f"{t}: summary failed - {exc!r}")
+        if not args.briefs_only:
+            try:
+                if summarize.get_or_generate_summary(t) is not None:
+                    summaries_done += 1
+            except Exception as exc:  # noqa: BLE001 - isolate per ticker
+                warnings.append(f"{t}: summary failed - {exc!r}")
         try:
             if brief.get_or_generate_brief(t) is not None:
                 briefs_done += 1
         except Exception as exc:  # noqa: BLE001
             warnings.append(f"{t}: brief failed - {exc!r}")
-        if t in watchlist:
+        if t in watchlist and not args.briefs_only:
             try:
                 if filing_qa.get_or_generate_filing_qa(t) is not None:
                     filing_qa_done += 1
