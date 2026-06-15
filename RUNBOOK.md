@@ -8,9 +8,21 @@
 
 | Step | Module | What it does |
 |------|--------|--------------|
-| 1 | `engine.prices` | Incremental price refresh — fetches only rows newer than the latest stored date from yfinance for all active S&P 500 tickers. Updates `prices_daily` and `corporate_actions`. |
+| 1 | `engine.prices` | Incremental price refresh — fetches only rows newer than each ticker's latest stored date from yfinance for the full active universe (~5,500 NYSE/Nasdaq names). Updates `prices_daily` and `corporate_actions`. |
 | 2 | `engine.price_sanity` | **Gate** — four checks on the freshly-loaded data (see below). **Halts pipeline with exit 1 if any check fails.** |
-| 3 | `engine.scoring` | Recomputes Growth / Value / Quality / Momentum percentiles and composite for the latest score date; writes to `factor_scores`. |
+| 3 | `engine.universe.deactivate_derivative_listings` | Universe hygiene — deactivates warrant/unit/right listings that share a parent CIK (they inherit the parent's fundamentals and otherwise top the screener on pure momentum). Idempotent — a no-op once clean. |
+| 4 | `engine.fundamentals` | Re-fetch SEC submissions + XBRL facts for every active company (`resume=False`) so new 10-Q/10-K facts land daily. Refreshes `filings` and `xbrl_facts`. |
+| 5 | `engine.metrics` | Rebuild `fundamental_metrics` (point-in-time TTM/annual metrics) from the current `xbrl_facts`. |
+| 6 | `engine.scoring` | Recomputes Growth / Value / Quality / Momentum percentiles and composite for the latest score date; writes to `factor_scores`. |
+
+After scoring, the workflow runs four best-effort steps (each `continue-on-error`,
+so a failure never blocks the critical path): FRED macro refresh, Form 4 insider
+ingestion, 8-K event ingestion, and a **watchlist Decision-Brief warm** (Haiku,
+`pregenerate_ai.py --top-n 0 --briefs-only`, gated on `ANTHROPIC_API_KEY`).
+
+Fundamentals + metrics (steps 4–5) were moved into the nightly so new filings
+land in ranks the next morning; the weekly still re-runs them behind the full
+Phase-5b quality gate.
 
 **Price sanity gates (step 2):**
 - **Freshness**: `latest_date` in `prices_daily` is within 10 calendar days of today.
@@ -81,6 +93,8 @@ Go to **repository Settings → Secrets and variables → Actions** and add:
 |---|---|
 | `DATABASE_URL` | Full Supabase transaction-pooler URL (port 6543) |
 | `SEC_USER_AGENT` | `First Last email@example.com` (required by SEC EDGAR fair-use policy) |
+| `ANTHROPIC_API_KEY` | Powers the nightly watchlist brief warm (Haiku). If unset, that step is skipped. |
+| `FRED_API_KEY` | Powers the nightly macro refresh (rates/VIX/CPI). If unset, that step is skipped. |
 
 The `.env` file is `.gitignored` and must never be committed. These secrets replace it in CI.
 

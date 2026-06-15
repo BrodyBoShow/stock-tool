@@ -5,11 +5,20 @@ Rules for the whole Stock-Tool build. These apply to every phase.
 ## Architecture
 
 - A scheduled **Python engine** (`engine/`) pulls data, computes scores, and
-  writes finished rows to a Supabase Postgres database.
-- The **Streamlit app** (`web/`) reads only finished rows. It never fetches
-  live data.
-- Data sources: SEC EDGAR (fundamentals), yfinance (prices), Anthropic API
-  (filing summaries — a later phase).
+  writes finished rows to a Supabase Postgres database — the only writer of the
+  pipeline tables (securities, prices_daily, xbrl_facts, fundamental_metrics,
+  factor_scores, …).
+- A **FastAPI read/write API** (`api/`) serves the finished rows. It reads the
+  pipeline tables and writes only user tables (watchlist, theses,
+  portfolio_transactions) and AI caches. Short-lived API reads borrow from a
+  connection pool (`engine.db.acquire`/`release`); the long-running engine jobs
+  use dedicated, reconnect-hardened connections (`engine.db.get_connection`).
+- A **React + Vite + TypeScript frontend** (`frontend/`) renders what the API
+  returns. It performs no business/financial math — the engine owns scoring,
+  ranking, and projections. (The original Streamlit cockpit has been retired.)
+- Data sources: SEC EDGAR (fundamentals, 8-K events, Form 4 insiders),
+  yfinance (EOD prices + delayed quotes), FRED (macro context), Anthropic API
+  (Haiku — on demand and cached: 10-K summaries, Decision Briefs, market brief).
 
 ## Database migrations
 
@@ -36,15 +45,23 @@ Rules for the whole Stock-Tool build. These apply to every phase.
 
 | Path             | Purpose                                          |
 | ---------------- | ------------------------------------------------ |
-| `engine/`        | Python ETL + scoring                             |
+| `engine/`        | Python ETL + scoring + read/query layer          |
+| `api/`           | FastAPI read/write layer (routers, schemas)      |
+| `frontend/`      | React + Vite + TypeScript UI                     |
 | `db/migrations/` | numbered `.sql` migration files                  |
-| `web/`           | Streamlit app                                    |
 | `config/`        | concept map, metric definitions, score weights   |
-| `scripts/`       | one-off utilities                                |
+| `scripts/`       | pipeline runners + one-off utilities             |
+| `tests/`         | pytest golden-number suite (engine math)         |
+| `reports/`       | generated reports (backtest, cleanup audit)      |
 
 ## Environment
 
 - Secrets live in `.env` (gitignored). `.env.example` documents the keys:
-  `DATABASE_URL`, `SEC_USER_AGENT`, `ANTHROPIC_API_KEY`.
-- Python 3.11+ in a local `.venv/`. Dependencies pinned in `requirements.txt`.
-- Lint/format with `ruff`.
+  `DATABASE_URL`, `SEC_USER_AGENT`, `ANTHROPIC_API_KEY`, `FRED_API_KEY`,
+  `TIINGO_API_KEY`, plus the API deploy vars `APP_ACCESS_PASSWORD` and
+  `ALLOWED_ORIGINS` (see DEPLOY.md). The frontend's `VITE_API_URL` is a Vite
+  build var set in the host dashboard, not `.env`.
+- Python 3.11+ in a local `.venv/`. Runtime deps in `requirements.txt`;
+  dev/test deps (pytest) in `requirements-dev.txt`.
+- Lint/format Python with `ruff`; run engine-math tests with
+  `python -m pytest tests/`. Frontend: `npm run lint` and `tsc` (strict mode).
