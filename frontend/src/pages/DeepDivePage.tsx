@@ -5,8 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
-import { FilingAnswersPanel } from '@/components/deepdive/FilingAnswersPanel'
-import { FilingSummaryPanel } from '@/components/deepdive/FilingSummaryPanel'
+import { FilingIntelligencePanel } from '@/components/deepdive/FilingIntelligencePanel'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
@@ -192,17 +191,14 @@ export function DeepDivePage() {
         roicIsProxy={roicIsProxy}
       />
 
-      <div id="filings">
+      <div id="filings" className="space-y-5">
         <EventsPanel ticker={header.ticker} />
+        <FilingIntelligencePanel ticker={header.ticker} filings={data.filings} />
       </div>
-
-      <FilingAnswersPanel ticker={header.ticker} />
 
       <div id="insiders">
         <InsiderPanel ticker={header.ticker} />
       </div>
-
-      <FilingSummaryPanel ticker={header.ticker} filings={data.filings} />
     </div>
   )
 }
