@@ -473,41 +473,6 @@ def macro_series_rows(series_id: str) -> list[dict[str, Any]]:
     return [{"date": r[0], "value": _f(r[1])} for r in rows]
 
 
-def sparkline_rows(tickers: list[str], n: int = 30) -> dict[str, list[float]]:
-    """Last n adj_close points per ticker, oldest→newest. Used for sparklines."""
-    if not tickers:
-        return {}
-    conn = acquire()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT ticker, adj_close FROM (
-                    SELECT s.ticker, p.adj_close, p.date,
-                           row_number() OVER (
-                               PARTITION BY p.security_id ORDER BY p.date DESC
-                           ) AS rn
-                    FROM prices_daily p
-                    JOIN securities s ON s.security_id = p.security_id
-                    WHERE s.ticker = ANY(%s) AND s.is_active
-                ) t
-                WHERE rn <= %s
-                ORDER BY ticker, date
-                """,
-                (tickers, n),
-            )
-            rows = cur.fetchall()
-    finally:
-        release(conn)
-
-    out: dict[str, list[float]] = {t: [] for t in tickers}
-    for ticker, adj_close in rows:
-        f = _f(adj_close)
-        if f is not None:
-            out.setdefault(ticker, []).append(f)
-    return out
-
-
 def watchlist_rows() -> list[dict[str, Any]]:
     """Watchlist rows joined with securities + latest factor scores."""
     conn = acquire()
