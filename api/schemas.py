@@ -91,6 +91,7 @@ class PricePoint(BaseModel):
     date: date
     adj_close: float | None
     close: float | None
+    volume: int | None = None
 
 
 class FundamentalPoint(BaseModel):
