@@ -182,6 +182,7 @@ class DecisionBrief(BaseModel):
 class BriefStatusResponse(BaseModel):
     ticker: str
     has_scores: bool                  # scored at least once (brief possible)?
+    generating: bool = False          # background task kicked off; client should poll
     trend: list[FactorTrendPoint]     # oldest first; shown even without a brief
     brief: DecisionBrief | None       # cached brief for the latest snapshot
 

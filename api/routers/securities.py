@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import logging
+
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+
+log = logging.getLogger(__name__)
 
 from api.schemas import (
     BriefStatusResponse,
@@ -209,11 +213,20 @@ def _to_brief(cached: dict) -> DecisionBrief:
     )
 
 
+def _kick_brief(ticker: str) -> None:
+    """Background task: generate brief silently; errors are logged, not raised."""
+    try:
+        brief_engine.get_or_generate_brief(ticker)
+    except Exception:
+        log.exception("Background brief generation failed for %s", ticker)
+
+
 @router.get("/{ticker}/brief", response_model=BriefStatusResponse)
-def get_brief(ticker: str) -> BriefStatusResponse:
+def get_brief(ticker: str, background_tasks: BackgroundTasks) -> BriefStatusResponse:
     """Decision Brief status: factor-rank trend (always, from our own score
-    history) plus the cached brief for the latest snapshot if one exists.
-    Read-only — never generates."""
+    history) plus the cached brief if one exists.  When no brief is cached yet,
+    kicks off generation as a background task so the frontend can poll and pick
+    it up automatically — no user click required."""
     ticker = ticker.upper()
     header = queries.security_header(ticker)
     if header is None:
@@ -222,17 +235,19 @@ def get_brief(ticker: str) -> BriefStatusResponse:
     trend = queries.factor_history(ticker)
     has_scores = header.get("score_date") is not None
     cached = None
+    generating = False
     if has_scores:
-        # Use latest_brief (any score_date) so smart-refresh reuse is visible:
-        # the POST may serve a still-valid brief from a prior snapshot date,
-        # and get_cached_brief (exact score_date) would miss it.
         cached = queries.latest_brief(
             header["security_id"],
             brief_engine.PROMPT_VERSION, brief_engine.SCHEMA_VERSION,
         )
+        if cached is None and brief_engine.ANTHROPIC_KEY_AVAILABLE:
+            background_tasks.add_task(_kick_brief, ticker)
+            generating = True
     return BriefStatusResponse(
         ticker=ticker,
         has_scores=has_scores,
+        generating=generating,
         trend=[FactorTrendPoint(**t) for t in trend],
         brief=_to_brief(cached) if cached else None,
     )

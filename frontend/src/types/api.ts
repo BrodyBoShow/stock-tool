@@ -143,6 +143,7 @@ export interface DecisionBrief {
 export interface BriefStatusResponse {
   ticker: string
   has_scores: boolean
+  generating: boolean  // background task kicked off; poll until brief arrives
   trend: FactorTrendPoint[] // oldest first
   brief: DecisionBrief | null
 }

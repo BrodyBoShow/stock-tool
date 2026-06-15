@@ -223,6 +223,9 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
     queryKey: ['brief', ticker],
     queryFn: () => getBriefStatus(ticker),
     staleTime: 10 * 60 * 1000,
+    // Poll every 5s while the server is generating in the background
+    refetchInterval: (q) =>
+      q.state.data && !q.state.data.brief && q.state.data.generating ? 5000 : false,
   })
 
   const gen = useMutation({
@@ -277,13 +280,6 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
             <TrendChips trend={data.trend} />
             {data.brief ? (
               <BriefBody cached={data.brief} />
-            ) : gen.isPending ? (
-              <div className="flex items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafbff] p-4">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
-                <p className="text-[0.85rem] text-[#475569]">
-                  Synthesizing {ticker}&apos;s decision brief — typically 15–30 seconds…
-                </p>
-              </div>
             ) : gen.isError ? (
               <div className="rounded-xl border border-dashed border-[#fecaca] bg-[#fff7f7] p-5 text-center">
                 <p className="text-[0.85rem] font-semibold text-[#b91c1c]">
@@ -303,20 +299,11 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
                 </button>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-[#e0e7ff] bg-[#fafbff] p-5">
+              <div className="flex items-center gap-3 rounded-xl border border-[#e0e7ff] bg-[#fafbff] p-4">
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
                 <p className="text-[0.85rem] text-[#475569]">
-                  No brief cached yet for this scoring snapshot.
+                  Preparing brief for {ticker} — usually ready in 15–30 seconds…
                 </p>
-                <p className="mt-1 text-[0.78rem] text-[#9ca3af]">
-                  Generates a structured bull/bear/catalyst/risk analysis from StockBud&apos;s own data via Claude Haiku (~$0.001, 15–30 sec).
-                </p>
-                <button
-                  type="button"
-                  onClick={() => gen.mutate()}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#4f46e5] px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca]"
-                >
-                  Generate decision brief
-                </button>
               </div>
             )}
           </>

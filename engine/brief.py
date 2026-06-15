@@ -40,6 +40,8 @@ MODEL = "claude-haiku-4-5"  # budget model: ~70% cheaper than Sonnet; quality is
 PROMPT_VERSION = "v4"  # v2: insider; v3: 8-K events; v4: score_read meta-layer
 SCHEMA_VERSION = "v2"  # v2: added score_read {drivers, blind_spot}
 
+ANTHROPIC_KEY_AVAILABLE: bool = bool(os.getenv("ANTHROPIC_API_KEY"))
+
 BRIEF_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
