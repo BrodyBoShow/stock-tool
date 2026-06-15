@@ -39,7 +39,7 @@ from typing import Any
 
 import numpy as np
 
-from engine.db import get_connection
+from engine.db import acquire, release
 from engine.queries import ACTIVE_CONFIG_VERSION
 
 TRADING_DAYS_PER_YEAR = 252
@@ -58,7 +58,7 @@ ALL_TYPES = ("buy", "sell", "dividend") + CASH_TYPES
 
 def get_transactions() -> list[dict[str, Any]]:
     """Full ledger, newest first, joined with ticker/name for display."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -72,7 +72,7 @@ def get_transactions() -> list[dict[str, Any]]:
             )
             rows = cur.fetchall()
     finally:
-        conn.close()
+        release(conn)
     return [
         {
             "id": int(r[0]),
@@ -117,7 +117,7 @@ def add_transactions(items: list[dict[str, Any]]) -> tuple[int, list[str]]:
     need_ticker = {t.upper() for it in items
                    if (t := it.get("ticker")) and it.get("txn_type") not in CASH_TYPES}
 
-    conn = get_connection()
+    conn = acquire()
     try:
         sid_by_ticker = _resolve_tickers(conn, need_ticker)
         rows: list[tuple] = []
@@ -175,12 +175,12 @@ def add_transactions(items: list[dict[str, Any]]) -> tuple[int, list[str]]:
         conn.commit()
         return len(rows), []
     finally:
-        conn.close()
+        release(conn)
 
 
 def delete_transaction(txn_id: int) -> bool:
     """Remove one ledger row. True if it existed."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM portfolio_transactions WHERE id = %s", (txn_id,))
@@ -188,7 +188,7 @@ def delete_transaction(txn_id: int) -> bool:
         conn.commit()
         return deleted
     finally:
-        conn.close()
+        release(conn)
 
 
 # ── derived portfolio (the whole tab in one computation pass) ────────────────
@@ -327,7 +327,7 @@ def _daily_stats(rets: list[float], spy_rets: list[float | None],
 
 def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     """The entire Portfolio tab payload in one pass over the ledger."""
-    conn = get_connection()
+    conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -356,7 +356,7 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
         sids = sorted({t["sid"] for t in ledger if t["sid"] is not None})
         inputs = _load_inputs(conn, sids, first_date)
     finally:
-        conn.close()
+        release(conn)
 
     prices, splits, divs = inputs["prices"], inputs["splits"], inputs["divs"]
     meta, spy_sid = inputs["meta"], inputs["spy_sid"]
