@@ -108,8 +108,9 @@ export function EventsPanel({ ticker }: { ticker: string }) {
           </p>
         ) : events.length === 0 ? (
           <p className="text-[0.85rem] text-[#9ca3af]">
-            No 8-K events on record for {ticker} in the last 12 months (or this
-            name hasn’t been ingested yet — the nightly pipeline fills it in).
+            No 8-K events on record for {ticker}. Foreign private issuers file
+            6-K instead of 8-K (not covered here yet); a recently-added domestic
+            name may still be backfilling overnight.
           </p>
         ) : (
           <>

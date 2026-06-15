@@ -159,8 +159,8 @@ export function FilingSummaryPanel({
           </p>
         ) : !data?.has_filing ? (
           <p className="text-[0.85rem] text-[#9ca3af]">
-            No 10-K on file for {ticker} yet — a summary will be available once one
-            is filed.
+            No 10-K on file for {ticker} to summarize. Foreign private issuers
+            file 20-F instead of 10-K (not covered here yet).
           </p>
         ) : data.summary ? (
           <SummaryBody summary={data.summary} docUrl={docUrl} />

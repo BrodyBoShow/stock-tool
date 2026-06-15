@@ -133,9 +133,9 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
           </p>
         ) : txns.length === 0 ? (
           <p className="text-[0.85rem] text-[#9ca3af]">
-            No insider transactions on record for {ticker} in the last 12
-            months (or this name hasn’t been ingested yet — the nightly
-            pipeline fills it in).
+            No insider (Form 4) transactions on record for {ticker}. Foreign
+            private issuers are exempt from Form 4; a recently-added domestic
+            name may still be backfilling overnight.
           </p>
         ) : (
           <>

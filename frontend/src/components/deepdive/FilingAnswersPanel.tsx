@@ -159,7 +159,8 @@ export function FilingAnswersPanel({ ticker }: { ticker: string }) {
           </p>
         ) : !data.has_filing ? (
           <p className="text-[0.85rem] text-[#9ca3af]">
-            No 10-K on file for {ticker} to analyze yet.
+            No 10-K on file for {ticker} to analyze. Foreign private issuers
+            file 20-F instead of 10-K (not covered here yet).
           </p>
         ) : data.answers ? (
           <AnswersBody data={data.answers} />
