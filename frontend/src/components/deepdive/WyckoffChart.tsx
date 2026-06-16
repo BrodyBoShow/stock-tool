@@ -1,7 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 
 import { fmtDate } from '@/lib/format'
-import { detectRange, type VsaBar } from '@/lib/wyckoff'
+import { detectEvents, detectRange, type VsaBar } from '@/lib/wyckoff'
+
+const EV_BULL = '#15803d'
+const EV_BEAR = '#b91c1c'
 
 const UP = '#16a34a'
 const DOWN = '#dc2626'
@@ -47,11 +50,28 @@ const CLS_LABEL: Record<VsaBar['cls'], string> = {
   normal: 'Normal bar',
 }
 
-export function WyckoffChart({ bars, isFetching }: { bars: VsaBar[]; isFetching: boolean }) {
+export function WyckoffChart({
+  bars,
+  isFetching,
+  showSignals,
+}: {
+  bars: VsaBar[]
+  isFetching: boolean
+  showSignals: boolean
+}) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<{ idx: number; frac: number } | null>(null)
 
   const range = useMemo(() => detectRange(bars), [bars])
+  const events = useMemo(
+    () => (showSignals ? detectEvents(bars, range) : []),
+    [bars, range, showSignals],
+  )
+  const eventByIdx = useMemo(() => {
+    const m = new Map<number, (typeof events)[number]>()
+    for (const e of events) m.set(e.idx, e)
+    return m
+  }, [events])
 
   const layout = useMemo(() => {
     const n = bars.length
@@ -194,6 +214,32 @@ export function WyckoffChart({ bars, isFetching }: { bars: VsaBar[]; isFetching:
           )
         })}
 
+        {/* candidate Wyckoff event markers (heuristic) */}
+        {events.map((e, i) => {
+          const b = bars[e.idx]
+          const x = cx(e.idx)
+          const color = e.bullish ? EV_BULL : EV_BEAR
+          const atTop = !e.bullish
+          const y = atTop ? yP(b.h) - 6 : yP(b.l) + 6
+          const tri = atTop ? `${x},${y} ${x - 3},${y - 5} ${x + 3},${y - 5}` : `${x},${y} ${x - 3},${y + 5} ${x + 3},${y + 5}`
+          return (
+            <g key={`e${i}`}>
+              <title>{`${e.label} (candidate) — ${fmtDate(e.date)}`}</title>
+              <polygon points={tri} fill={color} />
+              <text
+                x={x}
+                y={atTop ? y - 7 : y + 13}
+                fontSize={9}
+                fill={color}
+                textAnchor="middle"
+                fontWeight={600}
+              >
+                {e.label}
+              </text>
+            </g>
+          )
+        })}
+
         {/* volume panel */}
         <line x1={PLOT_L} y1={VOL_BOT} x2={PLOT_R} y2={VOL_BOT} stroke="#e5e7eb" strokeWidth={0.5} />
         {bars.map((b, i) => {
@@ -258,6 +304,19 @@ export function WyckoffChart({ bars, isFetching }: { bars: VsaBar[]; isFetching:
               }}
             >
               {CLS_LABEL[hb.cls]}
+            </div>
+          )}
+          {eventByIdx.get(hover!.idx) && (
+            <div className="mt-1.5 max-w-[210px] border-t border-[#f1f5f9] pt-1.5">
+              <span
+                className="font-semibold"
+                style={{ color: eventByIdx.get(hover!.idx)!.bullish ? EV_BULL : EV_BEAR }}
+              >
+                {eventByIdx.get(hover!.idx)!.label} (candidate)
+              </span>
+              <div className="mt-0.5 text-[0.68rem] leading-snug text-[#6b7280]">
+                {eventByIdx.get(hover!.idx)!.note}
+              </div>
             </div>
           )}
         </div>

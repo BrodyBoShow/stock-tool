@@ -121,10 +121,12 @@ function percentile(sortedAsc: number[], p: number): number {
  * closes to sit inside a reasonably tight band. Returns null otherwise (no
  * false range drawn).
  */
+const RANGE_WINDOW = 50
+
 export function detectRange(bars: VsaBar[]): TradingRange | null {
   const n = bars.length
   if (n < 12) return null
-  const w = Math.min(n, 50)
+  const w = Math.min(n, RANGE_WINDOW)
   const recent = bars.slice(n - w)
   const lows = recent.map((b) => b.l).sort((a, b) => a - b)
   const highs = recent.map((b) => b.h).sort((a, b) => a - b)
@@ -141,4 +143,109 @@ export const VSA_LABEL: Record<Exclude<VsaClass, 'normal'>, string> = {
   climax: 'Climax volume',
   wide: 'Wide spread',
   churn: 'Churn / no-demand',
+}
+
+/* ── Tier 2: candidate Wyckoff events (heuristic, NOT confirmed) ───────────────
+ *
+ * These are CANDIDATE annotations, not assertions. We only emit them inside a
+ * detected trading range (the only context where these events are meaningful),
+ * and each rule is an objective, reproducible test against that range's support
+ * (S) / resistance (R) — e.g. a "spring" is literally "a bar whose low pierced
+ * S but whose close came back above S". We deliberately do NOT label discre-
+ * tionary phases (A–E) or infer intent. The UI frames every marker as a
+ * candidate. Client-side, no model impact, no cost. */
+
+export type WyckoffEventType = 'spring' | 'upthrust' | 'sc' | 'bc' | 'sos' | 'sow'
+
+export interface WyckoffEvent {
+  idx: number
+  date: string
+  type: WyckoffEventType
+  /** true = bullish-leaning (at support), false = bearish-leaning (at resistance). */
+  bullish: boolean
+  label: string
+  note: string
+}
+
+export const WYCKOFF_EVENT_META: Record<
+  WyckoffEventType,
+  { label: string; bullish: boolean; note: string }
+> = {
+  spring: {
+    label: 'Spring',
+    bullish: true,
+    note: 'Low pierced support but the close recovered back above it — a possible false breakdown (shakeout).',
+  },
+  sc: {
+    label: 'Sell climax',
+    bullish: true,
+    note: 'Climax-volume down bar at the low of the range — possible selling exhaustion.',
+  },
+  sos: {
+    label: 'Strength',
+    bullish: true,
+    note: 'Wide, strong-close up bar that closed above resistance on heavy volume — a possible sign of strength.',
+  },
+  upthrust: {
+    label: 'Upthrust',
+    bullish: false,
+    note: 'High pierced resistance but the close fell back below it — a possible false breakout.',
+  },
+  bc: {
+    label: 'Buy climax',
+    bullish: false,
+    note: 'Climax-volume up bar at the high of the range — possible buying exhaustion.',
+  },
+  sow: {
+    label: 'Weakness',
+    bullish: false,
+    note: 'Wide, weak-close down bar that closed below support on heavy volume — a possible sign of weakness.',
+  },
+}
+
+/**
+ * Detect candidate events within a trading range. Returns [] when there is no
+ * range (we don't annotate trending/choppy charts — events there are noise).
+ * One event per bar at most, conservative thresholds.
+ */
+const EVENT_COOLDOWN = 5 // bars — collapse clusters of the same event type
+
+export function detectEvents(bars: VsaBar[], range: TradingRange | null): WyckoffEvent[] {
+  if (!range) return []
+  const { support: S, resistance: R } = range
+  const out: WyckoffEvent[] = []
+  const lastIdxByType = new Map<WyckoffEventType, number>()
+  // The range is built from the trailing RANGE_WINDOW bars, so only annotate
+  // bars in that same window — applying the *current* S/R to price from months
+  // ago (when the stock traded elsewhere) would manufacture false signals.
+  const start = Math.max(0, bars.length - RANGE_WINDOW)
+  bars.forEach((b, idx) => {
+    if (idx < start) return
+    let type: WyckoffEventType | null = null
+    if (b.l < S && b.c >= S) {
+      type = 'spring' // pierced support, closed back inside
+    } else if (b.h > R && b.c <= R) {
+      type = 'upthrust' // pierced resistance, closed back inside
+    } else if (b.c < S && !b.up && (b.cls === 'wide' || b.cls === 'climax') && (b.closeLoc ?? 1) < 0.4) {
+      type = 'sow' // strong-close breakdown below support
+    } else if (b.c > R && b.up && (b.cls === 'wide' || b.cls === 'climax') && (b.closeLoc ?? 0) > 0.6) {
+      type = 'sos' // strong-close breakout above resistance
+    } else if (b.cls === 'climax' && !b.up && b.l <= S * 1.02) {
+      type = 'sc' // selling climax at the low
+    } else if (b.cls === 'climax' && b.up && b.h >= R * 0.98) {
+      type = 'bc' // buying climax at the high
+    }
+    if (!type) return
+    // Collapse a run of the same event into its first bar so a sustained move
+    // doesn't stamp the chart with a dozen identical labels.
+    const prev = lastIdxByType.get(type)
+    if (prev != null && idx - prev < EVENT_COOLDOWN) {
+      lastIdxByType.set(type, idx)
+      return
+    }
+    lastIdxByType.set(type, idx)
+    const m = WYCKOFF_EVENT_META[type]
+    out.push({ idx, date: b.date, type, bullish: m.bullish, label: m.label, note: m.note })
+  })
+  return out
 }

@@ -178,6 +178,7 @@ export function PriceChart({
   ticker: string
 }) {
   const [mode, setMode] = useState<'price' | 'wyckoff'>('price')
+  const [showSignals, setShowSignals] = useState(true)
   const [overlayOn, setOverlayOn] = useState(false)
   const [seriesId, setSeriesId] = useState('VIXCLS')
   const [showMA50, setShowMA50] = useState(false)
@@ -232,6 +233,32 @@ export function PriceChart({
     () => overlayOn && macroData ? asOfMerge(priceRows, macroData.observations) : priceRows,
     [priceRows, overlayOn, macroData],
   )
+
+  // Reference lines sit on a categorical X axis, so a marker only renders when
+  // its date exactly matches a price-bar date. Snap each marker to the latest
+  // trading day on/before it, so a buy/8-K dated on a non-trading day (or a gap
+  // in the series) still draws instead of silently vanishing.
+  const snapToBar = useMemo(() => {
+    const dates = priceRows.map((r) => r.date)
+    return (d: string): string | null => {
+      if (dates.length === 0) return null
+      if (d <= dates[0]) return dates[0]
+      if (d >= dates[dates.length - 1]) return dates[dates.length - 1]
+      let lo = 0
+      let hi = dates.length - 1
+      let ans = dates[0]
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (dates[mid] <= d) {
+          ans = dates[mid]
+          lo = mid + 1
+        } else {
+          hi = mid - 1
+        }
+      }
+      return ans
+    }
+  }, [priceRows])
 
   const visibleEvents = useMemo(() => {
     if (!showEvents || !eventsData || !dateRange) return []
@@ -400,8 +427,24 @@ export function PriceChart({
             <span className="h-2 w-3 rounded-sm border border-dashed border-[#378ADD] bg-[rgba(55,138,221,0.15)]" />
             Trading range
           </span>
+          <span className="mx-0.5 h-3 w-px bg-[#e5e7eb]" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => setShowSignals((x) => !x)}
+            aria-pressed={showSignals}
+            title="Candidate Wyckoff events (Spring, Upthrust, climaxes, strength/weakness). Heuristic — only drawn inside a detected trading range, and never confirmed."
+            className={
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
+              (showSignals
+                ? 'border-violet-200 bg-violet-50 text-violet-700'
+                : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+            }
+          >
+            <span className="h-2 w-2 rounded-full" style={{ background: showSignals ? '#7c3aed' : '#cbd5e1' }} />
+            Candidate signals
+          </button>
           <span className="text-[0.7rem] text-[#9ca3af]">
-            Objective measures off daily OHLCV · not Wyckoff phase labels
+            Objective measures off daily OHLCV · candidate events are heuristic, not confirmed
           </span>
         </div>
       )}
@@ -421,28 +464,33 @@ export function PriceChart({
               200-day MA
             </span>
           )}
-          {showEvents && visibleEvents.length > 0 && (
-            <span className="flex items-center gap-1 text-[#b45309]">
-              <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#f59e0b' }} />
-              8-K filing
-            </span>
-          )}
-          {showEvents && visibleBuys.length > 0 && (
-            <span className="flex items-center gap-1 text-[#15803d]">
-              <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#22c55e' }} />
-              Insider buy
-            </span>
-          )}
-          {showEvents && visibleEvents.length === 0 && visibleBuys.length === 0 && (
-            <span className="text-[#9ca3af]">No 8-Ks or insider buys in this range</span>
-          )}
+          {/* When Events is on, always report the status of BOTH marker types
+              so an empty result reads as "no data", not a broken toggle. */}
+          {showEvents &&
+            (visibleEvents.length > 0 ? (
+              <span className="flex items-center gap-1 text-[#b45309]">
+                <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#f59e0b' }} />
+                8-K filing ({visibleEvents.length})
+              </span>
+            ) : (
+              <span className="text-[#9ca3af]">No high-signal 8-Ks in this range</span>
+            ))}
+          {showEvents &&
+            (visibleBuys.length > 0 ? (
+              <span className="flex items-center gap-1 text-[#15803d]">
+                <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#22c55e' }} />
+                Insider buy ({visibleBuys.length})
+              </span>
+            ) : (
+              <span className="text-[#9ca3af]">No insider buys in this range</span>
+            ))}
         </div>
       )}
 
       {/* Charts */}
       {mode === 'wyckoff' ? (
         <div className="mt-4">
-          <WyckoffChart bars={vsaBars} isFetching={isFetching} />
+          <WyckoffChart bars={vsaBars} isFetching={isFetching} showSignals={showSignals} />
         </div>
       ) : (
       <div className="mt-4 transition-opacity" style={{ opacity: isFetching ? 0.55 : 1 }}>
@@ -499,12 +547,12 @@ export function PriceChart({
                   }
                 />
 
-                {/* Event reference lines */}
+                {/* Event reference lines — x snapped to the nearest price bar */}
                 {visibleEvents.map((e) => (
                   <ReferenceLine
                     key={e.accession_no}
                     yAxisId="price"
-                    x={e.event_date || e.filed_date}
+                    x={snapToBar(e.event_date || e.filed_date) ?? undefined}
                     stroke="#f59e0b"
                     strokeWidth={1.5}
                     strokeDasharray="3 2"
@@ -515,7 +563,7 @@ export function PriceChart({
                   <ReferenceLine
                     key={`buy-${i}`}
                     yAxisId="price"
-                    x={t.transaction_date!}
+                    x={snapToBar(t.transaction_date!) ?? undefined}
                     stroke="#22c55e"
                     strokeWidth={1.5}
                     strokeDasharray="3 2"
