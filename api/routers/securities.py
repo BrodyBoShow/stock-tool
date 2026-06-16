@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from api.ratelimit import rate_limit
 from api.schemas import (
     BriefStatusResponse,
     DecisionBrief,
@@ -216,7 +217,11 @@ def get_filing_qa(ticker: str) -> FilingQaStatusResponse:
 
 # TODO(auth): the deepest/most expensive call in the app (Opus over a large
 # filing context) — gate this endpoint (auth + rate limit) before public.
-@router.post("/{ticker}/filing-qa", response_model=FilingAnswers)
+@router.post(
+    "/{ticker}/filing-qa",
+    response_model=FilingAnswers,
+    dependencies=[Depends(rate_limit(5, 300))],  # Opus-class cost — tightest cap
+)
 def generate_filing_qa(
     ticker: str,
     force: bool = Query(False, description="Re-generate even if cached."),
@@ -292,7 +297,11 @@ def get_brief(ticker: str, background_tasks: BackgroundTasks) -> BriefStatusResp
 
 # TODO(auth): generation calls the Anthropic API and costs money per snapshot —
 # gate this endpoint (auth + rate limit) before any public deploy.
-@router.post("/{ticker}/brief", response_model=DecisionBrief)
+@router.post(
+    "/{ticker}/brief",
+    response_model=DecisionBrief,
+    dependencies=[Depends(rate_limit(15, 300))],
+)
 def generate_brief(
     ticker: str,
     force: bool = Query(False, description="Re-generate even if a brief is cached."),
@@ -316,7 +325,11 @@ def generate_brief(
 
 # TODO(auth): generation calls the Anthropic API and costs money per filing —
 # gate this endpoint (auth + rate limit) before any public deploy.
-@router.post("/{ticker}/summary", response_model=FilingSummary)
+@router.post(
+    "/{ticker}/summary",
+    response_model=FilingSummary,
+    dependencies=[Depends(rate_limit(15, 300))],
+)
 def generate_summary(
     ticker: str,
     force: bool = Query(False, description="Re-generate even if a summary is cached."),

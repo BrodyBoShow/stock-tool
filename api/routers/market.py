@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.ratelimit import rate_limit
 from api.schemas import MarketBriefResponse, MarketOverviewResponse
 from engine import market as market_engine
 from engine import market_brief
@@ -22,8 +23,11 @@ def get_overview() -> MarketOverviewResponse:
     return MarketOverviewResponse(**ov)
 
 
-# TODO: add authentication before any public deploy (this spends API credits)
-@router.post("/brief", response_model=MarketBriefResponse)
+@router.post(
+    "/brief",
+    response_model=MarketBriefResponse,
+    dependencies=[Depends(rate_limit(10, 300))],
+)
 def generate_brief() -> MarketBriefResponse:
     """Generate (or return today's cached) AI market brief. Idempotent per
     market day — at most one Haiku call/day no matter how often it's called —
