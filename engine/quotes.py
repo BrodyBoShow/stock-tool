@@ -34,18 +34,26 @@ def _cache_key(tickers: list[str]) -> str:
 
 
 def _fetch(tickers: list[str]) -> dict[str, Any]:
-    """Batched yfinance pull: last two daily rows → current price + prev close.
+    """Batched yfinance pull: last two daily closes → current price + prev close.
 
     On an in-progress trading day yfinance includes a row for today whose Close
     is the latest (delayed) price; the row before it is the prior close, giving
     the day change. Returns {quotes: {ticker: {...}}, as_of_epoch}.
+
+    We pull a 5-day window rather than 2: a 2-day calendar window
+    intermittently lands a single non-NaN daily close for some names mid-session
+    (batch-download index alignment around weekends/holidays), which left those
+    rows with a live price but no prior close — so the day-change delta silently
+    vanished and the price *looked* stale. Five days guarantees >=2 trading days
+    for any active name; we still take only the last two closes, so the live
+    price is unchanged.
     """
     quotes: dict[str, dict[str, float | None]] = {}
     if not tickers:
         return {"quotes": quotes, "as_of_epoch": time.time()}
 
     df = yf.download(
-        tickers, period="2d", interval="1d",
+        tickers, period="5d", interval="1d",
         progress=False, auto_adjust=False, threads=True,
     )
     close = df["Close"] if "Close" in df else pd.DataFrame()
