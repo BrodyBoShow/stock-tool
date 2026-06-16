@@ -125,6 +125,9 @@ class PricePoint(BaseModel):
     adj_close: float | None
     close: float | None
     volume: int | None = None
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
 
 
 class FundamentalPoint(BaseModel):

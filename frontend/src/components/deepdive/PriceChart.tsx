@@ -14,9 +14,11 @@ import {
   YAxis,
 } from 'recharts'
 
+import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
 import { getEvents, getInsiders, getMacroSeries } from '@/lib/api'
 import { MACRO_DISPLAY } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
+import { computeVsa } from '@/lib/wyckoff'
 import type { MacroObservation, PricePoint } from '@/types/api'
 
 function buildRanges(): { label: string; days: number }[] {
@@ -175,6 +177,7 @@ export function PriceChart({
   isFetching: boolean
   ticker: string
 }) {
+  const [mode, setMode] = useState<'price' | 'wyckoff'>('price')
   const [overlayOn, setOverlayOn] = useState(false)
   const [seriesId, setSeriesId] = useState('VIXCLS')
   const [showMA50, setShowMA50] = useState(false)
@@ -182,6 +185,8 @@ export function PriceChart({
   const [showVolume, setShowVolume] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
   const ranges = useMemo(buildRanges, [])
+
+  const vsaBars = useMemo(() => computeVsa(prices), [prices])
 
   const priceRows = useMemo<ChartRow[]>(() => {
     const filtered = prices.filter((p) => p.adj_close !== null)
@@ -251,34 +256,59 @@ export function PriceChart({
 
   return (
     <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      {/* Header + range buttons */}
+      {/* Header + mode toggle + range buttons */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-[#111827]">Price history</div>
+          <div className="text-base font-bold text-[#111827]">
+            {mode === 'wyckoff' ? 'Wyckoff · volume-spread' : 'Price history'}
+          </div>
           <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
-            Adjusted close (splits &amp; dividends) · nightly data
+            {mode === 'wyckoff'
+              ? 'Daily candles · spread + volume · objective measures only'
+              : 'Adjusted close (splits & dividends) · nightly data'}
           </div>
         </div>
-        <div className="flex flex-wrap gap-1 rounded-lg bg-[#f1f5f9] p-1">
-          {ranges.map((r) => (
-            <button
-              key={r.label}
-              type="button"
-              onClick={() => onDaysChange(r.days)}
-              className={
-                'rounded-md px-3 py-1 text-xs font-bold transition-colors ' +
-                (days === r.days
-                  ? 'bg-white text-[#111827] shadow-sm'
-                  : 'text-[#64748b] hover:text-[#111827]')
-              }
-            >
-              {r.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-lg bg-[#f1f5f9] p-1">
+            {(['price', 'wyckoff'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+                className={
+                  'rounded-md px-3 py-1 text-xs font-bold capitalize transition-colors ' +
+                  (mode === m
+                    ? 'bg-white text-[#111827] shadow-sm'
+                    : 'text-[#64748b] hover:text-[#111827]')
+                }
+              >
+                {m === 'wyckoff' ? 'Wyckoff' : 'Price'}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1 rounded-lg bg-[#f1f5f9] p-1">
+            {ranges.map((r) => (
+              <button
+                key={r.label}
+                type="button"
+                onClick={() => onDaysChange(r.days)}
+                className={
+                  'rounded-md px-3 py-1 text-xs font-bold transition-colors ' +
+                  (days === r.days
+                    ? 'bg-white text-[#111827] shadow-sm'
+                    : 'text-[#64748b] hover:text-[#111827]')
+                }
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Toggle controls */}
+      {/* Toggle controls — Price mode only (Wyckoff has its own legend) */}
+      {mode === 'price' && (
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {/* MA toggles */}
         <OverlayToggle
@@ -349,9 +379,35 @@ export function PriceChart({
           </>
         )}
       </div>
+      )}
+
+      {/* VSA legend — Wyckoff mode */}
+      {mode === 'wyckoff' && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-[0.72rem] font-semibold text-amber-700">
+            <span className="h-2 w-2 rounded-sm bg-[#ef9f27]" />
+            Climax volume
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#f1f5f9] px-2 py-0.5 text-[0.72rem] font-semibold text-[#475569]">
+            <span className="h-2 w-2 rounded-sm border border-[#64748b]" />
+            Wide spread
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#f1f5f9] px-2 py-0.5 text-[0.72rem] font-semibold text-[#475569]">
+            <span className="h-2 w-2 rounded-sm bg-[#94a3b8]" />
+            Churn / no-demand
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 px-2 py-0.5 text-[0.72rem] font-semibold text-sky-700">
+            <span className="h-2 w-3 rounded-sm border border-dashed border-[#378ADD] bg-[rgba(55,138,221,0.15)]" />
+            Trading range
+          </span>
+          <span className="text-[0.7rem] text-[#9ca3af]">
+            Objective measures off daily OHLCV · not Wyckoff phase labels
+          </span>
+        </div>
+      )}
 
       {/* Legend for active overlays */}
-      {(showMA50 || showMA200 || showEvents) && (
+      {mode === 'price' && (showMA50 || showMA200 || showEvents) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.7rem]">
           {showMA50 && (
             <span className="flex items-center gap-1" style={{ color: MA50_COLOR }}>
@@ -384,6 +440,11 @@ export function PriceChart({
       )}
 
       {/* Charts */}
+      {mode === 'wyckoff' ? (
+        <div className="mt-4">
+          <WyckoffChart bars={vsaBars} isFetching={isFetching} />
+        </div>
+      ) : (
       <div className="mt-4 transition-opacity" style={{ opacity: isFetching ? 0.55 : 1 }}>
         {priceRows.length < 2 ? (
           <div className="flex h-[300px] items-center justify-center text-sm text-[#9ca3af]">
@@ -535,6 +596,7 @@ export function PriceChart({
           </>
         )}
       </div>
+      )}
     </div>
   )
 }

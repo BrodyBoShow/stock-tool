@@ -56,6 +56,9 @@ export interface PricePoint {
   adj_close: number | null
   close: number | null
   volume: number | null
+  open: number | null
+  high: number | null
+  low: number | null
 }
 
 export interface FundamentalPoint {

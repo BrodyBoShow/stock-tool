@@ -391,7 +391,12 @@ def security_header(ticker: str) -> dict[str, Any] | None:
 
 
 def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, Any]]:
-    """Adj_close + close + volume price history for one ticker, ordered ascending.
+    """OHLCV price history for one ticker, ordered ascending.
+
+    Returns raw open/high/low/close plus adj_close and volume. The area-line
+    chart uses adj_close; the Wyckoff/VSA candlestick mode uses the full bar
+    (open/high/low/close) and derives split-adjusted candles client-side via the
+    adj_close/close ratio, so the candles stay aligned with the adjusted line.
 
     If days is provided, returns only the most recent N calendar days.
     """
@@ -405,7 +410,8 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
             if cutoff is not None:
                 cur.execute(
                     """
-                    SELECT p.date, p.adj_close, p.close, p.volume
+                    SELECT p.date, p.adj_close, p.close, p.volume,
+                           p.open, p.high, p.low
                     FROM prices_daily p
                     JOIN securities s ON s.security_id = p.security_id
                     WHERE s.ticker = %s AND s.is_active AND p.date >= %s
@@ -416,7 +422,8 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
             else:
                 cur.execute(
                     """
-                    SELECT p.date, p.adj_close, p.close, p.volume
+                    SELECT p.date, p.adj_close, p.close, p.volume,
+                           p.open, p.high, p.low
                     FROM prices_daily p
                     JOIN securities s ON s.security_id = p.security_id
                     WHERE s.ticker = %s AND s.is_active
@@ -434,6 +441,9 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
             "adj_close": _f(r[1]),
             "close": _f(r[2]),
             "volume": int(r[3]) if r[3] is not None else None,
+            "open": _f(r[4]),
+            "high": _f(r[5]),
+            "low": _f(r[6]),
         }
         for r in rows
     ]
