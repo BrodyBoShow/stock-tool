@@ -1,4 +1,7 @@
 import type {
+  AlertRule,
+  AlertRuleCreate,
+  AlertsResponse,
   BacktestRunResponse,
   BriefStatusResponse,
   DecisionBrief,
@@ -114,7 +117,7 @@ export function getSecurity(ticker: string, days?: number): Promise<SecurityResp
 
 /** Writes (POST/PUT/DELETE). 204 responses resolve to undefined. */
 async function sendJson<T>(
-  method: 'POST' | 'PUT' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<T> {
@@ -148,6 +151,22 @@ export function getWatchlist(): Promise<WatchlistResponse> {
 
 export function getWatchlistChanges(): Promise<WatchlistChangesResponse> {
   return getJson<WatchlistChangesResponse>('/watchlist/changes')
+}
+
+export function getAlerts(): Promise<AlertsResponse> {
+  return getJson<AlertsResponse>('/alerts')
+}
+
+export function createAlertRule(body: AlertRuleCreate): Promise<AlertRule> {
+  return sendJson<AlertRule>('POST', '/alerts/rules', body)
+}
+
+export function toggleAlertRule(id: number, enabled: boolean): Promise<AlertRule> {
+  return sendJson<AlertRule>('PATCH', `/alerts/rules/${id}`, { enabled })
+}
+
+export function deleteAlertRule(id: number): Promise<void> {
+  return sendJson<void>('DELETE', `/alerts/rules/${id}`)
 }
 
 export function getTheses(): Promise<ThesesResponse> {

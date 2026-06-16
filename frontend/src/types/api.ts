@@ -310,6 +310,52 @@ export interface WatchlistChangesResponse {
   rows: WatchlistChange[]
 }
 
+// ── alerts (Wave 5) ───────────────────────────────────────────────────────────
+
+export type AlertRuleType =
+  | 'rank_drop'
+  | 'composite_drop'
+  | 'composite_rise'
+  | 'insider_buy'
+  | 'new_8k'
+  | 'review_due'
+
+export interface AlertRule {
+  id: number
+  scope: 'watchlist' | 'ticker'
+  security_id: number | null
+  ticker: string | null
+  name: string | null
+  rule_type: AlertRuleType
+  threshold: number | null
+  enabled: boolean
+  created_at: string | null
+}
+
+export interface AlertTrigger {
+  rule_id: number
+  rule_type: AlertRuleType
+  rule_label: string
+  severity: 'warn' | 'info'
+  security_id: number
+  ticker: string
+  name: string | null
+  sector: string | null
+  message: string
+}
+
+export interface AlertsResponse {
+  triggered: AlertTrigger[]
+  rules: AlertRule[]
+}
+
+export interface AlertRuleCreate {
+  rule_type: AlertRuleType
+  scope?: 'watchlist' | 'ticker'
+  ticker?: string | null
+  threshold?: number | null
+}
+
 export interface WatchlistMutationResponse {
   ticker: string
   security_id: number

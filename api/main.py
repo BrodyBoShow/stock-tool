@@ -26,6 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.routers import (
+    alerts,
     lab,
     macro,
     market,
@@ -136,6 +137,7 @@ app.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
 app.include_router(lab.router, prefix="/lab", tags=["lab"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
 app.include_router(market.router, prefix="/market", tags=["market"])
+app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])

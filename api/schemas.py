@@ -364,6 +364,48 @@ class WatchlistAddRequest(BaseModel):
     ticker: str
 
 
+# ── alerts (Wave 5) ───────────────────────────────────────────────────────────
+
+class AlertRule(BaseModel):
+    id: int
+    scope: str                       # "watchlist" | "ticker"
+    security_id: int | None
+    ticker: str | None               # set when scope == "ticker"
+    name: str | None
+    rule_type: str
+    threshold: float | None
+    enabled: bool
+    created_at: str | None
+
+
+class AlertTrigger(BaseModel):
+    rule_id: int
+    rule_type: str
+    rule_label: str
+    severity: str                    # "warn" | "info"
+    security_id: int
+    ticker: str
+    name: str | None
+    sector: str | None
+    message: str
+
+
+class AlertsResponse(BaseModel):
+    triggered: list[AlertTrigger]
+    rules: list[AlertRule]
+
+
+class AlertRuleCreate(BaseModel):
+    rule_type: str
+    scope: str = "watchlist"
+    ticker: str | None = None        # required when scope == "ticker"
+    threshold: float | None = None
+
+
+class AlertRuleToggle(BaseModel):
+    enabled: bool
+
+
 class WatchlistMutationResponse(BaseModel):
     ticker: str
     security_id: int

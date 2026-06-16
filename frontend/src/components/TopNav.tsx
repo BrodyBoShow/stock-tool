@@ -1,7 +1,8 @@
-import { useIsFetching, useQueryClient } from '@tanstack/react-query'
+import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
 
 import { useToast } from '@/components/ui/Toast'
+import { getAlerts } from '@/lib/api'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   'border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
@@ -77,6 +78,29 @@ function Logo() {
   )
 }
 
+function AlertsLink() {
+  const { data } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: getAlerts,
+    staleTime: 60 * 1000,
+    refetchInterval: 120 * 1000,
+    refetchOnWindowFocus: true,
+  })
+  const n = data?.triggered.length ?? 0
+  return (
+    <NavLink to="/alerts" className={link}>
+      <span className="inline-flex items-center gap-1.5">
+        Alerts
+        {n > 0 && (
+          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#dc2626] px-1 text-[0.62rem] font-bold text-white">
+            {n}
+          </span>
+        )}
+      </span>
+    </NavLink>
+  )
+}
+
 export function TopNav() {
   return (
     <nav className="sticky top-0 z-30 border-b border-[#e5e7eb] bg-white/85 backdrop-blur">
@@ -107,6 +131,7 @@ export function TopNav() {
           <NavLink to="/theses" className={link}>
             Theses
           </NavLink>
+          <AlertsLink />
           <NavLink to="/lab" className={link}>
             Lab
           </NavLink>

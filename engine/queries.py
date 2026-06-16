@@ -807,6 +807,85 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
     return deleted, ("deleted" if deleted else "not_found_thesis")
 
 
+# ── alert rules (Wave 5 — user-configured, single-user) ─────────────────────────
+
+def alert_rules() -> list[dict[str, Any]]:
+    """All alert rules, joined with the ticker for scope='ticker' rules."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT ar.id, ar.scope, ar.security_id, s.ticker, s.name,
+                       ar.rule_type, ar.threshold, ar.enabled, ar.created_at
+                FROM alert_rules ar
+                LEFT JOIN securities s ON s.security_id = ar.security_id
+                ORDER BY ar.created_at
+                """
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    out = []
+    for raw in rows:
+        d = dict(zip(cols, raw, strict=True))
+        d["threshold"] = _f(d.get("threshold"))
+        d["created_at"] = d["created_at"].isoformat() if d.get("created_at") else None
+        out.append(d)
+    return out
+
+
+def alert_rule_add(
+    scope: str, security_id: int | None, rule_type: str, threshold: float | None
+) -> int:
+    """Insert an alert rule; returns the new rule id."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO alert_rules (scope, security_id, rule_type, threshold)
+                VALUES (%s, %s, %s, %s) RETURNING id
+                """,
+                (scope, security_id, rule_type, threshold),
+            )
+            new_id = int(cur.fetchone()[0])
+        conn.commit()
+    finally:
+        release(conn)
+    return new_id
+
+
+def alert_rule_set_enabled(rule_id: int, enabled: bool) -> bool:
+    """Toggle a rule on/off. Returns True if a row was updated."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE alert_rules SET enabled = %s WHERE id = %s",
+                (enabled, rule_id),
+            )
+            updated = cur.rowcount > 0
+        conn.commit()
+    finally:
+        release(conn)
+    return updated
+
+
+def alert_rule_delete(rule_id: int) -> bool:
+    """Delete a rule. Returns True if a row was removed."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM alert_rules WHERE id = %s", (rule_id,))
+            deleted = cur.rowcount > 0
+        conn.commit()
+    finally:
+        release(conn)
+    return deleted
+
+
 # ── filings + AI summaries (read; summaries written via save_filing_summary) ────
 
 def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:

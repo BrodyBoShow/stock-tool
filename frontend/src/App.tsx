@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import { AuthGate } from '@/components/AuthGate'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { TopNav } from '@/components/TopNav'
+import { AlertsPage } from '@/pages/AlertsPage'
 import { DeepDivePage } from '@/pages/DeepDivePage'
 import { LabPage } from '@/pages/LabPage'
 import { MarketPage } from '@/pages/MarketPage'
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/theses" element={<ThesesPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/lab" element={<LabPage />} />
             <Route
               path="*"
