@@ -18,6 +18,7 @@ import type {
   MarketOverviewResponse,
   PortfolioMutationResponse,
   PortfolioResponse,
+  ProjectionResponse,
   PortfolioTransactionCreate,
   PortfolioTransactionsResponse,
   QuotesResponse,
@@ -288,6 +289,21 @@ export function generateMarketBrief(): Promise<MarketBriefResponse> {
 
 export function getPortfolio(): Promise<PortfolioResponse> {
   return getJson<PortfolioResponse>('/portfolio')
+}
+
+export function getProjection(p: {
+  years: number
+  monthly: number
+  annual_fee: number
+  stress: boolean
+}): Promise<ProjectionResponse> {
+  const qs = new URLSearchParams({
+    years: String(p.years),
+    monthly: String(p.monthly),
+    annual_fee: String(p.annual_fee),
+    stress: String(p.stress),
+  })
+  return getJson<ProjectionResponse>(`/portfolio/projection?${qs.toString()}`)
 }
 
 export function getPortfolioTransactions(): Promise<PortfolioTransactionsResponse> {

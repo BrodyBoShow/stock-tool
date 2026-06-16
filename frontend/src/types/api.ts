@@ -783,6 +783,41 @@ export interface BacktestBenchmarks {
   universe_ew_stats: BacktestCurveStats
 }
 
+// ── Portfolio projection (Monte Carlo cone) ──────────────────────────────────
+
+export interface ProjectionCone {
+  years: number[]
+  p10: number[]
+  p50: number[]
+  p90: number[]
+}
+
+export interface ProjectionAssumption {
+  ticker: string | null
+  weight: number
+  ann_return: number
+  ann_return_trailing: number
+  ann_vol: number
+}
+
+export interface ProjectionResponse {
+  has_portfolio: boolean
+  insufficient_history?: boolean | null
+  stress?: boolean | null
+  params?: { years: number; monthly: number; annual_fee: number; n_sims: number; lookback_days: number } | null
+  start_balance?: number | null
+  contributed?: number | null
+  terminal?: { p10: number; p50: number; p90: number } | null
+  cone?: ProjectionCone | null
+  max_drawdown?: { p50: number; p10: number } | null
+  prob_gain?: number | null
+  portfolio_assumptions?: { ann_return: number; ann_vol: number; n_obs: number } | null
+  holdings_assumptions?: ProjectionAssumption[] | null
+  excluded?: string[] | null
+  disclaimer?: string | null
+  seed?: number | null
+}
+
 export interface BacktestRunResponse {
   has_results: boolean
   backtest_id: number | null

@@ -101,6 +101,26 @@ class BacktestRunResponse(BaseModel):
     significance: dict | None = None
 
 
+class ProjectionResponse(BaseModel):
+    """Portfolio Monte Carlo projection cone. Permissive nested types — the
+    frontend owns the chart-shaped typing (mirrors BacktestRunResponse)."""
+    has_portfolio: bool
+    insufficient_history: bool | None = None
+    stress: bool | None = None
+    params: dict | None = None
+    start_balance: float | None = None
+    contributed: float | None = None
+    terminal: dict | None = None
+    cone: dict | None = None
+    max_drawdown: dict | None = None
+    prob_gain: float | None = None
+    portfolio_assumptions: dict | None = None
+    holdings_assumptions: list | None = None
+    excluded: list | None = None
+    disclaimer: str | None = None
+    seed: int | None = None
+
+
 # ── securities (deep-dive) ────────────────────────────────────────────────────
 
 class SecurityHeader(BaseModel):

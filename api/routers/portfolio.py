@@ -1,17 +1,37 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from api.ratelimit import rate_limit
 from api.schemas import (
     PortfolioMutationResponse,
     PortfolioResponse,
     PortfolioTransactionRow,
     PortfolioTransactionsCreateRequest,
     PortfolioTransactionsResponse,
+    ProjectionResponse,
 )
 from engine import portfolio as portfolio_engine
+from engine.portfolio_projection import project_portfolio
 
 router = APIRouter()
+
+
+@router.get(
+    "/projection",
+    response_model=ProjectionResponse,
+    dependencies=[Depends(rate_limit(20, 60))],
+)
+def get_projection(
+    years: int = Query(10, ge=1, le=40),
+    monthly: float = Query(0.0, ge=0.0, le=1_000_000.0),
+    annual_fee: float = Query(0.0, ge=0.0, le=0.1),
+    stress: bool = Query(False),
+) -> ProjectionResponse:
+    """Correlated Monte Carlo projection cone for the current holdings. Computed
+    on demand (a 1k-path sim); display-only, never feeds the factor model."""
+    out = project_portfolio(years=years, monthly=monthly, annual_fee=annual_fee, stress=stress)
+    return ProjectionResponse(**out)
 
 
 @router.get("", response_model=PortfolioResponse)
