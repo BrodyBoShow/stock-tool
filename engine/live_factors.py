@@ -321,17 +321,6 @@ def live_adjust(security_id: int, live_price: float | None) -> dict[str, Any] | 
     return base
 
 
-def live_adjust_many(price_by_sid: dict[int, float | None]) -> dict[int, dict[str, Any]]:
-    """Batch live_adjust for the screener overlay. Skips names not in the
-    snapshot. Cheap: the snapshot/distribution is built once and reused."""
-    out: dict[int, dict[str, Any]] = {}
-    for sid, price in price_by_sid.items():
-        res = live_adjust(sid, price)
-        if res is not None:
-            out[sid] = res
-    return out
-
-
 def live_adjust_many_by_ticker(
     price_by_ticker: dict[str, float | None],
 ) -> dict[str, dict[str, Any]]:

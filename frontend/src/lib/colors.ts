@@ -5,6 +5,11 @@ export interface Tint {
   fg: string
 }
 
+/** P/L text color: green for ≥0, red for <0, slate for null. */
+export function plColor(x: number | null | undefined): string {
+  return x == null ? '#64748b' : x >= 0 ? '#059669' : '#dc2626'
+}
+
 /**
  * Universe percentile rank (0-100) -> pill colors. The rank is already
  * direction-adjusted (a high rank means "good for this factor" whether the

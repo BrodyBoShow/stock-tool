@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { Delta } from '@/components/ui/Delta'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateBrief, getBriefStatus } from '@/lib/api'
+import { PANEL_LABEL as LABEL } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
 import type {
   DataConfidence,
@@ -9,9 +11,6 @@ import type {
   FactorTrendPoint,
 } from '@/types/api'
 
-
-const LABEL =
-  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
 
 const DAY_MS = 86_400_000
 
@@ -31,17 +30,6 @@ function daysBetween(a: string, b: string): number {
   )
 }
 
-function Delta({ value, goodWhenUp = true }: { value: number; goodWhenUp?: boolean }) {
-  if (value === 0) return <span className="text-[#9ca3af]">·</span>
-  const up = value > 0
-  const good = up === goodWhenUp
-  return (
-    <span className={good ? 'text-[#059669]' : 'text-[#dc2626]'}>
-      {up ? '▲' : '▼'}
-      {Math.abs(value).toFixed(1).replace(/\.0$/, '')}
-    </span>
-  )
-}
 
 /** Factor-rank trend chips — rendered from our own score history, present even
  * before (or without) an AI brief. */
@@ -63,7 +51,7 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
       <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-[#eef2ff] px-2.5 py-1.5 text-[0.78rem] font-semibold text-[#3730a3]">
         Composite {latest.composite?.toFixed(1) ?? '—'}
         {base?.composite != null && latest.composite != null && (
-          <Delta value={latest.composite - base.composite} />
+          <Delta value={latest.composite - base.composite} zeroDash />
         )}
       </span>
       {latest.rank != null && (

@@ -40,6 +40,19 @@ export function fmtPctl(v: number | null | undefined): string {
   return x === null ? DASH : x.toFixed(1)
 }
 
+/** Plain ratio to N decimals (Sharpe/Sortino/beta etc.), DASH on null. */
+export function fmtRatio(v: number | null | undefined, decimals = 2): string {
+  const x = f(v)
+  return x === null ? DASH : x.toFixed(decimals)
+}
+
+/** Signed percent: +1.2% / −3.4%, value is a fraction (0.012 -> +1.2%). */
+export function fmtSignedPct(v: number | null | undefined, decimals = 1): string {
+  const x = f(v)
+  if (x === null) return DASH
+  return `${x > 0 ? '+' : ''}${(x * 100).toFixed(decimals)}%`
+}
+
 const PCT_INPUTS = new Set([
   'gross_margin',
   'operating_margin',

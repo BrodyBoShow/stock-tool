@@ -1,5 +1,9 @@
 /** Design tokens + factor/metric metadata — mirrors web/app.py exactly. */
 
+/** Small uppercase section/field label used across the deep-dive panels. */
+export const PANEL_LABEL =
+  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
+
 export type FactorKey = 'composite' | 'growth' | 'value' | 'quality' | 'momentum'
 
 export const FACTOR_ORDER: FactorKey[] = [

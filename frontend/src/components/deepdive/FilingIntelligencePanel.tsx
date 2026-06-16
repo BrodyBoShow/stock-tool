@@ -9,6 +9,7 @@ import {
   getFilingQaStatus,
   getSummaryStatus,
 } from '@/lib/api'
+import { PANEL_LABEL as LABEL } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
 import type {
   FilingAnswers,
@@ -20,8 +21,6 @@ import type {
 // Module-scoped guard so the Overview's auto-generate fires once per ticker even
 // through React StrictMode's dev double-mount (avoids two paid Claude calls).
 const autoTriggered = new Set<string>()
-
-const LABEL = 'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
 
 type Tab = 'overview' | 'diligence'
 

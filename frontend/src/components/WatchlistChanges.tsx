@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { SectorPill } from '@/components/screener/SectorPill'
+import { Delta } from '@/components/ui/Delta'
 import { fmtDate, fmtMoney } from '@/lib/format'
 import type { WatchlistChange } from '@/types/api'
 
@@ -35,18 +36,6 @@ function Chip({
       className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[0.74rem] font-medium ${styles[tone]}`}
     >
       {children}
-    </span>
-  )
-}
-
-function Delta({ value, goodWhenUp = true }: { value: number; goodWhenUp?: boolean }) {
-  if (value === 0) return null
-  const up = value > 0
-  const good = up === goodWhenUp
-  return (
-    <span className={good ? 'text-[#059669]' : 'text-[#dc2626]'}>
-      {up ? '▲' : '▼'}
-      {Math.abs(value).toFixed(1).replace(/\.0$/, '')}
     </span>
   )
 }

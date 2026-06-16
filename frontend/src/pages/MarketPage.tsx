@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { generateMarketBrief, getMarketOverview, getQuotes } from '@/lib/api'
-import { fmtDate, fmtMoney } from '@/lib/format'
+import { plColor } from '@/lib/colors'
+import { fmtDate, fmtMoney, fmtSignedPct } from '@/lib/format'
 import type {
   MarketAiBrief,
   MarketMacroCard,
@@ -15,11 +17,6 @@ import type {
   MarketSectorRow,
 } from '@/types/api'
 
-const signed = (x: number | null | undefined, dec = 1) =>
-  x == null ? '—' : `${x > 0 ? '+' : ''}${(x * 100).toFixed(dec)}%`
-const plColor = (x: number | null | undefined) =>
-  x == null ? '#64748b' : x >= 0 ? '#059669' : '#dc2626'
-
 /** Heat-cell background: green/red, intensity scaled to the column's range. */
 function heat(v: number | null, scale: number): React.CSSProperties {
   if (v == null) return {}
@@ -27,24 +24,6 @@ function heat(v: number | null, scale: number): React.CSSProperties {
   return {
     background: v >= 0 ? `rgba(16,185,129,${a})` : `rgba(239,68,68,${a})`,
   }
-}
-
-function SectionCard({
-  title,
-  hint,
-  children,
-}: {
-  title: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-[#111827]">{title}</div>
-      {hint && <p className="mt-0.5 text-[0.78rem] text-[#9ca3af]">{hint}</p>}
-      <div className="mt-4">{children}</div>
-    </section>
-  )
 }
 
 function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
@@ -83,7 +62,7 @@ function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
                     className="px-2 py-2 text-right font-semibold tabular-nums"
                     style={heat(v, c.scale)}
                   >
-                    {signed(v)}
+                    {fmtSignedPct(v)}
                   </td>
                 )
               })}
@@ -185,7 +164,7 @@ function MoverList({ movers, title }: { movers: MarketMover[]; title: string }) 
               className="w-16 shrink-0 text-right font-bold tabular-nums"
               style={{ color: plColor(m.r1d) }}
             >
-              {signed(m.r1d)}
+              {fmtSignedPct(m.r1d)}
             </span>
           </div>
         ))}
@@ -524,11 +503,11 @@ export function MarketPage() {
               <span>
                 <span className="font-semibold text-[#64748b]">Last session </span>
                 <span className="font-bold tabular-nums" style={{ color: plColor(d.market.spy_r1d) }}>
-                  SPY {signed(d.market.spy_r1d)}
+                  SPY {fmtSignedPct(d.market.spy_r1d)}
                 </span>
                 <span className="mx-1 text-[#d1d5db]">·</span>
                 <span className="font-bold tabular-nums" style={{ color: plColor(d.market.universe_ew_r1d) }}>
-                  avg stock {signed(d.market.universe_ew_r1d)}
+                  avg stock {fmtSignedPct(d.market.universe_ew_r1d)}
                 </span>
               </span>
             </div>
@@ -622,7 +601,7 @@ export function MarketPage() {
             )}
             {d.macro.cpi_yoy != null && (
               <span>
-                CPI <strong className="tabular-nums text-[#1e293b]">{signed(d.macro.cpi_yoy)}</strong>{' '}
+                CPI <strong className="tabular-nums text-[#1e293b]">{fmtSignedPct(d.macro.cpi_yoy)}</strong>{' '}
                 YoY {d.macro.cpi_as_of && `(as of ${fmtDate(d.macro.cpi_as_of)})`}
               </span>
             )}

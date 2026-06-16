@@ -16,6 +16,7 @@ import {
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/Toast'
 import {
@@ -25,7 +26,8 @@ import {
   getPortfolioTransactions,
   getQuotes,
 } from '@/lib/api'
-import { fmtDate, fmtPctl, fmtPrice } from '@/lib/format'
+import { plColor } from '@/lib/colors'
+import { fmtDate, fmtPctl, fmtPrice, fmtRatio, fmtSignedPct } from '@/lib/format'
 import type {
   PortfolioHolding,
   PortfolioResponse,
@@ -45,8 +47,6 @@ const TXN_TYPES: { value: PortfolioTxnType; label: string }[] = [
 const NEEDS_TICKER: PortfolioTxnType[] = ['buy', 'sell', 'dividend']
 const NEEDS_SHARES: PortfolioTxnType[] = ['buy', 'sell']
 
-const fmtSignedPct = (x: number | null | undefined, dec = 1) =>
-  x == null ? '—' : `${x > 0 ? '+' : ''}${(x * 100).toFixed(dec)}%`
 const fmtSignedMoney = (x: number | null | undefined) =>
   x == null
     ? '—'
@@ -54,34 +54,6 @@ const fmtSignedMoney = (x: number | null | undefined) =>
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`
-const fmtCash = (x: number | null | undefined) =>
-  x == null
-    ? '—'
-    : `$${x.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
-const plColor = (x: number | null | undefined) =>
-  x == null ? '#64748b' : x >= 0 ? '#059669' : '#dc2626'
-const fmtRatio = (x: number | null | undefined) => (x == null ? '—' : x.toFixed(2))
-
-function SectionCard({
-  title,
-  hint,
-  children,
-}: {
-  title: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-[#111827]">{title}</div>
-      {hint && <p className="mt-0.5 text-[0.78rem] text-[#9ca3af]">{hint}</p>}
-      <div className="mt-4">{children}</div>
-    </section>
-  )
-}
 
 /** Growth of $1 (time-weighted, deposits stripped out) vs SPY. */
 function TwrChart({ data }: { data: PortfolioResponse }) {
@@ -164,7 +136,7 @@ function ValueChart({ data }: { data: PortfolioResponse }) {
         />
         <Tooltip
           labelFormatter={(d) => fmtDate(String(d))}
-          formatter={(v: number, name: string) => [fmtCash(v), name]}
+          formatter={(v: number, name: string) => [fmtPrice(v), name]}
           contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -257,7 +229,7 @@ function AllocationBars({ data }: { data: PortfolioResponse }) {
               {((s.weight ?? 0) * 100).toFixed(1)}%
             </span>
             <span className="w-24 text-right tabular-nums text-[#94a3b8]">
-              {fmtCash(s.value)}
+              {fmtPrice(s.value)}
             </span>
           </div>
         ))}
@@ -266,7 +238,7 @@ function AllocationBars({ data }: { data: PortfolioResponse }) {
             <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-[#e2e8f0]" />
             <span className="flex-1 text-[#475569]">Cash</span>
             <span className="w-24 text-right tabular-nums text-[#94a3b8]">
-              {fmtCash(data.allocation.cash)}
+              {fmtPrice(data.allocation.cash)}
             </span>
           </div>
         )}
@@ -564,7 +536,7 @@ function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
               </td>
               <td className="py-2 pr-4 text-right tabular-nums">{r.shares ?? '—'}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{r.price != null ? fmtPrice(r.price) : '—'}</td>
-              <td className="py-2 pr-4 text-right tabular-nums">{r.amount != null ? fmtCash(r.amount) : '—'}</td>
+              <td className="py-2 pr-4 text-right tabular-nums">{r.amount != null ? fmtPrice(r.amount) : '—'}</td>
               <td className="max-w-[180px] truncate py-2 pr-4 text-[#94a3b8]">{r.note ?? ''}</td>
               <td className="py-2 text-right">
                 <button
@@ -655,7 +627,7 @@ function HoldingsTable({
                   {fmtSignedPct(day)}
                 </td>
                 <td className="py-2.5 pr-4 text-right tabular-nums font-semibold">
-                  {fmtCash(value)}
+                  {fmtPrice(value)}
                 </td>
                 <td className="py-2.5 pr-4 text-right tabular-nums">
                   {h.weight != null ? `${(h.weight * 100).toFixed(1)}%` : '—'}
@@ -756,7 +728,7 @@ export function PortfolioPage() {
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
-                {fmtCash(s.total_value)}
+                {fmtPrice(s.total_value)}
               </h1>
               <p className="mt-1 text-[0.9rem] text-[#64748b]">
                 <span style={{ color: plColor(s.day_change) }} className="font-semibold">
@@ -787,13 +759,13 @@ export function PortfolioPage() {
         <StatCard
           label="Unrealized P/L"
           value={fmtSignedMoney(s.unrealized_pl)}
-          sub={`cost basis ${fmtCash(s.cost_basis)}`}
+          sub={`cost basis ${fmtPrice(s.cost_basis)}`}
           color={plColor(s.unrealized_pl)}
         />
         <StatCard
           label="Realized + dividends"
           value={fmtSignedMoney(s.realized_pl + s.dividends_received)}
-          sub={`${fmtSignedMoney(s.realized_pl)} realized · ${fmtCash(s.dividends_received)} divs`}
+          sub={`${fmtSignedMoney(s.realized_pl)} realized · ${fmtPrice(s.dividends_received)} divs`}
           color={plColor(s.realized_pl + s.dividends_received)}
         />
         <StatCard
@@ -804,7 +776,7 @@ export function PortfolioPage() {
         <StatCard
           label="Max drawdown"
           value={fmtSignedPct(s.max_drawdown)}
-          sub={data.cash_tracking ? `cash ${fmtCash(s.cash)}` : `net invested ${fmtCash(s.net_invested)}`}
+          sub={data.cash_tracking ? `cash ${fmtPrice(s.cash)}` : `net invested ${fmtPrice(s.net_invested)}`}
           color="#dc2626"
         />
       </div>
@@ -891,8 +863,8 @@ export function PortfolioPage() {
           hint="Credited automatically from ex-dividend data for the shares you held — no manual entry needed. Forward estimate = trailing 12-month rate × current shares."
         >
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard label="Received (TTM)" value={fmtCash(data.income.ttm_received)} />
-            <StatCard label="Projected next 12M" value={fmtCash(data.income.forward_12m)} />
+            <StatCard label="Received (TTM)" value={fmtPrice(data.income.ttm_received)} />
+            <StatCard label="Projected next 12M" value={fmtPrice(data.income.forward_12m)} />
             <StatCard
               label="Yield on cost"
               value={fmtSignedPct(data.income.yield_on_cost, 2).replace('+', '')}

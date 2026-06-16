@@ -18,7 +18,7 @@ import {
 import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getBacktest } from '@/lib/api'
-import { fmtDate } from '@/lib/format'
+import { fmtDate, fmtPct as fmtPctBase, fmtRatio, fmtSignedPct } from '@/lib/format'
 import type { BacktestKeyResult, BacktestRunResponse } from '@/types/api'
 
 const KEY_LABELS: Record<string, string> = {
@@ -29,9 +29,10 @@ const KEY_LABELS: Record<string, string> = {
   momentum: 'Momentum',
 }
 
+// Thin adapters over lib/format so the formatting logic lives in one place.
 const fmtPct = (x: number | null | undefined, signed = true) =>
-  x == null ? '—' : `${signed && x > 0 ? '+' : ''}${(x * 100).toFixed(1)}%`
-const fmtSharpe = (x: number | null | undefined) => (x == null ? '—' : x.toFixed(2))
+  signed ? fmtSignedPct(x) : fmtPctBase(x)
+const fmtSharpe = fmtRatio
 
 function SectionCard({
   title,

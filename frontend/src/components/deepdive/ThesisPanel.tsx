@@ -4,11 +4,9 @@ import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, deleteThesis, getTheses, upsertThesis } from '@/lib/api'
+import { PANEL_LABEL as LABEL } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
 import type { ThesisRow } from '@/types/api'
-
-const LABEL =
-  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
 
 function ThesisForm({
   ticker,
