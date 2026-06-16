@@ -22,6 +22,7 @@ import type {
   PortfolioTransactionsResponse,
   QuotesResponse,
   ScreenerResponse,
+  SearchResponse,
   SecurityResponse,
   SummaryStatusResponse,
   ThesesResponse,
@@ -160,6 +161,10 @@ export function getAlerts(): Promise<AlertsResponse> {
 
 export function getFunds(): Promise<FundsResponse> {
   return getJson<FundsResponse>('/funds')
+}
+
+export function searchSecurities(q: string): Promise<SearchResponse> {
+  return getJson<SearchResponse>(`/search?q=${encodeURIComponent(q)}`)
 }
 
 export function createAlertRule(body: AlertRuleCreate): Promise<AlertRule> {

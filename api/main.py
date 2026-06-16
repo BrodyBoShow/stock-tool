@@ -34,6 +34,7 @@ from api.routers import (
     portfolio,
     quotes,
     screener,
+    search,
     securities,
     theses,
     watchlist,
@@ -140,6 +141,7 @@ app.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
 app.include_router(market.router, prefix="/market", tags=["market"])
 app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
 app.include_router(funds.router, prefix="/funds", tags=["funds"])
+app.include_router(search.router, prefix="/search", tags=["search"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])

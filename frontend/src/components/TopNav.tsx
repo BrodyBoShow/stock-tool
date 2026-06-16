@@ -1,6 +1,7 @@
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
 
+import { HeaderSearch } from '@/components/HeaderSearch'
 import { useToast } from '@/components/ui/Toast'
 import { getAlerts } from '@/lib/api'
 
@@ -115,6 +116,7 @@ export function TopNav() {
             <span className="text-[#4f46e5]">Bud</span>
           </span>
         </NavLink>
+        <HeaderSearch />
         {/* tab row: scrolls horizontally on narrow screens instead of pushing
             the page wide; right-aligned on desktop */}
         <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto whitespace-nowrap lg:justify-end lg:gap-7 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

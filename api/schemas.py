@@ -429,6 +429,18 @@ class FundsResponse(BaseModel):
     rows: list[FundRow]
 
 
+# ── global search (typeahead) ─────────────────────────────────────────────────
+
+class SearchRow(BaseModel):
+    ticker: str
+    name: str | None
+    sector: str | None
+
+
+class SearchResponse(BaseModel):
+    rows: list[SearchRow]
+
+
 class WatchlistMutationResponse(BaseModel):
     ticker: str
     security_id: int

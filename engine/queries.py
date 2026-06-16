@@ -50,6 +50,39 @@ def active_tickers() -> list[str]:
         release(conn)
 
 
+def search_securities(q: str, limit: int = 12) -> list[dict[str, Any]]:
+    """Typeahead search over operating companies (which have deep-dives), by
+    ticker prefix or name substring. Exact-ticker, then ticker-prefix, then
+    name matches; alphabetical within each tier."""
+    q = q.strip()
+    if not q:
+        return []
+    params = {"q": q, "qp": f"{q}%", "qc": f"%{q}%", "lim": limit}
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT ticker, name, sector
+                FROM securities
+                WHERE is_active AND (ticker ILIKE %(qp)s OR name ILIKE %(qc)s)
+                ORDER BY
+                    CASE WHEN upper(ticker) = upper(%(q)s) THEN 0
+                         WHEN ticker ILIKE %(qp)s THEN 1
+                         WHEN name ILIKE %(qp)s THEN 2
+                         ELSE 3 END,
+                    length(ticker), ticker
+                LIMIT %(lim)s
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    return [dict(zip(cols, r, strict=True)) for r in rows]
+
+
 def top_quote_tickers(limit: int = 300) -> list[str]:
     """Top-N active tickers by latest composite, PLUS anything currently held
     in the portfolio ledger — the bounded set for the live overlay. Fetching

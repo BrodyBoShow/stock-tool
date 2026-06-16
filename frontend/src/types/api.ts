@@ -379,6 +379,16 @@ export interface FundsResponse {
   rows: FundRow[]
 }
 
+export interface SearchRow {
+  ticker: string
+  name: string | null
+  sector: string | null
+}
+
+export interface SearchResponse {
+  rows: SearchRow[]
+}
+
 export interface WatchlistMutationResponse {
   ticker: string
   security_id: number
