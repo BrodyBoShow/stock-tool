@@ -65,7 +65,7 @@ export function FilterSidebar({
   const active = activeFilterCount(filters)
 
   return (
-    <aside className="w-[270px] shrink-0 rounded-card border border-[#e5e7eb] bg-white p-4 shadow-card">
+    <aside className="w-full shrink-0 rounded-card border border-[#e5e7eb] bg-white p-4 shadow-card lg:w-[270px]">
       {/* header */}
       <div className="border-b border-[#f1f5f9] pb-2.5">
         <div className="flex items-center justify-between">

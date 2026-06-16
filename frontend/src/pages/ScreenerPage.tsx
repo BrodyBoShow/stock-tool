@@ -16,7 +16,7 @@ function ScreenerSkeleton() {
   return (
     <div className="space-y-5">
       <Skeleton className="h-[210px] w-full rounded-2xl" />
-      <div className="flex items-start gap-5">
+      <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start">
         <Skeleton className="h-[480px] w-[270px] shrink-0 rounded-card" />
         <div className="min-w-0 flex-1 space-y-0 overflow-hidden rounded-card border border-[#e5e7eb] bg-white p-4 shadow-card">
           <Skeleton className="mb-4 h-5 w-56" />
@@ -89,7 +89,7 @@ export function ScreenerPage() {
         rows={rows}
         quotesAsOfEpoch={quotes && !quotes.stale ? quotes.as_of_epoch : null}
       />
-      <div className="flex items-start gap-5">
+      <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start">
         <FilterSidebar
           filters={filters}
           onChange={setFilters}

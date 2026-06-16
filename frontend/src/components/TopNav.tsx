@@ -104,10 +104,10 @@ function AlertsLink() {
 export function TopNav() {
   return (
     <nav className="sticky top-0 z-30 border-b border-[#e5e7eb] bg-white/85 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1760px] items-center justify-between px-6 py-3 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1760px] items-center gap-3 px-4 py-3 lg:gap-4 lg:px-8">
         <NavLink
           to="/"
-          className="flex items-center gap-2.5 no-underline"
+          className="flex flex-none items-center gap-2.5 no-underline"
         >
           <Logo />
           <span className="text-[1.2rem] font-extrabold tracking-[-0.01em]">
@@ -115,7 +115,9 @@ export function TopNav() {
             <span className="text-[#4f46e5]">Bud</span>
           </span>
         </NavLink>
-        <div className="flex items-center gap-7">
+        {/* tab row: scrolls horizontally on narrow screens instead of pushing
+            the page wide; right-aligned on desktop */}
+        <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto whitespace-nowrap lg:justify-end lg:gap-7 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <NavLink to="/" end className={link}>
             Screener
           </NavLink>
@@ -135,9 +137,9 @@ export function TopNav() {
           <NavLink to="/lab" className={link}>
             Lab
           </NavLink>
-          <span className="h-5 w-px bg-[#e5e7eb]" aria-hidden="true" />
-          <RefreshButton />
         </div>
+        <span className="h-5 w-px flex-none bg-[#e5e7eb]" aria-hidden="true" />
+        <RefreshButton />
       </div>
     </nav>
   )
