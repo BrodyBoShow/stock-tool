@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   Area,
   Bar,
@@ -17,8 +17,9 @@ import {
 import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
 import { getEvents, getInsiders, getMacroSeries } from '@/lib/api'
 import { MACRO_DISPLAY } from '@/lib/constants'
-import { fmtDate } from '@/lib/format'
-import { analyzeWyckoff } from '@/lib/wyckoff'
+import { fmtDate, fmtSignedPct } from '@/lib/format'
+import { analyzeWyckoff, buildEvidence, walkForwardGrade } from '@/lib/wyckoff'
+import type { WyckoffAnalysis, WyckoffBacktest } from '@/lib/wyckoff'
 import type { MacroObservation, PricePoint } from '@/types/api'
 
 function buildRanges(): { label: string; days: number }[] {
@@ -161,6 +162,150 @@ function OverlayToggle({ on, onToggle, label, color, bgOn, textOn, borderOn }: O
       <span className="h-2 w-2 rounded-full" style={{ background: on ? color : '#cbd5e1' }} />
       {label}
     </button>
+  )
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg bg-[#f8fafc] px-2 py-1.5">
+      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-[#94a3b8]">{label}</div>
+      <div className="text-[0.95rem] font-bold tabular-nums text-[#0f172a]">{value}</div>
+      {sub && <div className="text-[0.58rem] text-[#9ca3af]">{sub}</div>}
+    </div>
+  )
+}
+
+/**
+ * Wyckoff "read" — evidence-row narration (explain, don't predict) plus an
+ * on-demand walk-forward signal grader (no look-ahead). Both client-side, free.
+ */
+function WyckoffReadPanel({
+  analysis,
+  prices,
+}: {
+  analysis: WyckoffAnalysis
+  prices: PricePoint[]
+}) {
+  const narration = useMemo(() => buildEvidence(analysis), [analysis])
+  const [grade, setGrade] = useState<WyckoffBacktest | null>(null)
+  const [grading, setGrading] = useState(false)
+
+  // Reset the grade when the ticker/series changes (avoids showing stale stats).
+  const seriesKey = prices.length ? `${prices[0]?.date}:${prices[prices.length - 1]?.date}:${prices.length}` : ''
+  const lastKey = useRef(seriesKey)
+  if (lastKey.current !== seriesKey) {
+    lastKey.current = seriesKey
+    if (grade) setGrade(null)
+  }
+
+  const runGrade = () => {
+    setGrading(true)
+    // Defer the synchronous compute one tick so the button can show "Grading…".
+    window.setTimeout(() => {
+      try {
+        setGrade(walkForwardGrade(prices))
+      } finally {
+        setGrading(false)
+      }
+    }, 20)
+  }
+
+  return (
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {/* evidence rows */}
+      <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] p-3">
+        <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-[#475569]">
+          Wyckoff read · evidence
+        </div>
+        {narration.rows.length === 0 ? (
+          <p className="mt-2 text-[0.8rem] text-[#64748b]">{analysis.summary}</p>
+        ) : (
+          <table className="mt-2 w-full text-[0.78rem]">
+            <tbody>
+              {narration.rows.map((r, i) => (
+                <tr key={i} className="border-b border-[#eef1f6] last:border-0">
+                  <td className="whitespace-nowrap py-1 pr-3 align-top font-semibold text-[#1e293b]">{r.term}</td>
+                  <td className="py-1 pr-3 align-top text-[#64748b]">{r.meaning}</td>
+                  <td className="whitespace-nowrap py-1 text-right align-top font-medium tabular-nums text-[#0f172a]">{r.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="mt-2 text-[0.7rem] text-[#9ca3af]">{narration.caveat}</p>
+        <p className="mt-1 text-[0.72rem] text-[#475569]">
+          <span className="font-semibold">Watch:</span> {narration.watch}
+        </p>
+      </div>
+
+      {/* walk-forward grader */}
+      <div className="rounded-xl border border-[#e5e7eb] bg-white p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-[#475569]">
+            Signal track record · walk-forward
+          </div>
+          <button
+            type="button"
+            onClick={runGrade}
+            disabled={grading}
+            className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-[0.72rem] font-semibold text-[#4f46e5] transition-colors hover:bg-[#f8fafc] disabled:opacity-60"
+          >
+            {grading ? 'Grading…' : grade ? 'Re-run' : 'Grade signals'}
+          </button>
+        </div>
+        {!grade ? (
+          <p className="mt-2 text-[0.78rem] text-[#64748b]">
+            Replays each bar using only prior data, fires the Wyckoff signals point-in-time, then
+            grades them on what happened next — no look-ahead. This name only, small sample.
+          </p>
+        ) : grade.overall.signals === 0 ? (
+          <p className="mt-2 text-[0.78rem] text-[#64748b]">
+            No gradeable signals fired across this history.
+          </p>
+        ) : (
+          <div className="mt-2">
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Signals" value={String(grade.overall.signals)} />
+              <Stat
+                label="Fwd hit rate"
+                value={`${Math.round(grade.overall.fwdRate * 100)}%`}
+                sub={`≥${Math.round(grade.threshold * 100)}% in ${grade.forwardDays}d`}
+              />
+              <Stat label="Avg fwd return" value={fmtSignedPct(grade.overall.avgFwdReturn)} />
+            </div>
+            <div className="mt-2 text-[0.72rem] text-[#64748b]">
+              Target-before-stop:{' '}
+              {grade.overall.tbsResolved
+                ? `${Math.round(grade.overall.tbsRate * 100)}% of ${grade.overall.tbsResolved} resolved`
+                : 'none resolved'}
+            </div>
+            <table className="mt-2 w-full text-[0.74rem]">
+              <thead>
+                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-[#94a3b8]">
+                  <th className="py-1">Signal</th>
+                  <th className="py-1">N</th>
+                  <th className="py-1">Hit</th>
+                  <th className="py-1">Avg</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(grade.byType).map(([t, s]) => (
+                  <tr key={t} className="border-t border-[#f8fafc]">
+                    <td className="py-1 font-semibold text-[#1e293b]">{t}</td>
+                    <td className="py-1 tabular-nums">{s.signals}</td>
+                    <td className="py-1 tabular-nums">{Math.round(s.fwdRate * 100)}%</td>
+                    <td className="py-1 tabular-nums">{fmtSignedPct(s.avgFwdReturn)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[0.68rem] text-[#9ca3af]">
+              Walk-forward, no look-ahead · one ticker, small sample — directional, not proof.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -705,6 +850,8 @@ export function PriceChart({
         )}
       </div>
       )}
+
+      {mode === 'wyckoff' && <WyckoffReadPanel analysis={wyckoff} prices={prices} />}
     </div>
   )
 }

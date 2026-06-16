@@ -118,8 +118,31 @@ export interface TradingRange {
   endIdx: number
 }
 
-const MAX_RANGE_LEN = 160
+/** Diagnostics for the range test — valid + why-not, for honest UI messaging. */
+export interface RangeQuality {
+  valid: boolean
+  windowBars: number
+  support: number
+  resistance: number
+  resistanceFlat: boolean
+  supportFlat: boolean
+  crossings: number
+  containment: number
+  startIdx: number
+  endIdx: number
+  failReasons: string[]
+}
+
+// A Wyckoff range is a HORIZONTAL channel — flat ceiling, flat floor, price
+// oscillating between them, most closes contained. Testing those directly
+// (rather than just "is the band narrow") rejects a slow drift masquerading as
+// a base. Try several window lengths; the shortest valid one is the most
+// recently formed range. (Approach adapted from GoldenPanda's range detector.)
+const RANGE_WINDOWS = [40, 60, 80, 100, 130]
 const MIN_RANGE_LEN = 20
+const BOUNDARY_FLAT_TOL = 0.25 // a wall may drift <=25% of channel height across thirds
+const MIN_CROSSINGS = 3 // midline crossings → real oscillation, not drift
+const MIN_CONTAINMENT = 0.8 // share of closes inside the channel
 
 function percentile(sortedAsc: number[], p: number): number {
   if (sortedAsc.length === 0) return NaN
@@ -131,26 +154,82 @@ function clamp(x: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, x))
 }
 
+function assessWindow(bars: VsaBar[], startIdx: number, endIdx: number): RangeQuality {
+  const seg = bars.slice(startIdx, endIdx + 1)
+  const windowBars = seg.length
+  const support = percentile(seg.map((b) => b.l).sort((a, b) => a - b), 0.05)
+  const resistance = percentile(seg.map((b) => b.h).sort((a, b) => a - b), 0.95)
+  const height = resistance - support
+  const base: RangeQuality = {
+    valid: false, windowBars, support, resistance, resistanceFlat: false,
+    supportFlat: false, crossings: 0, containment: 0, startIdx, endIdx, failReasons: [],
+  }
+  if (!(height > 0) || !(support > 0)) {
+    return { ...base, failReasons: ['No measurable range.'] }
+  }
+  // 1. Flat ceiling AND flat floor across thirds of the window.
+  const third = Math.floor(windowBars / 3)
+  const hi: number[] = []
+  const lo: number[] = []
+  for (let i = 0; i < 3; i++) {
+    const part = seg.slice(i * third, i === 2 ? windowBars : (i + 1) * third)
+    hi.push(percentile(part.map((b) => b.h).sort((a, b) => a - b), 0.95))
+    lo.push(percentile(part.map((b) => b.l).sort((a, b) => a - b), 0.05))
+  }
+  const resistanceFlat = (Math.max(...hi) - Math.min(...hi)) / height <= BOUNDARY_FLAT_TOL
+  const supportFlat = (Math.max(...lo) - Math.min(...lo)) / height <= BOUNDARY_FLAT_TOL
+  // 2. Oscillation: midline crossings.
+  const mid = (support + resistance) / 2
+  let crossings = 0
+  for (let i = 1; i < seg.length; i++) {
+    const a = seg[i - 1].c - mid
+    const b = seg[i].c - mid
+    if (a !== 0 && b !== 0 && Math.sign(a) !== Math.sign(b)) crossings++
+  }
+  // 3. Containment.
+  const containment = seg.filter((b) => b.c >= support && b.c <= resistance).length / windowBars
+  const fail: string[] = []
+  if (!resistanceFlat) fail.push('Ceiling is not holding level — price is stepping up or down at the top.')
+  if (!supportFlat) fail.push('Floor is not holding level — support keeps shifting.')
+  if (crossings < MIN_CROSSINGS) fail.push('Price has not oscillated between the walls enough to be a real range.')
+  if (containment < MIN_CONTAINMENT) fail.push('Too many closes finishing outside the channel.')
+  const valid = resistanceFlat && supportFlat && crossings >= MIN_CROSSINGS && containment >= MIN_CONTAINMENT
+  return {
+    valid, windowBars, support, resistance, resistanceFlat, supportFlat,
+    crossings, containment, startIdx, endIdx, failReasons: valid ? [] : fail,
+  }
+}
+
 /**
- * The current trading range = the LONGEST recent consolidation (ending at the
- * last bar) that stays tight and contains most of its closes. Walking from
- * longest to shortest finds the full base rather than a sub-window of it.
+ * Assess the current trading range across several recent windows; the shortest
+ * VALID one wins (most recently formed base). If none qualifies, returns the
+ * longest window's diagnostics so the UI can say *why* it isn't a range.
  */
-export function detectRange(bars: VsaBar[]): TradingRange | null {
+export function assessRange(bars: VsaBar[]): RangeQuality {
   const n = bars.length
-  if (n < MIN_RANGE_LEN) return null
-  for (let len = Math.min(n, MAX_RANGE_LEN); len >= MIN_RANGE_LEN; len--) {
-    const seg = bars.slice(n - len)
-    const support = percentile(seg.map((b) => b.l).sort((a, b) => a - b), 0.12)
-    const resistance = percentile(seg.map((b) => b.h).sort((a, b) => a - b), 0.88)
-    if (!(support > 0) || !(resistance > support)) continue
-    const width = resistance / support - 1
-    const inside = seg.filter((b) => b.c >= support && b.c <= resistance).length / len
-    if (width <= 0.3 && inside >= 0.7) {
-      return { support, resistance, startIdx: n - len, endIdx: n - 1 }
+  if (n < MIN_RANGE_LEN) {
+    return {
+      valid: false, windowBars: n, support: 0, resistance: 0, resistanceFlat: false,
+      supportFlat: false, crossings: 0, containment: 0, startIdx: 0, endIdx: n - 1,
+      failReasons: ['Not enough price history to assess a range.'],
     }
   }
-  return null
+  let last: RangeQuality | null = null
+  for (const w of RANGE_WINDOWS) {
+    if (n < w) continue
+    const q = assessWindow(bars, n - w, n - 1)
+    if (q.valid) return q
+    last = q
+  }
+  return last ?? assessWindow(bars, Math.max(0, n - RANGE_WINDOWS[0]), n - 1)
+}
+
+/** Back-compat wrapper: the TradingRange or null. */
+export function detectRange(bars: VsaBar[]): TradingRange | null {
+  const q = assessRange(bars)
+  return q.valid
+    ? { support: q.support, resistance: q.resistance, startIdx: q.startIdx, endIdx: q.endIdx }
+    : null
 }
 
 /* ── context: accumulation vs distribution ────────────────────────────────── */
@@ -524,6 +603,7 @@ export function projectTarget(range: TradingRange, context: WyckoffContext): Wyc
 export interface WyckoffAnalysis {
   bars: VsaBar[]
   range: TradingRange | null
+  rangeQuality: RangeQuality
   context: WyckoffContext | null
   events: WyckoffEvent[]
   phases: WyckoffPhase[]
@@ -539,8 +619,12 @@ function buildSummary(
   context: WyckoffContext | null,
   events: WyckoffEvent[],
   target: WyckoffTarget | null,
+  rangeQuality: RangeQuality,
 ): string {
-  if (!context) return 'No trading range detected — price is trending or choppy, so no Wyckoff schematic is shown.'
+  if (!context) {
+    const why = rangeQuality.failReasons[0]
+    return `No valid trading range — price is trending or choppy, so no Wyckoff schematic is shown.${why ? ` (${why})` : ''}`
+  }
   if (context.kind === 'undetermined') {
     return 'A range is present but its accumulation/distribution character is unclear, so only objective volume/spread is shown.'
   }
@@ -559,11 +643,217 @@ function buildSummary(
 
 export function analyzeWyckoff(prices: PricePoint[]): WyckoffAnalysis {
   const bars = computeVsa(prices)
-  const range = detectRange(bars)
+  const rangeQuality = assessRange(bars)
+  const range: TradingRange | null = rangeQuality.valid
+    ? {
+        support: rangeQuality.support,
+        resistance: rangeQuality.resistance,
+        startIdx: rangeQuality.startIdx,
+        endIdx: rangeQuality.endIdx,
+      }
+    : null
   const context = range ? classifyContext(bars, range) : null
   const events = range && context ? detectEvents(bars, range, context) : []
   const phases = range && context ? derivePhases(bars, range, context, events) : []
   const target =
     range && context && context.confidence >= 0.4 ? projectTarget(range, context) : null
-  return { bars, range, context, events, phases, target, summary: buildSummary(context, events, target) }
+  return {
+    bars,
+    range,
+    rangeQuality,
+    context,
+    events,
+    phases,
+    target,
+    summary: buildSummary(context, events, target, rangeQuality),
+  }
+}
+
+/* ── walk-forward signal grader (no look-ahead) ───────────────────────────────
+ *
+ * The honest "do these signals actually work" test, adapted from GoldenPanda's
+ * walk-forward backtest. For each bar i, we re-run the WHOLE analysis on
+ * prices[0..i] ONLY — so a signal that fires on day i was computed without ever
+ * seeing a later bar — then grade it on the bars strictly after i. Scoring and
+ * grading never overlap, so the result can't borrow from the future. Runs
+ * client-side on the already-fetched series, on demand. Small-sample, one ticker
+ * — context, not proof. */
+
+export type GradeDir = 'up' | 'down'
+
+export interface GradedSignal {
+  idx: number
+  date: string
+  type: WyckoffEventType
+  label: string
+  dir: GradeDir
+  entry: number
+  fwdReturn: number
+  fwdHit: boolean
+  targetBeforeStop: boolean | null
+}
+
+export interface SignalStat {
+  signals: number
+  fwdHits: number
+  fwdRate: number
+  avgFwdReturn: number
+  tbsResolved: number
+  tbsHits: number
+  tbsRate: number
+}
+
+export interface WyckoffBacktest {
+  warmup: number
+  forwardDays: number
+  threshold: number
+  overall: SignalStat
+  byType: Record<string, SignalStat>
+  graded: GradedSignal[]
+}
+
+// Events worth grading as directional signals (the "decision" bars).
+const GRADED_TYPES: WyckoffEventType[] = ['spring', 'SOS', 'SC', 'UTAD', 'SOW', 'BC']
+
+function summariseSignals(graded: GradedSignal[]): SignalStat {
+  const n = graded.length
+  const fwdHits = graded.filter((g) => g.fwdHit).length
+  const resolved = graded.filter((g) => g.targetBeforeStop !== null)
+  const tbsHits = resolved.filter((g) => g.targetBeforeStop === true).length
+  const avg = n ? graded.reduce((s, g) => s + g.fwdReturn, 0) / n : 0
+  return {
+    signals: n,
+    fwdHits,
+    fwdRate: n ? fwdHits / n : 0,
+    avgFwdReturn: avg,
+    tbsResolved: resolved.length,
+    tbsHits,
+    tbsRate: resolved.length ? tbsHits / resolved.length : 0,
+  }
+}
+
+export function walkForwardGrade(
+  prices: PricePoint[],
+  opts?: { warmup?: number; forwardDays?: number; threshold?: number; stopFraction?: number },
+): WyckoffBacktest {
+  const warmup = opts?.warmup ?? 70
+  const forwardDays = opts?.forwardDays ?? 21
+  const threshold = opts?.threshold ?? 0.04
+  const stopFraction = opts?.stopFraction ?? 0.5
+  const fullBars = computeVsa(prices)
+  const n = fullBars.length
+  const graded: GradedSignal[] = []
+
+  for (let i = warmup; i < n - 1; i++) {
+    const a = analyzeWyckoff(prices.slice(0, i + 1)) // point-in-time: past only
+    if (!a.range) continue
+    const fired = a.events.filter((e) => e.idx === i && GRADED_TYPES.includes(e.type))
+    if (fired.length === 0) continue
+    const future = fullBars.slice(i + 1, i + 1 + forwardDays)
+    if (future.length === 0) continue
+    const entry = fullBars[i].c
+    const { support: S, resistance: R } = a.range
+    const height = R - S
+
+    for (const e of fired) {
+      const dir: GradeDir = e.bullish ? 'up' : 'down'
+      const exit = future[future.length - 1].c
+      const fwdReturn = entry > 0 ? exit / entry - 1 : 0
+      const fwdHit = dir === 'up' ? fwdReturn >= threshold : fwdReturn <= -threshold
+
+      const target = dir === 'up' ? R + height : Math.max(0, S - height)
+      const stop = dir === 'up' ? S - stopFraction * height : R + stopFraction * height
+      let tbs: boolean | null = null
+      for (const b of future) {
+        const hitTarget = dir === 'up' ? b.h >= target : b.l <= target
+        const hitStop = dir === 'up' ? b.l <= stop : b.h >= stop
+        if (hitTarget && hitStop) { tbs = false; break } // ambiguous intrabar → stop (conservative)
+        if (hitTarget) { tbs = true; break }
+        if (hitStop) { tbs = false; break }
+      }
+      graded.push({
+        idx: i, date: fullBars[i].date, type: e.type, label: e.label, dir,
+        entry, fwdReturn, fwdHit, targetBeforeStop: tbs,
+      })
+    }
+  }
+
+  const byType: Record<string, SignalStat> = {}
+  for (const t of GRADED_TYPES) {
+    const g = graded.filter((x) => x.type === t)
+    if (g.length) byType[t] = summariseSignals(g)
+  }
+  return { warmup, forwardDays, threshold, overall: summariseSignals(graded), byType, graded }
+}
+
+/* ── evidence-row narration (explain, don't predict) ──────────────────────────
+ * Term → plain meaning → the actual number. Adapted from GoldenPanda's narration
+ * pattern. Pure presentation off the analysis — no AI, no cost. */
+
+export interface EvidenceRow {
+  term: string
+  meaning: string
+  value: string
+}
+
+export interface WyckoffNarration {
+  rows: EvidenceRow[]
+  caveat: string
+  watch: string
+}
+
+export function buildEvidence(a: WyckoffAnalysis): WyckoffNarration {
+  const rows: EvidenceRow[] = []
+  if (a.range) {
+    rows.push({
+      term: 'Trading range',
+      meaning: 'flat horizontal channel (support ↔ resistance)',
+      value: `$${a.range.support.toFixed(2)} – $${a.range.resistance.toFixed(2)} · ${a.rangeQuality.windowBars} bars`,
+    })
+  }
+  if (a.context && a.context.kind !== 'undetermined') {
+    rows.push({
+      term: 'Context',
+      meaning: 'accumulation (bottom) vs distribution (top)',
+      value: `${a.context.kind === 'accumulation' ? 'Accumulation' : 'Distribution'} · ${pct(a.context.confidence)} confidence`,
+    })
+  }
+  // Most recent objective climax bar.
+  for (let i = a.bars.length - 1; i >= 0; i--) {
+    const b = a.bars[i]
+    if (b.cls === 'climax' && b.relVol != null) {
+      rows.push({
+        term: 'Climax volume',
+        meaning: 'heavy-volume effort / possible exhaustion',
+        value: `${b.relVol.toFixed(1)}× avg on ${b.date}`,
+      })
+      break
+    }
+  }
+  // Latest schematic event.
+  const last = a.events[a.events.length - 1]
+  if (last) {
+    rows.push({
+      term: last.label,
+      meaning: WYCKOFF_EVENT_META[last.type].note.split(' — ')[0],
+      value: `${last.date} · ${pct(last.confidence)} confidence`,
+    })
+  }
+  if (a.target) {
+    rows.push({
+      term: 'Range-height objective',
+      meaning: 'cause → effect projection (method estimate, not a forecast)',
+      value: `$${a.target.price.toFixed(2)} ${a.target.direction === 'up' ? 'above' : 'below'} the range`,
+    })
+  }
+
+  const caveat =
+    'Daily-resolution interpretation on free EOD data — heuristic, not confirmed, and not advice.'
+  let watch = 'Watch whether the next bars confirm or reject this read.'
+  if (a.context?.kind === 'accumulation') {
+    watch = 'Watch for a low-volume spring/test holding support, then a strong-volume break above resistance to confirm demand.'
+  } else if (a.context?.kind === 'distribution') {
+    watch = 'Watch for an upthrust that fails at resistance, then a wide-spread break below support to confirm supply.'
+  }
+  return { rows, caveat, watch }
 }
