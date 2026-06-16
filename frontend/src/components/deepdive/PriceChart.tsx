@@ -18,7 +18,7 @@ import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
 import { getEvents, getInsiders, getMacroSeries } from '@/lib/api'
 import { MACRO_DISPLAY } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
-import { computeVsa } from '@/lib/wyckoff'
+import { analyzeWyckoff } from '@/lib/wyckoff'
 import type { MacroObservation, PricePoint } from '@/types/api'
 
 function buildRanges(): { label: string; days: number }[] {
@@ -179,6 +179,8 @@ export function PriceChart({
 }) {
   const [mode, setMode] = useState<'price' | 'wyckoff'>('price')
   const [showSignals, setShowSignals] = useState(true)
+  const [showPhases, setShowPhases] = useState(true)
+  const [showTarget, setShowTarget] = useState(false)
   const [overlayOn, setOverlayOn] = useState(false)
   const [seriesId, setSeriesId] = useState('VIXCLS')
   const [showMA50, setShowMA50] = useState(false)
@@ -187,7 +189,7 @@ export function PriceChart({
   const [showEvents, setShowEvents] = useState(false)
   const ranges = useMemo(buildRanges, [])
 
-  const vsaBars = useMemo(() => computeVsa(prices), [prices])
+  const wyckoff = useMemo(() => analyzeWyckoff(prices), [prices])
 
   const priceRows = useMemo<ChartRow[]>(() => {
     const filtered = prices.filter((p) => p.adj_close !== null)
@@ -443,9 +445,61 @@ export function PriceChart({
             <span className="h-2 w-2 rounded-full" style={{ background: showSignals ? '#7c3aed' : '#cbd5e1' }} />
             Candidate signals
           </button>
-          <span className="text-[0.7rem] text-[#9ca3af]">
-            Objective measures off daily OHLCV · candidate events are heuristic, not confirmed
+          <button
+            type="button"
+            onClick={() => setShowPhases((x) => !x)}
+            aria-pressed={showPhases}
+            title="Shade Wyckoff phases A–E, inferred from the detected event sequence."
+            className={
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
+              (showPhases
+                ? 'border-slate-300 bg-slate-100 text-slate-700'
+                : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+            }
+          >
+            <span className="h-2 w-2 rounded-sm" style={{ background: showPhases ? '#64748b' : '#cbd5e1' }} />
+            Phases
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTarget((x) => !x)}
+            aria-pressed={showTarget}
+            title="Wyckoff range-height objective (cause → effect). A method estimate, not a forecast."
+            className={
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
+              (showTarget
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+            }
+          >
+            <span className="h-2 w-2 rounded-full" style={{ background: showTarget ? '#15803d' : '#cbd5e1' }} />
+            Target
+          </button>
+        </div>
+      )}
+
+      {/* Wyckoff context read */}
+      {mode === 'wyckoff' && wyckoff.context && (
+        <div className="mt-2 flex flex-wrap items-baseline gap-2 text-[0.74rem]">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.72rem] font-bold uppercase tracking-wide"
+            style={
+              wyckoff.context.kind === 'accumulation'
+                ? { background: '#dcfce7', color: '#15803d' }
+                : wyckoff.context.kind === 'distribution'
+                  ? { background: '#fee2e2', color: '#b91c1c' }
+                  : { background: '#f1f5f9', color: '#475569' }
+            }
+          >
+            {wyckoff.context.kind === 'accumulation'
+              ? 'Accumulation'
+              : wyckoff.context.kind === 'distribution'
+                ? 'Distribution'
+                : 'Range — unclear'}
+            {wyckoff.context.kind !== 'undetermined' &&
+              ` · ${Math.round(wyckoff.context.confidence * 100)}%`}
           </span>
+          <span className="text-[#475569]">{wyckoff.summary}</span>
         </div>
       )}
 
@@ -490,7 +544,13 @@ export function PriceChart({
       {/* Charts */}
       {mode === 'wyckoff' ? (
         <div className="mt-4">
-          <WyckoffChart bars={vsaBars} isFetching={isFetching} showSignals={showSignals} />
+          <WyckoffChart
+            analysis={wyckoff}
+            isFetching={isFetching}
+            showSignals={showSignals}
+            showPhases={showPhases}
+            showTarget={showTarget}
+          />
         </div>
       ) : (
       <div className="mt-4 transition-opacity" style={{ opacity: isFetching ? 0.55 : 1 }}>

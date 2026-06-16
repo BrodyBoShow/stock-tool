@@ -1,10 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 
 import { fmtDate } from '@/lib/format'
-import { detectEvents, detectRange, type VsaBar } from '@/lib/wyckoff'
-
-const EV_BULL = '#15803d'
-const EV_BEAR = '#b91c1c'
+import type { VsaBar, WyckoffAnalysis, WyckoffEventType } from '@/lib/wyckoff'
 
 const UP = '#16a34a'
 const DOWN = '#dc2626'
@@ -12,6 +9,8 @@ const CLIMAX = '#ef9f27'
 const WIDE = '#64748b'
 const CHURN = '#94a3b8'
 const RANGE = '#378ADD'
+const EV_BULL = '#15803d'
+const EV_BEAR = '#b91c1c'
 
 const VB_W = 1000
 const VB_H = 400
@@ -21,6 +20,9 @@ const PRICE_TOP = 8
 const PRICE_BOT = 300
 const VOL_TOP = 322
 const VOL_BOT = 382
+
+// Events drawn above the bar's high vs below its low.
+const TOP_EVENTS = new Set<WyckoffEventType>(['AR', 'SOS', 'LPS', 'BC', 'UT', 'UTAD', 'STd', 'LPSY'])
 
 function fmtVol(v: number | null): string {
   if (v == null) return '—'
@@ -50,28 +52,31 @@ const CLS_LABEL: Record<VsaBar['cls'], string> = {
   normal: 'Normal bar',
 }
 
+const PHASE_TINT = 'rgba(100,116,139,0.05)'
+const PHASE_TINT_ALT = 'rgba(100,116,139,0.10)'
+
 export function WyckoffChart({
-  bars,
+  analysis,
   isFetching,
   showSignals,
+  showPhases,
+  showTarget,
 }: {
-  bars: VsaBar[]
+  analysis: WyckoffAnalysis
   isFetching: boolean
   showSignals: boolean
+  showPhases: boolean
+  showTarget: boolean
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<{ idx: number; frac: number } | null>(null)
 
-  const range = useMemo(() => detectRange(bars), [bars])
-  const events = useMemo(
-    () => (showSignals ? detectEvents(bars, range) : []),
-    [bars, range, showSignals],
-  )
+  const { bars, range, events, phases, target } = analysis
   const eventByIdx = useMemo(() => {
     const m = new Map<number, (typeof events)[number]>()
-    for (const e of events) m.set(e.idx, e)
+    if (showSignals) for (const e of events) m.set(e.idx, e)
     return m
-  }, [events])
+  }, [events, showSignals])
 
   const layout = useMemo(() => {
     const n = bars.length
@@ -86,6 +91,10 @@ export function WyckoffChart({
       if (b.h > pmax) pmax = b.h
       if ((b.vol ?? 0) > volMax) volMax = b.vol ?? 0
     }
+    if (showTarget && target) {
+      pmin = Math.min(pmin, target.price)
+      pmax = Math.max(pmax, target.price)
+    }
     const pad = (pmax - pmin) * 0.04 || pmax * 0.04 || 1
     const dMin = pmin - pad
     const dMax = pmax + pad
@@ -93,7 +102,7 @@ export function WyckoffChart({
     const yP = (p: number) => PRICE_TOP + ((dMax - p) / (dMax - dMin)) * (PRICE_BOT - PRICE_TOP)
     const yV = (v: number) => VOL_BOT - (volMax > 0 ? (v / volMax) * (VOL_BOT - VOL_TOP) : 0)
     return { n, slot, candleW, dMin, dMax, cx, yP, yV }
-  }, [bars])
+  }, [bars, showTarget, target])
 
   const priceTicks = useMemo(() => {
     if (!layout) return []
@@ -148,9 +157,9 @@ export function WyckoffChart({
   }
 
   const hb = hover ? bars[hover.idx] : null
-  const rangeBand = range
-    ? { top: yP(range.resistance), bottom: yP(range.support) }
-    : null
+  const hev = hover ? eventByIdx.get(hover.idx) : undefined
+  const rangeBand = range ? { top: yP(range.resistance), bottom: yP(range.support) } : null
+  const targetY = showTarget && target ? yP(target.price) : null
 
   return (
     <div className="relative" style={{ opacity: isFetching ? 0.55 : 1 }}>
@@ -164,20 +173,45 @@ export function WyckoffChart({
         role="img"
         aria-label="Wyckoff volume-spread candlestick chart"
       >
+        {/* phase bands */}
+        {showPhases &&
+          phases.map((ph, i) => {
+            const x0 = cx(ph.startIdx) - layout.slot / 2
+            const x1 = cx(ph.endIdx) + layout.slot / 2
+            return (
+              <g key={`ph${i}`}>
+                <rect
+                  x={Math.max(PLOT_L, x0)}
+                  y={PRICE_TOP}
+                  width={Math.max(0, Math.min(PLOT_R, x1) - Math.max(PLOT_L, x0))}
+                  height={VOL_BOT - PRICE_TOP}
+                  fill={i % 2 === 0 ? PHASE_TINT : PHASE_TINT_ALT}
+                />
+                <text x={(Math.max(PLOT_L, x0) + Math.min(PLOT_R, x1)) / 2} y={PRICE_TOP + 11} fontSize={11} fontWeight={700} fill="#94a3b8" textAnchor="middle">
+                  {ph.id}
+                </text>
+              </g>
+            )
+          })}
+
         {/* trading range band */}
         {rangeBand && (
           <>
-            <rect
-              x={PLOT_L}
-              y={rangeBand.top}
-              width={PLOT_R - PLOT_L}
-              height={Math.max(rangeBand.bottom - rangeBand.top, 0)}
-              fill="rgba(55,138,221,0.08)"
-            />
+            <rect x={PLOT_L} y={rangeBand.top} width={PLOT_R - PLOT_L} height={Math.max(rangeBand.bottom - rangeBand.top, 0)} fill="rgba(55,138,221,0.08)" />
             <line x1={PLOT_L} y1={rangeBand.top} x2={PLOT_R} y2={rangeBand.top} stroke={RANGE} strokeWidth={1} strokeDasharray="4 3" />
             <line x1={PLOT_L} y1={rangeBand.bottom} x2={PLOT_R} y2={rangeBand.bottom} stroke={RANGE} strokeWidth={1} strokeDasharray="4 3" />
             <text x={PLOT_R + 2} y={rangeBand.top + 3} fontSize={10} fill="#185FA5">R</text>
             <text x={PLOT_R + 2} y={rangeBand.bottom + 3} fontSize={10} fill="#185FA5">S</text>
+          </>
+        )}
+
+        {/* target line */}
+        {targetY != null && target && (
+          <>
+            <line x1={PLOT_L} y1={targetY} x2={PLOT_R} y2={targetY} stroke={target.direction === 'up' ? EV_BULL : EV_BEAR} strokeWidth={1} strokeDasharray="2 3" />
+            <text x={PLOT_L + 2} y={targetY - 3} fontSize={10} fontWeight={600} fill={target.direction === 'up' ? EV_BULL : EV_BEAR}>
+              Target ≈ ${target.price.toFixed(2)}
+            </text>
           </>
         )}
 
@@ -214,31 +248,25 @@ export function WyckoffChart({
           )
         })}
 
-        {/* candidate Wyckoff event markers (heuristic) */}
-        {events.map((e, i) => {
-          const b = bars[e.idx]
-          const x = cx(e.idx)
-          const color = e.bullish ? EV_BULL : EV_BEAR
-          const atTop = !e.bullish
-          const y = atTop ? yP(b.h) - 6 : yP(b.l) + 6
-          const tri = atTop ? `${x},${y} ${x - 3},${y - 5} ${x + 3},${y - 5}` : `${x},${y} ${x - 3},${y + 5} ${x + 3},${y + 5}`
-          return (
-            <g key={`e${i}`}>
-              <title>{`${e.label} (candidate) — ${fmtDate(e.date)}`}</title>
-              <polygon points={tri} fill={color} />
-              <text
-                x={x}
-                y={atTop ? y - 7 : y + 13}
-                fontSize={9}
-                fill={color}
-                textAnchor="middle"
-                fontWeight={600}
-              >
-                {e.label}
-              </text>
-            </g>
-          )
-        })}
+        {/* Wyckoff event markers */}
+        {showSignals &&
+          events.map((e, i) => {
+            const b = bars[e.idx]
+            const x = cx(e.idx)
+            const color = e.bullish ? EV_BULL : EV_BEAR
+            const atTop = TOP_EVENTS.has(e.type)
+            const y = atTop ? yP(b.h) - 6 : yP(b.l) + 6
+            const tri = atTop ? `${x},${y} ${x - 3},${y - 5} ${x + 3},${y - 5}` : `${x},${y} ${x - 3},${y + 5} ${x + 3},${y + 5}`
+            return (
+              <g key={`e${i}`} opacity={0.55 + 0.45 * e.confidence}>
+                <title>{`${e.label} (candidate, ${Math.round(e.confidence * 100)}%) — ${fmtDate(e.date)}`}</title>
+                <polygon points={tri} fill={color} />
+                <text x={x} y={atTop ? y - 7 : y + 13} fontSize={9} fill={color} textAnchor="middle" fontWeight={600}>
+                  {e.label}
+                </text>
+              </g>
+            )
+          })}
 
         {/* volume panel */}
         <line x1={PLOT_L} y1={VOL_BOT} x2={PLOT_R} y2={VOL_BOT} stroke="#e5e7eb" strokeWidth={0.5} />
@@ -248,15 +276,7 @@ export function WyckoffChart({
           const y = yV(b.vol)
           const fill = b.cls === 'climax' ? CLIMAX : b.up ? UP : DOWN
           return (
-            <rect
-              key={`v${i}`}
-              x={x - candleW / 2}
-              y={y}
-              width={candleW}
-              height={Math.max(VOL_BOT - y, 0)}
-              fill={fill}
-              fillOpacity={b.cls === 'climax' ? 1 : 0.5}
-            />
+            <rect key={`v${i}`} x={x - candleW / 2} y={y} width={candleW} height={Math.max(VOL_BOT - y, 0)} fill={fill} fillOpacity={b.cls === 'climax' ? 1 : 0.5} />
           )
         })}
         <text x={PLOT_L - 4} y={VOL_TOP + 8} fontSize={10} fill="#9ca3af" textAnchor="end">Vol</text>
@@ -269,19 +289,14 @@ export function WyckoffChart({
         ))}
 
         {/* crosshair */}
-        {hb && (
-          <line x1={cx(hover!.idx)} y1={PRICE_TOP} x2={cx(hover!.idx)} y2={VOL_BOT} stroke="#cbd5e1" strokeWidth={1} strokeDasharray="2 2" />
-        )}
+        {hb && <line x1={cx(hover!.idx)} y1={PRICE_TOP} x2={cx(hover!.idx)} y2={VOL_BOT} stroke="#cbd5e1" strokeWidth={1} strokeDasharray="2 2" />}
       </svg>
 
       {/* tooltip */}
       {hb && (
         <div
           className="pointer-events-none absolute top-1 z-10 rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs shadow-card"
-          style={{
-            left: `${(hover!.frac * 100).toFixed(2)}%`,
-            transform: hover!.frac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)',
-          }}
+          style={{ left: `${(hover!.frac * 100).toFixed(2)}%`, transform: hover!.frac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)' }}
         >
           <div className="font-semibold text-[#111827]">{fmtDate(hb.date)}</div>
           <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[#374151]">
@@ -298,25 +313,17 @@ export function WyckoffChart({
           {hb.cls !== 'normal' && (
             <div
               className="mt-1 inline-block rounded px-1.5 py-0.5 text-[0.68rem] font-semibold"
-              style={{
-                color: hb.cls === 'climax' ? '#854F0B' : '#334155',
-                background: hb.cls === 'climax' ? '#FAEEDA' : '#f1f5f9',
-              }}
+              style={{ color: hb.cls === 'climax' ? '#854F0B' : '#334155', background: hb.cls === 'climax' ? '#FAEEDA' : '#f1f5f9' }}
             >
               {CLS_LABEL[hb.cls]}
             </div>
           )}
-          {eventByIdx.get(hover!.idx) && (
-            <div className="mt-1.5 max-w-[210px] border-t border-[#f1f5f9] pt-1.5">
-              <span
-                className="font-semibold"
-                style={{ color: eventByIdx.get(hover!.idx)!.bullish ? EV_BULL : EV_BEAR }}
-              >
-                {eventByIdx.get(hover!.idx)!.label} (candidate)
+          {hev && (
+            <div className="mt-1.5 max-w-[220px] border-t border-[#f1f5f9] pt-1.5">
+              <span className="font-semibold" style={{ color: hev.bullish ? EV_BULL : EV_BEAR }}>
+                {hev.label} · candidate · {Math.round(hev.confidence * 100)}%
               </span>
-              <div className="mt-0.5 text-[0.68rem] leading-snug text-[#6b7280]">
-                {eventByIdx.get(hover!.idx)!.note}
-              </div>
+              <div className="mt-0.5 text-[0.68rem] leading-snug text-[#6b7280]">{hev.note}</div>
             </div>
           )}
         </div>
