@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { getLiveFactors } from '@/lib/api'
-import { FACTOR_TABLE, type FactorKey } from '@/lib/constants'
+import { FACTOR_TABLE, isCommoditySensitive, type FactorKey } from '@/lib/constants'
 import { DASH } from '@/lib/format'
 import type { FactorSet, SecurityHeader } from '@/types/api'
 
@@ -59,9 +59,27 @@ export function FactorCards({
     data?.price != null && header.last_price != null && header.last_price > 0
       ? (data.price / header.last_price - 1) * 100
       : null
+  const commodity = isCommoditySensitive(header.sector)
 
   return (
     <div>
+      {commodity && (
+        <div
+          className="mb-2.5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-800"
+          title={
+            `${header.sector} names are commodity-price-driven: Value, Momentum and ` +
+            `even Quality move with the underlying commodity (e.g. oil). A high rank ` +
+            `reflects the recent commodity trend, not durability.`
+          }
+        >
+          <span className="mt-px flex-none">⚠</span>
+          <span>
+            <span className="font-semibold">Commodity-sensitive score.</span> This{' '}
+            {header.sector} name&rsquo;s factors ride commodity prices. Read the
+            catalyst (oil, filings, events), not just the rank.
+          </span>
+        </div>
+      )}
       {isLive && (
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
           <span

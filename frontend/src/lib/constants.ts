@@ -4,6 +4,16 @@
 export const PANEL_LABEL =
   'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
 
+/** Sectors whose factor scores are structurally commodity-price-driven — their
+ * Value/Momentum/Quality all ride the underlying commodity (oil, metals), so a
+ * high rank reflects the commodity trend, not durability. Used to flag "read the
+ * catalyst, not the rank" on the score. */
+export const COMMODITY_SENSITIVE_SECTORS = new Set(['Energy', 'Materials'])
+
+export function isCommoditySensitive(sector: string | null | undefined): boolean {
+  return sector != null && COMMODITY_SENSITIVE_SECTORS.has(sector)
+}
+
 export type FactorKey = 'composite' | 'growth' | 'value' | 'quality' | 'momentum'
 
 export const FACTOR_ORDER: FactorKey[] = [
