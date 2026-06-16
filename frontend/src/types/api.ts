@@ -322,7 +322,7 @@ export type AlertRuleType =
 
 export interface AlertRule {
   id: number
-  scope: 'watchlist' | 'ticker'
+  scope: 'market' | 'watchlist' | 'ticker'
   security_id: number | null
   ticker: string | null
   name: string | null
@@ -351,7 +351,7 @@ export interface AlertsResponse {
 
 export interface AlertRuleCreate {
   rule_type: AlertRuleType
-  scope?: 'watchlist' | 'ticker'
+  scope?: 'market' | 'watchlist' | 'ticker'
   ticker?: string | null
   threshold?: number | null
 }

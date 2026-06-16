@@ -886,6 +886,133 @@ def alert_rule_delete(rule_id: int) -> bool:
     return deleted
 
 
+# ── market-wide alert scans (Wave 5 — whole-universe signal feeds) ──────────────
+
+def market_recent_8ks(days: int = 3, limit: int = 40) -> list[dict[str, Any]]:
+    """Recent 8-K events across the whole active universe (newest first).
+    Returns raw item codes — the alerts engine filters high-signal + labels."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT e.security_id, s.ticker, s.name, s.sector,
+                       e.filed_date, e.event_date, e.items
+                FROM material_events e
+                JOIN securities s ON s.security_id = e.security_id AND s.is_active
+                WHERE e.filed_date >= CURRENT_DATE - (%s || ' days')::interval
+                ORDER BY e.filed_date DESC, e.security_id
+                LIMIT %s
+                """,
+                (str(days), limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    out = []
+    for raw in rows:
+        d = dict(zip(cols, raw, strict=True))
+        d["items"] = list(d.get("items") or [])
+        d["filed_date"] = str(d["filed_date"])
+        d["event_date"] = str(d["event_date"]) if d.get("event_date") else None
+        out.append(d)
+    return out
+
+
+def market_insider_buys(days: int = 7, limit: int = 15) -> list[dict[str, Any]]:
+    """Largest open-market insider buys (code P) across the universe in the
+    window, by total $ value (descending)."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT i.security_id, s.ticker, s.name, s.sector,
+                       sum(i.value) AS total_value,
+                       count(DISTINCT i.owner_name) AS buyers,
+                       max(i.filed_date) AS last_filed
+                FROM insider_transactions i
+                JOIN securities s ON s.security_id = i.security_id AND s.is_active
+                WHERE i.transaction_code = 'P'
+                  AND i.filed_date >= CURRENT_DATE - (%s || ' days')::interval
+                GROUP BY i.security_id, s.ticker, s.name, s.sector
+                ORDER BY total_value DESC NULLS LAST
+                LIMIT %s
+                """,
+                (str(days), limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    out = []
+    for raw in rows:
+        d = dict(zip(cols, raw, strict=True))
+        d["total_value"] = _f(d.get("total_value"))
+        d["buyers"] = int(d["buyers"]) if d.get("buyers") is not None else 0
+        d["last_filed"] = str(d["last_filed"]) if d.get("last_filed") else None
+        out.append(d)
+    return out
+
+
+def market_rank_movers(baseline_days: int = 25) -> list[dict[str, Any]]:
+    """Every complete-factor name with its latest AND ~`baseline_days`-ago
+    rank+composite, for market-wide mover alerts. Empty until a snapshot that
+    old exists (young v2 history). The alerts engine computes the deltas + caps."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH d AS (
+                    SELECT max(score_date) AS latest
+                    FROM factor_scores WHERE config_version = %s
+                ),
+                b AS (
+                    SELECT max(score_date) AS base
+                    FROM factor_scores
+                    WHERE config_version = %s
+                      AND score_date <= (SELECT latest FROM d) - (%s || ' days')::interval
+                ),
+                ranked AS (
+                    SELECT fs.security_id, fs.score_date, fs.composite,
+                           RANK() OVER (PARTITION BY fs.score_date
+                                        ORDER BY fs.composite DESC) AS rk
+                    FROM factor_scores fs
+                    JOIN securities s ON s.security_id = fs.security_id
+                    WHERE s.is_active AND fs.config_version = %s
+                      AND fs.score_date IN ((SELECT latest FROM d), (SELECT base FROM b))
+                      AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
+                      AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
+                )
+                SELECT ln.security_id, s.ticker, s.name, s.sector,
+                       ln.composite AS comp_now, ln.rk AS rank_now,
+                       bn.composite AS comp_base, bn.rk AS rank_base
+                FROM ranked ln
+                JOIN ranked bn ON bn.security_id = ln.security_id
+                JOIN securities s ON s.security_id = ln.security_id
+                WHERE ln.score_date = (SELECT latest FROM d)
+                  AND bn.score_date = (SELECT base FROM b)
+                """,
+                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, str(baseline_days),
+                 ACTIVE_CONFIG_VERSION),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    out = []
+    for raw in rows:
+        d = dict(zip(cols, raw, strict=True))
+        d["comp_now"] = _f(d.get("comp_now"))
+        d["comp_base"] = _f(d.get("comp_base"))
+        d["rank_now"] = int(d["rank_now"]) if d.get("rank_now") is not None else None
+        d["rank_base"] = int(d["rank_base"]) if d.get("rank_base") is not None else None
+        out.append(d)
+    return out
+
+
 # ── filings + AI summaries (read; summaries written via save_filing_summary) ────
 
 def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:

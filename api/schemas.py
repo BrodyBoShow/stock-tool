@@ -397,7 +397,7 @@ class AlertsResponse(BaseModel):
 
 class AlertRuleCreate(BaseModel):
     rule_type: str
-    scope: str = "watchlist"
+    scope: str = "market"
     ticker: str | None = None        # required when scope == "ticker"
     threshold: float | None = None
 

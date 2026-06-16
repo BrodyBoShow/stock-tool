@@ -40,8 +40,10 @@ def create_rule(body: AlertRuleCreate) -> AlertRule:
     scope='ticker' needs a ticker and targets that one name."""
     if body.rule_type not in _VALID_TYPES:
         raise HTTPException(status_code=422, detail=f"Unknown rule_type {body.rule_type!r}")
-    if body.scope not in ("watchlist", "ticker"):
-        raise HTTPException(status_code=422, detail="scope must be 'watchlist' or 'ticker'")
+    if body.scope not in ("market", "watchlist", "ticker"):
+        raise HTTPException(
+            status_code=422, detail="scope must be 'market', 'watchlist' or 'ticker'"
+        )
     if body.rule_type in _THRESHOLD_TYPES and body.threshold is None:
         raise HTTPException(
             status_code=422, detail=f"{body.rule_type} needs a numeric threshold"

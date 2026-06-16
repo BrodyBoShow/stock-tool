@@ -44,7 +44,12 @@ function ruleDescription(r: AlertRule): string {
             : r.rule_type === 'new_8k'
               ? 'A high-signal 8-K filed (last 30 days)'
               : 'A thesis review date has been reached'
-  const where = r.scope === 'ticker' && r.ticker ? ` · ${r.ticker} only` : ' · all watchlist'
+  const where =
+    r.scope === 'ticker' && r.ticker
+      ? ` · ${r.ticker} only`
+      : r.scope === 'watchlist'
+        ? ' · watchlist'
+        : ' · whole market'
   return base + where
 }
 
@@ -59,7 +64,7 @@ function AddRuleForm() {
     mutationFn: () =>
       createAlertRule({
         rule_type: ruleType,
-        scope: ticker.trim() ? 'ticker' : 'watchlist',
+        scope: ticker.trim() ? 'ticker' : 'market',
         ticker: ticker.trim() ? ticker.trim().toUpperCase() : null,
         threshold: THRESHOLD_TYPES.has(ruleType) ? Number(threshold) : null,
       }),
@@ -104,7 +109,7 @@ function AddRuleForm() {
         <input
           type="text"
           value={ticker}
-          placeholder="all watchlist"
+          placeholder="whole market"
           onChange={(e) => setTicker(e.target.value)}
           className="w-32 rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[0.82rem] uppercase text-[#1e293b] placeholder:normal-case placeholder:text-[#cbd5e1]"
         />
@@ -167,18 +172,20 @@ export function AlertsPage() {
       <div>
         <h1 className="text-xl font-extrabold text-[#111827]">Alerts</h1>
         <p className="mt-0.5 text-[0.82rem] text-[#6b7280]">
-          Rules evaluated live against your watchlist — rank/score moves, insider buys,
-          new 8-Ks, thesis reviews. No emails; this is your in-app feed.
+          Whole-market scan — biggest factor movers, largest insider buys, and high-signal
+          8-Ks across the entire universe. Refreshed from the nightly pipeline (so each
+          morning reflects the prior session); your watchlist&apos;s own changes live on the
+          Watchlist tab.
         </p>
       </div>
 
       <SectionCard
         title={`Triggered now (${triggered.length})`}
-        hint="What currently matches your rules across the watchlist."
+        hint="What currently matches your rules across the whole market."
       >
         {triggered.length === 0 ? (
           <p className="text-[0.85rem] text-[#9ca3af]">
-            Nothing triggered right now. Add watchlist names or rules below.
+            Nothing triggered right now. Add or adjust rules below.
           </p>
         ) : (
           <div className="space-y-2">
