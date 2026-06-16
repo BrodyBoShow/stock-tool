@@ -1,6 +1,6 @@
 httpx
 pandas
-psycopg[binary]
+psycopg[binary,pool]
 python-dotenv
 yfinance
 anthropic
