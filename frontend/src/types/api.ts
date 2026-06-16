@@ -356,6 +356,29 @@ export interface AlertRuleCreate {
   threshold?: number | null
 }
 
+// ── funds & ETFs ──────────────────────────────────────────────────────────────
+
+export interface FundRow {
+  security_id: number
+  ticker: string
+  name: string | null
+  exchange: string | null
+  category: string
+  last_close: number | null
+  price_date: string | null
+  price: number | null
+  change_pct: number | null
+  r1w: number | null
+  r1m: number | null
+  r3m: number | null
+  rytd: number | null
+}
+
+export interface FundsResponse {
+  as_of_epoch: number | null
+  rows: FundRow[]
+}
+
 export interface WatchlistMutationResponse {
   ticker: string
   security_id: number

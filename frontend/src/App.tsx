@@ -28,6 +28,9 @@ const ThesesPage = lazy(() =>
 const AlertsPage = lazy(() =>
   import('@/pages/AlertsPage').then((m) => ({ default: m.AlertsPage })),
 )
+const FundsPage = lazy(() =>
+  import('@/pages/FundsPage').then((m) => ({ default: m.FundsPage })),
+)
 const LabPage = lazy(() =>
   import('@/pages/LabPage').then((m) => ({ default: m.LabPage })),
 )
@@ -55,6 +58,7 @@ export default function App() {
               <Route path="/portfolio" element={<PortfolioPage />} />
               <Route path="/theses" element={<ThesesPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/funds" element={<FundsPage />} />
               <Route path="/lab" element={<LabPage />} />
               <Route
                 path="*"

@@ -27,6 +27,7 @@ from fastapi.responses import JSONResponse
 
 from api.routers import (
     alerts,
+    funds,
     lab,
     macro,
     market,
@@ -138,6 +139,7 @@ app.include_router(lab.router, prefix="/lab", tags=["lab"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
 app.include_router(market.router, prefix="/market", tags=["market"])
 app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
+app.include_router(funds.router, prefix="/funds", tags=["funds"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])

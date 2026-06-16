@@ -406,6 +406,29 @@ class AlertRuleToggle(BaseModel):
     enabled: bool
 
 
+# ── funds & ETFs (non-operating instruments) ──────────────────────────────────
+
+class FundRow(BaseModel):
+    security_id: int
+    ticker: str
+    name: str | None
+    exchange: str | None
+    category: str                    # Commodity | Crypto | Leveraged/Inverse | Other
+    last_close: float | None
+    price_date: str | None
+    price: float | None              # live (~15m delayed) if available
+    change_pct: float | None
+    r1w: float | None
+    r1m: float | None
+    r3m: float | None
+    rytd: float | None
+
+
+class FundsResponse(BaseModel):
+    as_of_epoch: float | None        # live-quote fetch time, if any
+    rows: list[FundRow]
+
+
 class WatchlistMutationResponse(BaseModel):
     ticker: str
     security_id: int

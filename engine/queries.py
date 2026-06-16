@@ -807,6 +807,79 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
     return deleted, ("deleted" if deleted else "not_found_thesis")
 
 
+# ── funds & ETFs (instrument_type='fund' — non-operating, returns-only) ─────────
+
+def funds_list() -> list[dict[str, Any]]:
+    """Commodity/crypto ETFs & trusts with latest close + trailing returns.
+    These carry no real fundamentals, so this is a returns view, not a factor
+    screen. Returns are computed from stored daily closes (as-of the latest bar).
+    """
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.security_id, s.ticker, s.name, s.exchange,
+                       lp.close AS last_close, lp.date AS price_date,
+                       c1w.close AS c1w, c1m.close AS c1m,
+                       c3m.close AS c3m, cytd.close AS cytd
+                FROM securities s
+                LEFT JOIN LATERAL (
+                    SELECT close, date FROM prices_daily p
+                    WHERE p.security_id = s.security_id ORDER BY p.date DESC LIMIT 1
+                ) lp ON true
+                LEFT JOIN LATERAL (
+                    SELECT close FROM prices_daily p
+                    WHERE p.security_id = s.security_id
+                      AND p.date <= lp.date - INTERVAL '7 days' ORDER BY p.date DESC LIMIT 1
+                ) c1w ON true
+                LEFT JOIN LATERAL (
+                    SELECT close FROM prices_daily p
+                    WHERE p.security_id = s.security_id
+                      AND p.date <= lp.date - INTERVAL '30 days' ORDER BY p.date DESC LIMIT 1
+                ) c1m ON true
+                LEFT JOIN LATERAL (
+                    SELECT close FROM prices_daily p
+                    WHERE p.security_id = s.security_id
+                      AND p.date <= lp.date - INTERVAL '91 days' ORDER BY p.date DESC LIMIT 1
+                ) c3m ON true
+                LEFT JOIN LATERAL (
+                    SELECT close FROM prices_daily p
+                    WHERE p.security_id = s.security_id
+                      AND p.date <= date_trunc('year', lp.date) ORDER BY p.date DESC LIMIT 1
+                ) cytd ON true
+                WHERE s.instrument_type = 'fund' AND lp.close IS NOT NULL
+                ORDER BY s.ticker
+                """
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+
+    def _ret(now, then):
+        n, t = _f(now), _f(then)
+        return (n / t - 1.0) if (n is not None and t and t > 0) else None
+
+    out = []
+    for raw in rows:
+        d = dict(zip(cols, raw, strict=True))
+        last = _f(d["last_close"])
+        out.append({
+            "security_id": d["security_id"],
+            "ticker": d["ticker"],
+            "name": d["name"],
+            "exchange": d["exchange"],
+            "last_close": last,
+            "price_date": str(d["price_date"]) if d.get("price_date") else None,
+            "r1w": _ret(last, d["c1w"]),
+            "r1m": _ret(last, d["c1m"]),
+            "r3m": _ret(last, d["c3m"]),
+            "rytd": _ret(last, d["cytd"]),
+        })
+    return out
+
+
 # ── alert rules (Wave 5 — user-configured, single-user) ─────────────────────────
 
 def alert_rules() -> list[dict[str, Any]]:

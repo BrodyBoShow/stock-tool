@@ -3,6 +3,7 @@ import type {
   AlertRuleCreate,
   AlertsResponse,
   BacktestRunResponse,
+  FundsResponse,
   BriefStatusResponse,
   DecisionBrief,
   EventsResponse,
@@ -155,6 +156,10 @@ export function getWatchlistChanges(): Promise<WatchlistChangesResponse> {
 
 export function getAlerts(): Promise<AlertsResponse> {
   return getJson<AlertsResponse>('/alerts')
+}
+
+export function getFunds(): Promise<FundsResponse> {
+  return getJson<FundsResponse>('/funds')
 }
 
 export function createAlertRule(body: AlertRuleCreate): Promise<AlertRule> {

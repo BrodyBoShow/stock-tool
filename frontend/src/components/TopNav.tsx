@@ -134,6 +134,9 @@ export function TopNav() {
             Theses
           </NavLink>
           <AlertsLink />
+          <NavLink to="/funds" className={link}>
+            Funds
+          </NavLink>
           <NavLink to="/lab" className={link}>
             Lab
           </NavLink>
