@@ -98,6 +98,7 @@ class BacktestRunResponse(BaseModel):
     params: dict | None = None
     results: dict | None = None
     benchmarks: dict | None = None
+    significance: dict | None = None
 
 
 # ── securities (deep-dive) ────────────────────────────────────────────────────

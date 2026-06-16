@@ -727,6 +727,41 @@ export interface BacktestBucketStats extends BacktestCurveStats {
   avg_names: number
 }
 
+export interface BacktestCI {
+  lo: number
+  hi: number
+}
+
+export interface BacktestICBlock {
+  mean: number
+  ir: number | null
+  t_stat: number | null
+  pct_positive: number
+  n: number
+  series: { date: string; ic: number | null }[]
+}
+
+export interface BacktestBootstrap {
+  top: { cagr: BacktestCI | null; sharpe: BacktestCI | null; n_resamples: number } | null
+  long_short: { cagr: BacktestCI | null; sharpe: BacktestCI | null; n_resamples: number } | null
+}
+
+export interface BacktestRandomPortfolio {
+  actual_cagr: number
+  p5: number
+  p50: number
+  p95: number
+  percentile: number
+  n_sims: number
+  avg_basket: number
+  periods: number
+}
+
+export interface BacktestSignificance {
+  random_portfolio: BacktestRandomPortfolio | null
+  seed: number
+}
+
 export interface BacktestKeyResult {
   buckets: Record<string, BacktestBucketStats> // "1".."5"
   long_short: BacktestCurveStats
@@ -736,6 +771,8 @@ export interface BacktestKeyResult {
   win_rate_ls: number | null
   curves: BacktestCurveSet
   bucket_cagrs: Record<string, number | null>
+  ic?: BacktestICBlock | null
+  bootstrap?: BacktestBootstrap | null
 }
 
 export interface BacktestBenchmarks {
@@ -756,4 +793,5 @@ export interface BacktestRunResponse {
   params: { n_buckets: number; cost_bps: number; rebalances: number } | null
   results: Record<string, BacktestKeyResult> | null
   benchmarks: BacktestBenchmarks | null
+  significance?: BacktestSignificance | null
 }

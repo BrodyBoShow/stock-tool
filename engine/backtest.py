@@ -119,6 +119,144 @@ def _win_rate(returns: list[float | None]) -> float | None:
     return round(sum(1 for x in r if x > 0) / len(r), 4) if r else None
 
 
+# ── significance / robustness (all seeded → reproducible, no random drift) ────
+BOOTSTRAP_SEED = 12345
+NULL_SEED = 67890
+
+
+def _safe_spearman(a: pd.Series, b: pd.Series) -> float | None:
+    """Per-period rank correlation (Information Coefficient) of score vs forward
+    return. None when too few names to be meaningful."""
+    df = pd.DataFrame({"a": a, "b": b}).dropna()
+    if len(df) < 8:
+        return None
+    # Spearman = Pearson on the ranks (avoids a scipy dependency).
+    c = df["a"].rank().corr(df["b"].rank())
+    return float(c) if pd.notna(c) else None
+
+
+def _ic_block(ic_pairs: list[tuple[str, float | None]]) -> dict | None:
+    """Aggregate the IC time series: mean, information ratio (mean/std), its
+    t-stat, hit rate, and the per-period series for charting."""
+    vals = np.array([v for _, v in ic_pairs if v is not None], dtype=float)
+    if len(vals) < 6:
+        return None
+    mean = float(vals.mean())
+    std = float(vals.std(ddof=1)) if len(vals) > 1 else 0.0
+    ir = mean / std if std > 1e-9 else None
+    t_stat = ir * np.sqrt(len(vals)) if ir is not None else None
+    return {
+        "mean": mean,
+        "ir": float(ir) if ir is not None else None,
+        "t_stat": float(t_stat) if t_stat is not None else None,
+        "pct_positive": float((vals > 0).mean()),
+        "n": int(len(vals)),
+        "series": [{"date": d, "ic": (float(v) if v is not None else None)} for d, v in ic_pairs],
+    }
+
+
+def _block_bootstrap_ci(
+    period_returns: list[float | None], n_resamples: int = 2000, block: int = 3
+) -> dict | None:
+    """90% CI on CAGR and Sharpe via stationary block bootstrap of the per-period
+    returns (blocks preserve short-run autocorrelation). Seeded for reproducibility."""
+    r = np.array([x for x in period_returns if x is not None], dtype=float)
+    if len(r) < 8:
+        return None
+    rng = np.random.default_rng(BOOTSTRAP_SEED)
+    n = len(r)
+    n_blocks = int(np.ceil(n / block))
+    cagrs: list[float] = []
+    sharpes: list[float] = []
+    for _ in range(n_resamples):
+        starts = rng.integers(0, n, size=n_blocks)
+        samp = np.concatenate([r[s : s + block] for s in starts])[:n]
+        if len(samp) == 0:
+            continue
+        curve = np.cumprod(1.0 + samp)
+        years = len(samp) / PERIODS_PER_YEAR
+        if years > 0 and curve[-1] > 0:
+            cagrs.append(curve[-1] ** (1 / years) - 1)
+        sd = samp.std()
+        if sd > 1e-9:
+            sharpes.append(samp.mean() / sd * np.sqrt(PERIODS_PER_YEAR))
+
+    def _ci(a: list[float]) -> dict | None:
+        arr = np.array([x for x in a if not np.isnan(x)], dtype=float)
+        if len(arr) == 0:
+            return None
+        return {"lo": float(np.percentile(arr, 5)), "hi": float(np.percentile(arr, 95))}
+
+    return {"cagr": _ci(cagrs), "sharpe": _ci(sharpes), "n_resamples": n_resamples}
+
+
+def _random_portfolio_null(
+    rebal: list[date], scores: dict[date, pd.DataFrame],
+    px: dict[date, dict[int, float]], n_buckets: int = 5, n_sims: int = 1000,
+) -> dict | None:
+    """Monkey-portfolio test: each month, compare the composite top quintile's
+    equal-weight forward return against `n_sims` RANDOM equal-weight baskets of
+    the same size drawn from the same eligible universe (without replacement).
+    Chains both across the window and reports where the real strategy's CAGR
+    lands in the random distribution. Seeded → reproducible.
+
+    GROSS of costs on both sides (the random arm has no cost concept), so this
+    isolates selection skill, not turnover drag."""
+    rng = np.random.default_rng(NULL_SEED)
+    actual_rets: list[float] = []
+    sim_period: list[np.ndarray] = []
+    baskets: list[int] = []
+    for t, t_next in zip(rebal[:-1], rebal[1:], strict=False):
+        rep = scores.get(t)
+        if rep is None or "composite" not in rep.columns:
+            continue
+        p0, p1 = px[t], px[t_next]
+        ranks = rep["composite"].dropna()
+        fwd = pd.Series({
+            sid: p1[sid] / p0[sid] - 1.0
+            for sid in ranks.index if sid in p0 and sid in p1 and p0[sid] > 0
+        })
+        common = ranks.index.intersection(fwd.index)
+        if len(common) < n_buckets * 4:
+            continue
+        rk = ranks.loc[common].rank(method="first")
+        top_mask = (pd.qcut(rk, n_buckets, labels=False) + 1 == n_buckets).to_numpy()
+        f = fwd.loc[common].to_numpy()
+        k = int(top_mask.sum())
+        if k < 1:
+            continue
+        actual_rets.append(float(f[top_mask].mean()))
+        baskets.append(k)
+        # n_sims random size-k subsets (without replacement) via argsort of noise
+        order = rng.random((n_sims, len(f))).argsort(axis=1)[:, :k]
+        sim_period.append(f[order].mean(axis=1))
+    if len(actual_rets) < 6:
+        return None
+    actual = np.array(actual_rets, dtype=float)
+    sims = np.vstack(sim_period)  # (periods, n_sims)
+
+    def _cagr(series: np.ndarray) -> float:
+        curve = np.cumprod(1.0 + series)
+        years = len(series) / PERIODS_PER_YEAR
+        return curve[-1] ** (1 / years) - 1 if years > 0 and curve[-1] > 0 else np.nan
+
+    actual_cagr = _cagr(actual)
+    sim_cagrs = np.array([_cagr(sims[:, j]) for j in range(sims.shape[1])])
+    sim_cagrs = sim_cagrs[~np.isnan(sim_cagrs)]
+    if len(sim_cagrs) == 0 or np.isnan(actual_cagr):
+        return None
+    return {
+        "actual_cagr": float(actual_cagr),
+        "p5": float(np.percentile(sim_cagrs, 5)),
+        "p50": float(np.percentile(sim_cagrs, 50)),
+        "p95": float(np.percentile(sim_cagrs, 95)),
+        "percentile": float((sim_cagrs < actual_cagr).mean()),
+        "n_sims": int(n_sims),
+        "avg_basket": int(np.mean(baskets)),
+        "periods": int(len(actual_rets)),
+    }
+
+
 def _backtest_key(
     rebal: list[date], scores: dict[date, pd.DataFrame], px: dict[date, dict[int, float]],
     rank_col: str, n_buckets: int, cost_bps: float,
@@ -130,6 +268,7 @@ def _backtest_key(
     prev_top: set[int] = set()
     avg_counts: dict[int, list[int]] = {b: [] for b in range(1, n_buckets + 1)}
     dates: list[str] = []  # period END dates, aligned with the series above
+    ic_pairs: list[tuple[str, float | None]] = []  # (date, rank-IC of score vs fwd)
 
     for t, t_next in zip(rebal[:-1], rebal[1:], strict=False):
         rep = scores.get(t)
@@ -147,6 +286,7 @@ def _backtest_key(
         if not means:
             continue
         dates.append(str(t_next))
+        ic_pairs.append((str(t_next), _safe_spearman(ranks.loc[common], fwd.loc[common])))
         # turnover of the top bucket vs last period (round-trip cost estimate)
         rk = ranks.loc[common].rank(method="first")
         top_ids = set(rk[pd.qcut(rk, n_buckets, labels=False) + 1 == n_buckets].index)
@@ -182,6 +322,11 @@ def _backtest_key(
             "long_short": _cum_curve(ls_series),
         },
         "bucket_cagrs": {b: buckets[b].get("cagr") for b in range(1, n_buckets + 1)},
+        "ic": _ic_block(ic_pairs),
+        "bootstrap": {
+            "top": _block_bootstrap_ci(bucket_series[n_buckets]),
+            "long_short": _block_bootstrap_ci(ls_series),
+        },
     }
 
 
@@ -243,7 +388,8 @@ def store_results(out: dict) -> int:
                                 "cost_bps": out["cost_bps"],
                                 "rebalances": out["rebalances"]}),
                     json.dumps({"results": out["results"],
-                                "benchmarks": out.get("benchmarks")}),
+                                "benchmarks": out.get("benchmarks"),
+                                "significance": out.get("significance")}),
                 ),
             )
             bid = cur.fetchone()[0]
@@ -304,6 +450,12 @@ def run_backtest(
         keys[f] = _backtest_key(rebal, scores, px, f, n_buckets, cost_bps)
     benchmarks = _benchmark_curves(rebal, px, scores)
 
+    print("[backtest] running random-portfolio null (composite)…", flush=True)
+    significance = {
+        "random_portfolio": _random_portfolio_null(rebal, scores, px, n_buckets),
+        "seed": NULL_SEED,
+    }
+
     return {
         "config_version": config_version,
         "start": str(rebal[0]),
@@ -313,4 +465,5 @@ def run_backtest(
         "cost_bps": cost_bps,
         "results": keys,
         "benchmarks": benchmarks,
+        "significance": significance,
     }

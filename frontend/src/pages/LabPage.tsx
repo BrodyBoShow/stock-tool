@@ -6,9 +6,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,7 +21,12 @@ import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getBacktest } from '@/lib/api'
 import { fmtDate, fmtPct as fmtPctBase, fmtRatio, fmtSignedPct } from '@/lib/format'
-import type { BacktestKeyResult, BacktestRunResponse } from '@/types/api'
+import type {
+  BacktestCI,
+  BacktestICBlock,
+  BacktestKeyResult,
+  BacktestRunResponse,
+} from '@/types/api'
 
 const KEY_LABELS: Record<string, string> = {
   composite: 'Composite',
@@ -33,6 +40,11 @@ const KEY_LABELS: Record<string, string> = {
 const fmtPct = (x: number | null | undefined, signed = true) =>
   signed ? fmtSignedPct(x) : fmtPctBase(x)
 const fmtSharpe = fmtRatio
+
+const ciPct = (ci?: BacktestCI | null) =>
+  ci ? `${fmtPct(ci.lo)} … ${fmtPct(ci.hi)}` : '—'
+const ciSharpe = (ci?: BacktestCI | null) =>
+  ci ? `${fmtSharpe(ci.lo)} … ${fmtSharpe(ci.hi)}` : '—'
 
 function SectionCard({
   title,
@@ -187,6 +199,38 @@ function QuintileChart({ res }: { res: BacktestKeyResult }) {
           contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
         <Bar dataKey="cagr" fill="#4f46e5" radius={[5, 5, 0, 0]} maxBarSize={56} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+/** Information Coefficient (per-period rank correlation of score vs forward
+ * return) over time. A persistently positive bar series = a working signal. */
+function ICChart({ ic }: { ic: BacktestICBlock }) {
+  const points = ic.series.map((s) => ({
+    date: s.date.slice(0, 7),
+    ic: s.ic == null ? null : Number(s.ic.toFixed(4)),
+  }))
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+        <CartesianGrid stroke="#f1f5f9" vertical={false} />
+        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
+        <YAxis
+          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          width={44}
+          tickFormatter={(v: number) => v.toFixed(2)}
+        />
+        <Tooltip
+          formatter={(v: number) => [v?.toFixed(3), 'rank IC']}
+          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+        />
+        <ReferenceLine y={0} stroke="#cbd5e1" />
+        <Bar dataKey="ic" radius={[2, 2, 0, 0]} maxBarSize={14}>
+          {points.map((p, i) => (
+            <Cell key={i} fill={(p.ic ?? 0) >= 0 ? '#16a34a' : '#dc2626'} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
@@ -384,6 +428,96 @@ export function LabPage() {
           <QuintileChart res={sel} />
         </SectionCard>
       </div>
+
+      {/* significance & robustness */}
+      {sel.ic || data.significance?.random_portfolio ? (
+        <SectionCard
+          title="Is the edge real, or luck?"
+          hint="Significance on the point-in-time results: Information Coefficient (does the score rank forward returns?), bootstrap confidence intervals, and a random-portfolio null. All seeded — reproducible, not a fresh number each run."
+        >
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Kpi
+              label={`${selLabel} mean IC`}
+              value={sel.ic ? sel.ic.mean.toFixed(3) : '—'}
+              sub={sel.ic ? `${(sel.ic.pct_positive * 100).toFixed(0)}% of months positive` : 'n/a'}
+              tone={sel.ic ? (sel.ic.mean > 0.03 ? 'good' : sel.ic.mean < 0 ? 'bad' : 'neutral') : 'neutral'}
+            />
+            <Kpi
+              label="IC t-stat"
+              value={sel.ic?.t_stat != null ? sel.ic.t_stat.toFixed(2) : '—'}
+              sub="|t| ≥ 2 ≈ significant"
+              tone={sel.ic?.t_stat != null ? (Math.abs(sel.ic.t_stat) >= 2 ? 'good' : 'neutral') : 'neutral'}
+            />
+            <Kpi
+              label="Top-Q CAGR 90% CI"
+              value={ciPct(sel.bootstrap?.top?.cagr)}
+              sub="block bootstrap"
+            />
+            <Kpi
+              label="Top-Q Sharpe 90% CI"
+              value={ciSharpe(sel.bootstrap?.top?.sharpe)}
+              sub="block bootstrap"
+            />
+          </div>
+
+          {data.significance?.random_portfolio && (
+            <div className="mt-4 rounded-card border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3">
+              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+                Random-portfolio null (composite top quintile)
+              </div>
+              <p className="mt-1 text-[0.86rem] text-[#334155]">
+                The composite top quintile beat{' '}
+                <strong
+                  style={{
+                    color:
+                      data.significance.random_portfolio.percentile >= 0.95
+                        ? '#059669'
+                        : data.significance.random_portfolio.percentile >= 0.8
+                          ? '#0f172a'
+                          : '#dc2626',
+                  }}
+                >
+                  {(data.significance.random_portfolio.percentile * 100).toFixed(0)}%
+                </strong>{' '}
+                of {data.significance.random_portfolio.n_sims.toLocaleString()} random equal-weight
+                baskets of the same size (~{data.significance.random_portfolio.avg_basket} names).
+                Actual {fmtPct(data.significance.random_portfolio.actual_cagr)} CAGR vs random median{' '}
+                {fmtPct(data.significance.random_portfolio.p50)} (5–95th pct{' '}
+                {fmtPct(data.significance.random_portfolio.p5)} …{' '}
+                {fmtPct(data.significance.random_portfolio.p95)}).
+              </p>
+            </div>
+          )}
+
+          {sel.ic && (
+            <div className="mt-4">
+              <div className="mb-1 text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+                Information Coefficient over time — {selLabel}
+              </div>
+              <ICChart ic={sel.ic} />
+            </div>
+          )}
+
+          <p className="mt-3 text-[0.74rem] leading-relaxed text-[#94a3b8]">
+            Read the <strong>IC t-stat</strong> first — it's the stablest "real vs noise" measure
+            (mean rank-correlation relative to its own variability). The random-portfolio percentile
+            is a single-path statistic, so treat it as supporting colour, not proof. And the
+            survivor-only universe still inflates the bottom bucket — these tests quantify the
+            signal rigorously, but on a biased sample.
+          </p>
+        </SectionCard>
+      ) : (
+        <SectionCard
+          title="Is the edge real, or luck?"
+          hint="Significance & robustness (IC, bootstrap CIs, random-portfolio null)."
+        >
+          <p className="text-sm text-[#64748b]">
+            Significance stats populate on the next backtest run — the monthly workflow, or{' '}
+            <code className="rounded bg-[#f1f5f9] px-1">python scripts/run_backtest.py --store</code>.
+            The currently stored run predates this feature.
+          </p>
+        </SectionCard>
+      )}
 
       {/* summary table */}
       <SectionCard
