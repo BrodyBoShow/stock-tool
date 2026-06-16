@@ -134,14 +134,16 @@ def main() -> int:
         config_version=args.config, start=args.start, end=args.end,
         n_buckets=args.buckets, cost_bps=args.cost_bps,
     )
+    # Persist FIRST — the scoring loop is the expensive part; don't let a slow
+    # console print or report write starve the store if the process is cut short.
+    if args.store:
+        bid = store_results(out)
+        print(f"[backtest] stored backtest_results id {bid}", flush=True)
     print("\n" + build_text(out))
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(build_markdown(out), encoding="utf-8")
         print(f"\n[backtest] wrote {args.out}")
-    if args.store:
-        bid = store_results(out)
-        print(f"[backtest] stored backtest_results id {bid}")
     return 0
 
 
