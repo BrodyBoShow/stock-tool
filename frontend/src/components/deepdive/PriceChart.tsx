@@ -365,17 +365,20 @@ export function PriceChart({
               200-day MA
             </span>
           )}
-          {showEvents && (
-            <>
-              <span className="flex items-center gap-1 text-[#b45309]">
-                <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#f59e0b' }} />
-                8-K filing
-              </span>
-              <span className="flex items-center gap-1 text-[#15803d]">
-                <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#22c55e' }} />
-                Insider buy
-              </span>
-            </>
+          {showEvents && visibleEvents.length > 0 && (
+            <span className="flex items-center gap-1 text-[#b45309]">
+              <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#f59e0b' }} />
+              8-K filing
+            </span>
+          )}
+          {showEvents && visibleBuys.length > 0 && (
+            <span className="flex items-center gap-1 text-[#15803d]">
+              <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#22c55e' }} />
+              Insider buy
+            </span>
+          )}
+          {showEvents && visibleEvents.length === 0 && visibleBuys.length === 0 && (
+            <span className="text-[#9ca3af]">No 8-Ks or insider buys in this range</span>
           )}
         </div>
       )}
