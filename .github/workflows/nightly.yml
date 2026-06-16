@@ -85,6 +85,16 @@ jobs:
         continue-on-error: true
         run: python scripts/ingest_events.py --max-fetches 1200
 
+      # Fund/ETF prices — the Funds & ETFs tab. Funds are is_active=false (kept
+      # out of the factor screener), so the main active-only refresh skips them;
+      # this incremental pass keeps their daily closes — and the tab's trailing
+      # returns — current. Supervised so a pooler drop restarts cleanly.
+      - name: Refresh fund/ETF prices
+        continue-on-error: true
+        run: >
+          python scripts/supervise_backfill.py --label nightly-funds --stall 900 --
+          python -u scripts/refresh_fund_prices.py
+
       # AI warm: pre-generate Decision Briefs for the WATCHLIST only
       # (--top-n 0 --briefs-only) so the stocks you track open instantly instead
       # of showing "Synthesizing…" on first open. Briefs cache per scoring

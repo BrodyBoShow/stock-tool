@@ -222,6 +222,17 @@ def _load_all_securities(cur) -> list[tuple[int, str]]:
     return cur.fetchall()
 
 
+def _load_funds(cur) -> list[tuple[int, str]]:
+    """Fund/ETF instruments (instrument_type='fund'), regardless of is_active.
+    They're deactivated to stay out of the factor screener, but the Funds tab's
+    returns still need their daily closes kept current."""
+    cur.execute(
+        "SELECT security_id, ticker FROM securities "
+        "WHERE instrument_type = 'fund' ORDER BY ticker"
+    )
+    return cur.fetchall()
+
+
 def _latest_dates(cur) -> dict[int, date]:
     cur.execute("SELECT security_id, max(date) FROM prices_daily GROUP BY security_id")
     return {sid: d for sid, d in cur.fetchall()}
@@ -295,6 +306,7 @@ def run_bulk_backfill(
     *,
     only_missing: bool = True,
     active_only: bool = False,
+    fund_only: bool = False,
     log_every: int = 25,
     cooldowns: tuple[int, ...] = (60, 120, 300, 600, 900),
     max_consecutive_rate_limits: int = 5,
@@ -335,7 +347,12 @@ def run_bulk_backfill(
     )
     try:
         with conn.cursor() as cur:
-            universe = _load_universe(cur) if active_only else _load_all_securities(cur)
+            if fund_only:
+                universe = _load_funds(cur)
+            elif active_only:
+                universe = _load_universe(cur)
+            else:
+                universe = _load_all_securities(cur)
             latest = _latest_dates(cur)
         if only_missing:
             universe = [(sid, t) for sid, t in universe if sid not in latest]
@@ -343,7 +360,7 @@ def run_bulk_backfill(
             universe = universe[:limit]
         scope = len(universe)
         print(f"[bulk] backfilling {scope} tickers (only_missing={only_missing}, "
-              f"active_only={active_only})", flush=True)
+              f"active_only={active_only}, fund_only={fund_only})", flush=True)
 
         last_db = time.monotonic()  # when the conn was last known-good
         for i, (security_id, ticker) in enumerate(universe, start=1):
