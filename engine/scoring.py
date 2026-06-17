@@ -397,17 +397,13 @@ def run(
         col == "insider_net_buy" for defs in factor_defs.values() for col, _ in defs
     )
 
-    conn = get_connection()
-    # Pure read path (dry run, no job logging) — e.g. the backtester replaying
-    # 48 months. Run it in autocommit so no transaction is ever held open across
-    # the heavy per-month Python work; otherwise Supabase's pooler kills the
-    # connection on its idle-in-transaction timeout mid-loop.
-    if not write and not log_job:
-        conn.autocommit = True
-        # The full-universe price pull is a wide date-range scan; in CI's shared
-        # DB it can exceed the API's 120s ceiling. Give the read path more room.
-        with conn.cursor() as cur:
-            cur.execute("SET statement_timeout = 300000")
+    # The backtester (write=False, log_job=False) is a pure read replaying 48
+    # months; give it the longer analytical-read timeouts so the per-month Python
+    # gaps don't trip the 60s idle-in-transaction ceiling and the wide pulls
+    # don't trip the 120s statement ceiling. Single transaction stays fast (warm
+    # connection) — no autocommit, which would route every statement through the
+    # pooler cold and was itself causing statement timeouts.
+    conn = get_connection(long_read=(not write and not log_job))
     with conn.cursor() as cur:
         weights = _load_weights(cur, config_version)
         if as_of is None:

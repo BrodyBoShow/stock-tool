@@ -46,6 +46,23 @@ _CONNECT_KWARGS: dict = {
     "options": "-c statement_timeout=120000 -c idle_in_transaction_session_timeout=60000",
 }
 
+# Longer timeouts for analytical batch reads (e.g. the backtester replaying 48
+# months): the per-month Python gaps between queries can exceed the API's 60s
+# idle-in-transaction ceiling, and the full-universe pulls can exceed 120s.
+# Set via STARTUP OPTIONS (not a runtime SET) so they persist through Supabase's
+# transaction-mode pooler. A held single transaction stays fast (warm
+# connection); we just give it room instead of switching to autocommit, which
+# routes every statement through the pooler cold.
+_READ_STATEMENT_MS = 300000     # 5 min
+_READ_IDLE_MS = 600000          # 10 min
+_READ_CONNECT_KWARGS: dict = {
+    **_CONNECT_KWARGS,
+    "options": (
+        f"-c statement_timeout={_READ_STATEMENT_MS} "
+        f"-c idle_in_transaction_session_timeout={_READ_IDLE_MS}"
+    ),
+}
+
 
 def _database_url() -> str:
     url = os.getenv("DATABASE_URL")
@@ -57,11 +74,16 @@ def _database_url() -> str:
     return url
 
 
-def _apply_session_timeouts(conn: psycopg.Connection, *, announce: bool) -> None:
+def _apply_session_timeouts(
+    conn: psycopg.Connection, *, announce: bool, long_read: bool = False
+) -> None:
     """Verify the statement/idle timeouts took; Supabase's transaction-mode
     pooler (PgBouncer) may strip startup `options`, so fall back to explicit
     SET. With the pool this runs once per physical connection (announce=False);
-    get_connection() runs it per call and announces the source for CI logs."""
+    get_connection() runs it per call and announces the source for CI logs.
+    long_read uses the longer analytical-read ceilings."""
+    stmt_ms = _READ_STATEMENT_MS if long_read else 120000
+    idle_ms = _READ_IDLE_MS if long_read else 60000
     with conn.cursor() as cur:
         cur.execute("SHOW statement_timeout")
         st = cur.fetchone()[0]
@@ -69,11 +91,11 @@ def _apply_session_timeouts(conn: psycopg.Connection, *, announce: bool) -> None
         itt = cur.fetchone()[0]
         st_src = "options"
         if st in ("0", "0ms"):  # options did not propagate — SET fallback
-            cur.execute("SET statement_timeout = 120000")
+            cur.execute(f"SET statement_timeout = {stmt_ms}")
             st_src = "SET fallback"
         itt_src = "options"
         if itt in ("0", "0ms"):
-            cur.execute("SET idle_in_transaction_session_timeout = 60000")
+            cur.execute(f"SET idle_in_transaction_session_timeout = {idle_ms}")
             itt_src = "SET fallback"
     conn.commit()
     if announce:
@@ -84,15 +106,17 @@ def _apply_session_timeouts(conn: psycopg.Connection, *, announce: bool) -> None
         )
 
 
-def get_connection() -> psycopg.Connection:
+def get_connection(*, long_read: bool = False) -> psycopg.Connection:
     """Return a new, fully-hardened psycopg connection (see module docstring).
 
     Reads DATABASE_URL from the environment. Raises RuntimeError if it is unset.
-    Used by the long-running engine jobs; behavior is unchanged from before the
-    pool was added.
+    Used by the long-running engine jobs. long_read=True grants the longer
+    analytical-read timeouts (statement 5 min, idle-in-transaction 10 min) for
+    batch readers like the backtester.
     """
-    conn = psycopg.connect(_database_url(), **_CONNECT_KWARGS)
-    _apply_session_timeouts(conn, announce=True)
+    kwargs = _READ_CONNECT_KWARGS if long_read else _CONNECT_KWARGS
+    conn = psycopg.connect(_database_url(), **kwargs)
+    _apply_session_timeouts(conn, announce=True, long_read=long_read)
     return conn
 
 
