@@ -19,6 +19,8 @@ Two connection sources, by caller:
 from __future__ import annotations
 
 import os
+import random
+import time
 from pathlib import Path
 
 import psycopg
@@ -53,8 +55,10 @@ _CONNECT_KWARGS: dict = {
 # transaction-mode pooler. A held single transaction stays fast (warm
 # connection); we just give it room instead of switching to autocommit, which
 # routes every statement through the pooler cold.
-_READ_STATEMENT_MS = 300000     # 5 min
-_READ_IDLE_MS = 600000          # 10 min
+_READ_STATEMENT_MS = 300000     # 5 min — wide analytical pulls genuinely need it
+_READ_IDLE_MS = 300000          # 5 min — covers the per-month pandas gap (seconds)
+                                # with margin, but short enough that the pooler
+                                # won't reap a briefly-held transaction.
 _READ_CONNECT_KWARGS: dict = {
     **_CONNECT_KWARGS,
     "options": (
@@ -62,6 +66,41 @@ _READ_CONNECT_KWARGS: dict = {
         f"-c idle_in_transaction_session_timeout={_READ_IDLE_MS}"
     ),
 }
+
+# --- Connection-retry policy -------------------------------------------------
+# The Supabase transaction-mode pooler (esp. free tier) can accept the socket
+# then kill the backend on first use (EDBHANDLEREXITED) before any real work.
+# Retry ONLY connection-establishment / transport failures, never query/logic
+# errors (those are deterministic and must surface immediately).
+_CONNECT_MAX_TRIES = 4            # 1 try + 3 retries
+_CONNECT_BACKOFF_BASE = 1.0      # seconds: ~1s, 2s, 4s (+ jitter)
+_CONNECT_BACKOFF_JITTER = 0.25
+
+_TRANSIENT_MSG_MARKERS = (
+    "edbhandlerexited", "connection closed", "connection is closed",
+    "server closed the connection", "connection reset", "connection refused",
+    "could not connect", "terminating connection",
+    "ssl connection has been closed", "consuming input failed",
+    "eof detected", "no connection to the server", "the connection is lost",
+)
+
+
+def _is_transient_connection_error(exc: BaseException) -> bool:
+    """True iff exc is a transient connect/transport failure worth retrying.
+
+    Matches SQLSTATE class 08 (connection exception, incl. EDBHANDLEREXITED) and
+    psycopg OperationalError/InterfaceError, with a message backstop. Explicitly
+    does NOT retry QueryCanceled (statement/idle timeout) or any logic error.
+    """
+    sqlstate = getattr(exc, "sqlstate", None)
+    if isinstance(sqlstate, str) and sqlstate.startswith("08"):
+        return True
+    qc = getattr(psycopg.errors, "QueryCanceled", ())
+    if isinstance(exc, (psycopg.OperationalError, psycopg.InterfaceError)):
+        if qc and isinstance(exc, qc):
+            return False
+        return True
+    return any(m in str(exc).lower() for m in _TRANSIENT_MSG_MARKERS)
 
 
 def _database_url() -> str:
@@ -115,9 +154,35 @@ def get_connection(*, long_read: bool = False) -> psycopg.Connection:
     batch readers like the backtester.
     """
     kwargs = _READ_CONNECT_KWARGS if long_read else _CONNECT_KWARGS
-    conn = psycopg.connect(_database_url(), **kwargs)
-    _apply_session_timeouts(conn, announce=True, long_read=long_read)
-    return conn
+    url = _database_url()  # resolved once: a config error must not be retried
+    last_exc: BaseException | None = None
+    for attempt in range(1, _CONNECT_MAX_TRIES + 1):
+        conn = None
+        try:
+            conn = psycopg.connect(url, **kwargs)
+            # _apply_session_timeouts issues the FIRST round-trip; a pooler that
+            # accepts the socket then dies on first use (EDBHANDLEREXITED) fails
+            # HERE, so it must be inside the retried unit.
+            _apply_session_timeouts(conn, announce=True, long_read=long_read)
+            return conn
+        except Exception as exc:  # noqa: BLE001 — classified below
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:  # noqa: BLE001
+                    pass
+            if not _is_transient_connection_error(exc) or attempt == _CONNECT_MAX_TRIES:
+                raise
+            last_exc = exc
+            delay = _CONNECT_BACKOFF_BASE * (2 ** (attempt - 1))
+            delay += delay * random.uniform(-_CONNECT_BACKOFF_JITTER, _CONNECT_BACKOFF_JITTER)
+            print(
+                f"[db] transient connect failure (attempt {attempt}/"
+                f"{_CONNECT_MAX_TRIES}): {exc} -- retrying in {delay:.1f}s",
+                flush=True,
+            )
+            time.sleep(delay)
+    raise last_exc if last_exc is not None else RuntimeError("get_connection failed")
 
 
 # --- API read-path connection pool -------------------------------------------
@@ -181,7 +246,7 @@ def release(conn: psycopg.Connection | None) -> None:
         pass
 
 
-def reopen(conn: psycopg.Connection | None) -> psycopg.Connection:
+def reopen(conn: psycopg.Connection | None, *, long_read: bool = False) -> psycopg.Connection:
     """Close a possibly-stale connection best-effort and return a fresh one.
 
     On Windows, libpq ignores fine-grained TCP keepalives and tcp_user_timeout
@@ -195,7 +260,7 @@ def reopen(conn: psycopg.Connection | None) -> psycopg.Connection:
             conn.close()
     except Exception:  # noqa: BLE001
         pass
-    return get_connection()
+    return get_connection(long_read=long_read)
 
 
 def healthcheck() -> bool:

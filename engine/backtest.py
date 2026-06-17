@@ -27,7 +27,7 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-from engine.db import get_connection
+from engine.db import _is_transient_connection_error, get_connection, reopen
 from engine.queries import ACTIVE_CONFIG_VERSION
 from engine.scoring import FACTOR_DEFS_BY_VERSION
 from engine.scoring import run as score_run
@@ -47,29 +47,22 @@ def _rebalance_dates(start: date, end: date) -> list[date]:
     return out
 
 
-def _prices_at(on: date, lookback_days: int = 7) -> dict[int, float]:
+def _prices_at(conn, on: date, lookback_days: int = 7) -> dict[int, float]:
     """Latest adj_close on/before `on` (within lookback) per security.
 
-    Opens its own short-lived connection: scoring each rebalance date uses a
-    separate connection and takes seconds, so a long-lived one held across the
-    loop would be killed by the idle-in-transaction timeout.
-    """
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT DISTINCT ON (security_id) security_id, adj_close
-                FROM prices_daily
-                WHERE date <= %s AND date >= %s AND adj_close IS NOT NULL
-                ORDER BY security_id, date DESC
-                """,
-                (on, on - timedelta(days=lookback_days)),
-            )
-            return {sid: float(ac) for sid, ac in cur.fetchall()}
-    finally:
-        if not conn.closed:
-            conn.close()
+    Uses the caller's shared connection (run_backtest threads one connection
+    through the whole replay to minimize pooler churn)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT ON (security_id) security_id, adj_close
+            FROM prices_daily
+            WHERE date <= %s AND date >= %s AND adj_close IS NOT NULL
+            ORDER BY security_id, date DESC
+            """,
+            (on, on - timedelta(days=lookback_days)),
+        )
+        return {sid: float(ac) for sid, ac in cur.fetchall()}
 
 
 def _bucket_returns(
@@ -330,18 +323,13 @@ def _backtest_key(
     }
 
 
-def _benchmark_curves(rebal: list[date], px: dict[date, dict[int, float]],
+def _benchmark_curves(conn, rebal: list[date], px: dict[date, dict[int, float]],
                       scores: dict[date, pd.DataFrame]) -> dict:
     """Growth-of-$1 curves for SPY and the equal-weight scored universe."""
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT security_id FROM securities WHERE ticker = 'SPY' LIMIT 1")
-            row = cur.fetchone()
-            spy_sid = row[0] if row else None
-    finally:
-        if not conn.closed:
-            conn.close()
+    with conn.cursor() as cur:
+        cur.execute("SELECT security_id FROM securities WHERE ticker = 'SPY' LIMIT 1")
+        row = cur.fetchone()
+        spy_sid = row[0] if row else None
 
     dates: list[str] = []
     spy_rets: list[float | None] = []
@@ -370,9 +358,14 @@ def _benchmark_curves(rebal: list[date], px: dict[date, dict[int, float]],
     }
 
 
-def store_results(out: dict) -> int:
-    """Persist a run to backtest_results (the Lab page reads the latest row)."""
-    conn = get_connection()
+def store_results(out: dict, conn=None) -> int:
+    """Persist a run to backtest_results (the Lab page reads the latest row).
+
+    Uses the caller's connection when given (so the backtest can reuse its one
+    threaded connection); otherwise opens and closes its own."""
+    owns_conn = conn is None
+    if owns_conn:
+        conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -396,7 +389,7 @@ def store_results(out: dict) -> int:
         conn.commit()
         return int(bid)
     finally:
-        if not conn.closed:
+        if owns_conn and not conn.closed:
             conn.close()
 
 
@@ -414,56 +407,72 @@ def run_backtest(
     each rebalance date once, then reuses those scores for the composite and
     every single-factor attribution run (cheap relative to scoring).
     """
-    conn = get_connection()
+    # Thread ONE long-read connection through the whole replay (~99 short-lived
+    # opens -> 1), so a flaky transaction pooler has far fewer chances to drop a
+    # connection mid-run. Each month is wrapped in a reopen-and-retry so a
+    # transient pooler drop reopens and retries that month instead of aborting
+    # the 40-minute job. The connection is held across the loop, but every
+    # borrowed read-only month rolls back its snapshot (see scoring.run), so the
+    # idle window between queries stays well under the read idle ceiling.
+    conn = get_connection(long_read=True)
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT min(date), max(date) FROM prices_daily")
             pmin, pmax = cur.fetchone()
+        conn.rollback()  # release the snapshot before the long loop
+        start = start or (pmin + timedelta(days=400))  # need 12m history for momentum
+        end = end or pmax
+        rebal = _rebalance_dates(start, end)
+        if len(rebal) < 4:
+            raise RuntimeError("backtest window too short")
+
+        print(f"[backtest] {config_version}: {len(rebal)} monthly rebalances "
+              f"{rebal[0]}..{rebal[-1]}", flush=True)
+
+        scores: dict[date, pd.DataFrame] = {}
+        px: dict[date, dict[int, float]] = {}
+        factor_cols = list(FACTOR_DEFS_BY_VERSION[config_version].keys())
+        for i, t in enumerate(rebal, 1):
+            for attempt in (1, 2):
+                try:
+                    rep = score_run(config_version, write=False, log_job=False,
+                                    as_of=t, conn=conn)["report"]
+                    px[t] = _prices_at(conn, t)
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    if attempt == 2 or not _is_transient_connection_error(exc):
+                        raise
+                    print(f"[backtest] connection drop at {t}, reopening: {exc}",
+                          flush=True)
+                    conn = reopen(conn, long_read=True)
+            if complete_only:
+                rep = rep.dropna(subset=factor_cols)
+            scores[t] = rep
+            if i % 6 == 0:
+                print(f"[backtest] scored {i}/{len(rebal)} ({t})", flush=True)
+
+        keys = {"composite": _backtest_key(rebal, scores, px, "composite", n_buckets, cost_bps)}
+        for f in factor_cols:
+            keys[f] = _backtest_key(rebal, scores, px, f, n_buckets, cost_bps)
+        benchmarks = _benchmark_curves(conn, rebal, px, scores)
+
+        print("[backtest] running random-portfolio null (composite)…", flush=True)
+        significance = {
+            "random_portfolio": _random_portfolio_null(rebal, scores, px, n_buckets),
+            "seed": NULL_SEED,
+        }
+
+        return {
+            "config_version": config_version,
+            "start": str(rebal[0]),
+            "end": str(rebal[-1]),
+            "rebalances": len(rebal),
+            "n_buckets": n_buckets,
+            "cost_bps": cost_bps,
+            "results": keys,
+            "benchmarks": benchmarks,
+            "significance": significance,
+        }
     finally:
         if not conn.closed:
             conn.close()
-    start = start or (pmin + timedelta(days=400))  # need 12m history for momentum
-    end = end or pmax
-    rebal = _rebalance_dates(start, end)
-    if len(rebal) < 4:
-        raise RuntimeError("backtest window too short")
-
-    print(f"[backtest] {config_version}: {len(rebal)} monthly rebalances "
-          f"{rebal[0]}..{rebal[-1]}", flush=True)
-
-    # Each iteration uses fresh short-lived connections (score_run owns its own,
-    # _prices_at owns its own) — nothing is held idle across the slow scoring.
-    scores: dict[date, pd.DataFrame] = {}
-    px: dict[date, dict[int, float]] = {}
-    factor_cols = list(FACTOR_DEFS_BY_VERSION[config_version].keys())
-    for i, t in enumerate(rebal, 1):
-        rep = score_run(config_version, write=False, log_job=False, as_of=t)["report"]
-        if complete_only:
-            rep = rep.dropna(subset=factor_cols)
-        scores[t] = rep
-        px[t] = _prices_at(t)
-        if i % 6 == 0:
-            print(f"[backtest] scored {i}/{len(rebal)} ({t})", flush=True)
-
-    keys = {"composite": _backtest_key(rebal, scores, px, "composite", n_buckets, cost_bps)}
-    for f in factor_cols:
-        keys[f] = _backtest_key(rebal, scores, px, f, n_buckets, cost_bps)
-    benchmarks = _benchmark_curves(rebal, px, scores)
-
-    print("[backtest] running random-portfolio null (composite)…", flush=True)
-    significance = {
-        "random_portfolio": _random_portfolio_null(rebal, scores, px, n_buckets),
-        "seed": NULL_SEED,
-    }
-
-    return {
-        "config_version": config_version,
-        "start": str(rebal[0]),
-        "end": str(rebal[-1]),
-        "rebalances": len(rebal),
-        "n_buckets": n_buckets,
-        "cost_bps": cost_bps,
-        "results": keys,
-        "benchmarks": benchmarks,
-        "significance": significance,
-    }

@@ -46,6 +46,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
+import psycopg
 from dotenv import load_dotenv
 
 from engine.db import get_connection
@@ -374,6 +375,7 @@ def run(
     write: bool = True,
     log_job: bool = True,
     as_of: date | None = None,
+    conn: psycopg.Connection | None = None,
 ) -> dict:
     """Score the universe under `config_version`.
 
@@ -397,13 +399,16 @@ def run(
         col == "insider_net_buy" for defs in factor_defs.values() for col, _ in defs
     )
 
-    # The backtester (write=False, log_job=False) is a pure read replaying 48
-    # months; give it the longer analytical-read timeouts so the per-month Python
-    # gaps don't trip the 60s idle-in-transaction ceiling and the wide pulls
-    # don't trip the 120s statement ceiling. Single transaction stays fast (warm
-    # connection) — no autocommit, which would route every statement through the
-    # pooler cold and was itself causing statement timeouts.
-    conn = get_connection(long_read=(not write and not log_job))
+    # A caller (the backtester) may pass a shared connection to thread one
+    # connection through all 48 months, slashing pooler churn; otherwise we open
+    # our own. The backtester's call (write=False, log_job=False) gets the longer
+    # analytical-read timeouts so per-month Python gaps don't trip the idle
+    # ceiling and the wide pulls don't trip the statement ceiling. Single
+    # transaction stays fast (warm connection) — not autocommit, which routed
+    # every statement through the pooler cold and itself caused statement timeouts.
+    owns_conn = conn is None
+    if owns_conn:
+        conn = get_connection(long_read=(not write and not log_job))
     with conn.cursor() as cur:
         weights = _load_weights(cur, config_version)
         if as_of is None:
@@ -590,6 +595,11 @@ def run(
         # rows-as-written, keyed by sid, so a dry run can be diffed vs the DB
         report_rows = {r[0]: r for r in rows}
 
+        # On a BORROWED connection, a read-only month leaves an open snapshot;
+        # release it so the next borrowed month starts a fresh transaction.
+        if not write and not owns_conn:
+            conn.rollback()
+
         return {
             "score_date": str(score_date),
             "config_version": config_version,
@@ -610,5 +620,5 @@ def run(
             finish_job(conn, job_id, status="failed", error=str(exc))
         raise
     finally:
-        if not conn.closed:
+        if owns_conn and not conn.closed:
             conn.close()
