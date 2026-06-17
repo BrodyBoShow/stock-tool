@@ -22,10 +22,16 @@ import os
 import random
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import psycopg
 from dotenv import load_dotenv
-from psycopg_pool import ConnectionPool
+
+if TYPE_CHECKING:
+    # psycopg_pool is an API-only dependency, imported LAZILY inside init_pool()
+    # so the engine batch jobs (nightly pipeline, backtest) never need it just to
+    # import engine.db — a missing/broken pool package can't take the refresh down.
+    from psycopg_pool import ConnectionPool
 
 # Load .env from the project root (one level above this file's directory).
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -198,6 +204,8 @@ def init_pool(min_size: int = 1, max_size: int = 8) -> None:
     global _pool
     if _pool is not None:
         return
+    from psycopg_pool import ConnectionPool  # lazy: API-only dependency (see top)
+
     pool = ConnectionPool(
         _database_url(),
         min_size=min_size,
