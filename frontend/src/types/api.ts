@@ -470,6 +470,42 @@ export interface MarketBreadth {
   pct_above_ma200: number | null
   new_highs: number
   new_lows: number
+  divergence?: { state: 'narrow' | 'resilient' | 'aligned'; detail: string } | null
+  drawdown?: { near_high_pct: number; correction_pct: number; bear_pct: number } | null
+}
+
+export interface MarketFreshness {
+  as_of: string
+  expected_session: string
+  sessions_behind: number
+  tier: 'current' | 'lagging' | 'stale'
+  pre_close: boolean
+}
+
+export interface MarketCoverage {
+  priced: number
+  priced_prev: number
+  active: number
+}
+
+export interface MarketRotation {
+  state: 'risk_on' | 'defensive' | 'mixed'
+  cyc_r1d: number
+  def_r1d: number
+  spread: number
+}
+
+export interface MarketFactorDay {
+  factor: 'growth' | 'value' | 'quality' | 'momentum'
+  top_r1d: number
+  bottom_r1d: number
+  spread: number
+}
+
+export interface MarketRead {
+  tone: 'good' | 'warn' | 'bad' | 'neutral'
+  state: string
+  text: string
 }
 
 export interface MarketMover {
@@ -567,6 +603,11 @@ export interface MarketOverviewResponse {
   filings: MarketFilingRow[]
   insider_buys: MarketInsiderBuy[]
   headlines: MarketHeadline[]
+  freshness?: MarketFreshness | null
+  coverage?: MarketCoverage | null
+  rotation?: MarketRotation | null
+  factor_day?: MarketFactorDay[]
+  read?: MarketRead | null
 }
 
 // ── Portfolio tracker (derived from the user ledger) ─────────────────────────

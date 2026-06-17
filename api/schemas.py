@@ -580,6 +580,13 @@ class MarketOverviewResponse(BaseModel):
     filings: list[dict]
     insider_buys: list[dict]
     headlines: list[dict]
+    # v2 additions (loose dicts; the frontend owns display typing). Defaults keep
+    # the schema backward-compatible if a cached payload predates them.
+    freshness: dict | None = None     # session-staleness vs the real latest US session
+    coverage: dict | None = None      # priced / priced_prev / active name counts
+    rotation: dict | None = None      # cyclical-vs-defensive leadership
+    factor_day: list[dict] = []       # factor-of-the-day top-minus-bottom 1d spreads
+    read: dict | None = None          # deterministic "what this means" verdict
 
 
 class MarketBriefResponse(BaseModel):

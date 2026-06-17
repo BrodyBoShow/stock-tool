@@ -27,15 +27,17 @@ from __future__ import annotations
 import threading
 import time
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
 from xml.etree import ElementTree
+from zoneinfo import ZoneInfo
 
 import requests
 
 from engine.db import get_connection
 from engine.events import HIGH_SIGNAL_ITEMS, label_for
+from engine.queries import ACTIVE_CONFIG_VERSION
 
 _TTL_SECONDS = 600
 _NEWS_TTL_SECONDS = 900
@@ -59,6 +61,76 @@ MACRO_DISPLAY = [
     ("FEDFUNDS", "Fed funds", "%", 2),
     ("VIXCLS", "VIX", "", 1),
 ]
+
+_ET = ZoneInfo("America/New_York")
+
+# US market holidays (NYSE/Nasdaq full closures) — enough years to keep the
+# "expected latest session" honest. Half-days don't matter (the close still
+# happens). Extend as needed; a missing date only risks a 1-day mis-flag.
+_US_MARKET_HOLIDAYS: frozenset[date] = frozenset({
+    date(2025, 1, 1), date(2025, 1, 20), date(2025, 2, 17), date(2025, 4, 18),
+    date(2025, 5, 26), date(2025, 6, 19), date(2025, 7, 4), date(2025, 9, 1),
+    date(2025, 11, 27), date(2025, 12, 25),
+    date(2026, 1, 1), date(2026, 1, 19), date(2026, 2, 16), date(2026, 4, 3),
+    date(2026, 5, 25), date(2026, 6, 19), date(2026, 7, 3), date(2026, 9, 7),
+    date(2026, 11, 26), date(2026, 12, 25),
+    date(2027, 1, 1), date(2027, 1, 18), date(2027, 2, 15), date(2027, 3, 26),
+    date(2027, 5, 31), date(2027, 6, 18), date(2027, 7, 5), date(2027, 9, 6),
+    date(2027, 11, 25), date(2027, 12, 24),
+})
+
+# Sector grouping for the risk-on/defensive rotation read.
+_CYCLICAL = {"Information Technology", "Consumer Discretionary", "Industrials",
+             "Financials", "Materials", "Energy", "Communication Services"}
+_DEFENSIVE = {"Utilities", "Consumer Staples", "Health Care", "Real Estate"}
+
+
+def _is_trading_day(d: date) -> bool:
+    return d.weekday() < 5 and d not in _US_MARKET_HOLIDAYS
+
+
+def expected_latest_session(now_et: datetime) -> date:
+    """Most recent COMPLETED US trading session as of `now_et`. Today only
+    counts after the 16:00 ET close; otherwise (pre-close, weekend, holiday)
+    step back to the prior trading day."""
+    d = now_et.date()
+    if not _is_trading_day(d) or (now_et.hour, now_et.minute) < (16, 0):
+        d -= timedelta(days=1)
+    while not _is_trading_day(d):
+        d -= timedelta(days=1)
+    return d
+
+
+def _sessions_between(a: date, b: date) -> int:
+    """Number of trading days in (a, b] — i.e. how many completed sessions sit
+    between an `as_of` (exclusive) and the expected latest session (inclusive)."""
+    if b <= a:
+        return 0
+    n, d = 0, a + timedelta(days=1)
+    while d <= b:
+        n += _is_trading_day(d)
+        d += timedelta(days=1)
+    return n
+
+
+def _freshness(as_of_str: str, now_et: datetime | None = None) -> dict[str, Any]:
+    """How stale the page's data is vs the real latest US session. Computed at
+    SERVE time (depends on 'now'), not baked into the cached payload."""
+    now_et = now_et or datetime.now(_ET)
+    expected = expected_latest_session(now_et)
+    as_of = date.fromisoformat(as_of_str)
+    behind = _sessions_between(as_of, expected)
+    tier = "current" if behind <= 0 else "lagging" if behind == 1 else "stale"
+    # A weekday before the close, exactly one session behind, is the NORMAL
+    # "tonight's ingest hasn't run yet" state — flag it calmly, not as an alarm.
+    pre_close = _is_trading_day(now_et.date()) and (now_et.hour, now_et.minute) < (16, 0)
+    return {
+        "as_of": as_of_str,
+        "expected_session": str(expected),
+        "sessions_behind": behind,
+        "tier": tier,
+        "pre_close": bool(pre_close),
+    }
 
 
 # ── data loads (one short-lived connection, read-only) ───────────────────────
@@ -316,6 +388,34 @@ def _ret(now: float, then: float | None) -> float | None:
     return now / then - 1.0 if then and then > 0 else None
 
 
+def _market_read(market: dict, breadth: dict) -> dict[str, str] | None:
+    """A deterministic, plain-English 'what this means' verdict from the tape —
+    rendered above the AI brief so there's an instant read even before Haiku
+    writes. Keys off index move vs participation, not jargon."""
+    spy, ew = market.get("spy_r1d"), market.get("universe_ew_r1d")
+    idx = spy if spy is not None else ew
+    if idx is None:
+        return None
+    # Gate on the ACTUAL majority (advancer %), not a coarse threshold, so the
+    # verdict text ("most stocks rose"/"are down") can never contradict reality.
+    adv, dec = breadth.get("advancers", 0), breadth.get("decliners", 0)
+    adv_pct = adv / (adv + dec) if (adv + dec) else None
+    if idx > 0.002 and adv_pct is not None and adv_pct >= 0.5:
+        return {"tone": "good", "state": "Broad rally",
+                "text": "Index up and most stocks rose — broad, healthy participation."}
+    if idx > 0.002:
+        return {"tone": "warn", "state": "Narrow tape",
+                "text": "Index up but most stocks didn't follow — a few names carry it."}
+    if idx < -0.002 and adv_pct is not None and adv_pct > 0.5:
+        return {"tone": "neutral", "state": "Contained selling",
+                "text": "Index down but most stocks rose — selling looks concentrated, not broad."}
+    if idx < -0.002:
+        return {"tone": "bad", "state": "Risk-off",
+                "text": "Selling is broad — most stocks are down, not just the index."}
+    return {"tone": "neutral", "state": "Quiet tape",
+            "text": "A muted session — no strong directional signal in breadth."}
+
+
 def _build_brief(payload: dict[str, Any], max_date: date) -> list[str]:
     """Deterministic morning-brief sentences from the computed numbers.
     Not AI-generated by design: free, instant, and never wrong about its data.
@@ -420,6 +520,42 @@ def _compute() -> dict[str, Any]:
                 """
             )
             spy_rows = [float(r[0]) for r in cur.fetchall()]
+
+            # coverage — how many active names actually priced on the latest
+            # session vs the prior session vs the whole active universe. Makes
+            # the shrinking-ingest problem an explicit stat instead of a hidden
+            # moving denominator behind breadth/avg-stock.
+            cur.execute("SELECT count(*) FROM securities WHERE is_active")
+            active_total = int(cur.fetchone()[0])
+            cur.execute(
+                """SELECT count(*) FROM prices_daily p
+                   JOIN securities s ON s.security_id = p.security_id AND s.is_active
+                   WHERE p.date = %s""", (max_date,))
+            priced_today = int(cur.fetchone()[0])
+            cur.execute("SELECT max(date) FROM prices_daily WHERE date < %s", (max_date,))
+            prev_session = cur.fetchone()[0]
+            priced_prev = 0
+            if prev_session is not None:
+                cur.execute(
+                    """SELECT count(*) FROM prices_daily p
+                       JOIN securities s ON s.security_id = p.security_id AND s.is_active
+                       WHERE p.date = %s""", (prev_session,))
+                priced_prev = int(cur.fetchone()[0])
+
+            # latest factor scores — for the factor-of-the-day read (Market tab
+            # never read factor_scores before; this ties it to the screener/lab).
+            cur.execute(
+                "SELECT max(score_date) FROM factor_scores WHERE config_version = %s",
+                (ACTIVE_CONFIG_VERSION,))
+            fscore_date = cur.fetchone()[0]
+            fscores: dict[int, dict[str, float | None]] = {}
+            if fscore_date is not None:
+                cur.execute(
+                    """SELECT security_id, growth_pctl, value_pctl, quality_pctl, momentum_pctl
+                       FROM factor_scores WHERE config_version = %s AND score_date = %s""",
+                    (ACTIVE_CONFIG_VERSION, fscore_date))
+                for sid, g, v, q, mom in cur.fetchall():
+                    fscores[int(sid)] = {"growth": g, "value": v, "quality": q, "momentum": mom}
     finally:
         conn.close()
 
@@ -461,6 +597,7 @@ def _compute() -> dict[str, Any]:
     adv = sum(1 for _, r in r1ds if r > 0)
     dec = sum(1 for _, r in r1ds if r < 0)
     above50 = above200 = with50 = with200 = hi = lo = 0
+    dd_n = near_high = correction = bear = 0  # distance-from-52w-high buckets
     for sid in op_sids:
         t = tech.get(sid)
         if not t or sid not in lp:
@@ -474,12 +611,26 @@ def _compute() -> dict[str, Any]:
             above200 += last >= t["ma200"]
         hi += last >= t["hi52"] * 0.999
         lo += last <= t["lo52"] * 1.001
+        if t["hi52"]:
+            dd = last / t["hi52"] - 1.0
+            dd_n += 1
+            if dd >= -0.05:
+                near_high += 1
+            elif dd <= -0.20:
+                bear += 1
+            elif dd <= -0.10:
+                correction += 1
     breadth = {
         "advancers": adv, "decliners": dec, "unchanged": len(r1ds) - adv - dec,
         "n": len(r1ds),
         "pct_above_ma50": round(above50 / with50, 4) if with50 else None,
         "pct_above_ma200": round(above200 / with200, 4) if with200 else None,
         "new_highs": hi, "new_lows": lo,
+        "drawdown": ({
+            "near_high_pct": round(near_high / dd_n, 4),
+            "correction_pct": round(correction / dd_n, 4),
+            "bear_pct": round(bear / dd_n, 4),
+        } if dd_n else None),
     }
 
     # movers (>=$250M cap, last session)
@@ -510,6 +661,49 @@ def _compute() -> dict[str, Any]:
         m = meta.get(i["security_id"], {})
         i.update({k: m.get(k) for k in ("ticker", "name", "sector", "market_cap")})
 
+    # ── derived "v2" signals ────────────────────────────────────────────────
+    # Participation: index direction vs % of stocks up — the fragile-rally tell.
+    adv_pct = adv / (adv + dec) if (adv + dec) else None
+    idx = market["spy_r1d"] if market["spy_r1d"] is not None else market["universe_ew_r1d"]
+    if adv_pct is not None and idx is not None:
+        if idx > 0.003 and adv_pct < 0.45:
+            div = {"state": "narrow",
+                   "detail": f"Index up, but only {adv_pct:.0%} of stocks rose."}
+        elif idx < -0.003 and adv_pct > 0.55:
+            div = {"state": "resilient",
+                   "detail": f"Index down, but {adv_pct:.0%} of stocks rose."}
+        else:
+            div = {"state": "aligned", "detail": "Index and the typical stock moved together."}
+        breadth["divergence"] = div
+
+    # Sector rotation: cyclical vs defensive leadership today.
+    cyc = [s["r1d"] for s in sectors if s["sector"] in _CYCLICAL and s["r1d"] is not None]
+    dfn = [s["r1d"] for s in sectors if s["sector"] in _DEFENSIVE and s["r1d"] is not None]
+    rotation = None
+    if cyc and dfn:
+        cyc_m, def_m = _mean(cyc), _mean(dfn)
+        spread = cyc_m - def_m
+        rotation = {
+            "state": "risk_on" if spread > 0.002 else "defensive" if spread < -0.002 else "mixed",
+            "cyc_r1d": round(cyc_m, 5), "def_r1d": round(def_m, 5), "spread": round(spread, 5),
+        }
+
+    # Factor of the day: equal-weight 1d return of each factor's top quintile
+    # (pctl>=80) minus its bottom quintile (pctl<=20), ranked by the spread.
+    scored = [(rets[s]["r1d"], fs) for s, fs in fscores.items()
+              if s in rets and rets[s]["r1d"] is not None]
+    factor_day = []
+    for fac in ("growth", "value", "quality", "momentum"):
+        tops = [r for r, fs in scored if fs.get(fac) is not None and fs[fac] >= 80]
+        bots = [r for r, fs in scored if fs.get(fac) is not None and fs[fac] <= 20]
+        if len(tops) >= 10 and len(bots) >= 10:
+            tm, bm = _mean(tops), _mean(bots)
+            factor_day.append({"factor": fac, "top_r1d": round(tm, 5),
+                               "bottom_r1d": round(bm, 5), "spread": round(tm - bm, 5)})
+    factor_day.sort(key=lambda x: -x["spread"])
+
+    coverage = {"priced": priced_today, "priced_prev": priced_prev, "active": active_total}
+
     payload: dict[str, Any] = {
         "as_of": str(max_date),
         "market": market,
@@ -519,6 +713,10 @@ def _compute() -> dict[str, Any]:
         "macro": macro,
         "filings": filings,
         "insider_buys": insiders,
+        "coverage": coverage,
+        "rotation": rotation,
+        "factor_day": factor_day,
+        "read": _market_read(market, breadth),
     }
     payload["brief"] = _build_brief(payload, max_date)
     return payload
@@ -560,4 +758,5 @@ def get_overview(*, force: bool = False) -> dict[str, Any]:
         warm()
     with _lock:
         age = round(now - _cache["t"], 1)
-    return {**payload, "headlines": get_headlines(), "cache_age_seconds": age}
+    return {**payload, "headlines": get_headlines(), "cache_age_seconds": age,
+            "freshness": _freshness(payload["as_of"])}
