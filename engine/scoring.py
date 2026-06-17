@@ -392,6 +392,12 @@ def run(
     )
 
     conn = get_connection()
+    # Pure read path (dry run, no job logging) — e.g. the backtester replaying
+    # 48 months. Run it in autocommit so no transaction is ever held open across
+    # the heavy per-month Python work; otherwise Supabase's pooler kills the
+    # connection on its idle-in-transaction timeout mid-loop.
+    if not write and not log_job:
+        conn.autocommit = True
     with conn.cursor() as cur:
         weights = _load_weights(cur, config_version)
         if as_of is None:
