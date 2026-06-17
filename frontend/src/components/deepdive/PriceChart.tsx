@@ -623,28 +623,38 @@ export function PriceChart({
         </div>
       )}
 
-      {/* Wyckoff context read */}
-      {mode === 'wyckoff' && wyckoff.context && (
-        <div className="mt-2 flex flex-wrap items-baseline gap-2 text-[0.74rem]">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.72rem] font-bold uppercase tracking-wide"
-            style={
-              wyckoff.context.kind === 'accumulation'
-                ? { background: '#dcfce7', color: '#15803d' }
-                : wyckoff.context.kind === 'distribution'
-                  ? { background: '#fee2e2', color: '#b91c1c' }
-                  : { background: '#f1f5f9', color: '#475569' }
-            }
-          >
-            {wyckoff.context.kind === 'accumulation'
-              ? 'Accumulation'
-              : wyckoff.context.kind === 'distribution'
-                ? 'Distribution'
-                : 'Range — unclear'}
-            {wyckoff.context.kind !== 'undetermined' &&
-              ` · ${Math.round(wyckoff.context.confidence * 100)}%`}
-          </span>
-          <span className="text-[#475569]">{wyckoff.summary}</span>
+      {/* Wyckoff context read — renders in ALL Wyckoff cases (context is null when
+          there's no valid range, which is the common trending-stock case). */}
+      {mode === 'wyckoff' && (
+        <div className="mt-2 text-[0.74rem]">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.72rem] font-bold uppercase tracking-wide"
+              style={
+                wyckoff.context?.kind === 'accumulation'
+                  ? { background: '#dcfce7', color: '#15803d' }
+                  : wyckoff.context?.kind === 'distribution'
+                    ? { background: '#fee2e2', color: '#b91c1c' }
+                    : { background: '#fef3c7', color: '#92400e' }
+              }
+            >
+              {wyckoff.context?.kind === 'accumulation'
+                ? `Accumulation · ${Math.round(wyckoff.context.confidence * 100)}%`
+                : wyckoff.context?.kind === 'distribution'
+                  ? `Distribution · ${Math.round(wyckoff.context.confidence * 100)}%`
+                  : 'No trading range'}
+            </span>
+            <span className="text-[#475569]">{wyckoff.summary}</span>
+          </div>
+          {(!wyckoff.context || wyckoff.context.kind === 'undetermined') && (
+            <p className="mt-1.5 rounded-md border border-[#fde68a] bg-[#fffbeb] px-2.5 py-1.5 leading-snug text-[#92400e]">
+              <span className="font-semibold">Why the schematic is empty:</span> this stock is trending, not
+              basing, so there's no sideways range to anchor Wyckoff events to. The labels (spring, phases,
+              target) are deliberately suppressed — drawing them without a range is how false signals creep in.
+              The candles and the climax-volume / wide-spread shading are still objective. Try a shorter window
+              (3M/6M) to catch a consolidation, or use the Price view.
+            </p>
+          )}
         </div>
       )}
 
