@@ -116,8 +116,12 @@ def _bucket_returns(
 
 
 def _curve_stats(period_returns: list[float]) -> dict:
-    """CAGR, annualized Sharpe, max drawdown from a list of per-period returns."""
-    r = np.array([x for x in period_returns if x is not None], dtype=float)
+    """CAGR, annualized Sharpe, max drawdown from a list of per-period returns.
+
+    None periods are treated as flat (0.0), mirroring _cum_curve, so the reported
+    stats and the charted growth-of-$1 curve cover the SAME horizon — dropping
+    Nones instead would silently shorten `years` and flatter the CAGR."""
+    r = np.array([(x if x is not None else 0.0) for x in period_returns], dtype=float)
     if len(r) == 0:
         return {"cagr": None, "sharpe": None, "max_drawdown": None, "total_return": None}
     curve = np.cumprod(1.0 + r)
@@ -373,7 +377,11 @@ def _benchmark_curves(conn, rebal: list[date], px: dict[date, dict[int, float]],
         )
         rep = scores.get(t)
         if rep is not None:
-            fwd = _fwd_returns(rep.index, p0, p1)  # same guards as the buckets
+            # Same eligible set as the composite buckets (ranked names only), so the
+            # benchmark is comparable to the bucket curves rather than a wider set
+            # of partially-scored names when complete_only is off.
+            base = rep["composite"].dropna().index if "composite" in rep.columns else rep.index
+            fwd = _fwd_returns(base, p0, p1)
             ew_rets.append(float(fwd.mean()) if len(fwd) else None)
         else:
             ew_rets.append(None)

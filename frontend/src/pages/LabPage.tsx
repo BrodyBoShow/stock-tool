@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -7,6 +7,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -25,6 +26,7 @@ import type {
   BacktestCI,
   BacktestICBlock,
   BacktestKeyResult,
+  BacktestRandomPortfolio,
   BacktestRunResponse,
 } from '@/types/api'
 
@@ -40,48 +42,293 @@ const KEY_LABELS: Record<string, string> = {
 const fmtPct = (x: number | null | undefined, signed = true) =>
   signed ? fmtSignedPct(x) : fmtPctBase(x)
 const fmtSharpe = fmtRatio
+const ciPct = (ci?: BacktestCI | null) => (ci ? `${fmtPct(ci.lo)} … ${fmtPct(ci.hi)}` : '—')
+const ciSharpe = (ci?: BacktestCI | null) => (ci ? `${fmtSharpe(ci.lo)} … ${fmtSharpe(ci.hi)}` : '—')
 
-const ciPct = (ci?: BacktestCI | null) =>
-  ci ? `${fmtPct(ci.lo)} … ${fmtPct(ci.hi)}` : '—'
-const ciSharpe = (ci?: BacktestCI | null) =>
-  ci ? `${fmtSharpe(ci.lo)} … ${fmtSharpe(ci.hi)}` : '—'
+// ── traffic-light tones ───────────────────────────────────────────────────────
+type Tone = 'good' | 'warn' | 'bad' | 'neutral'
+// Darkened to clear WCAG AA (4.5:1) for the small table text + CI captions, not
+// just the large bold KPI numbers. good #047857=5.5:1, warn #b45309=5.0:1,
+// bad #b91c1c=5.9:1 on white (and >=4.5:1 on the selected-row tint).
+const TONE_HEX: Record<Tone, string> = {
+  good: '#047857',
+  warn: '#b45309',
+  bad: '#b91c1c',
+  neutral: '#0f172a',
+}
+// Pass/fail thresholds, one place so the KPIs, table and verdict all agree.
+const icTone = (t?: number | null): Tone =>
+  t == null ? 'neutral' : t >= 3 ? 'good' : t >= 2 ? 'warn' : 'bad'
+const icMeanTone = (m?: number | null): Tone =>
+  m == null ? 'neutral' : m >= 0.03 ? 'good' : m > 0 ? 'warn' : 'bad'
+const lsTone = (s?: number | null): Tone =>
+  s == null ? 'neutral' : s > 0.3 ? 'good' : s > 0 ? 'warn' : 'bad'
+const sharpeTone = (s?: number | null): Tone =>
+  s == null ? 'neutral' : s >= 1 ? 'good' : s > 0 ? 'neutral' : 'bad'
+const vsSpyTone = (cagr?: number | null, spy?: number | null): Tone =>
+  cagr == null || spy == null ? 'neutral' : cagr >= spy ? 'good' : 'warn'
+const pctileTone = (p?: number | null): Tone =>
+  p == null ? 'neutral' : p >= 0.95 ? 'good' : p >= 0.8 ? 'warn' : 'bad'
 
-function SectionCard({
-  title,
-  hint,
-  children,
-}: {
+// ── small primitives ──────────────────────────────────────────────────────────
+
+/** Accessible info tooltip — hover OR keyboard-focus reveals the definition.
+ * The button carries a short name and points at the description via
+ * aria-describedby (not a giant aria-label), so screen readers announce
+ * "More information" then read the definition as the description. */
+function InfoTip({ text }: { text: string }) {
+  const id = useId()
+  return (
+    <span className="group relative ml-1 inline-flex align-middle">
+      <button
+        type="button"
+        aria-label="More information"
+        aria-describedby={id}
+        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#cbd5e1] text-[0.55rem] font-bold leading-none text-[#94a3b8] transition-colors hover:border-[#94a3b8] hover:text-[#475569] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5]/40"
+      >
+        <span aria-hidden="true">?</span>
+      </button>
+      <span
+        id={id}
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-56 -translate-x-1/2 rounded-lg bg-[#0f172a] px-2.5 py-1.5 text-left text-[0.7rem] font-normal normal-case leading-snug tracking-normal text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  )
+}
+
+/** Dense KPI tile (~35% shorter than before) — traffic-light value + tooltip. */
+function Stat({ label, value, sub, tone = 'neutral', tip }: {
+  label: string
+  value: string
+  sub?: string
+  tone?: Tone
+  tip?: string
+}) {
+  return (
+    <div className="rounded-card border border-[#e5e7eb] bg-white px-3 py-2.5 shadow-card">
+      <div className="flex items-center text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">
+        <span>{label}</span>
+        {tip && <InfoTip text={tip} />}
+      </div>
+      <div
+        className="mt-0.5 text-[1.15rem] font-extrabold leading-tight tabular-nums"
+        style={{ color: TONE_HEX[tone] }}
+      >
+        {value}
+      </div>
+      {sub && <div className="mt-0.5 text-[0.64rem] leading-tight text-[#9ca3af]">{sub}</div>}
+    </div>
+  )
+}
+
+function SectionCard({ title, hint, tip, right, children }: {
   title: string
   hint?: string
+  tip?: string
+  right?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-[#111827]">{title}</div>
-      {hint && <p className="mt-0.5 text-[0.78rem] text-[#9ca3af]">{hint}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center text-base font-bold text-[#111827]">
+            <span>{title}</span>
+            {tip && <InfoTip text={tip} />}
+          </div>
+          {hint && <p className="mt-0.5 text-[0.78rem] text-[#9ca3af]">{hint}</p>}
+        </div>
+        {right}
+      </div>
       <div className="mt-4">{children}</div>
     </section>
   )
 }
 
-/** Equity curves: selected factor's top quintile (+ optional long-short) vs
- * S&P 500 (SPY) vs universe EW. */
-function EquityChart({
-  data,
-  sel,
-  factorLabel,
-  showLongShort,
-}: {
+/** Segmented toggle (e.g. Linear / Log). */
+function Segmented<T extends string>({ options, value, onChange }: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-[#e5e7eb] bg-[#f8fafc] p-0.5">
+      {options.map((o) => {
+        const on = o.value === value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={on}
+            className="rounded-md px-2.5 py-1 text-[0.72rem] font-semibold transition-colors"
+            style={on ? { background: '#ffffff', color: '#4f46e5', boxShadow: '0 1px 2px rgba(15,23,42,0.08)' } : { color: '#64748b' }}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── verdict synthesis ─────────────────────────────────────────────────────────
+type Grade = 'strong' | 'moderate' | 'weak' | 'inverted' | 'unknown'
+const GRADE_STYLE: Record<Grade, { bg: string; border: string; chip: string; label: string }> = {
+  strong: { bg: '#f0fdf4', border: '#86efac', chip: '#16a34a', label: 'STRONG SIGNAL' },
+  moderate: { bg: '#fffbeb', border: '#fde68a', chip: '#d97706', label: 'MODERATE SIGNAL' },
+  weak: { bg: '#fef2f2', border: '#fecaca', chip: '#dc2626', label: 'WEAK / NO EDGE' },
+  inverted: { bg: '#fef2f2', border: '#fecaca', chip: '#dc2626', label: 'INVERTED' },
+  unknown: { bg: '#f8fafc', border: '#e2e8f0', chip: '#64748b', label: 'INSUFFICIENT DATA' },
+}
+
+interface VerdictPoint { ok: boolean | null; text: string }
+interface Verdict { grade: Grade; headline: string; action: string; points: VerdictPoint[] }
+
+function buildVerdict(
+  sel: BacktestKeyResult,
+  label: string,
+  rp: BacktestRandomPortfolio | null,
+): Verdict {
+  const t = sel.ic?.t_stat ?? null
+  const ls = sel.long_short.sharpe ?? null
+  const topLo = sel.bootstrap?.top?.cagr?.lo ?? null
+  const nums = ['1', '2', '3', '4', '5']
+    .map((b) => sel.bucket_cagrs[b])
+    .filter((x): x is number => x != null)
+  let upSteps = 0
+  for (let i = 1; i < nums.length; i++) if (nums[i] >= nums[i - 1]) upSteps++
+  const monotone =
+    nums.length >= 2 ? nums[nums.length - 1] > nums[0] && upSteps >= nums.length - 2 : null
+
+  let grade: Grade
+  if (t == null) grade = 'unknown'
+  else if (t <= -2) grade = 'inverted'
+  else if (t >= 3) grade = 'strong'
+  else if (t >= 2) grade = 'moderate'
+  else grade = 'weak'
+
+  const points: VerdictPoint[] = [
+    {
+      ok: t == null ? null : t >= 2,
+      text:
+        t == null
+          ? 'Not enough months to measure rank predictiveness.'
+          : `Sorts next-month returns: IC t-stat ${t.toFixed(1)} over ${sel.ic?.n ?? '—'} months` +
+            `${sel.ic ? ` (${Math.round(sel.ic.pct_positive * 100)}% of months positive)` : ''}.`,
+    },
+    {
+      ok: monotone,
+      text:
+        monotone == null
+          ? 'Quintile spread unavailable.'
+          : monotone
+            ? 'Returns climb steadily from the worst to the best quintile.'
+            : 'Returns do not climb cleanly across quintiles.',
+    },
+    {
+      ok: topLo == null ? null : topLo > 0,
+      text:
+        topLo == null
+          ? 'Top-quintile bootstrap unavailable.'
+          : `Top-quintile return holds up under bootstrap (90% CI floor ${fmtPct(topLo)}).`,
+    },
+    {
+      ok: ls == null ? null : ls > 0,
+      text:
+        ls == null
+          ? 'Long-short spread unavailable.'
+          : `Long-short (top − bottom) Sharpe ${fmtSharpe(ls)} — ${ls > 0.3 ? 'a genuinely tradeable spread' : ls > 0 ? 'only weakly positive' : 'negative, so the spread is not tradeable'}.`,
+    },
+  ]
+  // Always present (stable list length) — degrades to a neutral note for the
+  // single-factor rankings, where the random-portfolio null isn't computed.
+  points.push(
+    rp
+      ? {
+          ok: rp.percentile >= 0.8,
+          text: `Composite top quintile beats ${Math.round(rp.percentile * 100)}% of random same-size baskets.`,
+        }
+      : { ok: null, text: 'Random-portfolio test is computed for the composite ranking only.' },
+  )
+
+  const headline = {
+    strong: `${label}: a real, statistically strong signal.`,
+    moderate: `${label}: a real but moderate signal.`,
+    weak: `${label}: no reliable edge in this window.`,
+    inverted: `${label}: the ranking points the wrong way here.`,
+    unknown: `${label}: not enough data to judge.`,
+  }[grade]
+
+  const action =
+    grade === 'inverted'
+      ? 'Investigate before using — over this window the bottom quintile outran the top.'
+      : grade === 'weak'
+        ? 'Don’t lean on this factor on its own; it adds little ranking power here.'
+        : grade === 'unknown'
+          ? 'Re-run once more history is available.'
+          : ls != null && ls > 0.3
+            ? 'Usable both as a long-only tilt and as a long-short spread.'
+            : 'Use it to tilt a long-only screen toward top-ranked names — the long-short leg isn’t worth shorting on this data.'
+
+  return { grade, headline, action, points }
+}
+
+function VerdictBanner({ v }: { v: Verdict }) {
+  const s = GRADE_STYLE[v.grade]
+  return (
+    <section
+      className="rounded-card border p-5 shadow-card"
+      style={{ background: s.bg, borderColor: s.border }}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span
+          className="rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-white"
+          style={{ background: s.chip }}
+        >
+          {s.label}
+        </span>
+        <h2 className="text-[1.05rem] font-extrabold text-[#0f172a]">{v.headline}</h2>
+      </div>
+      <ul className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+        {v.points.map((p, i) => (
+          <li key={i} className="flex items-start gap-2 text-[0.82rem] text-[#334155]">
+            <span
+              aria-hidden
+              className="mt-[1px] font-bold"
+              style={{ color: p.ok == null ? '#64748b' : p.ok ? TONE_HEX.good : TONE_HEX.bad }}
+            >
+              {p.ok == null ? '–' : p.ok ? '✓' : '✕'}
+            </span>
+            <span>{p.text}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 border-t border-black/5 pt-3 text-[0.84rem] font-semibold text-[#0f172a]">
+        <span className="text-[#64748b]">What to do: </span>
+        {v.action}
+      </p>
+    </section>
+  )
+}
+
+// ── charts ────────────────────────────────────────────────────────────────────
+
+/** Equity curves: selected factor's top quintile (+ optional long-short) vs SPY
+ * vs universe EW. Linear or log Y so a flat-looking line isn't hiding the action. */
+function EquityChart({ data, sel, factorLabel, showLongShort, logScale }: {
   data: BacktestRunResponse
   sel: BacktestKeyResult
   factorLabel: string
   showLongShort: boolean
+  logScale: boolean
 }) {
   const points = useMemo(() => {
     const bench = data.benchmarks
     if (!sel || !bench) return []
-    // Benchmark dates are the full grid; the strategy curves align to their own
-    // dates — index both by date so gaps never misalign.
     const top = new Map(sel.curves.dates.map((d, i) => [d, sel.curves.top[i]]))
     const ls = new Map(sel.curves.dates.map((d, i) => [d, sel.curves.long_short[i]]))
     return bench.dates.map((d, i) => ({
@@ -100,8 +347,10 @@ function EquityChart({
         <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
         <YAxis
           tick={{ fontSize: 11, fill: '#94a3b8' }}
-          tickFormatter={(v: number) => `${v.toFixed(1)}x`}
-          domain={['auto', 'auto']}
+          tickFormatter={(v: number) => `${v.toFixed(logScale ? 0 : 1)}x`}
+          scale={logScale ? 'log' : 'linear'}
+          domain={logScale ? [0.5, 'auto'] : ['auto', 'auto']}
+          allowDataOverflow={false}
           width={44}
         />
         <Tooltip
@@ -111,7 +360,10 @@ function EquityChart({
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Line type="monotone" dataKey="strategy" name={`Top quintile (${factorLabel})`}
           stroke="#4f46e5" strokeWidth={2.2} dot={false} connectNulls />
-        {showLongShort && (
+        {/* Long-short growth can cross zero; a log axis can't plot <=0 (it would
+            silently drop those points and bridge the gap), so it shows on the
+            linear axis only. */}
+        {showLongShort && !logScale && (
           <Line type="monotone" dataKey="longshort" name="Long-short (top − bottom)"
             stroke="#16a34a" strokeWidth={1.8} strokeDasharray="5 3" dot={false} connectNulls />
         )}
@@ -121,27 +373,6 @@ function EquityChart({
           stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
       </LineChart>
     </ResponsiveContainer>
-  )
-}
-
-/** Compact KPI tile for the selected factor's headline stats. */
-function Kpi({ label, value, sub, tone }: {
-  label: string
-  value: string
-  sub?: string
-  tone?: 'good' | 'bad' | 'neutral'
-}) {
-  const color = tone === 'good' ? '#059669' : tone === 'bad' ? '#dc2626' : '#0f172a'
-  return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white p-3.5 shadow-card">
-      <div className="text-[0.62rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
-        {label}
-      </div>
-      <div className="mt-1 text-[1.35rem] font-extrabold tabular-nums" style={{ color }}>
-        {value}
-      </div>
-      {sub && <div className="mt-0.5 text-[0.68rem] text-[#9ca3af]">{sub}</div>}
-    </div>
   )
 }
 
@@ -161,11 +392,7 @@ function DrawdownChart({ comp }: { comp: BacktestKeyResult }) {
       <AreaChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#f1f5f9" vertical={false} />
         <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
-        <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
-          tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-          width={44}
-        />
+        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} width={44} />
         <Tooltip
           formatter={(v: number) => [`${v.toFixed(1)}%`, 'Drawdown']}
           contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
@@ -176,12 +403,13 @@ function DrawdownChart({ comp }: { comp: BacktestKeyResult }) {
   )
 }
 
-/** CAGR by quintile for one ranking key — the spread, visually. */
+/** CAGR by quintile — the spread, visually. Top bucket highlighted. */
 function QuintileChart({ res }: { res: BacktestKeyResult }) {
   const points = Object.entries(res.bucket_cagrs)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([b, cagr]) => ({
       bucket: `Q${b}${Number(b) === 5 ? ' (top)' : Number(b) === 1 ? ' (bottom)' : ''}`,
+      top: Number(b) === 5,
       cagr: cagr == null ? null : cagr * 100,
     }))
   return (
@@ -189,49 +417,59 @@ function QuintileChart({ res }: { res: BacktestKeyResult }) {
       <BarChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#f1f5f9" vertical={false} />
         <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-        <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
-          tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-          width={44}
-        />
+        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} width={44} />
         <Tooltip
           formatter={(v: number) => [`${v?.toFixed(1)}% CAGR`, '']}
           contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
-        <Bar dataKey="cagr" fill="#4f46e5" radius={[5, 5, 0, 0]} maxBarSize={56} />
+        <ReferenceLine y={0} stroke="#cbd5e1" />
+        <Bar dataKey="cagr" radius={[5, 5, 0, 0]} maxBarSize={56}>
+          {points.map((p, i) => (
+            <Cell key={i} fill={p.top ? '#4f46e5' : '#c7d2fe'} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-/** Information Coefficient (per-period rank correlation of score vs forward
- * return) over time. A persistently positive bar series = a working signal. */
+/** Information Coefficient over time — month bars + a trailing-6mo average line
+ * so signal decay (a falling line) is visible at a glance. */
 function ICChart({ ic }: { ic: BacktestICBlock }) {
-  const points = ic.series.map((s) => ({
-    date: s.date.slice(0, 7),
-    ic: s.ic == null ? null : Number(s.ic.toFixed(4)),
-  }))
+  const points = useMemo(() => {
+    const win = 6
+    const raw = ic.series
+    return raw.map((s, i) => {
+      const slice = raw
+        .slice(Math.max(0, i - win + 1), i + 1)
+        .map((x) => x.ic)
+        .filter((v): v is number => v != null)
+      const trail = slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null
+      return {
+        date: s.date.slice(0, 7),
+        ic: s.ic == null ? null : Number(s.ic.toFixed(4)),
+        trail: trail == null ? null : Number(trail.toFixed(4)),
+      }
+    })
+  }, [ic])
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+    <ResponsiveContainer width="100%" height={210}>
+      <ComposedChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#f1f5f9" vertical={false} />
         <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
-        <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
-          width={44}
-          tickFormatter={(v: number) => v.toFixed(2)}
-        />
+        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} width={44} tickFormatter={(v: number) => v.toFixed(2)} />
         <Tooltip
-          formatter={(v: number) => [v?.toFixed(3), 'rank IC']}
+          formatter={(v: number, n: string) => [v?.toFixed(3), n === 'trail' ? '6-mo avg IC' : 'rank IC']}
           contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
         <ReferenceLine y={0} stroke="#cbd5e1" />
         <Bar dataKey="ic" radius={[2, 2, 0, 0]} maxBarSize={14}>
           {points.map((p, i) => (
-            <Cell key={i} fill={(p.ic ?? 0) >= 0 ? '#16a34a' : '#dc2626'} />
+            <Cell key={i} fill={(p.ic ?? 0) >= 0 ? '#86efac' : '#fecaca'} />
           ))}
         </Bar>
-      </BarChart>
+        <Line type="monotone" dataKey="trail" name="trail" stroke="#4f46e5" strokeWidth={2} dot={false} connectNulls />
+      </ComposedChart>
     </ResponsiveContainer>
   )
 }
@@ -244,11 +482,13 @@ export function LabPage() {
   })
   const [factorKey, setFactorKey] = useState('composite')
   const [showLongShort, setShowLongShort] = useState(false)
+  const [logScale, setLogScale] = useState(false)
 
   if (isPending) {
     return (
       <div className="space-y-5">
         <Skeleton className="h-[120px] w-full rounded-card" />
+        <Skeleton className="h-[96px] w-full rounded-card" />
         <Skeleton className="h-[380px] w-full rounded-card" />
       </div>
     )
@@ -263,10 +503,7 @@ export function LabPage() {
           No backtest stored yet. The monthly workflow
           (<code className="rounded bg-[#f1f5f9] px-1">backtest.yml</code>) computes and stores
           one automatically on the 2nd of each month — or run it once now with{' '}
-          <code className="rounded bg-[#f1f5f9] px-1">
-            python scripts/run_backtest.py --store
-          </code>
-          .
+          <code className="rounded bg-[#f1f5f9] px-1">python scripts/run_backtest.py --store</code>.
         </p>
       </div>
     )
@@ -278,6 +515,9 @@ export function LabPage() {
   const sel = results[factorKey] ?? comp
   const selLabel = KEY_LABELS[factorKey] ?? factorKey
   const selTop = sel.buckets['5'] ?? sel.buckets[String(Object.keys(sel.buckets).length)]
+  const spyCagr = data.benchmarks?.spy_stats.cagr ?? null
+  const rp = data.significance?.random_portfolio ?? null
+  const verdict = buildVerdict(sel, selLabel, factorKey === 'composite' ? rp : null)
 
   const FactorPills = (
     <div className="flex flex-wrap gap-[5px]">
@@ -288,6 +528,7 @@ export function LabPage() {
             key={k}
             type="button"
             onClick={() => setFactorKey(k)}
+            aria-pressed={selected}
             className="rounded-full px-[11px] py-[3px] text-[0.72rem] font-semibold transition-shadow"
             style={
               selected
@@ -317,102 +558,115 @@ export function LabPage() {
             Does the model actually work?
           </h1>
           <p className="mt-2 text-[0.9rem] text-[#64748b]">
-            Point-in-time backtest of <code>{data.config_version}</code> ·{' '}
-            {data.start_date} → {data.end_date} · {data.params?.rebalances} monthly rebalances ·
-            quintiles, equal-weight, {data.params?.cost_bps}bps/side
+            Point-in-time backtest of <code>{data.config_version}</code> · {data.start_date} →{' '}
+            {data.end_date} · {data.params?.rebalances} monthly rebalances · quintiles, equal-weight,{' '}
+            {data.params?.cost_bps}bps/side · sub-$1 names dropped, returns winsorized
           </p>
           {data.generated_at && (
             <p className="mt-1 text-[0.74rem] text-[#94a3b8]">
-              Computed {fmtDate(data.generated_at.slice(0, 10))} · served from store (no
-              recompute on load) · refreshes monthly
+              Computed {fmtDate(data.generated_at.slice(0, 10))} · served from store · refreshes monthly
             </p>
           )}
         </div>
       </header>
 
-      {/* honesty banner */}
-      <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-[0.82rem] text-amber-800">
-        <strong>Survivor-only universe:</strong> delisted/bankrupt names are absent, so absolute
-        returns are optimistic. Trust the <strong>spread</strong> (top quintile beats bottom,
-        monotone buckets, positive long-short Sharpe) — not the headline CAGR. This validates the
-        ranking methodology; it is not a tradeable track record.
+      {/* factor selector — drives the verdict and every chart below */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+          Ranking
+        </span>
+        {FactorPills}
       </div>
 
-      {/* factor selector — drives every chart below */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
-            Ranking
-          </span>
-          {FactorPills}
-        </div>
-      </div>
+      {/* the decision: a plain-language verdict for the selected ranking */}
+      <VerdictBanner v={verdict} />
 
-      {/* KPI row — headline stats for the selected ranking */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi
-          label={`${selLabel} top-Q CAGR`}
+      {/* dense KPI strip — headline + significance at a glance, traffic-lit */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat
+          label="Top-Q CAGR"
           value={fmtPct(selTop?.cagr)}
-          sub={`vs SPY ${fmtPct(data.benchmarks?.spy_stats.cagr)}`}
-          tone={
-            selTop?.cagr != null && data.benchmarks?.spy_stats.cagr != null
-              ? selTop.cagr >= data.benchmarks.spy_stats.cagr
-                ? 'good'
-                : 'bad'
-              : 'neutral'
-          }
+          sub={`vs SPY ${fmtPct(spyCagr)}`}
+          tone={vsSpyTone(selTop?.cagr, spyCagr)}
+          tip="Compound annual growth of the top-ranked quintile, rebalanced monthly, net of the cost estimate. Survivor-biased — compare to SPY, don't read the level literally."
         />
-        <Kpi label="Top-Q Sharpe" value={fmtSharpe(selTop?.sharpe)} sub="risk-adjusted" />
-        <Kpi
-          label="Win rate (top-Q)"
-          value={fmtPct(sel.win_rate_top, false)}
-          sub="% months positive"
+        <Stat
+          label="Top-Q Sharpe"
+          value={fmtSharpe(selTop?.sharpe)}
+          sub="risk-adjusted"
+          tone={sharpeTone(selTop?.sharpe)}
+          tip="Annualized return ÷ volatility for the top quintile. Higher = smoother ride per unit of return."
         />
-        <Kpi
+        <Stat
+          label="Mean IC"
+          value={sel.ic ? sel.ic.mean.toFixed(3) : '—'}
+          sub={sel.ic ? `${(sel.ic.pct_positive * 100).toFixed(0)}% months positive` : 'n/a'}
+          tone={icMeanTone(sel.ic?.mean)}
+          tip="Information Coefficient: the average month's rank correlation between score and next-month return. ~0.03+ is a useful signal; 0 = no ranking power."
+        />
+        <Stat
+          label="IC t-stat"
+          value={sel.ic?.t_stat != null ? sel.ic.t_stat.toFixed(2) : '—'}
+          sub="|t| ≥ 2 ≈ significant"
+          tone={icTone(sel.ic?.t_stat)}
+          tip="How many standard errors the mean IC sits above zero. |t| ≥ 2 means the ranking's predictiveness is unlikely to be luck. The stablest 'real vs noise' read."
+        />
+        <Stat
           label="Long-short Sharpe"
           value={fmtSharpe(sel.long_short.sharpe)}
           sub="top − bottom spread"
-          tone={
-            sel.long_short.sharpe != null
-              ? sel.long_short.sharpe > 0.3
-                ? 'good'
-                : sel.long_short.sharpe < 0
-                  ? 'bad'
-                  : 'neutral'
-              : 'neutral'
-          }
+          tone={lsTone(sel.long_short.sharpe)}
+          tip="Risk-adjusted return of going long the top quintile and short the bottom. Positive = the spread is real and, in principle, tradeable market-neutral."
+        />
+        <Stat
+          label="Win rate (top-Q)"
+          value={fmtPct(sel.win_rate_top, false)}
+          sub="% months positive"
+          tip="Share of months the top quintile had a positive return."
         />
       </div>
 
       {/* equity curve */}
       <SectionCard
         title={`Growth of $1 — ${selLabel} top quintile vs benchmarks`}
-        hint="Top quintile (rebalanced monthly, net of cost estimate) vs SPY total return and the equal-weight scored universe. Toggle the long-short spread — the survivor-bias-resistant signal."
+        hint="Top quintile (monthly rebalance, net of cost estimate) vs SPY total return and the equal-weight scored universe."
+        tip="Switch to Log when one line dwarfs the others — a log axis shows percentage moves, so compounding is comparable across very different scales."
+        right={
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowLongShort((s) => !s)}
+              aria-pressed={showLongShort}
+              className="rounded-lg border px-2.5 py-1 text-[0.72rem] font-semibold transition-colors"
+              style={
+                showLongShort
+                  ? { borderColor: '#16a34a', background: '#f0fdf4', color: '#16a34a' }
+                  : { borderColor: '#e5e7eb', background: '#ffffff', color: '#64748b' }
+              }
+            >
+              {showLongShort ? '✓ ' : ''}Long-short
+            </button>
+            <Segmented
+              value={logScale ? 'log' : 'lin'}
+              onChange={(v) => setLogScale(v === 'log')}
+              options={[
+                { value: 'lin', label: 'Linear' },
+                { value: 'log', label: 'Log' },
+              ]}
+            />
+          </div>
+        }
       >
-        <div className="mb-3">
-          <button
-            type="button"
-            onClick={() => setShowLongShort((s) => !s)}
-            className="rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors"
-            style={
-              showLongShort
-                ? { borderColor: '#16a34a', background: '#f0fdf4', color: '#16a34a' }
-                : { borderColor: '#e5e7eb', background: '#ffffff', color: '#64748b' }
-            }
-          >
-            {showLongShort ? '✓ ' : ''}Show long-short spread
-          </button>
-        </div>
-        <EquityChart
-          data={data}
-          sel={sel}
-          factorLabel={selLabel}
-          showLongShort={showLongShort}
-        />
+        {showLongShort && logScale && (
+          <p className="mb-2 text-[0.72rem] text-[#b45309]">
+            Long-short is hidden on the log axis (its growth-of-$1 can cross zero, which a log scale
+            can't plot). Switch to Linear to see it.
+          </p>
+        )}
+        <EquityChart data={data} sel={sel} factorLabel={selLabel} showLongShort={showLongShort} logScale={logScale} />
       </SectionCard>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        {/* drawdown — follows the selected ranking */}
         <SectionCard
           title={`${selLabel} top-quintile drawdown`}
           hint="Peak-to-trough of the strategy curve — the pain you'd have sat through."
@@ -420,91 +674,73 @@ export function LabPage() {
           <DrawdownChart comp={sel} />
         </SectionCard>
 
-        {/* quintile spread */}
         <SectionCard
           title={`${selLabel}: CAGR by quintile`}
-          hint="A working signal steps up left to right. Flat or U-shaped = no ranking power (or survivor noise in the bottom bucket)."
+          hint="A working signal steps up left to right. Flat or U-shaped = no ranking power."
+          tip="Each bar is the equal-weight CAGR of one fifth of the universe, sorted worst (Q1) to best (Q5). The cleaner the climb, the stronger the ranking."
         >
           <QuintileChart res={sel} />
         </SectionCard>
       </div>
 
       {/* significance & robustness */}
-      {sel.ic || data.significance?.random_portfolio ? (
+      {sel.ic || rp ? (
         <SectionCard
           title="Is the edge real, or luck?"
-          hint="Significance on the point-in-time results: Information Coefficient (does the score rank forward returns?), bootstrap confidence intervals, and a random-portfolio null. All seeded — reproducible, not a fresh number each run."
+          tip="These quantify the signal rigorously, but on a survivor-biased sample. Read the IC t-stat first; the random-portfolio percentile is a single-path statistic, so treat it as supporting colour."
+          hint="Information Coefficient, bootstrap confidence intervals, and a random-portfolio null. All seeded — reproducible, not a fresh number each run."
         >
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Kpi
-              label={`${selLabel} mean IC`}
-              value={sel.ic ? sel.ic.mean.toFixed(3) : '—'}
-              sub={sel.ic ? `${(sel.ic.pct_positive * 100).toFixed(0)}% of months positive` : 'n/a'}
-              tone={sel.ic ? (sel.ic.mean > 0.03 ? 'good' : sel.ic.mean < 0 ? 'bad' : 'neutral') : 'neutral'}
-            />
-            <Kpi
-              label="IC t-stat"
-              value={sel.ic?.t_stat != null ? sel.ic.t_stat.toFixed(2) : '—'}
-              sub="|t| ≥ 2 ≈ significant"
-              tone={sel.ic?.t_stat != null ? (Math.abs(sel.ic.t_stat) >= 2 ? 'good' : 'neutral') : 'neutral'}
-            />
-            <Kpi
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <Stat
               label="Top-Q CAGR 90% CI"
               value={ciPct(sel.bootstrap?.top?.cagr)}
               sub="block bootstrap"
+              tone={sel.bootstrap?.top?.cagr ? (sel.bootstrap.top.cagr.lo > 0 ? 'good' : 'warn') : 'neutral'}
+              tip="Resampling the monthly returns in blocks 2,000× — the range the top-quintile CAGR lands in 90% of the time. A floor above 0 means the edge isn't a fluke of one good month."
             />
-            <Kpi
+            <Stat
               label="Top-Q Sharpe 90% CI"
               value={ciSharpe(sel.bootstrap?.top?.sharpe)}
               sub="block bootstrap"
+              tone={sel.bootstrap?.top?.sharpe ? (sel.bootstrap.top.sharpe.lo > 0 ? 'good' : 'warn') : 'neutral'}
+              tip="Same block bootstrap, applied to the top-quintile Sharpe ratio."
+            />
+            <Stat
+              label="Long-short CAGR 90% CI"
+              value={ciPct(sel.bootstrap?.long_short?.cagr)}
+              sub="block bootstrap"
+              tone={sel.bootstrap?.long_short?.cagr ? (sel.bootstrap.long_short.cagr.lo > 0 ? 'good' : 'warn') : 'neutral'}
+              tip="Bootstrap CI for the long-short (top − bottom) spread. If this straddles 0, the market-neutral leg isn't reliable."
             />
           </div>
 
-          {data.significance?.random_portfolio && (
+          {rp && (
             <div className="mt-4 rounded-card border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3">
-              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+              <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
                 Random-portfolio null (composite top quintile)
+                <InfoTip text="The 'monkey' test: 1,000 random equal-weight baskets of the same size, chained over the same window. Where the real strategy's CAGR lands tells you how much is skill vs market beta." />
               </div>
               <p className="mt-1 text-[0.86rem] text-[#334155]">
                 The composite top quintile beat{' '}
-                <strong
-                  style={{
-                    color:
-                      data.significance.random_portfolio.percentile >= 0.95
-                        ? '#059669'
-                        : data.significance.random_portfolio.percentile >= 0.8
-                          ? '#0f172a'
-                          : '#dc2626',
-                  }}
-                >
-                  {(data.significance.random_portfolio.percentile * 100).toFixed(0)}%
+                <strong style={{ color: TONE_HEX[pctileTone(rp.percentile)] }}>
+                  {(rp.percentile * 100).toFixed(0)}%
                 </strong>{' '}
-                of {data.significance.random_portfolio.n_sims.toLocaleString()} random equal-weight
-                baskets of the same size (~{data.significance.random_portfolio.avg_basket} names).
-                Actual {fmtPct(data.significance.random_portfolio.actual_cagr)} CAGR vs random median{' '}
-                {fmtPct(data.significance.random_portfolio.p50)} (5–95th pct{' '}
-                {fmtPct(data.significance.random_portfolio.p5)} …{' '}
-                {fmtPct(data.significance.random_portfolio.p95)}).
+                of {rp.n_sims.toLocaleString()} random equal-weight baskets of the same size (~
+                {rp.avg_basket} names). Actual {fmtPct(rp.actual_cagr)} CAGR vs random median{' '}
+                {fmtPct(rp.p50)} (5–95th pct {fmtPct(rp.p5)} … {fmtPct(rp.p95)}).
               </p>
             </div>
           )}
 
           {sel.ic && (
             <div className="mt-4">
-              <div className="mb-1 text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+              <div className="mb-1 flex items-center text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
                 Information Coefficient over time — {selLabel}
+                <InfoTip text="Green/red bars are each month's rank IC; the indigo line is the trailing 6-month average. A line drifting toward zero is a factor losing its edge." />
               </div>
               <ICChart ic={sel.ic} />
             </div>
           )}
-
-          <p className="mt-3 text-[0.74rem] leading-relaxed text-[#94a3b8]">
-            Read the <strong>IC t-stat</strong> first — it's the stablest "real vs noise" measure
-            (mean rank-correlation relative to its own variability). The random-portfolio percentile
-            is a single-path statistic, so treat it as supporting colour, not proof. And the
-            survivor-only universe still inflates the bottom bucket — these tests quantify the
-            signal rigorously, but on a biased sample.
-          </p>
         </SectionCard>
       ) : (
         <SectionCard
@@ -522,7 +758,7 @@ export function LabPage() {
       {/* summary table */}
       <SectionCard
         title="Factor scoreboard"
-        hint="Top quintile stats + the long-short spread per ranking key. Win rate = % of months the top quintile was positive."
+        hint="Click a row to drive the charts above. Win rate = % of months the top quintile was positive."
       >
         <div className="overflow-x-auto">
           <table className="w-full text-[0.84rem]">
@@ -531,6 +767,7 @@ export function LabPage() {
                 <th className="py-2 pr-4">Ranking</th>
                 <th className="py-2 pr-4">Top-Q CAGR</th>
                 <th className="py-2 pr-4">Top-Q Sharpe</th>
+                <th className="py-2 pr-4">IC t-stat</th>
                 <th className="py-2 pr-4">Win rate</th>
                 <th className="py-2 pr-4">Max DD</th>
                 <th className="py-2 pr-4">L-S CAGR</th>
@@ -542,7 +779,6 @@ export function LabPage() {
               {keys.map((k) => {
                 const r = results[k]
                 const top = r.buckets['5'] ?? r.buckets[String(Object.keys(r.buckets).length)]
-                const lsSharpe = r.long_short.sharpe
                 const isSel = factorKey === k
                 return (
                   <tr
@@ -559,6 +795,12 @@ export function LabPage() {
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(top?.cagr)}</td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtSharpe(top?.sharpe)}</td>
+                    <td
+                      className="py-2.5 pr-4 font-semibold tabular-nums"
+                      style={{ color: TONE_HEX[icTone(r.ic?.t_stat)] }}
+                    >
+                      {r.ic?.t_stat != null ? r.ic.t_stat.toFixed(2) : '—'}
+                    </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.win_rate_top, false)}</td>
                     <td className="py-2.5 pr-4 tabular-nums text-[#dc2626]">
                       {fmtPct(top?.max_drawdown, false)}
@@ -566,9 +808,9 @@ export function LabPage() {
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.long_short.cagr)}</td>
                     <td
                       className="py-2.5 pr-4 font-semibold tabular-nums"
-                      style={{ color: lsSharpe != null && lsSharpe > 0.3 ? '#059669' : '#64748b' }}
+                      style={{ color: TONE_HEX[lsTone(r.long_short.sharpe)] }}
                     >
-                      {fmtSharpe(lsSharpe)}
+                      {fmtSharpe(r.long_short.sharpe)}
                     </td>
                     <td className="py-2.5 tabular-nums">{fmtPct(r.avg_turnover, false)}</td>
                   </tr>
@@ -579,6 +821,7 @@ export function LabPage() {
                   <td className="py-2.5 pr-4 font-bold text-[#64748b]">S&amp;P 500 (SPY)</td>
                   <td className="py-2.5 pr-4 tabular-nums">{fmtPct(data.benchmarks.spy_stats.cagr)}</td>
                   <td className="py-2.5 pr-4 tabular-nums">{fmtSharpe(data.benchmarks.spy_stats.sharpe)}</td>
+                  <td className="py-2.5 pr-4">—</td>
                   <td className="py-2.5 pr-4">—</td>
                   <td className="py-2.5 pr-4 tabular-nums text-[#dc2626]">
                     {fmtPct(data.benchmarks.spy_stats.max_drawdown, false)}
@@ -593,9 +836,20 @@ export function LabPage() {
         </div>
       </SectionCard>
 
+      {/* honesty footer — accurate, no contradictory claims */}
+      <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-[0.8rem] leading-relaxed text-amber-800">
+        <strong>How to read this honestly.</strong> Two caveats remain: (1){' '}
+        <strong>survivorship</strong> — the universe is today's listed names, so absolute returns run
+        optimistic; lean on the <em>spread</em> across quintiles, not the headline CAGR. (2) It's an{' '}
+        <strong>in-sample</strong> study of the ranking, not a live track record. Sub-$1 names are
+        dropped at each rebalance and single-period returns are capped at −90%/+200%, which neutralizes
+        gross unadjusted-split spikes (like PPCB's $0.01→$250) — but the cap also clips legitimate
+        extreme moves, so read the spread as <em>cleaned, not error-free</em>. Research context — not
+        investment advice.
+      </div>
+
       <p className="pb-2 text-center text-xs text-[#9ca3af]">
-        Backtest is recomputed monthly by GitHub Actions (point-in-time data, no look-ahead) —
-        research context, not investment advice.
+        Backtest recomputed monthly by GitHub Actions (point-in-time data, no look-ahead).
       </p>
     </div>
   )
