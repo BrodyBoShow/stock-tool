@@ -12,6 +12,11 @@ on:
   schedule:
     - cron: "0 6 2 * *"
   workflow_dispatch:
+    inputs:
+      config:
+        description: "Score config to backtest (default v2_linear). e.g. v3_linear to A/B the vol-scaled-momentum variant. Non-default configs store a row but don't touch the committed report."
+        default: "v2_linear"
+        required: false
 
 permissions:
   contents: write   # to commit the refreshed report
@@ -40,8 +45,19 @@ jobs:
 
       # --store feeds the Lab page (backtest_results table); --out keeps the
       # repo-viewable Markdown report.
-      - name: Run backtest -> Lab page + reports/backtest_latest.md
-        run: python scripts/run_backtest.py --store --out reports/backtest_latest.md
+      # The scheduled run uses v2_linear and refreshes the committed report. A
+      # manual run with a non-default config (e.g. v3_linear) stores its own
+      # backtest_results row for A/B comparison but leaves the report untouched.
+      - name: Run backtest -> Lab page (+ report for the default config)
+        run: |
+          CFG="${{ github.event.inputs.config }}"
+          CFG="${CFG:-v2_linear}"
+          echo "backtest config = $CFG"
+          if [ "$CFG" = "v2_linear" ]; then
+            python scripts/run_backtest.py --store --config v2_linear --out reports/backtest_latest.md
+          else
+            python scripts/run_backtest.py --store --config "$CFG"
+          fi
 
       - name: Commit refreshed report (only if it changed)
         run: |

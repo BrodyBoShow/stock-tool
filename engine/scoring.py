@@ -133,9 +133,22 @@ FACTOR_DEFS_V2 = {
     "momentum": [("r3m", "higher"), ("r6m", "higher"), ("r12_1m", "higher")],
 }
 
+# v3_linear (EXPERIMENTAL): identical to v2 except momentum is VOLATILITY-SCALED
+# — each trend signal is divided by the name's trailing daily-return vol, which
+# favours steady uptrends over jumpy ones (historically cuts momentum crashes,
+# drawdown and churn). Built to A/B against v2 in the Lab before any cutover;
+# weights are borrowed from v2 (see WEIGHTS_SOURCE) so it needs no score_config row.
+FACTOR_DEFS_V3 = {
+    "growth": FACTOR_DEFS_V2["growth"],
+    "value": FACTOR_DEFS_V2["value"],
+    "quality": FACTOR_DEFS_V2["quality"],
+    "momentum": [("r3m_vs", "higher"), ("r6m_vs", "higher"), ("r12_1m_vs", "higher")],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
+    "v3_linear": FACTOR_DEFS_V3,
 }
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
@@ -145,16 +158,23 @@ _BASE_INPUTS = [
     "gross_margin", "operating_margin", "roic", "debt_to_equity",
     "net_debt_ebitda", "r3m", "r6m", "r12m", "close", "shares", "mktcap",
 ]
+_V2_INPUTS = _BASE_INPUTS + ["r12_1m", "accruals", "share_count_trend",
+                             "insider_net_buy"]
 INPUTS_BY_VERSION = {
     "v1_linear": _BASE_INPUTS,
-    "v2_linear": _BASE_INPUTS + ["r12_1m", "accruals", "share_count_trend",
-                                 "insider_net_buy"],
+    "v2_linear": _V2_INPUTS,
+    "v3_linear": _V2_INPUTS + ["r3m_vs", "r6m_vs", "r12_1m_vs", "ret_vol"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
     "v1_linear": "cross_sectional_raw_returns_no_spy",
     "v2_linear": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
+    "v3_linear": "vol_scaled_12_1_plus_3_6m_no_spy",
 }
+
+# Experimental configs may reuse another version's stored score_config weights
+# instead of needing a new DB row — lets them be backtested before any cutover.
+WEIGHTS_SOURCE = {"v3_linear": "v2_linear"}
 
 # Discretionary insider net-buy signal window (trailing months).
 INSIDER_WINDOW_MONTHS = 12
@@ -253,6 +273,18 @@ def _load_price_inputs(cur, score_date) -> pd.DataFrame:
         den = _ref_adj(MOMENTUM_WINDOWS["r12m"])
         if num is not None and den is not None and den > 0:
             row["r12_1m"] = _winsor(num / den - 1.0)
+        # Volatility-scaled momentum (v3): each trend signal / trailing daily-return
+        # vol. Computed for every name so v3 can rank on it; v1/v2 ignore it. The
+        # divisor is floored at 1% daily vol so near-flat names don't get an absurd
+        # scaled signal.
+        drets = g["adj_close"].pct_change().dropna()
+        vol = float(drets.std()) if len(drets) >= 30 else None
+        row["ret_vol"] = vol
+        if vol is not None:
+            veff = max(vol, 0.01)
+            for nm in ("r3m", "r6m", "r12_1m"):
+                if row.get(nm) is not None:
+                    row[nm + "_vs"] = row[nm] / veff
         out[sid] = row
     return pd.DataFrame.from_dict(out, orient="index")
 
@@ -429,7 +461,7 @@ def run(
     if owns_conn:
         conn = get_connection(long_read=(not write and not log_job))
     with conn.cursor() as cur:
-        weights = _load_weights(cur, config_version)
+        weights = _load_weights(cur, WEIGHTS_SOURCE.get(config_version, config_version))
         if as_of is None:
             cur.execute("SELECT max(date) FROM prices_daily")
         else:
