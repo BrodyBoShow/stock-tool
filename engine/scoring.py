@@ -79,6 +79,22 @@ MOMENTUM_WINDOWS = {"r3m": 91, "r6m": 182, "r12m": 365}
 MOMENTUM_SKIP_DAYS = 21       # the "minus one month" gap for 12-1 momentum
 MOMENTUM_LOOKBACK_GRACE = 20  # days a reference bar may precede the target
 
+# Data-integrity guards on the price-return inputs, mirroring the backtest's
+# _fwd_returns so the live screener and the Lab rank the SAME universe. Without
+# them an unadjusted reverse split (e.g. PPCB adj_close $0.01 -> $250, a +2.5M%
+# "return") would rank as the #1 momentum name.
+#   (1) MIN_PRICE — drop names whose latest close is below $1 from scoring
+#       entirely. Sub-$1 names are untradeable in practice AND the main source of
+#       unadjusted-split price errors. Applied to the whole universe so every
+#       factor's percentiles are computed over the same >=$1 set as the backtest.
+#   (2) winsorize the 3/6/12-month returns. NOTE the cap is far higher than the
+#       backtest's monthly +200% because these are CUMULATIVE multi-month returns
+#       (a real name can legitimately be up several hundred % over 12 months); the
+#       cap exists only to neutralize gross data errors (10x+), not clip winners.
+MIN_PRICE = 1.0            # drop names with latest close < $1
+RET_WINSOR_CAP = 9.0       # cap a cumulative return at +900% (10x)
+RET_WINSOR_FLOOR = -0.95   # floor a cumulative return at -95%
+
 # (column, direction) per factor; direction 'higher' or 'lower' = better.
 # Versioned: v1_linear is the frozen baseline; v2_linear adds the Sloan
 # accruals + net-share-issuance + discretionary-insider-net-buy quality
@@ -222,18 +238,21 @@ def _load_price_inputs(cur, score_date) -> pd.DataFrame:
                      & (_g["date"] >= target - timedelta(days=MOMENTUM_LOOKBACK_GRACE))]
             return ref.iloc[-1]["adj_close"] if not ref.empty else None
 
+        def _winsor(r: float) -> float:
+            return min(RET_WINSOR_CAP, max(RET_WINSOR_FLOOR, r))
+
         row = {"close": last["close"]}
         for name, days in MOMENTUM_WINDOWS.items():
             ref = _ref_adj(days)
             if ref is not None and ref > 0:
-                row[name] = last["adj_close"] / ref - 1.0
+                row[name] = _winsor(last["adj_close"] / ref - 1.0)
         # 12-minus-1 momentum: return from ~12 months ago to ~1 month ago,
         # skipping the most recent month (short-term reversal). Numerator and
         # denominator are both lagged prices, not today's close.
         num = _ref_adj(MOMENTUM_SKIP_DAYS)
         den = _ref_adj(MOMENTUM_WINDOWS["r12m"])
         if num is not None and den is not None and den > 0:
-            row["r12_1m"] = num / den - 1.0
+            row["r12_1m"] = _winsor(num / den - 1.0)
         out[sid] = row
     return pd.DataFrame.from_dict(out, orient="index")
 
@@ -447,6 +466,14 @@ def run(
             df = df.join(insiders, how="outer")
         df = df[df.index.isin(tickers)]
         df["ticker"] = df.index.map(tickers)
+
+        # Data-integrity: drop sub-$1 names so untradeable penny stocks (and their
+        # unadjusted-split price errors) can't pollute the percentile ranks, and so
+        # the live universe matches the >=$1 universe the backtest validates. close
+        # is NaN for names with no recent price -> NaN < MIN_PRICE is False, so only
+        # known sub-$1 names are removed; the rest are scored as before.
+        if "close" in df.columns:
+            df = df[~(df["close"] < MIN_PRICE)]
 
         # --- valuation sub-metrics ---
         df["mktcap"] = df["close"] * df["shares"]
