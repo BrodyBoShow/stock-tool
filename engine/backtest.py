@@ -16,6 +16,10 @@ HONEST LIMITATIONS — read before trusting any number:
 - IN-SAMPLE. Weights weren't fit here, but the universe and period are what we
   have; treat this as "does the ranking have signal?", not a track record.
 - COSTS are a flat per-name bps estimate on turnover, not real fills.
+- DATA INTEGRITY. Forward returns are formed through _fwd_returns, which drops
+  sub-$1 names at formation and winsorizes per-period returns. Without this a
+  single unadjusted split (PPCB $0.01 -> $250) silently dominated every
+  aggregate; see that helper for the full rationale.
 This validates the RANKING METHODOLOGY directionally. It is not a strategy.
 """
 
@@ -63,6 +67,39 @@ def _prices_at(conn, on: date, lookback_days: int = 7) -> dict[int, float]:
             (on, on - timedelta(days=lookback_days)),
         )
         return {sid: float(ac) for sid, ac in cur.fetchall()}
+
+
+# ── data-integrity guards (applied EVERYWHERE a forward return is formed) ─────
+# A single corrupt price otherwise poisons every aggregate. The worst real
+# offender was PPCB: adj_close $0.01 -> $250 (an unadjusted reverse split) = a
+# 2,499,900% one-month "return" that single-handedly drove the equal-weight
+# universe to +521% in Jan-2025 and inverted the quality bucket spread. Two
+# guards, routed through the ONE helper below so buckets / IC / long-short /
+# universe-EW / the random-portfolio null all see identical returns:
+#   1. formation-price floor — drop sub-$1 names at formation. Penny stocks are
+#      untradeable in practice AND are the main source of unadjusted-split data
+#      errors. This alone takes the Jan-2025 universe month from +521% to +1.3%.
+#   2. per-period winsorization — clip each name's single-period return to
+#      [RET_FLOOR, RET_CAP], a backstop for bad ticks on higher-priced names.
+MIN_FORMATION_PRICE = 1.0   # exclude sub-$1 penny stocks at each rebalance
+RET_CAP = 2.0               # cap a single-period return at +200%
+RET_FLOOR = -0.90           # floor a single-period return at -90%
+
+
+def _fwd_returns(index, p0: dict[int, float], p1: dict[int, float]) -> pd.Series:
+    """Forward total returns for `index`, with the data-integrity guards above
+    applied consistently. Names priced below MIN_FORMATION_PRICE at formation
+    (or with a missing/non-positive price either end) are dropped; surviving
+    returns are winsorized to [RET_FLOOR, RET_CAP]."""
+    out: dict[int, float] = {}
+    for sid in index:
+        a = p0.get(sid)
+        b = p1.get(sid)
+        if a is None or b is None or a < MIN_FORMATION_PRICE or b <= 0:
+            continue
+        r = b / a - 1.0
+        out[sid] = RET_CAP if r > RET_CAP else RET_FLOOR if r < RET_FLOOR else r
+    return pd.Series(out, dtype=float)
 
 
 def _bucket_returns(
@@ -205,10 +242,7 @@ def _random_portfolio_null(
             continue
         p0, p1 = px[t], px[t_next]
         ranks = rep["composite"].dropna()
-        fwd = pd.Series({
-            sid: p1[sid] / p0[sid] - 1.0
-            for sid in ranks.index if sid in p0 and sid in p1 and p0[sid] > 0
-        })
+        fwd = _fwd_returns(ranks.index, p0, p1)
         common = ranks.index.intersection(fwd.index)
         if len(common) < n_buckets * 4:
             continue
@@ -269,11 +303,7 @@ def _backtest_key(
             continue
         p0, p1 = px[t], px[t_next]
         ranks = rep[rank_col].dropna()
-        fwd = pd.Series({
-            sid: p1[sid] / p0[sid] - 1.0
-            for sid in ranks.index
-            if sid in p0 and sid in p1 and p0[sid] > 0
-        })
+        fwd = _fwd_returns(ranks.index, p0, p1)
         common = ranks.index.intersection(fwd.index)
         means, counts = _bucket_returns(ranks.loc[common], fwd.loc[common], n_buckets)
         if not means:
@@ -343,10 +373,8 @@ def _benchmark_curves(conn, rebal: list[date], px: dict[date, dict[int, float]],
         )
         rep = scores.get(t)
         if rep is not None:
-            sids = [s for s in rep.index if s in p0 and s in p1 and p0[s] > 0]
-            ew_rets.append(
-                float(np.mean([p1[s] / p0[s] - 1.0 for s in sids])) if sids else None
-            )
+            fwd = _fwd_returns(rep.index, p0, p1)  # same guards as the buckets
+            ew_rets.append(float(fwd.mean()) if len(fwd) else None)
         else:
             ew_rets.append(None)
     return {
