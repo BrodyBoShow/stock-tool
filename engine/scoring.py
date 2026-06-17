@@ -192,10 +192,16 @@ def _load_price_inputs(cur, score_date) -> pd.DataFrame:
     """Latest close + 3/6/12-month total returns per security."""
     start = score_date - timedelta(days=max(MOMENTUM_WINDOWS.values()) + 40)
     # Cap at score_date so a backtest never sees a future price (no look-ahead).
+    # Join to active securities so the planner walks the (security_id, date) PK
+    # per active name instead of a date-only scan over every staged/inactive
+    # ticker too — far fewer rows, and it stops the CI statement timeout. Scoring
+    # only ranks active names anyway, so the result set is unchanged.
     cur.execute(
         """
-        SELECT security_id, date, close, adj_close
-        FROM prices_daily WHERE date >= %s AND date <= %s
+        SELECT p.security_id, p.date, p.close, p.adj_close
+        FROM prices_daily p
+        JOIN securities s ON s.security_id = p.security_id AND s.is_active
+        WHERE p.date >= %s AND p.date <= %s
         """,
         (start, score_date),
     )
@@ -398,6 +404,10 @@ def run(
     # connection on its idle-in-transaction timeout mid-loop.
     if not write and not log_job:
         conn.autocommit = True
+        # The full-universe price pull is a wide date-range scan; in CI's shared
+        # DB it can exceed the API's 120s ceiling. Give the read path more room.
+        with conn.cursor() as cur:
+            cur.execute("SET statement_timeout = 300000")
     with conn.cursor() as cur:
         weights = _load_weights(cur, config_version)
         if as_of is None:
