@@ -1,0 +1,49 @@
+# Post-close EOD price refresh — makes the Market tab current within ~an hour of
+# the US close, instead of waiting for the full nightly (23:30 UTC, ~11 PM ET).
+#
+# Schedule: 22:00 UTC on weekdays — ~6 PM ET (EDT) / ~5 PM ET (EST), comfortably
+# after the 4 PM ET close and after yfinance has settled the day's bars. GitHub
+# cron is always UTC and doesn't shift for DST; the ~1-hour seasonal drift is fine
+# (still well after the close). The full nightly still runs at 23:30 UTC and
+# re-does prices (idempotent) plus the heavy fundamentals/scoring/AI steps, so the
+# two never overlap.
+#
+# Only prices + the sanity gate run here (the fast, market-facing path). The
+# market-overview cache is data-date-aware and auto-refreshes once the close
+# lands, so the Market tab updates on its own minutes later.
+
+name: EOD price refresh
+
+on:
+  schedule:
+    - cron: "0 22 * * 1-5"
+  workflow_dispatch:  # manual trigger from the Actions tab
+
+jobs:
+  eod-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Supervised: a Supabase pooler drop mid-write can hang the client inside a
+      # socket read with no timeout; the supervisor kills and relaunches on stdout
+      # silence. The refresh is idempotent/incremental, so restarts are safe.
+      - name: Refresh EOD prices (supervised)
+        run: >
+          python scripts/supervise_backfill.py --label eod-prices --stall 900 --
+          python -u scripts/refresh_eod_prices.py
