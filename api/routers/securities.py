@@ -32,6 +32,7 @@ from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
 from engine import live_factors, queries, summarize
 from engine import quotes as quotes_engine
+from engine.filing_taxonomy import analysis_profile, form_category, form_label
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +64,15 @@ def get_security(
         header=SecurityHeader(**header),
         prices=[PricePoint(**p) for p in prices],
         fundamentals=[FundamentalPoint(**f) for f in fundamentals],
-        filings=[FilingRow(**f) for f in filings],
+        filings=[
+            FilingRow(
+                **f,
+                label=form_label(f["form"]),
+                category=form_category(f["form"]),
+                analyzable=analysis_profile(f["form"]) is not None,
+            )
+            for f in filings
+        ],
     )
 
 
@@ -111,16 +120,39 @@ def _to_summary(cached: dict) -> FilingSummary:
     )
 
 
+def _resolve_summary_filing(
+    ticker: str, form: str | None, accession: str | None
+) -> dict | None:
+    """Resolve which filing the Overview targets: a specific accession, the latest
+    of a named form, or (default) the company's primary annual report."""
+    if accession:
+        return queries.filing_by_accession(accession)
+    if form:
+        return queries.latest_filing(ticker, form=form)
+    return queries.primary_annual_filing(ticker)
+
+
 @router.get("/{ticker}/summary", response_model=SummaryStatusResponse)
-def get_summary(ticker: str) -> SummaryStatusResponse:
-    """AI summary status for a ticker's latest 10-K: whether a filing exists and
-    whether a cached summary is available (read-only, never generates)."""
+def get_summary(
+    ticker: str,
+    form: str | None = Query(None, description="Specific form (e.g. 20-F); "
+                             "default = primary annual report."),
+    accession: str | None = Query(None, description="Summarize this exact filing."),
+) -> SummaryStatusResponse:
+    """AI-summary status for a ticker's filing: whether an analyzable filing exists
+    and whether a cached summary is available (read-only, never generates).
+
+    Default target is the primary annual report (10-K, else 20-F, else 40-F) so
+    foreign private issuers resolve to their 20-F instead of returning nothing.
+    """
     ticker = ticker.upper()
-    filing = queries.latest_filing(ticker, form="10-K")
-    if filing is None:
+    filing = _resolve_summary_filing(ticker, form, accession)
+    analyzable = filing is not None and analysis_profile(filing["form"]) is not None
+    if not analyzable:
         return SummaryStatusResponse(
-            ticker=ticker, has_filing=False,
-            latest_accession=None, latest_filed_date=None, summary=None,
+            ticker=ticker, has_filing=False, latest_accession=None,
+            latest_filed_date=None,
+            latest_form=filing["form"] if filing else None, summary=None,
         )
 
     cached = queries.get_cached_summary(
@@ -131,6 +163,7 @@ def get_summary(ticker: str) -> SummaryStatusResponse:
         has_filing=True,
         latest_accession=filing["accession_no"],
         latest_filed_date=filing["filed_date"],
+        latest_form=filing["form"],
         summary=_to_summary(cached) if cached else None,
     )
 
@@ -193,14 +226,21 @@ def _to_filing_qa(cached: dict) -> FilingAnswers:
 
 @router.get("/{ticker}/filing-qa", response_model=FilingQaStatusResponse)
 def get_filing_qa(ticker: str) -> FilingQaStatusResponse:
-    """Deep filing-diligence status: whether a 10-K exists and whether cached
-    answers are available (read-only, never generates)."""
+    """Deep filing-diligence status: whether an analyzable annual report (10-K or
+    20-F) exists and whether cached answers are available (read-only, never
+    generates). A company with only a 40-F reports has_filing=False (deep
+    diligence is reliable only on full 10-K/20-F item layouts)."""
     ticker = ticker.upper()
-    filing = queries.latest_filing(ticker, form="10-K")
-    if filing is None:
+    filing = queries.primary_annual_filing(ticker)
+    analyzable = (
+        filing is not None
+        and analysis_profile(filing["form"]) in ("annual_10k", "annual_20f")
+    )
+    if not analyzable:
         return FilingQaStatusResponse(
-            ticker=ticker, has_filing=False,
-            latest_accession=None, latest_filed_date=None, answers=None,
+            ticker=ticker, has_filing=False, latest_accession=None,
+            latest_filed_date=None,
+            latest_form=filing["form"] if filing else None, answers=None,
         )
     cached = queries.get_cached_filing_qa(
         filing["accession_no"], filing_qa_engine.PROMPT_VERSION,
@@ -211,6 +251,7 @@ def get_filing_qa(ticker: str) -> FilingQaStatusResponse:
         has_filing=True,
         latest_accession=filing["accession_no"],
         latest_filed_date=filing["filed_date"],
+        latest_form=filing["form"],
         answers=_to_filing_qa(cached) if cached else None,
     )
 
@@ -227,8 +268,9 @@ def generate_filing_qa(
     force: bool = Query(False, description="Re-generate even if cached."),
 ) -> FilingAnswers:
     """Run (or return cached) the deep filing-diligence analysis: reads the
-    latest 10-K (Items 1/1A/7/7A) + 10-Q MD&A and answers the diligence
-    framework, strictly grounded in the filing text."""
+    latest annual report — 10-K (Items 1/1A/7/7A) + 10-Q MD&A for domestic
+    filers, or 20-F (business/risk/MD&A/market-risk) for foreign private issuers —
+    and answers the diligence framework, strictly grounded in the filing text."""
     ticker = ticker.upper()
     try:
         cached = filing_qa_engine.get_or_generate_filing_qa(ticker, force=force)
@@ -241,7 +283,9 @@ def generate_filing_qa(
 
     if cached is None:
         raise HTTPException(
-            status_code=404, detail=f"No 10-K on file for {ticker!r} to analyze"
+            status_code=404,
+            detail=f"No analyzable annual report (10-K or 20-F) on file for "
+                   f"{ticker!r} to analyze",
         )
     return _to_filing_qa(cached)
 
@@ -332,16 +376,23 @@ def generate_brief(
 )
 def generate_summary(
     ticker: str,
+    form: str | None = Query(None, description="Specific form; default = primary "
+                             "annual report."),
+    accession: str | None = Query(None, description="Summarize this exact filing."),
     force: bool = Query(False, description="Re-generate even if a summary is cached."),
 ) -> FilingSummary:
-    """Generate (or return cached) an AI summary of the ticker's latest 10-K.
+    """Generate (or return cached) an AI summary of a filing.
 
-    Fetches the filing, extracts MD&A + Risk Factors, calls Claude with a
-    structured-output schema, and caches the result by accession number.
+    Default target is the primary annual report (10-K/20-F/40-F); pass ?form= or
+    ?accession= to summarize a specific filing (proxy, S-1, 6-K, …). Fetches the
+    filing, extracts the relevant sections, calls Claude with a structured-output
+    schema, and caches by accession number.
     """
     ticker = ticker.upper()
     try:
-        cached = summarize.get_or_generate_summary(ticker, form="10-K", force=force)
+        cached = summarize.get_or_generate_summary(
+            ticker, form=form, accession=accession, force=force
+        )
     except RuntimeError as exc:
         # ANTHROPIC_API_KEY missing, or section extraction failed
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -352,6 +403,7 @@ def generate_summary(
 
     if cached is None:
         raise HTTPException(
-            status_code=404, detail=f"No 10-K on file for {ticker!r} to summarize"
+            status_code=404,
+            detail=f"No analyzable filing found for {ticker!r} to summarize",
         )
     return _to_summary(cached)

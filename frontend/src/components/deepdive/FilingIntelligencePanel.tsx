@@ -140,19 +140,37 @@ function AnswersBody({ data }: { data: FilingAnswers }) {
         </div>
       )}
       <p className="border-t border-[#f1f5f9] pt-3 text-[0.7rem] text-[#9ca3af]">
-        Answered strictly from the {data.form} ({data.accession_no}) Items 1/1A/7/7A +
-        latest 10-Q via {data.model ?? 'Claude'} · {fmtDate(data.generated_at.slice(0, 10))} —
-        grounded in the filing text, not investment advice.
+        Answered strictly from the {data.form} ({data.accession_no}) — business, risk
+        factors, MD&A, market risk{data.form === '20-F' ? '' : ' + latest 10-Q'} — via{' '}
+        {data.model ?? 'Claude'} · {fmtDate(data.generated_at.slice(0, 10))} — grounded
+        in the filing text, not investment advice.
       </p>
     </div>
   )
 }
 
-function NoFiling({ ticker }: { ticker: string }) {
+function NoFiling({
+  ticker,
+  context,
+  form,
+}: {
+  ticker: string
+  context: 'overview' | 'diligence'
+  form?: string | null
+}) {
+  if (context === 'diligence') {
+    return (
+      <p className="text-[0.85rem] text-[#9ca3af]">
+        {form
+          ? `Deep diligence reads full 10-K / 20-F annual reports; ${ticker} files ${form}. Use “All SEC filings” below to AI-summarize a specific filing.`
+          : `No 10-K or 20-F annual report on file for ${ticker} to analyze.`}
+      </p>
+    )
+  }
   return (
     <p className="text-[0.85rem] text-[#9ca3af]">
-      No 10-K on file for {ticker}. Foreign private issuers file 20-F instead of 10-K
-      (not covered here yet).
+      No annual report on file for {ticker} to summarize — browse “All SEC filings”
+      below to read a specific filing.
     </p>
   )
 }
@@ -222,6 +240,11 @@ export function FilingIntelligencePanel({
       (f) => f.accession_no === (sum.data?.summary?.accession_no ?? sum.data?.latest_accession),
     )?.primary_doc_url ?? null
 
+  // The resolved annual form for each view (10-K for domestic, 20-F for foreign
+  // filers) — drives the copy so it reads correctly for ADRs, not just 10-K names.
+  const summaryForm = sum.data?.latest_form ?? '10-K'
+  const qaForm = qa.data?.latest_form ?? '10-K'
+
   // Header regenerate button is contextual to the active tab.
   const regen =
     tab === 'overview' && sum.data?.summary
@@ -266,8 +289,8 @@ export function FilingIntelligencePanel({
             {!collapsed && (
               <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
                 {tab === 'overview'
-                  ? 'Fast AI summary of the latest 10-K (MD&A + Risk Factors) — context, not advice.'
-                  : 'Analyst diligence from the 10-K (Items 1/1A/7/7A) + 10-Q — hedging, debt, commitments, concentration. Context, not advice.'}
+                  ? `Fast AI summary of the latest ${summaryForm} (MD&A + risk factors) — context, not advice.`
+                  : `Analyst diligence from the latest ${qaForm} (business, risk, MD&A, market risk)${qaForm === '20-F' ? '' : ' + 10-Q'} — hedging, debt, commitments, concentration. Context, not advice.`}
               </div>
             )}
           </div>
@@ -298,7 +321,7 @@ export function FilingIntelligencePanel({
               ) : sum.error ? (
                 <p className="text-[0.85rem] text-[#b91c1c]">Couldn’t load summary status.</p>
               ) : !sum.data?.has_filing ? (
-                <NoFiling ticker={ticker} />
+                <NoFiling ticker={ticker} context="overview" />
               ) : sum.data.summary ? (
                 <SummaryBody summary={sum.data.summary} docUrl={docUrl} />
               ) : sumGen.isError ? (
@@ -320,7 +343,7 @@ export function FilingIntelligencePanel({
                 <div className="flex items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafbff] p-5">
                   <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
                   <p className="text-[0.85rem] text-[#475569]">
-                    Reading {ticker}’s latest 10-K
+                    Reading {ticker}’s latest {summaryForm}
                     {sum.data.latest_filed_date ? ` (filed ${fmtDate(sum.data.latest_filed_date)})` : ''}{' '}
                     and writing the summary — up to a minute.
                   </p>
@@ -331,15 +354,16 @@ export function FilingIntelligencePanel({
             ) : qa.error ? (
               <p className="text-[0.85rem] text-[#b91c1c]">Couldn’t load filing-analysis status.</p>
             ) : !qa.data.has_filing ? (
-              <NoFiling ticker={ticker} />
+              <NoFiling ticker={ticker} context="diligence" form={qa.data.latest_form} />
             ) : qa.data.answers ? (
               <AnswersBody data={qa.data.answers} />
             ) : qaGen.isPending ? (
               <div className="flex items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafbff] p-5">
                 <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
                 <p className="text-[0.85rem] text-[#475569]">
-                  Reading {ticker}’s 10-K and 10-Q and working through the diligence framework —
-                  this is the deep one, give it up to a minute.
+                  Reading {ticker}’s {qaForm}
+                  {qaForm === '20-F' ? '' : ' and 10-Q'} and working through the diligence
+                  framework — this is the deep one, give it up to a minute.
                 </p>
               </div>
             ) : (
@@ -348,9 +372,9 @@ export function FilingIntelligencePanel({
                   Answer the open questions from the filings
                 </p>
                 <p className="mx-auto mt-1 max-w-lg text-[0.8rem] text-[#64748b]">
-                  Runs a deep, citation-grounded read of {ticker}’s latest 10-K and 10-Q across
-                  nine diligence topics — the things the factor score can’t see. Cached after the
-                  first run.
+                  Runs a deep, citation-grounded read of {ticker}’s latest {qaForm}
+                  {qaForm === '20-F' ? '' : ' and 10-Q'} across nine diligence topics — the
+                  things the factor score can’t see. Cached after the first run.
                 </p>
                 <button type="button" onClick={() => qaGen.mutate()} disabled={qaGen.isPending}
                   className="mt-3 inline-flex items-center rounded-lg bg-[#4f46e5] px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca] disabled:opacity-60">

@@ -85,6 +85,16 @@ jobs:
         continue-on-error: true
         run: python scripts/ingest_events.py --max-fetches 1200
 
+      # Filing catalog — records EVERY research-relevant form (20-F/40-F/6-K,
+      # proxies, ownership, offerings, …) into `filings` so the deep-dive can
+      # browse a company's full filing history. CONTEXT ONLY, one submissions
+      # read per company, incremental by accession. Budgeted so the one-time
+      # first-run backfill spreads over a few nights (kind to the disk-IO burst
+      # budget); steady-state deltas are tiny.
+      - name: Refresh filing catalog (all form types)
+        continue-on-error: true
+        run: python scripts/ingest_filings_catalog.py --max-fetches 1500
+
       # Fund/ETF prices — the Funds & ETFs tab. Funds are is_active=false (kept
       # out of the factor screener), so the main active-only refresh skips them;
       # this incremental pass keeps their daily closes — and the tab's trailing

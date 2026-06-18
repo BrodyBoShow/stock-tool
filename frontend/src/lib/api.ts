@@ -192,17 +192,30 @@ export function getMacroSeries(seriesId: string): Promise<MacroSeriesResponse> {
   return getJson<MacroSeriesResponse>(`/macro/series/${encodeURIComponent(seriesId)}`)
 }
 
-export function getSummaryStatus(ticker: string): Promise<SummaryStatusResponse> {
+export function getSummaryStatus(
+  ticker: string,
+  opts?: { accession?: string },
+): Promise<SummaryStatusResponse> {
+  const q = opts?.accession ? `?accession=${encodeURIComponent(opts.accession)}` : ''
   return getJson<SummaryStatusResponse>(
-    `/securities/${encodeURIComponent(ticker)}/summary`,
+    `/securities/${encodeURIComponent(ticker)}/summary${q}`,
   )
 }
 
 // TODO(auth): generation hits the Anthropic API and costs money — gate before public.
-export function generateSummary(ticker: string): Promise<FilingSummary> {
+// Default target is the primary annual report; pass {accession} to summarize a
+// specific filing (proxy, S-1, 6-K, …) the user picked from the Filings list.
+export function generateSummary(
+  ticker: string,
+  opts?: { accession?: string; force?: boolean },
+): Promise<FilingSummary> {
+  const params = new URLSearchParams()
+  if (opts?.accession) params.set('accession', opts.accession)
+  if (opts?.force) params.set('force', 'true')
+  const q = params.toString() ? `?${params.toString()}` : ''
   return sendJson<FilingSummary>(
     'POST',
-    `/securities/${encodeURIComponent(ticker)}/summary`,
+    `/securities/${encodeURIComponent(ticker)}/summary${q}`,
   )
 }
 

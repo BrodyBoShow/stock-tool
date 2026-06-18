@@ -27,6 +27,7 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from dotenv import load_dotenv
 
 from engine import queries
+from engine.filing_taxonomy import analysis_profile, form_label, generic_focus
 
 # 10-K primary docs are iXBRL (XHTML); parsing them with the HTML parser is fine
 # and intended — silence bs4's "this looks like XML" advisory.
@@ -43,6 +44,10 @@ SCHEMA_VERSION = "v1"
 
 # Cap each extracted section so a single huge 10-K can't blow up cost/latency.
 MAX_SECTION_CHARS = 60_000
+# Generic (non-annual) filings have no standard item layout, so we send a capped
+# leading slice of the document — front matter (proxy/prospectus summaries, 13D
+# cover pages, 6-K press releases) is where the material content lives.
+MAX_GENERIC_CHARS = 80_000
 
 SUMMARY_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -72,7 +77,7 @@ SUMMARY_SCHEMA: dict[str, Any] = {
 }
 
 SYSTEM_PROMPT = (
-    "You summarize SEC 10-K filings for an equity-research tool. Be factual, "
+    "You summarize SEC filings for an equity-research tool. Be factual, "
     "specific, and grounded ONLY in the provided filing text — never use outside "
     "knowledge and never invent figures. Do NOT give investment advice, price "
     "targets, or buy/sell/hold opinions. Write plainly for an informed investor. "
@@ -151,25 +156,86 @@ def extract_sections(text: str) -> dict[str, str]:
     }
 
 
+def extract_20f_sections(text: str) -> dict[str, str]:
+    """Risk Factors (Item 3.D) and MD&A (Item 5) from a foreign issuer's 20-F.
+
+    The 20-F item layout differs from the 10-K: risks live under Item 3.D and the
+    operating/financial review (the MD&A equivalent) is Item 5. Returns empty
+    strings when the anchors miss, so the caller can fall back to a generic read.
+    """
+    sep = r"[\s.):—-]*"
+    risk = _largest_span(
+        text, rf"item{sep}3{sep}d{sep}risk\s+factors", rf"item{sep}4{sep}information"
+    )
+    if not risk:
+        risk = _largest_span(text, r"risk\s+factors", rf"item{sep}4{sep}information")
+    mda = _largest_span(
+        text, rf"item{sep}5{sep}operating", rf"item{sep}6{sep}director"
+    )
+    if not mda:
+        mda = _largest_span(
+            text, r"operating\s+and\s+financial\s+review", rf"item{sep}6{sep}"
+        )
+    return {
+        "risk_factors": risk[:MAX_SECTION_CHARS],
+        "mda": mda[:MAX_SECTION_CHARS],
+    }
+
+
+def extract_generic(text: str) -> dict[str, str]:
+    """A capped leading slice for forms with no standard item layout (proxies,
+    prospectuses, 13D/G, 6-K, 40-F): the summary/cover lives up front."""
+    return {"body": text[:MAX_GENERIC_CHARS]}
+
+
+def _sections_for(profile: str, text: str) -> dict[str, str]:
+    """Dispatch section extraction by the form's analysis profile, falling back to
+    a generic read when the 20-F anchors miss."""
+    if profile == "annual_10k":
+        return extract_sections(text)
+    if profile == "annual_20f":
+        s = extract_20f_sections(text)
+        if s.get("mda") or s.get("risk_factors"):
+            return s
+        return extract_generic(text)
+    return extract_generic(text)
+
+
 # ── Claude summarization ─────────────────────────────────────────────────────────
 
 def summarize_sections(
-    ticker: str, filed_date: str, sections: dict[str, str]
+    ticker: str, form: str, filed_date: str, sections: dict[str, str]
 ) -> tuple[dict[str, Any], int | None, int | None]:
-    """Ask Claude for a structured summary. Returns (summary, in_tok, out_tok)."""
+    """Ask Claude for a structured summary. Returns (summary, in_tok, out_tok).
+
+    Branches on the shape of `sections`: annual reports (10-K/20-F) carry 'mda' +
+    'risk_factors'; everything else carries a single capped 'body' read with a
+    form-tailored focus line."""
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise RuntimeError(
             "ANTHROPIC_API_KEY is not set. Add it to .env (and as a GitHub Actions "
             "secret if you schedule summaries) before generating filing summaries."
         )
 
-    user_content = (
-        f"Company ticker: {ticker}\n"
-        f"Filing: 10-K filed {filed_date}\n\n"
-        f"## Management's Discussion & Analysis (Item 7)\n{sections['mda']}\n\n"
-        f"## Risk Factors (Item 1A)\n{sections['risk_factors']}\n\n"
-        "Summarize this filing per the required schema."
-    )
+    if "body" in sections:  # generic (non-annual) filing
+        user_content = (
+            f"Company ticker: {ticker}\n"
+            f"Filing: {form_label(form)} ({form}) filed {filed_date}\n\n"
+            f"Reading guidance: {generic_focus(form)}\n\n"
+            f"## Filing text (leading excerpt)\n{sections['body']}\n\n"
+            "Summarize this filing per the required schema. Put the key takeaways "
+            "in 'what_changed', any material risks or cautions in 'risk_factors', "
+            "and notable figures or terms in 'key_metrics'. Use an empty list for "
+            "any section the filing does not address."
+        )
+    else:  # annual report (10-K / 20-F): MD&A + Risk Factors
+        user_content = (
+            f"Company ticker: {ticker}\n"
+            f"Filing: {form} filed {filed_date}\n\n"
+            f"## Management's Discussion & Analysis\n{sections['mda']}\n\n"
+            f"## Risk Factors\n{sections['risk_factors']}\n\n"
+            "Summarize this filing per the required schema."
+        )
 
     client = anthropic.Anthropic()
     resp = client.messages.create(
@@ -188,20 +254,38 @@ def summarize_sections(
 # ── orchestration ────────────────────────────────────────────────────────────────
 
 def get_or_generate_summary(
-    ticker: str, *, form: str = "10-K", force: bool = False
+    ticker: str,
+    *,
+    form: str | None = None,
+    accession: str | None = None,
+    force: bool = False,
 ) -> dict[str, Any] | None:
-    """Return a cached summary, or generate + cache one from the latest filing.
+    """Return a cached summary, or generate + cache one. Resolution order:
 
-    Returns None if the company has no filing of the requested form.
+    - `accession` given → summarize that exact filing (any analyzable form);
+    - else `form` given → the latest filing of that form;
+    - else → the company's primary annual report (10-K, else 20-F, else 40-F).
+
+    Returns None if there is no matching filing, or the form isn't analyzable
+    (e.g. a bare Form 4 / late-filing notice).
     """
     ticker = ticker.upper()
-    filing = queries.latest_filing(ticker, form=form)
+    if accession:
+        filing = queries.filing_by_accession(accession)
+    elif form:
+        filing = queries.latest_filing(ticker, form=form)
+    else:
+        filing = queries.primary_annual_filing(ticker)
     if filing is None or not filing.get("primary_doc_url"):
         return None
 
-    accession = filing["accession_no"]
+    profile = analysis_profile(filing["form"])
+    if profile is None:
+        return None  # not a narrative filing worth an AI read
+
+    accession_no = filing["accession_no"]
     if not force:
-        cached = queries.get_cached_summary(accession, PROMPT_VERSION, SCHEMA_VERSION)
+        cached = queries.get_cached_summary(accession_no, PROMPT_VERSION, SCHEMA_VERSION)
         if cached is not None:
             return cached
 
@@ -213,21 +297,20 @@ def get_or_generate_summary(
         )
 
     text = fetch_filing_text(filing["primary_doc_url"])
-    sections = extract_sections(text)
-    if not sections["mda"] and not sections["risk_factors"]:
+    sections = _sections_for(profile, text)
+    if not any(sections.values()):
         raise RuntimeError(
-            f"Could not locate Item 1A / Item 7 sections in {accession} "
+            f"Could not extract readable text from {accession_no} "
             "(unusual filing layout)."
         )
 
-    filed = filing["filed_date"]
     summary, in_tok, out_tok = summarize_sections(
-        ticker, str(filed), sections
+        ticker, filing["form"], str(filing["filed_date"]), sections
     )
 
     queries.save_filing_summary(
         security_id=filing["security_id"],
-        accession_no=accession,
+        accession_no=accession_no,
         form=filing["form"],
         summary=summary,
         model=MODEL,
@@ -236,4 +319,4 @@ def get_or_generate_summary(
         input_tokens=in_tok,
         output_tokens=out_tok,
     )
-    return queries.get_cached_summary(accession, PROMPT_VERSION, SCHEMA_VERSION)
+    return queries.get_cached_summary(accession_no, PROMPT_VERSION, SCHEMA_VERSION)

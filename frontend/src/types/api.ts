@@ -73,6 +73,9 @@ export interface FilingRow {
   filed_date: string
   period_of_report: string | null
   primary_doc_url: string | null
+  label: string | null // plain-English form name
+  category: string | null // display grouping (e.g. "Proxy & governance")
+  analyzable: boolean // can the AI Overview read this filing?
 }
 
 export interface SecurityResponse {
@@ -102,6 +105,7 @@ export interface SummaryStatusResponse {
   has_filing: boolean
   latest_accession: string | null
   latest_filed_date: string | null
+  latest_form: string | null
   summary: FilingSummary | null
 }
 
@@ -251,6 +255,7 @@ export interface FilingQaStatusResponse {
   has_filing: boolean
   latest_accession: string | null
   latest_filed_date: string | null
+  latest_form: string | null
   answers: FilingAnswers | null
 }
 

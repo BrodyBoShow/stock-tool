@@ -1132,8 +1132,14 @@ def market_rank_movers(baseline_days: int = 25) -> list[dict[str, Any]]:
 
 # ── filings + AI summaries (read; summaries written via save_filing_summary) ────
 
-def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:
-    """Recent filings for a ticker (newest first)."""
+def filings_for_ticker(ticker: str, limit: int = 60) -> list[dict[str, Any]]:
+    """Recent filings for a ticker (newest first), across all catalogued form
+    types — annual/quarterly/current reports, proxies, ownership, offerings.
+
+    Matched by CIK, not by the ticker's own security_id: filings attach to the
+    LOWEST security_id of a CIK (dual-class convention), so a CIK-scoped lookup is
+    what lets the higher-class ticker (e.g. GOOGL, FOXA) see its company's filings
+    instead of an empty list."""
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -1142,8 +1148,13 @@ def filings_for_ticker(ticker: str, limit: int = 12) -> list[dict[str, Any]]:
                 SELECT f.accession_no, f.form, f.filed_date,
                        f.period_of_report, f.primary_doc_url
                 FROM filings f
-                JOIN securities s ON s.security_id = f.security_id
-                WHERE s.ticker = %s AND s.is_active
+                WHERE f.security_id IN (
+                    SELECT s2.security_id FROM securities s2
+                    WHERE s2.cik = (
+                        SELECT cik FROM securities
+                        WHERE ticker = %s AND is_active LIMIT 1
+                    )
+                )
                 ORDER BY f.filed_date DESC
                 LIMIT %s
                 """,
@@ -1172,6 +1183,62 @@ def latest_filing(ticker: str, form: str = "10-K") -> dict[str, Any] | None:
                 LIMIT 1
                 """,
                 (ticker, form),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    return dict(zip(cols, row, strict=True))
+
+
+def primary_annual_filing(ticker: str) -> dict[str, Any] | None:
+    """The company's latest annual report, whatever form it files: 10-K (domestic),
+    20-F (foreign private issuer), or 40-F (Canadian). Picks the most recent of
+    the three, tie-broken toward 10-K — so foreign filers resolve to their 20-F
+    instead of returning nothing."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.security_id, f.accession_no, f.form, f.filed_date,
+                       f.period_of_report, f.primary_doc_url
+                FROM filings f
+                JOIN securities s ON s.security_id = f.security_id
+                WHERE s.ticker = %s AND s.is_active
+                  AND f.form IN ('10-K', '20-F', '40-F')
+                ORDER BY f.filed_date DESC,
+                         CASE f.form WHEN '10-K' THEN 0 WHEN '20-F' THEN 1 ELSE 2 END
+                LIMIT 1
+                """,
+                (ticker,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    return dict(zip(cols, row, strict=True))
+
+
+def filing_by_accession(accession_no: str) -> dict[str, Any] | None:
+    """One filing by accession (incl. its security_id) — for on-demand analysis of
+    a specific filing the user picked from the Filings list."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT f.security_id, f.accession_no, f.form, f.filed_date,
+                       f.period_of_report, f.primary_doc_url
+                FROM filings f
+                WHERE f.accession_no = %s
+                LIMIT 1
+                """,
+                (accession_no,),
             )
             row = cur.fetchone()
             if row is None:

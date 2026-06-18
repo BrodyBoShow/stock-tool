@@ -30,6 +30,7 @@ import anthropic
 import httpx
 
 from engine import queries
+from engine.filing_taxonomy import analysis_profile
 from engine.summarize import _largest_span, fetch_filing_text
 
 # Opus 4.8 — this is the one place we spend for maximum depth and reasoning
@@ -117,8 +118,10 @@ FILING_QA_SCHEMA: dict[str, Any] = {
 
 SYSTEM_PROMPT = (
     "You are a buy-side analyst doing diligence on a company using ONLY the SEC "
-    "filing excerpts provided (latest 10-K Items 1, 1A, 7, 7A and the latest "
-    "10-Q MD&A). For each diligence topic, answer with specific figures and "
+    "filing excerpts provided (the company's latest annual report — Business, "
+    "Risk Factors, MD&A, and market-risk disclosures — plus the latest 10-Q "
+    "MD&A when the company files one). For each diligence topic, answer with "
+    "specific figures and "
     "cite a short verbatim quote or the exact numbers from the text. If the "
     "filings do not substantively address a topic, set disclosed=false and say "
     "'Not disclosed in the filings reviewed.' — never fill the gap with outside "
@@ -133,12 +136,15 @@ SYSTEM_PROMPT = (
 
 # ── deep section extraction ────────────────────────────────────────────────────
 
-def extract_deep_sections(text: str) -> dict[str, str]:
-    """Extract Items 1, 1A, 7 and 7A bodies from a 10-K's flattened text.
+def extract_deep_sections(text: str, profile: str = "annual_10k") -> dict[str, str]:
+    """Extract Business / Risk Factors / MD&A / Market-risk bodies from an annual
+    report's flattened text, dispatched by form profile (10-K vs 20-F item layout).
 
     Title-anchored largest-span (same approach as the summarizer) so a table-
     of-contents row or cross-reference can't be mistaken for the section body.
     """
+    if profile == "annual_20f":
+        return _extract_20f_deep(text)
     sep = r"[\s.):—-]*"
     business = _largest_span(
         text, rf"item{sep}1{sep}business", rf"item{sep}1a{sep}risk\s+factors"
@@ -165,6 +171,33 @@ def extract_deep_sections(text: str) -> dict[str, str]:
     }
 
 
+def _extract_20f_deep(text: str) -> dict[str, str]:
+    """20-F equivalent of the 10-K deep sections: Business = Item 4, Risk Factors
+    = Item 3.D, MD&A = Item 5 (Operating & Financial Review), Market risk =
+    Item 11 (Quantitative & Qualitative Disclosures)."""
+    sep = r"[\s.):—-]*"
+    business = _largest_span(
+        text, rf"item{sep}4{sep}information", rf"item{sep}5{sep}operating"
+    )
+    risk = _largest_span(
+        text, rf"item{sep}3{sep}d{sep}risk\s+factors", rf"item{sep}4{sep}information"
+    )
+    if not risk:
+        risk = _largest_span(text, r"risk\s+factors", rf"item{sep}4{sep}information")
+    mda = _largest_span(
+        text, rf"item{sep}5{sep}operating", rf"item{sep}6{sep}director"
+    )
+    market_risk = _largest_span(
+        text, rf"item{sep}11{sep}quantitat", rf"item{sep}12{sep}"
+    )
+    return {
+        "business": business[:MAX_SECTION_CHARS],
+        "risk_factors": risk[:MAX_SECTION_CHARS],
+        "mda": mda[:MAX_SECTION_CHARS],
+        "market_risk": market_risk[:MAX_SECTION_CHARS],
+    }
+
+
 def extract_10q_mda(text: str) -> str:
     """Best-effort MD&A (Part I, Item 2) from a 10-Q's flattened text."""
     sep = r"[\s.):—-]*"
@@ -180,20 +213,21 @@ def extract_10q_mda(text: str) -> str:
 
 # ── Claude diligence pass ────────────────────────────────────────────────────────
 
-def _build_user_content(ticker: str, k_filed: str, sections: dict[str, str],
+def _build_user_content(ticker: str, form: str, k_filed: str,
+                        sections: dict[str, str],
                         q_filed: str | None, q_mda: str) -> str:
     parts = [
         f"Company ticker: {ticker}",
-        f"Latest 10-K filed {k_filed}.",
+        f"Latest annual report: {form} filed {k_filed}.",
         "",
-        "## 10-K Item 1 — Business\n" + (sections["business"] or "(not located)"),
+        "## Business\n" + (sections["business"] or "(not located)"),
         "",
-        "## 10-K Item 1A — Risk Factors\n" + (sections["risk_factors"] or "(not located)"),
+        "## Risk Factors\n" + (sections["risk_factors"] or "(not located)"),
         "",
-        "## 10-K Item 7 — MD&A\n" + (sections["mda"] or "(not located)"),
+        "## Management's Discussion & Analysis\n" + (sections["mda"] or "(not located)"),
         "",
-        "## 10-K Item 7A — Quantitative & Qualitative Disclosures About Market "
-        "Risk\n" + (sections["market_risk"] or "(not located)"),
+        "## Quantitative & Qualitative Disclosures About Market Risk\n"
+        + (sections["market_risk"] or "(not located)"),
     ]
     if q_mda:
         parts += ["", f"## Latest 10-Q MD&A (filed {q_filed})\n{q_mda}"]
@@ -206,10 +240,10 @@ def _build_user_content(ticker: str, k_filed: str, sections: dict[str, str],
 
 
 def generate_answers(
-    ticker: str, k_filed: str, sections: dict[str, str],
+    ticker: str, form: str, k_filed: str, sections: dict[str, str],
     q_filed: str | None, q_mda: str,
 ) -> tuple[dict[str, Any], int | None, int | None]:
-    """Run the Opus diligence pass. Returns (answers, in_tok, out_tok)."""
+    """Run the diligence pass. Returns (answers, in_tok, out_tok)."""
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise RuntimeError(
             "ANTHROPIC_API_KEY is not set. Add it to .env before running the "
@@ -221,7 +255,7 @@ def generate_answers(
         max_tokens=8000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user",
-                   "content": _build_user_content(ticker, k_filed, sections,
+                   "content": _build_user_content(ticker, form, k_filed, sections,
                                                    q_filed, q_mda)}],
         output_config={"format": {"type": "json_schema", "schema": FILING_QA_SCHEMA}},
     )
@@ -236,15 +270,22 @@ def generate_answers(
 def get_or_generate_filing_qa(
     ticker: str, *, force: bool = False
 ) -> dict[str, Any] | None:
-    """Return cached diligence answers, or generate them from the latest 10-K.
+    """Return cached diligence answers, or generate them from the latest annual
+    report (10-K for domestic filers, 20-F for foreign private issuers).
 
-    Returns None if the company has no 10-K on file. Cached by the 10-K
-    accession, so it is generated at most once per annual filing.
+    Returns None if the company has no analyzable annual report on file (e.g. a
+    40-F wrapper or none at all). Cached by the annual filing's accession, so it
+    is generated at most once per annual filing. The 9-topic diligence framework
+    assumes a full annual report, so it is intentionally not run on current
+    reports, proxies, or offerings — those get the lighter Overview summary.
     """
     ticker = ticker.upper()
-    k = queries.latest_filing(ticker, form="10-K")
+    k = queries.primary_annual_filing(ticker)
     if k is None or not k.get("primary_doc_url"):
         return None
+    profile = analysis_profile(k["form"])
+    if profile not in ("annual_10k", "annual_20f"):
+        return None  # e.g. only a 40-F on file — deep diligence isn't reliable
 
     accession = k["accession_no"]
     if not force:
@@ -259,25 +300,27 @@ def get_or_generate_filing_qa(
         )
 
     k_text = fetch_filing_text(k["primary_doc_url"])
-    sections = extract_deep_sections(k_text)
+    sections = extract_deep_sections(k_text, profile)
     if not any(sections.values()):
         raise RuntimeError(
-            f"Could not locate any of Items 1/1A/7/7A in {accession} "
+            f"Could not locate the diligence sections in {accession} "
             "(unusual filing layout)."
         )
 
-    # latest 10-Q for freshness (best-effort; never blocks on it)
+    # Latest 10-Q for freshness — domestic 10-K filers only (foreign 20-F filers
+    # don't file quarterly). Best-effort; never blocks on it.
     q_filed, q_mda = None, ""
-    q = queries.latest_filing(ticker, form="10-Q")
-    if q is not None and q.get("primary_doc_url"):
-        try:
-            q_mda = extract_10q_mda(fetch_filing_text(q["primary_doc_url"]))
-            q_filed = str(q["filed_date"])
-        except httpx.HTTPError:
-            q_mda = ""
+    if profile == "annual_10k":
+        q = queries.latest_filing(ticker, form="10-Q")
+        if q is not None and q.get("primary_doc_url"):
+            try:
+                q_mda = extract_10q_mda(fetch_filing_text(q["primary_doc_url"]))
+                q_filed = str(q["filed_date"])
+            except httpx.HTTPError:
+                q_mda = ""
 
     answers, in_tok, out_tok = generate_answers(
-        ticker, str(k["filed_date"]), sections, q_filed, q_mda
+        ticker, k["form"], str(k["filed_date"]), sections, q_filed, q_mda
     )
     queries.save_filing_qa(
         security_id=k["security_id"],

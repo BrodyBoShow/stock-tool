@@ -6,6 +6,7 @@ import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FilingIntelligencePanel } from '@/components/deepdive/FilingIntelligencePanel'
+import { FilingsListPanel } from '@/components/deepdive/FilingsListPanel'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
@@ -194,6 +195,7 @@ export function DeepDivePage() {
       <div id="filings" className="space-y-5">
         <EventsPanel ticker={header.ticker} />
         <FilingIntelligencePanel ticker={header.ticker} filings={data.filings} />
+        <FilingsListPanel ticker={header.ticker} filings={data.filings} />
       </div>
 
       <div id="insiders">

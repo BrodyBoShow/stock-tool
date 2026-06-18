@@ -1,20 +1,18 @@
-"""Phase 13 — 8-K material-event ingestion.
+"""Filing catalog — record EVERY research-relevant SEC filing, not just 10-K/10-Q.
 
-Pulls Section 13/15(d) current reports (Form 8-K / 8-K/A) from SEC EDGAR for
-every security and stores each filing's material-event item codes. CONTEXT
-ONLY: this drives a "recent events" timeline on the deep-dive and grounds the
-Decision Brief — it never feeds factor scores.
+The fundamentals ingester (engine/fundamentals.py) only writes 10-K/10-Q rows to
+the `filings` table because it is coupled to XBRL fact extraction. This module is
+the decoupled counterpart: it reads the same EDGAR submissions JSON (one request
+per CIK, no document fetch, no LLM) and upserts the full curated set of forms
+(CATALOG_FORMS — annual/quarterly/current reports, proxies, ownership, tender,
+offerings, status) so the deep-dive can browse a company's complete filing
+history. Foreign private issuers (20-F/40-F/6-K) — invisible to the 10-K-only
+path — show up here, which is the point: more stocks become researchable.
 
-Why this is cheap: EDGAR's submissions JSON already carries an `items` field
-per 8-K (e.g. "2.02,9.01"), so the event timeline needs NO document fetch and
-NO LLM — one submissions read per company, the same pattern as the Form 4
-collector. Incremental by accession; nightly runs only touch new filings.
-
-Item codes are the SEC's standardized 8-K event taxonomy; ITEM_LABELS maps the
-common ones to plain English and HIGH_SIGNAL_ITEMS marks the genuinely
-market-moving categories (M&A, exec departures, results, impairments,
-delisting, bankruptcy, auditor change, restatements) so the UI and brief can
-foreground them over routine exhibit/Reg-FD filings.
+Browse only: this never feeds factor scores. Idempotent and incremental — a
+nightly pass only writes filings it hasn't seen. Filings attach to the lowest
+security_id of the CIK, matching fundamentals' dual-class convention (the
+`filings` PK is accession_no, so one row per filing).
 """
 from __future__ import annotations
 
@@ -22,6 +20,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from engine.db import get_connection
 from engine.db import reopen as _reopen
+from engine.filing_taxonomy import CATALOG_FORMS
 from engine.fundamentals import (
     PRIMARY_DOC_URL,
     SecClient,
@@ -30,104 +29,54 @@ from engine.fundamentals import (
 )
 from engine.jobs import finish_job, start_job
 
-JOB_NAME = "events_ingestion"
+JOB_NAME = "filing_catalog"
 JOB_VERSION = "v1"
 
-WINDOW_DAYS = 365
-# 8-K is the domestic current report; 6-K is its foreign-private-issuer
-# counterpart (earnings, M&A, governance changes for ADRs). 6-K filings usually
-# carry no SEC item codes, so they surface as plain dated rows — still the only
-# "what happened lately" timeline a 20-F/40-F filer gets.
-EVENT_FORMS = {"8-K", "8-K/A", "6-K", "6-K/A"}
+WINDOW_DAYS = 1095          # ~3 years — current enough for browse, bounded storage
 MAX_STORED_WARNINGS = 200
 
-# SEC 8-K item taxonomy (plain-English labels for the common codes).
-ITEM_LABELS = {
-    "1.01": "Material agreement entered",
-    "1.02": "Material agreement terminated",
-    "1.03": "Bankruptcy or receivership",
-    "1.04": "Mine safety disclosure",
-    "2.01": "Acquisition or disposition of assets",
-    "2.02": "Results of operations (earnings)",
-    "2.03": "Direct financial obligation created",
-    "2.04": "Obligation acceleration / triggering event",
-    "2.05": "Exit or disposal costs",
-    "2.06": "Material impairment",
-    "3.01": "Delisting / listing-rule failure notice",
-    "3.02": "Unregistered equity sales",
-    "3.03": "Modification of security-holder rights",
-    "4.01": "Change in certifying accountant (auditor)",
-    "4.02": "Non-reliance on prior financials (restatement)",
-    "5.01": "Change in control",
-    "5.02": "Director / officer departure or appointment",
-    "5.03": "Amendments to bylaws / fiscal-year change",
-    "5.04": "Trading suspension under benefit plans",
-    "5.05": "Amendment to code of ethics",
-    "5.07": "Shareholder vote results",
-    "5.08": "Shareholder director nominations",
-    "7.01": "Regulation FD disclosure",
-    "8.01": "Other events",
-    "9.01": "Financial statements and exhibits",
-}
 
-# The categories that actually move a thesis — used to foreground events in the
-# UI and to decide what the Decision Brief is told about.
-HIGH_SIGNAL_ITEMS = {
-    "1.01", "1.02", "1.03", "2.01", "2.02", "2.05", "2.06",
-    "3.01", "4.01", "4.02", "5.01", "5.02",
-}
-
-
-def label_for(item: str) -> str:
-    return ITEM_LABELS.get(item, f"Item {item}")
-
-
-def collect_8k_index(
+def collect_catalog_index(
     client: SecClient, cik: str, cutoff: date
-) -> list[tuple[str, str, date, date | None, list[str], str]]:
-    """List (accession, form, filed_date, event_date, items, doc) for 8-Ks."""
+) -> list[tuple[str, str, date, date | None, str]]:
+    """List (accession, form, filed_date, period_of_report, primary_doc) for every
+    CATALOG_FORMS filing in the window. De-duplicated by accession."""
     out: dict[str, tuple] = {}
     for batch in _iter_submission_batches(client, cik.zfill(10), cutoff):
         accs = batch.get("accessionNumber", [])
         forms = batch.get("form", [])
         filed = batch.get("filingDate", [])
         report = batch.get("reportDate", [])
-        items = batch.get("items", [])
         docs = batch.get("primaryDocument", [])
         for i, accession in enumerate(accs):
             form = forms[i] if i < len(forms) else None
-            if form not in EVENT_FORMS:
+            if form not in CATALOG_FORMS:
                 continue
             filed_date = _parse_date(filed[i] if i < len(filed) else None)
             if filed_date is None or filed_date < cutoff:
                 continue
-            raw_items = (items[i] if i < len(items) else "") or ""
-            item_list = [s.strip() for s in raw_items.split(",") if s.strip()]
             out[accession] = (
                 accession,
                 form,
                 filed_date,
                 _parse_date(report[i] if i < len(report) else None),
-                item_list,
                 (docs[i] if i < len(docs) else "") or "",
             )
     return list(out.values())
 
 
-def _existing_accessions(cur, security_ids: list[int]) -> set[str]:
+def _existing_accessions(cur, security_id: int) -> set[str]:
     cur.execute(
-        "SELECT DISTINCT accession_no FROM material_events "
-        "WHERE security_id = ANY(%s)",
-        (security_ids,),
+        "SELECT accession_no FROM filings WHERE security_id = %s", (security_id,)
     )
     return {r[0] for r in cur.fetchall()}
 
 
-def _upsert(cur, security_ids: list[int], cik: str, rows: list[tuple]) -> int:
+def _upsert(cur, security_id: int, cik: str, rows: list[tuple]) -> int:
     if not rows:
         return 0
     payload = []
-    for accession, form, filed_date, event_date, items, doc in rows:
+    for accession, form, filed_date, period, doc in rows:
         url = (
             PRIMARY_DOC_URL.format(
                 cik=int(cik), accession_nodash=accession.replace("-", ""), doc=doc
@@ -135,22 +84,20 @@ def _upsert(cur, security_ids: list[int], cik: str, rows: list[tuple]) -> int:
             if doc
             else None
         )
-        for sid in security_ids:
-            payload.append(
-                (sid, accession, form, filed_date, event_date, items, url)
-            )
+        payload.append((accession, security_id, form, filed_date, period, url))
     cur.executemany(
         """
-        INSERT INTO material_events
-          (security_id, accession_no, form, filed_date, event_date, items,
-           primary_doc_url)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (security_id, accession_no) DO UPDATE SET
+        INSERT INTO filings
+          (accession_no, security_id, form, filed_date, period_of_report,
+           primary_doc_url, fetched_at)
+        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+        ON CONFLICT (accession_no) DO UPDATE SET
+          security_id = EXCLUDED.security_id,
           form = EXCLUDED.form,
           filed_date = EXCLUDED.filed_date,
-          event_date = EXCLUDED.event_date,
-          items = EXCLUDED.items,
-          primary_doc_url = EXCLUDED.primary_doc_url
+          period_of_report = EXCLUDED.period_of_report,
+          primary_doc_url = EXCLUDED.primary_doc_url,
+          fetched_at = NOW()
         """,
         payload,
     )
@@ -163,12 +110,8 @@ def run(
     window_days: int = WINDOW_DAYS,
     max_fetches: int | None = None,
 ) -> dict:
-    """Ingest 8-K events for the universe. Returns a summary dict.
-
-    Only the submissions JSON is fetched (one request per CIK), so a full
-    universe pass is ~500 requests — light enough that max_fetches is mostly a
-    safety bound for shared-rate-budget runs.
-    """
+    """Catalog filings for the universe. One submissions request per CIK; only
+    new filings are written. Returns a summary dict (same shape as events.run)."""
     today = datetime.now(UTC).date()
     cutoff = today - timedelta(days=window_days)
 
@@ -214,24 +157,22 @@ def run(
             if max_fetches is not None and fetches >= max_fetches:
                 budget_hit = True
                 break
-            members = sorted(members)
-            sids = [sid for sid, _t in members]
+            members = sorted(members)            # attach to the lowest security_id
+            sid = members[0][0]
             ticker_label = "/".join(t for _, t in members)
             try:
                 with conn.cursor() as cur:
-                    known = _existing_accessions(cur, sids)
+                    known = _existing_accessions(cur, sid)
                 fetches += 1
-                index = collect_8k_index(client, cik, cutoff)
+                index = collect_catalog_index(client, cik, cutoff)
                 new = [f for f in index if f[0] not in known]
                 if new:
                     with conn.cursor() as cur:
-                        rows_total += _upsert(cur, sids, cik, new)
+                        rows_total += _upsert(cur, sid, cik, new)
                     conn.commit()
                     filings_total += len(new)
                 companies_done += 1
             except Exception as exc:  # noqa: BLE001 — isolate per company
-                # Guard the rollback: on a dead connection (the pooler drop this
-                # job must survive) a bare rollback() raises and masks `exc`.
                 try:
                     conn.rollback()
                 except Exception:  # noqa: BLE001

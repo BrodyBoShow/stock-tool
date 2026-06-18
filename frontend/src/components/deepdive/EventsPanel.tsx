@@ -57,7 +57,7 @@ function EventRow({ e }: { e: MaterialEvent }) {
           rel="noopener noreferrer"
           className="flex-none self-center text-[0.72rem] font-semibold text-[#4f46e5] hover:underline"
         >
-          8-K ↗
+          {e.form} ↗
         </a>
       )}
     </li>
@@ -88,8 +88,8 @@ export function EventsPanel({ ticker }: { ticker: string }) {
         <div>
           <div className="text-base font-bold text-[#111827]">Recent events</div>
           <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
-            Material corporate events from SEC 8-K filings (last 12 months) —
-            what happened, beyond the numbers. Context, not advice.
+            Material corporate events from SEC 8-K (and foreign-issuer 6-K) filings
+            (last 12 months) — what happened, beyond the numbers. Context, not advice.
           </div>
         </div>
         {events.length > 0 && (
@@ -108,9 +108,8 @@ export function EventsPanel({ ticker }: { ticker: string }) {
           </p>
         ) : events.length === 0 ? (
           <p className="text-[0.85rem] text-[#9ca3af]">
-            No 8-K events on record for {ticker}. Foreign private issuers file
-            6-K instead of 8-K (not covered here yet); a recently-added domestic
-            name may still be backfilling overnight.
+            No 8-K or 6-K events on record for {ticker} — a recently-added name may
+            still be backfilling overnight.
           </p>
         ) : (
           <>

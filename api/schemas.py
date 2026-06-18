@@ -163,6 +163,9 @@ class FilingRow(BaseModel):
     filed_date: date
     period_of_report: date | None
     primary_doc_url: str | None
+    label: str | None = None          # plain-English form name (filing_taxonomy)
+    category: str | None = None       # display grouping (e.g. "Proxy & governance")
+    analyzable: bool = False          # can the AI Overview read this filing?
 
 
 class SecurityResponse(BaseModel):
@@ -191,9 +194,10 @@ class FilingSummary(BaseModel):
 
 class SummaryStatusResponse(BaseModel):
     ticker: str
-    has_filing: bool                  # is there a 10-K to summarize?
+    has_filing: bool                  # is there an analyzable filing to summarize?
     latest_accession: str | None
     latest_filed_date: date | None
+    latest_form: str | None = None    # the resolved form (10-K, 20-F, 40-F, …)
     summary: FilingSummary | None     # cached summary if one exists
 
 
@@ -325,9 +329,10 @@ class FilingAnswers(BaseModel):
 
 class FilingQaStatusResponse(BaseModel):
     ticker: str
-    has_filing: bool
+    has_filing: bool                  # is there an analyzable annual report (10-K/20-F)?
     latest_accession: str | None
     latest_filed_date: date | None
+    latest_form: str | None = None    # the resolved annual form (10-K, 20-F, 40-F)
     answers: FilingAnswers | None     # cached diligence answers if generated
 
 
