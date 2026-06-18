@@ -325,6 +325,23 @@ def _daily_stats(rets: list[float], spy_rets: list[float | None],
     return out
 
 
+def _fifo_sell(q: list[list[float]], to_sell: float) -> float:
+    """Remove `to_sell` shares FIFO from a lot queue (mutated in place); return
+    the cost basis removed. Shared by the main day loop and the post-last-close
+    trade pass so the two can never diverge."""
+    cost_out = 0.0
+    while to_sell > 1e-9 and q:
+        lot = q[0]
+        take = min(lot[0], to_sell)
+        cost_out += lot[1] * (take / lot[0])
+        lot[1] -= lot[1] * (take / lot[0])
+        lot[0] -= take
+        to_sell -= take
+        if lot[0] <= 1e-9:
+            q.pop(0)
+    return cost_out
+
+
 def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     """The entire Portfolio tab payload in one pass over the ledger."""
     conn = acquire()
@@ -450,18 +467,7 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
                         f"{avail:g} shares held — clamped. Check the ledger "
                         "(missing buy, or shares entered pre/post split?)")
                     to_sell = avail
-                cost_out = 0.0
-                q = lots.get(sid, [])
-                while to_sell > 1e-9 and q:
-                    lot = q[0]
-                    take = min(lot[0], to_sell)
-                    cost_out += lot[1] * (take / lot[0])
-                    lot[1] -= lot[1] * (take / lot[0])
-                    lot[0] -= take
-                    to_sell -= take
-                    if lot[0] <= 1e-9:
-                        q.pop(0)
-                realized[sid] += amt - cost_out
+                realized[sid] += amt - _fifo_sell(lots.get(sid, []), to_sell)
                 cash += amt
                 if not cash_tracking:
                     flow -= amt
@@ -518,9 +524,63 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
         prev_value = value
         last_flow = flow
 
-    # ── snapshot: holdings as of the last day ────────────────────────────────
+    # ── snapshot: holdings as of today ───────────────────────────────────────
     last_day = timeline[-1]
-    total_value = prev_value if prev_value is not None else 0.0
+
+    # Trades dated AFTER the last priced session (e.g. a buy entered today, before
+    # tonight's nightly brings prices current) are applied here so the holdings
+    # snapshot reflects them immediately, valued at the last known close. They are
+    # deliberately NOT folded into the return series / TWR / MWR / risk above:
+    # there's no real price move yet, so performance stays anchored to that close.
+    for fday in sorted(d for d in txns_by_date if d > last_day):
+        for sid, ratio in splits.get(fday, ()):
+            for lot in lots.get(sid, ()):
+                lot[0] *= ratio
+        for t in txns_by_date[fday]:
+            typ, sid = t["type"], t["sid"]
+            if typ == "buy":
+                amt = cash_amt(t)
+                lots[sid].append([t["shares"], amt])
+                cash -= amt
+                if not cash_tracking:
+                    net_invested += amt
+            elif typ == "sell":
+                amt = cash_amt(t)
+                avail = sum(lot[0] for lot in lots.get(sid, ()))
+                to_sell = t["shares"]
+                if to_sell > avail + 1e-6:
+                    tk = meta.get(sid, {}).get("ticker", sid)
+                    warnings.append(
+                        f"Sell of {t['shares']:g} {tk} on {fday} exceeds the "
+                        f"{avail:g} shares held - clamped. Check the ledger "
+                        "(missing buy, or shares entered pre/post split?)")
+                    to_sell = avail
+                realized[sid] += amt - _fifo_sell(lots.get(sid, []), to_sell)
+                cash += amt
+                if not cash_tracking:
+                    net_invested -= amt
+            elif typ == "dividend":
+                cash += t["amount"]
+                div_received[sid] += t["amount"]
+                div_events.append((fday, sid, t["amount"]))
+                if not cash_tracking:
+                    net_invested -= t["amount"]
+            elif typ == "deposit":
+                cash += t["amount"]
+                net_invested += t["amount"]
+            elif typ == "withdrawal":
+                cash -= t["amount"]
+                net_invested -= t["amount"]
+            elif typ == "fee":
+                cash -= t["amount"]
+
+    # Snapshot total = open lots valued at their last known close (+ cash when a
+    # cash ledger is tracked), so it always equals the sum of the holdings rows —
+    # including any position opened after the last priced session.
+    total_value = sum(
+        sum(lot[0] for lot in lots[sid]) * last_close[sid]
+        for sid in lots if sid in last_close
+    ) + (cash if cash_tracking else 0.0)
     holdings: list[dict[str, Any]] = []
     for sid in sids:
         shares = sum(lot[0] for lot in lots.get(sid, ()))
@@ -565,8 +625,12 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     # ── stats / curves ───────────────────────────────────────────────────────
     years = max((last_day - first_date).days, 1) / 365.25
     stats = _daily_stats(twr_rets, spy_rets, years)
-    if total_value > 0:
-        xirr_flows.append((last_day, total_value))
+    # MWR is the return THROUGH the last priced session: its terminal value is
+    # that day's portfolio value, not the post-trade snapshot (which may include a
+    # position opened today that has no return history yet).
+    series_value = prev_value if prev_value is not None else 0.0
+    if series_value > 0:
+        xirr_flows.append((last_day, series_value))
     stats["mwr"] = _xirr(xirr_flows)
 
     spy_curve: list[float] = []
