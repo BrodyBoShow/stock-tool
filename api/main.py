@@ -103,12 +103,15 @@ def _warm_caches() -> None:
     """Open the DB read pool, then start the heavy computations in background
     threads at boot so the first open is usually instant: the ~20s market
     overview and the ~15s screener (both complete-only and full variants).
-    The pool must open first — the warm threads borrow from it."""
+    start_auto_refresh() then keeps the market cache warm at the current data
+    date, so the first open AFTER each nightly is instant too. The pool must open
+    first — the warm threads borrow from it."""
     from engine import db, queries
     from engine import market as market_engine
 
     db.init_pool()
     market_engine.warm()
+    market_engine.start_auto_refresh()
     queries.warm_screener()
 
 

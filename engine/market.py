@@ -35,15 +35,18 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from engine.db import get_connection
+from engine.db import acquire, get_connection, release
 from engine.events import HIGH_SIGNAL_ITEMS, label_for
 from engine.queries import ACTIVE_CONFIG_VERSION
 
 _TTL_SECONDS = 600
 _NEWS_TTL_SECONDS = 900
-_lock = threading.Lock()
-_cache: dict[str, Any] = {"t": 0.0, "payload": None}
+_PREWARM_INTERVAL_SECONDS = 300       # background date-probe cadence (see _prewarm_loop)
+_lock = threading.Lock()              # guards _cache / _news_cache field access
+_refresh_lock = threading.Lock()      # single-flights the ~20s _compute()
+_cache: dict[str, Any] = {"t": 0.0, "payload": None, "refreshing": False}
 _news_cache: dict[str, Any] = {"t": 0.0, "items": []}
+_prewarmer_started = False            # guards start_auto_refresh() idempotence
 
 # Public RSS feeds — headlines/links with attribution only (no article text).
 RSS_FEEDS = [
@@ -722,41 +725,172 @@ def _compute() -> dict[str, Any]:
     return payload
 
 
-def _refresh() -> None:
-    """Recompute into the cache (runs in a daemon thread)."""
+def _data_date() -> str | None:
+    """Latest priced session in the DB as 'YYYY-MM-DD' (matches payload['as_of']).
+
+    A single indexed `max(date)` via the read pool — instant on the
+    prices_daily (date, security_id) index (migration 0020) — mirroring the
+    screener's score_date probe in queries.py. Run on every request so the cache
+    invalidates the moment the nightly advances the data, not just on a wall-clock
+    timer. Returns None only if the probe fails, in which case get_overview falls
+    back to the soft TTL alone (a transient DB blip never blanks the page)."""
+    try:
+        conn = acquire()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT max(date) FROM prices_daily")
+                row = cur.fetchone()
+        finally:
+            release(conn)
+    except Exception as exc:  # noqa: BLE001 — probe must never take the page down
+        print(f"[market] data-date probe failed: {exc}", flush=True)
+        return None
+    return str(row[0]) if row and row[0] is not None else None
+
+
+def _do_refresh() -> bool:
+    """Recompute the payload into the cache. Returns False — leaving any existing
+    payload untouched — if _compute() fails, so a transient error degrades to
+    serving the prior snapshot instead of a 500."""
     try:
         payload = _compute()
-        with _lock:
-            _cache["payload"] = payload
-            _cache["t"] = time.monotonic()
+    except Exception as exc:  # noqa: BLE001 — a failed recompute must not 500 a served page
+        print(f"[market] overview refresh failed: {exc}", flush=True)
+        return False
+    with _lock:
+        _cache["payload"] = payload
+        _cache["t"] = time.monotonic()
+    return True
+
+
+def _refresh(seen_t: float, *, target_date: str | None = None,
+             background: bool = False) -> None:
+    """Single-flight recompute under _refresh_lock — at most one ~20s _compute()
+    runs at a time; other callers block here and return without recomputing once
+    the cache already satisfies what they came for. Two callers, two "already
+    satisfied" tests and two flag policies:
+
+    - background=True (a _start_refresh thread, same-date TTL revalidation): owns
+      the `refreshing` flag and ALWAYS clears it on exit — including the
+      short-circuit path, so the flag can never leak True and wedge future
+      background refreshes. Satisfied once any refresh has landed since seen_t.
+    - background=False (synchronous, from get_overview on first-compute or a
+      data-date advance): never touches the flag. Satisfied only once the cache
+      actually holds target_date — so a same-second background worker that
+      committed an OLD-dated payload can't trick a date-advance caller into
+      serving stale, and a FAILED compute correctly falls through to a retry."""
+    try:
+        with _refresh_lock:
+            with _lock:
+                payload = _cache["payload"]
+                t = _cache["t"]
+            if background:
+                already = payload is not None and t != seen_t
+            else:
+                already = (target_date is not None and payload is not None
+                           and payload["as_of"] == target_date)
+            if not already:
+                _do_refresh()
     finally:
-        _cache["refreshing"] = False
+        if background:
+            with _lock:
+                _cache["refreshing"] = False
+
+
+def _start_refresh(seen_t: float) -> None:
+    """Spawn a background recompute if one isn't already running (non-blocking).
+    The spawned thread owns the `refreshing` flag and clears it on exit."""
+    with _lock:
+        if _cache["refreshing"]:
+            return
+        _cache["refreshing"] = True
+    threading.Thread(target=_refresh, args=(seen_t,),
+                     kwargs={"background": True}, daemon=True).start()
 
 
 def warm() -> None:
     """Kick the first computation in the background (called at API startup) so
     the cache is usually hot before the user first opens the Market tab."""
-    if not _cache.get("refreshing"):
-        _cache["refreshing"] = True
-        threading.Thread(target=_refresh, daemon=True).start()
+    with _lock:
+        seen_t = _cache["t"]
+    _start_refresh(seen_t)
+
+
+def _prewarm_tick() -> None:
+    """One pre-warm check: if the live data date has advanced past the cached
+    snapshot (the nightly landed), kick a BACKGROUND refresh so the cache is warm
+    at the new date before any user opens the tab. Also recovers a cold cache if
+    the startup warm() failed. Extracted from the loop so it is unit-testable."""
+    live_date = _data_date()
+    with _lock:
+        payload = _cache["payload"]
+        seen_t = _cache["t"]
+    as_of = payload["as_of"] if payload is not None else None
+    if live_date is not None and as_of != live_date:
+        _start_refresh(seen_t)
+
+
+def _prewarm_loop() -> None:
+    """Daemon loop: probe the data date every _PREWARM_INTERVAL_SECONDS and warm
+    the cache in the background when it advances. This is what makes the first
+    Market open after a nightly INSTANT instead of paying the ~20s synchronous
+    recompute — the warmer has usually already refreshed to the new date minutes
+    earlier. Best-effort: any error is logged and the loop keeps running."""
+    while True:
+        try:
+            time.sleep(_PREWARM_INTERVAL_SECONDS)
+            _prewarm_tick()
+        except Exception as exc:  # noqa: BLE001 — the warmer must never die
+            print(f"[market] prewarmer error: {exc}", flush=True)
+
+
+def start_auto_refresh() -> None:
+    """Start the background pre-warmer once (idempotent). Called at API startup
+    after warm(); a no-op in engine/script processes that never call it."""
+    global _prewarmer_started
+    with _lock:
+        if _prewarmer_started:
+            return
+        _prewarmer_started = True
+    threading.Thread(target=_prewarm_loop, daemon=True, name="market-prewarmer").start()
 
 
 def get_overview(*, force: bool = False) -> dict[str, Any]:
-    """Cached market overview, stale-while-revalidate: once a payload exists,
-    requests are never blocked by the ~20s recompute — an expired cache serves
-    the stale copy and refreshes in the background. Headlines ride a separate
-    (longer) cache so a slow feed never delays the data sections."""
+    """Cached market overview — data-date-aware + stale-while-revalidate.
+
+    Freshness is keyed on the latest priced session, not just a wall-clock TTL: a
+    cheap max(date) probe runs each request (see _data_date), so the instant the
+    nightly advances the data we recompute SYNCHRONOUSLY rather than serving a
+    stale-dated payload — the first open after a nightly is already current, no
+    reload needed. Within one data date we keep the soft ~10min TTL with
+    background revalidation, so requests are never blocked once a current snapshot
+    exists. Headlines ride a separate (longer) cache so a slow feed never delays
+    the data sections."""
     now = time.monotonic()
+    live_date = _data_date()  # None if the probe failed → fall back to TTL only
     with _lock:
         payload = _cache["payload"]
-        fresh = payload is not None and now - _cache["t"] < _TTL_SECONDS
-    if payload is None:
-        _refresh()  # first ever call: nothing to serve, compute synchronously
-        with _lock:
-            payload = _cache["payload"]
-    elif (not fresh or force) and not _cache.get("refreshing"):
-        warm()
+        seen_t = _cache["t"]
+    date_current = payload is not None and (
+        live_date is None or payload["as_of"] == live_date
+    )
+    age_ok = payload is not None and now - seen_t < _TTL_SECONDS
+
+    if payload is None or not date_current:
+        # Nothing to serve yet, or the nightly advanced the data past our
+        # snapshot. Serving a stale DATE is the exact "why is this old?" bug, so
+        # recompute synchronously — single-flight, keyed on the target date so a
+        # concurrent stale-dated refresh can't satisfy us — before answering.
+        _refresh(seen_t, target_date=live_date)
+    elif not age_ok or force:
+        # Same data date, just past the soft TTL (or forced): revalidate in the
+        # background and serve the still-current snapshot now — never block.
+        _start_refresh(seen_t)
+
     with _lock:
-        age = round(now - _cache["t"], 1)
+        payload = _cache["payload"]
+        age = round(time.monotonic() - _cache["t"], 1)
+    if payload is None:  # only reachable if the very first compute failed
+        raise RuntimeError("market overview unavailable (initial compute failed)")
     return {**payload, "headlines": get_headlines(), "cache_age_seconds": age,
             "freshness": _freshness(payload["as_of"])}
