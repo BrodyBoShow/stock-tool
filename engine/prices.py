@@ -38,6 +38,15 @@ BACKFILL_YEARS = 5
 THROTTLE_SECONDS = 0.3          # polite gap between tickers
 RETRY_BACKOFF = (3, 10, 30)     # seconds between attempts; len+1 total attempts
 
+# Fast incremental nightly refresh (run_daily_refresh): yf.download pulls a whole
+# batch of tickers in one threaded call (~5-18x faster/ticker than per-ticker
+# Ticker().history — measured), so the nightly price step runs in minutes, not
+# hours. A fixed recent lookback window keeps every active name current; names
+# with a larger gap (new listings) are caught by the one-time run_bulk_backfill.
+DAILY_LOOKBACK_DAYS = 15        # refetch the last ~15 calendar days (idempotent)
+PRICE_BATCH_SIZE = 120          # tickers per yf.download call
+BATCH_COOLDOWNS = (30, 90, 300, 600)  # escalating sleep when a batch is rate-limited
+
 # Normalized column set returned by every provider.
 PRICE_COLUMNS = ["date", "open", "high", "low", "close", "adj_close", "volume", "dividend", "split"]
 
@@ -500,6 +509,167 @@ def run_bulk_backfill(
     )
     return {
         "tickers_total": scope,
+        "tickers_loaded": loaded,
+        "tickers_empty": empty,
+        "tickers_failed": failed,
+        "price_rows_upserted": total_rows,
+        "splits_captured": total_splits,
+        "dividends_captured": total_dividends,
+        "warnings": warnings,
+        "job_id": job_id,
+    }
+
+
+# ── fast batched daily refresh (the nightly's price step) ────────────────────
+
+def _slice_ticker(data: pd.DataFrame, ticker: str) -> pd.DataFrame | None:
+    """One ticker's normalized OHLCV frame out of a batched yf.download result
+    (MultiIndex columns when the batch had >1 ticker, flat when it had one)."""
+    try:
+        if isinstance(data.columns, pd.MultiIndex):
+            if ticker not in set(data.columns.get_level_values(0)):
+                return None
+            sub = data[ticker]
+        else:
+            sub = data
+        sub = sub.dropna(how="all")
+        if sub.empty:
+            return None
+        return YFinanceProvider._normalize(sub)
+    except Exception:  # noqa: BLE001 — a malformed slice just means "no data"
+        return None
+
+
+def _download_batch(
+    batch: list[str], start: date, end: date,
+    cooldowns: tuple[int, ...], warnings: list[str],
+) -> pd.DataFrame | None:
+    """yf.download a batch (threaded) with escalating rate-limit cooldown +
+    retry. Returns the raw frame, or None if it gave up."""
+    for attempt in range(len(cooldowns) + 1):
+        try:
+            data = yf.download(
+                tickers=" ".join(batch),
+                start=start.isoformat(),
+                end=end.isoformat(),
+                interval="1d",
+                auto_adjust=False,
+                actions=True,
+                group_by="ticker",
+                threads=True,
+                progress=False,
+            )
+            if data is not None and not data.empty:
+                return data
+            # Empty can be a rate-limit OR a genuinely quiet batch; retry then accept.
+        except Exception as exc:  # noqa: BLE001
+            if not _is_rate_limit(exc) and attempt == len(cooldowns):
+                warnings.append(f"batch[{batch[0]}..{batch[-1]}] fetch failed: {exc!r}")
+                return None
+        if attempt < len(cooldowns):
+            time.sleep(cooldowns[min(attempt, len(cooldowns) - 1)])
+    return None
+
+
+def run_daily_refresh(
+    *,
+    lookback_days: int = DAILY_LOOKBACK_DAYS,
+    batch_size: int = PRICE_BATCH_SIZE,
+    cooldowns: tuple[int, ...] = BATCH_COOLDOWNS,
+    reconnect_every_batches: int = 8,
+) -> dict:
+    """Fast incremental price refresh for the nightly.
+
+    Fetches the last ``lookback_days`` sessions for the whole ACTIVE universe via
+    batched, threaded yf.download (~one call per ``batch_size`` tickers instead of
+    one request per ticker), so the price step runs in minutes, not hours, with
+    far less rate-limiting. Idempotent + resumable (commits per batch). Names with
+    NO price history are out of scope here — that's the one-time run_bulk_backfill.
+    Returns the same summary shape as run_bulk_backfill.
+    """
+    today = datetime.now(UTC).date()
+    end = today + timedelta(days=1)
+    start = today - timedelta(days=lookback_days)
+
+    warnings: list[str] = []
+    loaded = empty = failed = 0
+    total_rows = total_splits = total_dividends = 0
+
+    conn = get_connection()
+    job_id = start_job(conn, JOB_NAME, job_version=JOB_VERSION, data_date=today)
+    try:
+        with conn.cursor() as cur:
+            universe = _load_universe(cur)
+        sid_by_ticker = {t: sid for sid, t in universe}
+        tickers = [t for _sid, t in universe]
+        n_batches = (len(tickers) + batch_size - 1) // batch_size
+        print(f"[daily] refreshing {len(tickers)} active tickers in {n_batches} "
+              f"batches of {batch_size} (last {lookback_days}d)", flush=True)
+
+        for bi in range(n_batches):
+            batch = tickers[bi * batch_size:(bi + 1) * batch_size]
+            if bi and bi % reconnect_every_batches == 0:
+                conn = _reopen(conn)
+            data = _download_batch(batch, start, end, cooldowns, warnings)
+            if data is None:
+                failed += len(batch)
+                warnings.append(f"batch {bi + 1}/{n_batches} gave up (rate-limit/empty)")
+                continue
+            for tkr in batch:
+                df = _slice_ticker(data, tkr)
+                if df is None or df.empty:
+                    empty += 1
+                    continue
+                sid = sid_by_ticker.get(tkr)
+                if sid is None:
+                    continue
+                for db_attempt in range(2):  # one reconnect-and-retry on write failure
+                    try:
+                        with conn.cursor() as cur:
+                            n = _upsert_prices(cur, sid, df)
+                            s, d = _upsert_actions(cur, sid, df)
+                        conn.commit()
+                        loaded += 1
+                        total_rows += n
+                        total_splits += s
+                        total_dividends += d
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        try:
+                            conn.rollback()
+                        except Exception:  # noqa: BLE001
+                            pass
+                        if db_attempt == 0:
+                            conn = _reopen(conn)
+                            continue
+                        failed += 1
+                        warnings.append(f"{tkr}: db write failed - {exc!r}")
+            print(f"[daily] batch {bi + 1}/{n_batches} | loaded={loaded} "
+                  f"empty={empty} failed={failed} rows={total_rows}", flush=True)
+
+        if conn.closed:
+            conn = _reopen(conn)
+        finish_job(conn, job_id, status="success",
+                   rows_affected=total_rows, warnings=warnings or None)
+    except Exception as exc:  # noqa: BLE001
+        try:
+            conn = _reopen(conn)
+            finish_job(conn, job_id, status="failed", error=str(exc),
+                       warnings=warnings or None)
+        except Exception:  # noqa: BLE001
+            pass
+        raise
+    finally:
+        try:
+            if conn is not None and not conn.closed:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+    print(f"[daily] DONE: loaded={loaded} empty={empty} failed={failed} "
+          f"rows={total_rows} splits={total_splits} divs={total_dividends}", flush=True)
+    return {
+        "tickers_total": len(tickers),
         "tickers_loaded": loaded,
         "tickers_empty": empty,
         "tickers_failed": failed,

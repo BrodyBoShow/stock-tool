@@ -40,13 +40,14 @@ from engine import (  # noqa: E402
 
 def main() -> int:
     # --- step 1: price refresh ---
-    # The patient bulk runner (incremental from each ticker's last stored date,
-    # rate-limit cooldowns that retry the same ticker, reconnect-hardened DB
-    # writes) replaced the original per-ticker run() when the universe grew to
-    # ~6k names: from a CI IP, yfinance throttling is routine, and the old
-    # runner skipped throttled tickers as "empty".
+    # Fast batched daily refresh: yf.download pulls ~120 tickers per threaded
+    # call (measured ~5-18x faster/ticker than per-ticker history()), so the
+    # whole active universe refreshes in minutes instead of hours and triggers
+    # far less yfinance throttling. Idempotent + resumable. The patient
+    # per-ticker run_bulk_backfill() stays for one-time full backfills of brand-
+    # new names (no history yet), which the fixed daily lookback doesn't cover.
     print("\n=== [1/6] Price refresh ===")
-    px = prices.run_bulk_backfill(only_missing=False, active_only=True)
+    px = prices.run_daily_refresh()
     print(
         f"  Tickers {px['tickers_loaded']}/{px['tickers_total']} loaded  "
         f"rows upserted {px['price_rows_upserted']}  "
