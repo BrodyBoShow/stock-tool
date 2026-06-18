@@ -579,6 +579,12 @@ function HoldingsTable({
 }) {
   if (!holdings.length)
     return <p className="text-sm text-[#9ca3af]">No open positions.</p>
+  // Weights are computed off the SAME (live-when-available) values shown in the
+  // Value column, so the column reconciles with the live header total below.
+  const liveTotal = holdings.reduce((acc, h) => {
+    const live = h.ticker ? quotes[h.ticker]?.price ?? null : null
+    return acc + (live != null ? live * h.shares : h.market_value ?? 0)
+  }, 0)
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[0.84rem]">
@@ -603,6 +609,8 @@ function HoldingsTable({
             const price = live ?? h.last_price
             const day = q?.change_pct != null ? q.change_pct / 100 : h.day_change_pct
             const value = live != null ? live * h.shares : h.market_value
+            const weight =
+              liveTotal > 0 && value != null ? value / liveTotal : h.weight
             const upl = value != null ? value - h.cost_basis : h.unrealized_pl
             const uplPct = upl != null && h.cost_basis > 0 ? upl / h.cost_basis : null
             return (
@@ -631,7 +639,7 @@ function HoldingsTable({
                   {fmtPrice(value)}
                 </td>
                 <td className="py-2.5 pr-4 text-right tabular-nums">
-                  {h.weight != null ? `${(h.weight * 100).toFixed(1)}%` : '—'}
+                  {weight != null ? `${(weight * 100).toFixed(1)}%` : '—'}
                 </td>
                 <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: plColor(upl) }}>
                   {fmtSignedMoney(upl)}
@@ -885,6 +893,43 @@ export function PortfolioPage() {
   const s = data.summary!
   const quotes = quotesData?.quotes ?? {}
 
+  // Live-adjust the headline figures so the big number, "today", unrealized P/L
+  // and weights reconcile with the live-quote overlay shown on the holdings rows
+  // (otherwise the header reads the Jun-17 close while the table shows live Jun-18
+  // prices — the same total computed two different ways). Returns, risk, drawdown
+  // and realized/dividends stay end-of-day: they're derived from the close series
+  // and can't be computed intraday. Falls back to the backend summary when no live
+  // quote is available (nights/weekends), so the header matches the table then too.
+  const anyLive = data.holdings.some((h) => h.ticker && quotes[h.ticker]?.price != null)
+  const liveTotal = data.holdings.reduce((acc, h) => {
+    const live = h.ticker ? quotes[h.ticker]?.price ?? null : null
+    return acc + (live != null ? live * h.shares : h.market_value ?? 0)
+  }, 0)
+  const liveDayPL = data.holdings.reduce((acc, h) => {
+    const q = h.ticker ? quotes[h.ticker] : undefined
+    const live = q?.price ?? null
+    const value = live != null ? live * h.shares : h.market_value
+    const day = q?.change_pct != null ? q.change_pct / 100 : h.day_change_pct
+    if (value == null || day == null) return acc
+    return acc + (value * day) / (1 + day)
+  }, 0)
+  const view = anyLive
+    ? {
+        live: true,
+        total_value: liveTotal,
+        day_change: liveDayPL,
+        day_change_pct:
+          liveTotal - liveDayPL !== 0 ? liveDayPL / (liveTotal - liveDayPL) : 0,
+        unrealized_pl: liveTotal - s.cost_basis,
+      }
+    : {
+        live: false,
+        total_value: s.total_value,
+        day_change: s.day_change,
+        day_change_pct: s.day_change_pct,
+        unrealized_pl: s.unrealized_pl,
+      }
+
   return (
     <div className="space-y-5">
       {/* header */}
@@ -899,13 +944,16 @@ export function PortfolioPage() {
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
-                {fmtPrice(s.total_value)}
+                {fmtPrice(view.total_value)}
               </h1>
               <p className="mt-1 text-[0.9rem] text-[#64748b]">
-                <span style={{ color: plColor(s.day_change) }} className="font-semibold">
-                  {fmtSignedMoney(s.day_change)} ({fmtSignedPct(s.day_change_pct, 2)})
+                <span style={{ color: plColor(view.day_change) }} className="font-semibold">
+                  {fmtSignedMoney(view.day_change)} ({fmtSignedPct(view.day_change_pct, 2)})
                 </span>{' '}
-                today · since {fmtDate(s.first_date)} · as of {fmtDate(s.as_of)}
+                today · since {fmtDate(s.first_date)} ·{' '}
+                {view.live
+                  ? `live (~15m delayed) · returns as of ${fmtDate(s.as_of)}`
+                  : `as of ${fmtDate(s.as_of)}`}
                 {data.cash_tracking === false && ' · positions only (no cash ledger)'}
               </p>
             </div>
@@ -929,9 +977,9 @@ export function PortfolioPage() {
         />
         <StatCard
           label="Unrealized P/L"
-          value={fmtSignedMoney(s.unrealized_pl)}
+          value={fmtSignedMoney(view.unrealized_pl)}
           sub={`cost basis ${fmtPrice(s.cost_basis)}`}
-          color={plColor(s.unrealized_pl)}
+          color={plColor(view.unrealized_pl)}
         />
         <StatCard
           label="Realized + dividends"
