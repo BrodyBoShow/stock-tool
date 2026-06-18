@@ -381,25 +381,190 @@ function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
   )
 }
 
-/** "What this means for you" verdict — instant read, even before the AI brief. */
-function ReadCallout({ read }: { read: MarketRead }) {
-  const c = {
-    good: { border: '#86efac', bg: '#f0fdf4', fg: '#047857' },
-    warn: { border: '#fde68a', bg: '#fffbeb', fg: '#b45309' },
-    bad: { border: '#fecaca', bg: '#fef2f2', fg: '#b91c1c' },
-    neutral: { border: '#e2e8f0', bg: '#f8fafc', fg: '#475569' },
-  }[read.tone]
+const TONE_C: Record<string, { border: string; bg: string; fg: string }> = {
+  good: { border: '#86efac', bg: '#f0fdf4', fg: '#047857' },
+  warn: { border: '#fde68a', bg: '#fffbeb', fg: '#b45309' },
+  bad: { border: '#fecaca', bg: '#fef2f2', fg: '#b91c1c' },
+  neutral: { border: '#e2e8f0', bg: '#f8fafc', fg: '#475569' },
+}
+
+/** Risk-on ↔ risk-off gauge: a gradient bar with a marker placed by a blend of
+ * breadth (60%) and the index move (40%) — the 2-second gestalt of the regime. */
+function RiskGauge({ score }: { score: number }) {
+  const pct = Math.max(3, Math.min(97, score * 100))
   return (
-    <div className="mb-3 rounded-lg border-l-4 px-3.5 py-2.5" style={{ borderColor: c.border, background: c.bg }}>
-      <span className="text-[0.9rem] font-bold" style={{ color: c.fg }}>{read.state}.</span>{' '}
-      <span className="text-[0.88rem] text-[#334155]">{read.text}</span>
+    <div className="mt-3">
+      <div className="relative h-2 rounded-full"
+        style={{ background: 'linear-gradient(90deg,#f87171 0%,#fbbf24 50%,#34d399 100%)' }}>
+        <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.45)]"
+          style={{ left: `${pct}%` }} aria-hidden />
+      </div>
+      <div className="mt-1 flex justify-between text-[0.58rem] font-bold uppercase tracking-[0.08em] text-[#94a3b8]">
+        <span>Risk-off</span><span>Cautious</span><span>Risk-on</span>
+      </div>
     </div>
   )
 }
 
-function AiBrief({ brief, read, computed, generating, asOf, stale }: {
-  brief: MarketAiBrief | null
+/** Regime hero — the verdict, a risk gauge, and a clean live-SPY tile. The
+ * scannable "where does the market stand" read that leads the page. */
+function RegimeHero({ read, spyLive, spy1d, ewr1d, breadth, liveVsLast }: {
   read: MarketRead | null
+  spyLive: { price: number | null; change_pct: number | null } | undefined
+  spy1d: number | null
+  ewr1d: number | null
+  breadth: number | null
+  liveVsLast: string | null
+}) {
+  const c = TONE_C[read?.tone ?? 'neutral']
+  const bScore = breadth ?? 0.5
+  const mScore = Math.max(0, Math.min(1, 0.5 + (spy1d ?? 0) / 0.04))
+  const riskScore = 0.6 * bScore + 0.4 * mScore
+  return (
+    <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_260px]">
+      <div className="rounded-xl border px-4 py-3.5" style={{ borderColor: c.border, background: c.bg }}>
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.fg }} aria-hidden />
+          <span className="text-[1.15rem] font-extrabold tracking-tight" style={{ color: c.fg }}>
+            {read?.state ?? 'Market'}
+          </span>
+          <InfoTip text="Plain-English read of the last session's tape — from the index move, breadth, and sector rotation. Not advice." />
+        </div>
+        {read?.text && <p className="mt-1 text-[0.92rem] leading-snug text-[#334155]">{read.text}</p>}
+        <RiskGauge score={riskScore} />
+      </div>
+      <div className="flex flex-col justify-center rounded-xl border border-[#e5e7eb] bg-white px-4 py-3.5">
+        {spyLive?.price != null ? (
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#94a3b8]">SPY</span>
+            <span className="text-[1.35rem] font-extrabold tabular-nums text-[#0f172a]">${spyLive.price.toFixed(2)}</span>
+            <span className="text-[0.95rem] font-bold tabular-nums" style={{ color: plColor(spyLive.change_pct) }}>
+              {spyLive.change_pct == null ? '' : `${spyLive.change_pct > 0 ? '+' : ''}${spyLive.change_pct.toFixed(2)}%`}
+            </span>
+            <Provenance kind="live" />
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-2">
+            <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#94a3b8]">SPY</span>
+            <span className="text-[0.82rem] text-[#94a3b8]">market closed</span>
+          </div>
+        )}
+        {liveVsLast && <div className="mt-0.5 text-[0.7rem] text-[#94a3b8]">Live SPY is {liveVsLast}</div>}
+        <div className="mt-2 border-t border-[#f1f5f9] pt-2 text-[0.76rem]">
+          <span className="text-[#94a3b8]">Last close </span>
+          <span className="font-bold tabular-nums" style={{ color: plColor(spy1d) }}>SPY {fmtSignedPct(spy1d)}</span>
+          <span className="mx-1 text-[#d1d5db]">·</span>
+          <span className="font-bold tabular-nums" style={{ color: plColor(ewr1d) }}>avg {fmtSignedPct(ewr1d)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Diverging bar — green (left/positive) vs red (right/negative), sized by share. */
+function DivergeBar({ left, right }: { left: number; right: number }) {
+  const total = left + right || 1
+  const lp = Math.max(0, Math.min(100, (left / total) * 100))
+  return (
+    <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+      <div style={{ width: `${lp}%`, background: '#34d399' }} />
+      <div style={{ width: `${100 - lp}%`, background: '#f87171' }} />
+    </div>
+  )
+}
+
+/** Fill meter colored by breadth thresholds (≥60 green, ≥40 amber, else red). */
+function MeterBar({ pct }: { pct: number | null }) {
+  if (pct == null) return <div className="mt-2 h-2 rounded-full bg-[#f1f5f9]" />
+  const c = pct >= 0.6 ? '#34d399' : pct >= 0.4 ? '#fbbf24' : '#f87171'
+  return (
+    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+      <div className="h-full rounded-full" style={{ width: `${Math.max(3, Math.min(100, pct * 100))}%`, background: c }} />
+    </div>
+  )
+}
+
+function SnapTile({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-[#e5e7eb] bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-[0.07em] text-[#94a3b8]">
+        {label}{tip && <InfoTip text={tip} />}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/** Session snapshot — the day's internals as instant mini-viz, so the data leads
+ * the recap instead of being buried in prose. */
+function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
+  const b = d.breadth
+  const advTotal = b.advancers + b.decliners
+  const advPct = advTotal > 0 ? b.advancers / advTotal : 0.5
+  const spy = d.market.spy_r1d
+  const avg = d.market.universe_ew_r1d
+  const barW = (v: number | null) => Math.max(4, Math.min(100, (Math.abs(v ?? 0) / 0.03) * 100))
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <SnapTile label="Advancers · decliners" tip="Active names that rose vs fell last session — the broad participation read.">
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="text-[1.25rem] font-extrabold tabular-nums" style={{ color: advPct >= 0.5 ? '#047857' : '#b91c1c' }}>{(advPct * 100).toFixed(0)}%</span>
+          <span className="text-[0.7rem] text-[#94a3b8]">advancing</span>
+        </div>
+        <DivergeBar left={b.advancers} right={b.decliners} />
+        <div className="mt-1.5 flex justify-between text-[0.7rem] tabular-nums">
+          <span className="font-semibold text-[#047857]">{b.advancers.toLocaleString()} up</span>
+          <span className="font-semibold text-[#b91c1c]">{b.decliners.toLocaleString()} down</span>
+        </div>
+      </SnapTile>
+
+      <SnapTile label="Above 50-day avg" tip={G.ma50}>
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="text-[1.25rem] font-extrabold tabular-nums text-[#0f172a]">{b.pct_above_ma50 == null ? '—' : `${(b.pct_above_ma50 * 100).toFixed(0)}%`}</span>
+          <span className="text-[0.7rem] text-[#94a3b8]">in uptrend</span>
+        </div>
+        <MeterBar pct={b.pct_above_ma50} />
+        <div className="mt-1.5 text-[0.7rem] tabular-nums text-[#94a3b8]">
+          {b.pct_above_ma200 == null ? ' ' : `${(b.pct_above_ma200 * 100).toFixed(0)}% above 200-day`}
+        </div>
+      </SnapTile>
+
+      <SnapTile label="New 52-wk highs · lows" tip="Stocks at fresh 1-year highs vs lows — the momentum extremes of the tape.">
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="text-[1.25rem] font-extrabold tabular-nums text-[#047857]">{b.new_highs}</span>
+          <span className="text-[0.7rem] text-[#94a3b8]">highs ·</span>
+          <span className="text-[1.05rem] font-bold tabular-nums text-[#b91c1c]">{b.new_lows}</span>
+          <span className="text-[0.7rem] text-[#94a3b8]">lows</span>
+        </div>
+        <DivergeBar left={b.new_highs} right={b.new_lows} />
+        <div className="mt-1.5 text-[0.7rem] text-[#94a3b8]">{b.new_highs >= b.new_lows ? 'highs leading' : 'lows leading'}</div>
+      </SnapTile>
+
+      <SnapTile label="Index vs typical stock" tip={G.equalWeight}>
+        <div className="mt-1.5 space-y-2">
+          {[{ k: 'SPY', v: spy }, { k: 'Avg stock', v: avg }].map((row) => (
+            <div key={row.k} className="flex items-center gap-2">
+              <span className="w-[3.6rem] shrink-0 text-[0.66rem] font-semibold text-[#64748b]">{row.k}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f1f5f9]">
+                <div className="h-full rounded-full" style={{ width: `${barW(row.v)}%`, background: (row.v ?? 0) >= 0 ? '#34d399' : '#f87171' }} />
+              </div>
+              <span className="w-12 shrink-0 text-right text-[0.72rem] font-bold tabular-nums" style={{ color: plColor(row.v) }}>{fmtSignedPct(row.v)}</span>
+            </div>
+          ))}
+        </div>
+        {b.divergence?.state === 'narrow' && (
+          <div className="mt-1.5 text-[0.64rem] font-bold uppercase tracking-wide text-[#b45309]">Narrow — index ≠ typical stock</div>
+        )}
+        {b.divergence?.state === 'resilient' && (
+          <div className="mt-1.5 text-[0.64rem] font-bold uppercase tracking-wide text-[#047857]">Resilient — stocks holding up</div>
+        )}
+      </SnapTile>
+    </div>
+  )
+}
+
+function AiBrief({ brief, computed, generating, asOf, stale }: {
+  brief: MarketAiBrief | null
   computed: string[]
   generating: boolean
   asOf: string
@@ -407,7 +572,6 @@ function AiBrief({ brief, read, computed, generating, asOf, stale }: {
 }) {
   return (
     <div>
-      {read && <ReadCallout read={read} />}
       {!brief ? (
         <div>
           {generating && (
@@ -441,24 +605,35 @@ function AiBrief({ brief, read, computed, generating, asOf, stale }: {
               Note: this brief reflects the {fmtDate(asOf)} session — newer closes aren't in the data yet.
             </p>
           )}
-          <p className="mt-2.5 text-[1.05rem] font-bold leading-snug text-[#0f172a]">{brief.headline}</p>
-          <div className="mt-3 space-y-2.5">
-            {brief.narrative.map((p) => (
-              <p key={p} className="text-[0.9rem] leading-relaxed text-[#334155]">{p}</p>
-            ))}
-          </div>
+          <p className="mt-3 border-l-[3px] border-[#c7d2fe] pl-3.5 text-[1.18rem] font-bold leading-snug text-[#0f172a]">
+            {brief.headline}
+          </p>
           {brief.watch.length > 0 && (
-            <div className="mt-4 rounded-lg border border-[#eef1f6] bg-[#f8fafc] p-3.5">
-              <div className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">What to watch next</div>
-              <ul className="mt-1.5 space-y-1.5">
+            <div className="mt-4">
+              <div className="text-[0.66rem] font-bold uppercase tracking-[0.09em] text-[#94a3b8]">What to watch next</div>
+              <div className="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {brief.watch.map((w) => (
-                  <li key={w} className="flex items-start gap-2 text-[0.84rem] leading-relaxed text-[#475569]">
-                    <span className="mt-[0.4rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#4f46e5]" />
-                    {w}
-                  </li>
+                  <div key={w} className="rounded-xl border border-[#eef1f6] bg-[#f8fafc] p-3 text-[0.82rem] leading-relaxed text-[#475569]">
+                    <span className="mr-1.5 font-bold text-[#4f46e5]">→</span>{w}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
+          )}
+          {brief.narrative.length > 0 && (
+            <details className="group mt-4">
+              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-[#4f46e5] hover:text-[#4338ca]">
+                <svg className="h-3.5 w-3.5 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
+                </svg>
+                Read the full recap
+              </summary>
+              <div className="mt-2.5 space-y-2.5">
+                {brief.narrative.map((p) => (
+                  <p key={p} className="text-[0.9rem] leading-relaxed text-[#334155]">{p}</p>
+                ))}
+              </div>
+            </details>
           )}
           <details className="mt-3 border-t border-[#f1f5f9] pt-2.5">
             <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-[#9ca3af] hover:text-[#64748b]">
@@ -552,52 +727,20 @@ export function MarketPage() {
             <span className="text-[#d1d5db]">/</span>
             <span className="text-[#94a3b8]">Market</span>
           </div>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h1 className="text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
-              Market overview
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-[0.86rem]">
-              {spyLive?.price != null && (
-                <span className="flex items-center">
-                  <span className="font-semibold text-[#64748b]">SPY now </span>
-                  <span className="ml-1 font-extrabold tabular-nums text-[#0f172a]">${spyLive.price.toFixed(2)}</span>{' '}
-                  <span className="ml-1 font-bold tabular-nums" style={{ color: plColor(spyLive.change_pct) }}>
-                    {spyLive.change_pct == null ? '' : `${spyLive.change_pct > 0 ? '+' : ''}${spyLive.change_pct.toFixed(2)}%`}
-                  </span>
-                  <Provenance kind="live" />
-                </span>
-              )}
-              <span className="flex items-center">
-                <span className="font-semibold text-[#64748b]">Last session </span>
-                <span className="ml-1 font-bold tabular-nums" style={{ color: plColor(d.market.spy_r1d) }}>
-                  SPY {fmtSignedPct(d.market.spy_r1d)}
-                </span>
-                <span className="mx-1 text-[#d1d5db]">·</span>
-                <span className="font-bold tabular-nums" style={{ color: plColor(d.market.universe_ew_r1d) }}>
-                  avg stock {fmtSignedPct(d.market.universe_ew_r1d)}
-                </span>
-                {b.divergence?.state === 'narrow' && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-[#fffbeb] px-2 py-0.5 text-[0.66rem] font-bold text-[#b45309]">
-                    Narrow<InfoTip text={b.divergence.detail || G.breadth} />
-                  </span>
-                )}
-                {b.divergence?.state === 'aligned' && d.market.spy_r1d != null && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[0.66rem] font-bold text-[#047857]">
-                    Broad<InfoTip text={G.equalWeight} />
-                  </span>
-                )}
-                {b.divergence?.state === 'resilient' && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[0.66rem] font-bold text-[#047857]">
-                    Resilient<InfoTip text={b.divergence.detail || G.breadth} />
-                  </span>
-                )}
-              </span>
-            </div>
-          </div>
-          <p className="mt-1.5 text-[0.8rem] text-[#94a3b8]">
-            {liveVsLast ? `Live SPY is ${liveVsLast}; everything below recaps the last completed session. ` : ''}
-            Equal-weight internals across our active universe.
+          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
+            Market overview
+          </h1>
+          <p className="mt-1 text-[0.8rem] text-[#94a3b8]">
+            Equal-weight internals across our active universe — the 2-second read first, the full story below.
           </p>
+          <RegimeHero
+            read={d.read ?? null}
+            spyLive={spyLive}
+            spy1d={d.market.spy_r1d}
+            ewr1d={d.market.universe_ew_r1d}
+            breadth={b.pct_above_ma50}
+            liveVsLast={liveVsLast}
+          />
         </div>
         {/* Freshness FIRST — the trust signal leads, and gets prominence when stale. */}
         <div className={`px-7 py-2.5 ${stale ? 'bg-[#fffbeb]' : 'border-t border-[#f1f5f9]'}`}>
@@ -607,18 +750,6 @@ export function MarketPage() {
           <RegimeStrip d={d} />
         </div>
       </header>
-
-      {/* one-time "how to read this" primer */}
-      <details className="rounded-card border border-[#e5e7eb] bg-white px-4 py-2.5 text-[0.8rem] shadow-card">
-        <summary className="cursor-pointer select-none font-semibold text-[#475569]">How to read this page</summary>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-[#64748b]">
-          <li><strong>Regime chips</strong> — the 30-second read of today's tape.</li>
-          <li><strong>Brief</strong> — the plain-English story (verdict first, then the AI narrative).</li>
-          <li><strong>Sectors / internals</strong> — was the move broad or narrow?</li>
-          <li><strong>Movers / filings / insiders</strong> — the specific names behind it.</li>
-        </ol>
-        <p className="mt-2 text-[0.74rem] text-[#9ca3af]">Free data (nightly closes + ~15-min quotes + FRED). Research context, not advice.</p>
-      </details>
 
       <SectionCard
         title={mkt.title}
@@ -632,7 +763,10 @@ export function MarketPage() {
             {mkt.note}
           </div>
         )}
-        <AiBrief brief={aiBrief} read={d.read ?? null} computed={d.brief} generating={briefMut.isPending} asOf={d.as_of} stale={stale} />
+        <SessionSnapshot d={d} />
+        <div className="mt-4 border-t border-[#f1f5f9] pt-4">
+          <AiBrief brief={aiBrief} computed={d.brief} generating={briefMut.isPending} asOf={d.as_of} stale={stale} />
+        </div>
       </SectionCard>
 
       <SectionCard
