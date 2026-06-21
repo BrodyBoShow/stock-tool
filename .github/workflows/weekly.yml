@@ -4,8 +4,21 @@
 # ~9:00 AM when DST is on). GitHub Actions cron is always UTC and does not
 # adjust for DST; the seasonal shift is acceptable for this batch job.
 #
-# The full S&P 500 fundamentals refresh can take 30-60+ minutes depending on
-# SEC throttling, hence the 120-minute timeout.
+# Runtime on the current broad universe (~4,900 operating companies): the
+# fundamentals refresh runs ~75 min and the derived-metrics pass ~55 min, then
+# the quality gate + factor scoring add a few more — ~140 min end to end. The
+# timeout matches the nightly's 300 min so a slow SEC day or a retry has room;
+# the Sunday 12:00 UTC slot is isolated from the 23:30 nightly and the weekday
+# 22:00 EOD job, so a long window costs nothing. (The earlier 120 min was sized
+# for the old S&P-500-only universe and silently killed the run mid-metrics once
+# the universe grew — fixed 2026-06-21.)
+#
+# NOT wrapped in supervise_backfill.py (unlike the nightly): that supervisor
+# restarts the child on ANY nonzero exit, but run_weekly.py exits 1 by design
+# when the quality gate fails — supervising it would turn a real gate failure
+# into a restart loop that masks the failure and re-runs the full pipeline. The
+# weekly runs on Linux CI, where the Windows-only libpq socket hang the
+# supervisor guards against does not occur.
 #
 # On failure GitHub automatically emails the repository owner via the default
 # Actions notification settings — no extra configuration required.
@@ -20,7 +33,7 @@ on:
 jobs:
   weekly:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 300
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
