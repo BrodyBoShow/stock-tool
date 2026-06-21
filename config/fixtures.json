@@ -153,8 +153,8 @@
     },
     "recent_ipo_no_data": {
       "tickers": ["FDXF"],
-      "assert": "zero xbrl_facts, zero fundamental_metrics, flagged in fundamentals_ingestion warnings",
-      "reason": "FedEx Freight spinoff with no XBRL history yet; self-heals as it files."
+      "assert": "zero xbrl_facts, zero fundamental_metrics (no junk data for a no-history IPO)",
+      "reason": "FedEx Freight spinoff with no XBRL history yet; self-heals as it files. The check is that it produced no facts/metrics; an ingester warning is not required (truncation-prone)."
     },
     "recent_ipo_short_history": {
       "tickers": ["Q"],
@@ -162,9 +162,9 @@
       "reason": "Qnity Electronics spun off Oct 2025."
     },
     "universe_excludes": {
-      "tickers": ["BRK-A"],
+      "tickers": [],
       "assert": "not present in securities",
-      "reason": "S&P 500 lists only the B share class."
+      "reason": "Was BRK-A (S&P 500 era). The universe is now broad NYSE/Nasdaq, where BRK-A is a legitimately listed class, so it is no longer asserted absent. Non-operating listings (warrants/units/rights) are handled by is_active hygiene, not row-absence."
     }
   },
   "point_in_time": {

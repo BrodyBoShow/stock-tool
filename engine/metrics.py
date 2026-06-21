@@ -473,7 +473,11 @@ def compute_company_metrics(
         rev_ttm, _rev_end, rev_issue = ttm(snap, "revenue")
         if rev_issue:
             diag["recon_issues"].add(rev_issue)
-        if rev_ttm is not None and usd:
+        # Negative TTM revenue is not a usable Value/Growth input: it appears for
+        # some financials/REITs whose "revenue" is net investment income (and for
+        # the rare sign error). Drop it — the name simply gets no revenue-based
+        # factor rather than a nonsensical negative one.
+        if rev_ttm is not None and rev_ttm >= 0 and usd:
             m["ttm_revenue"] = rev_ttm
 
         gp_ttm, _, _ = ttm(snap, "gross_profit")
@@ -592,7 +596,12 @@ def compute_company_metrics(
                 eps_ttm_series.append((as_of, ni_ttm / shares_pt))
                 diag["eps_proxy_dates"].add(as_of)
 
-        if eps_ttm_series:
+        # Bound TTM EPS to the same magnitude accepted for raw EPS facts: the
+        # proxy (net income / weighted shares) explodes when the share denominator
+        # is tiny/garbled (observed up to ~$23B/share), so an out-of-bound result
+        # is a denominator artifact, not a real per-share figure. Drop it (and its
+        # growth) rather than feed scoring an absurd EPS.
+        if eps_ttm_series and abs(eps_ttm_series[-1][1]) <= EPS_FACT_BOUND:
             if usd:
                 m["ttm_eps"] = eps_ttm_series[-1][1]
             pair = yoy_pair(eps_ttm_series)
