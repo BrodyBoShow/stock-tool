@@ -48,6 +48,26 @@ function heat(v: number | null, scale: number): React.CSSProperties {
   return { background: v >= 0 ? `rgba(16,185,129,${a})` : `rgba(239,68,68,${a})`, color: '#0f172a' }
 }
 
+/** Newest ISO date (YYYY-MM-DD) in a list — ISO strings sort lexically. */
+function maxIsoDate(dates: (string | null | undefined)[]): string | null {
+  return dates.reduce<string | null>((mx, d) => (d && (!mx || d > mx) ? d : mx), null)
+}
+
+/** Data-driven "latest filing" pill for the 8-K / insider sections. Reads the
+ * newest filed date straight from the rows, so it advances on its own as fresh
+ * filings land; the tooltip explains why a Thursday/Friday date is still current
+ * on a later day (SEC EDGAR is closed on weekends and federal holidays). */
+function FilingFreshness({ date }: { date: string | null }) {
+  if (!date) return null
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[0.7rem] font-semibold text-[#64748b]">
+      <span className="text-[#94a3b8]">Latest filing</span>
+      <span className="tabular-nums text-[#475569]">{fmtDate(date).replace(', 2026', '')}</span>
+      <InfoTip text="The most recent day companies actually filed. SEC EDGAR is closed on weekends and federal holidays, so this can sit a few days back and still be current. Today's filings appear after the nightly refresh." />
+    </span>
+  )
+}
+
 /** Tiny provenance pill: what kind of freshness a block carries. */
 function Provenance({ kind }: { kind: 'live' | 'close' | 'fred' }) {
   const map = {
@@ -887,6 +907,7 @@ export function MarketPage() {
           <SectionCard
             title="Company news from the source — high-signal 8-Ks"
             hint="Material-event filings across all ~5,500 companies in the last few days: M&A, executive changes, results, delistings."
+            right={<FilingFreshness date={maxIsoDate(d.filings.map((f) => f.filed_date))} />}
           >
             <div className="max-h-[460px] space-y-3 overflow-auto pr-1">
               {d.filings.length === 0 && <p className="text-sm text-[#9ca3af]">No high-signal filings in the window.</p>}
@@ -921,7 +942,8 @@ export function MarketPage() {
         </div>
         <div className="md:col-span-2 lg:col-span-2">
           <SectionCard title="Insider buying pulse"
-            hint="Largest open-market insider purchases filed in the last 7 days (Form 4, code P). Context only.">
+            hint="Largest open-market insider purchases filed in the last 7 days (Form 4, code P). Context only."
+            right={<FilingFreshness date={maxIsoDate(d.insider_buys.map((i) => i.last_filed))} />}>
             <div className="space-y-2.5">
               {d.insider_buys.length === 0 && <p className="text-sm text-[#9ca3af]">No open-market buys filed this week.</p>}
               {d.insider_buys.map((i) => (
