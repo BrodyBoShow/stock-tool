@@ -466,6 +466,11 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
                         f"Sell of {t['shares']:g} {tk} on {day} exceeds the "
                         f"{avail:g} shares held — clamped. Check the ledger "
                         "(missing buy, or shares entered pre/post split?)")
+                    # Only shares with a recorded cost basis affect cash / flow /
+                    # realized; the rest were acquired before the imported history
+                    # ("phantom") — counting their full proceeds as a flow while
+                    # positions don't drop wrecks the TWR base. Scale to what we hold.
+                    amt = amt * (avail / to_sell) if to_sell > 1e-9 else 0.0
                     to_sell = avail
                 realized[sid] += amt - _fifo_sell(lots.get(sid, []), to_sell)
                 cash += amt
@@ -554,6 +559,7 @@ def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
                         f"Sell of {t['shares']:g} {tk} on {fday} exceeds the "
                         f"{avail:g} shares held - clamped. Check the ledger "
                         "(missing buy, or shares entered pre/post split?)")
+                    amt = amt * (avail / to_sell) if to_sell > 1e-9 else 0.0
                     to_sell = avail
                 realized[sid] += amt - _fifo_sell(lots.get(sid, []), to_sell)
                 cash += amt
