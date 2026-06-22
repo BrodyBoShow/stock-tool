@@ -52,7 +52,12 @@ app = FastAPI(
 # and the API docs. NOTE: /auth/check is intentionally NOT here — it must stay
 # gated so it returns 401 when locked, which is how the frontend detects that a
 # password is required (and 200 in public mode, where the middleware no-ops).
-_OPEN_PATHS = ("/health", "/docs", "/openapi.json", "/redoc")
+_OPEN_PATHS = (
+    "/health", "/docs", "/openapi.json", "/redoc",
+    # OAuth redirect target — the browser hits it with no app-password header, and
+    # it's CSRF-guarded by the random PKCE `state` it validates.
+    "/portfolio/links/callback",
+)
 
 
 @app.middleware("http")

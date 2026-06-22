@@ -565,6 +565,57 @@ class PortfolioResponse(BaseModel):
     warnings: list[str] = []
 
 
+# ── linked brokerage accounts (sync into the ledger, migration 0021) ─────────
+
+class LinkedProviderInfo(BaseModel):
+    key: str                  # 'schwab' | 'snaptrade'
+    label: str
+    implemented: bool         # is the provider wired up yet?
+    configured: bool          # are its env credentials present?
+
+
+class LinkedAccountRow(BaseModel):
+    id: int
+    provider: str
+    external_id: str | None
+    display_name: str | None
+    status: str               # pending|active|needs_reauth|error|revoked
+    cursor: str | None
+    last_synced_at: str | None
+    last_error: str | None
+    created_at: str | None
+    updated_at: str | None
+
+
+class LinkedAccountsResponse(BaseModel):
+    """Linked accounts + which providers exist. ``ready`` is False until
+    migration 0021 is applied (the tab still renders, just shows setup needed).
+    Tokens are NEVER included."""
+    ready: bool
+    accounts: list[LinkedAccountRow] = []
+    providers: list[LinkedProviderInfo] = []
+
+
+class LinkConnectRequest(BaseModel):
+    provider: str             # 'schwab' | 'snaptrade'
+
+
+class LinkConnectResponse(BaseModel):
+    status: str               # 'authorize' | 'not_implemented' | 'not_configured'
+    authorize_url: str | None = None   # 5-minute connection-portal URL
+    link_id: int | None = None
+    state: str | None = None
+    detail: str | None = None
+
+
+class LinkSyncResponse(BaseModel):
+    inserted: int
+    skipped_count: int
+    skipped: list[str] = []
+    pending: bool = False     # True when the user hasn't finished linking yet
+    display_name: str | None = None
+
+
 # ── market overview (Market tab — whole-market context, never feeds scores) ──
 
 class MarketOverviewResponse(BaseModel):

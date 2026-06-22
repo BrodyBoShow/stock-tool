@@ -11,3 +11,4 @@ plotly
 fastapi
 uvicorn
 ruff
+cryptography

@@ -753,6 +753,50 @@ export interface PortfolioResponse {
   warnings: string[]
 }
 
+// ── Linked brokerage accounts (sync into the ledger; scaffold) ────────────────
+
+export interface LinkedProviderInfo {
+  key: string // 'schwab' | 'snaptrade'
+  label: string
+  implemented: boolean // is the provider wired up yet?
+  configured: boolean // are its credentials present?
+}
+
+export interface LinkedAccountRow {
+  id: number
+  provider: string
+  external_id: string | null
+  display_name: string | null
+  status: string // pending|active|needs_reauth|error|revoked
+  cursor: string | null
+  last_synced_at: string | null
+  last_error: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface LinkedAccountsResponse {
+  ready: boolean // false until migration 0021 is applied
+  accounts: LinkedAccountRow[]
+  providers: LinkedProviderInfo[]
+}
+
+export interface LinkConnectResponse {
+  status: string // 'authorize' | 'not_implemented' | 'not_configured'
+  authorize_url: string | null
+  link_id: number | null
+  state: string | null
+  detail: string | null
+}
+
+export interface LinkSyncResponse {
+  inserted: number
+  skipped_count: number
+  skipped: string[]
+  pending: boolean
+  display_name: string | null
+}
+
 // ── Factor Lab (stored backtest) ──────────────────────────────────────────────
 
 export interface BacktestCurveSet {

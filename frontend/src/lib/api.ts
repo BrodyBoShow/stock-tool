@@ -11,6 +11,9 @@ import type {
   FilingQaStatusResponse,
   FilingSummary,
   InsiderResponse,
+  LinkConnectResponse,
+  LinkedAccountsResponse,
+  LinkSyncResponse,
   LiveFactorsResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
@@ -333,4 +336,21 @@ export function addPortfolioTransactions(
 
 export function deletePortfolioTransaction(id: number): Promise<void> {
   return sendJson<void>('DELETE', `/portfolio/transactions/${id}`)
+}
+
+// ── linked brokerage accounts (scaffold — providers not implemented yet) ──────
+export function getPortfolioLinks(): Promise<LinkedAccountsResponse> {
+  return getJson<LinkedAccountsResponse>('/portfolio/links')
+}
+
+export function connectPortfolioLink(provider: string): Promise<LinkConnectResponse> {
+  return sendJson<LinkConnectResponse>('POST', '/portfolio/links/connect', { provider })
+}
+
+export function syncPortfolioLink(id: number): Promise<LinkSyncResponse> {
+  return sendJson<LinkSyncResponse>('POST', `/portfolio/links/${id}/sync`)
+}
+
+export function deletePortfolioLink(id: number): Promise<void> {
+  return sendJson<void>('DELETE', `/portfolio/links/${id}`)
 }

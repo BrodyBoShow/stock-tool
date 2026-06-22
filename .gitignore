@@ -19,3 +19,6 @@ backtest_full.log
 
 # Local pipeline run logs (regenerated each run)
 logs/
+
+# Local dev-server logs (API + Vite), written by the local run
+.dev-logs/
