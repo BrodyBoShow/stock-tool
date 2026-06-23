@@ -28,15 +28,14 @@ from dotenv import load_dotenv
 
 from engine import events as events_engine
 from engine import queries, summarize
+from engine.config import LLM_MODEL
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-# Sonnet 4.6 — matches the filing summarizer's cost choice; the input here is a
-# small quant snapshot (~3-4k tokens). Switch to claude-opus-4-8 for the
-# highest-quality synthesis.
-MODEL = "claude-haiku-4-5"  # budget model: ~70% cheaper than Sonnet; quality is
-# good for this structured task. Bump back to claude-sonnet-4-6 if briefs feel thin.
+# Model centralized in engine/config.py (override with the LLM_MODEL env var);
+# Haiku by default per the cost posture.
+MODEL = LLM_MODEL
 PROMPT_VERSION = "v4"  # v2: insider; v3: 8-K events; v4: score_read meta-layer
 SCHEMA_VERSION = "v2"  # v2: added score_read {drivers, blind_spot}
 

@@ -27,6 +27,7 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from dotenv import load_dotenv
 
 from engine import queries
+from engine.config import LLM_MODEL
 from engine.filing_taxonomy import analysis_profile, form_label, generic_focus
 
 # 10-K primary docs are iXBRL (XHTML); parsing them with the HTML parser is fine
@@ -36,9 +37,9 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-# Sonnet 4.6 — chosen for cost on these large 10-K docs (~halves the per-summary
-# spend vs Opus). Switch to claude-opus-4-8 for the highest-quality summaries.
-MODEL = "claude-haiku-4-5"  # budget model (cost choice 2026-06-11); see brief.py note
+# Model centralized in engine/config.py (override with LLM_MODEL); Haiku by
+# default for cost on these large 10-K docs.
+MODEL = LLM_MODEL
 PROMPT_VERSION = "v1"
 SCHEMA_VERSION = "v1"
 

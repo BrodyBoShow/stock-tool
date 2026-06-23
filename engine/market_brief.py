@@ -28,12 +28,13 @@ from typing import Any
 import anthropic
 from dotenv import load_dotenv
 
+from engine.config import LLM_MODEL
 from engine.db import get_connection
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-MODEL = "claude-haiku-4-5"  # cost posture: Haiku everywhere (see ai-cost memory)
+MODEL = LLM_MODEL  # centralized in engine/config.py (env: LLM_MODEL)
 PROMPT_VERSION = "v1"
 MAX_OUTPUT_TOKENS = 1200    # hard ceiling on the costly side of the call; the
 # full brief (headline + 2-3 short paras + regime + watch) lands ~700-900 out,

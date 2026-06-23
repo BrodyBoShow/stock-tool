@@ -30,13 +30,13 @@ import anthropic
 import httpx
 
 from engine import queries
+from engine.config import LLM_MODEL
 from engine.filing_taxonomy import analysis_profile
 from engine.summarize import _largest_span, fetch_filing_text
 
-# Opus 4.8 — this is the one place we spend for maximum depth and reasoning
-# over a large filing context. Cached by accession so it's paid once per filing.
-MODEL = "claude-haiku-4-5"  # was Opus — ~80% cheaper (cost choice 2026-06-11). The
-# deep-diligence read loses some nuance; one-line change back if it disappoints.
+# Model centralized in engine/config.py (override with LLM_MODEL); Haiku by
+# default per the cost posture (was Opus; Haiku ~80% cheaper, 2026-06-11).
+MODEL = LLM_MODEL
 PROMPT_VERSION = "v1"
 SCHEMA_VERSION = "v1"
 
