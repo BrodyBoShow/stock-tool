@@ -184,6 +184,25 @@ function NoFiling({
  *     10-Q across nine analyst topics, each disclosed/not-disclosed; on demand.
  * Both are honest-instrument context, not advice.
  */
+function TabButton({ active, onClick, children }: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        'rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ' +
+        (active ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100')
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
 export function FilingIntelligencePanel({
   ticker,
   filings,
@@ -253,22 +272,6 @@ export function FilingIntelligencePanel({
         ? { label: qaGen.isPending ? 'Re-analyzing…' : 'Re-analyze', onClick: () => qaGen.mutate(), disabled: qaGen.isPending }
         : null
 
-  const TabButton = ({ id, children }: { id: Tab; children: React.ReactNode }) => {
-    const active = tab === id
-    return (
-      <button
-        type="button"
-        onClick={() => setTab(id)}
-        className={
-          'rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ' +
-          (active ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100')
-        }
-      >
-        {children}
-      </button>
-    )
-  }
-
   return (
     <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -310,8 +313,8 @@ export function FilingIntelligencePanel({
       {!collapsed && (
         <>
           <div className="mt-3 inline-flex gap-1 rounded-xl bg-slate-50 p-1">
-            <TabButton id="overview">Overview</TabButton>
-            <TabButton id="diligence">Diligence</TabButton>
+            <TabButton active={tab === 'overview'} onClick={() => setTab('overview')}>Overview</TabButton>
+            <TabButton active={tab === 'diligence'} onClick={() => setTab('diligence')}>Diligence</TabButton>
           </div>
 
           <div className="mt-4">

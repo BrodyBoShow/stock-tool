@@ -335,11 +335,10 @@ function EquityChart({ data, sel, factorLabel, showLongShort, logScale }: {
 /** Drawdown of the top-quintile curve (running peak-to-trough). */
 function DrawdownChart({ comp }: { comp: BacktestKeyResult }) {
   const points = useMemo(() => {
-    let peak = -Infinity
+    const top = comp.curves.top
     return comp.curves.dates.map((d, i) => {
-      const v = comp.curves.top[i]
-      peak = Math.max(peak, v)
-      return { date: d.slice(0, 7), dd: (v / peak - 1) * 100 }
+      const peak = Math.max(...top.slice(0, i + 1))
+      return { date: d.slice(0, 7), dd: (top[i] / peak - 1) * 100 }
     })
   }, [comp])
 

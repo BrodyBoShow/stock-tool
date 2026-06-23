@@ -44,24 +44,27 @@ function groupByCategory(filings: FilingRow[]): [string, FilingRow[]][] {
   )
 }
 
+function Block({ label, items }: { label: string; items: string[] }) {
+  if (!items.length) return null
+  return (
+    <div className="mt-2">
+      <div className="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+        {label}
+      </div>
+      <ul className="mt-0.5 space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="flex gap-2 text-[0.8rem] leading-relaxed text-slate-800">
+            <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-slate-300" />
+            <span>{it}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function SummaryInline({ summary }: { summary: FilingSummary }) {
   const s = summary.summary
-  const Block = ({ label, items }: { label: string; items: string[] }) =>
-    items.length ? (
-      <div className="mt-2">
-        <div className="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-slate-400">
-          {label}
-        </div>
-        <ul className="mt-0.5 space-y-1">
-          {items.map((it, i) => (
-            <li key={i} className="flex gap-2 text-[0.8rem] leading-relaxed text-slate-800">
-              <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-slate-300" />
-              <span>{it}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ) : null
   return (
     <div className="mt-2 rounded-lg border border-gray-200 bg-[#fafbff] p-3">
       <p className="text-[0.82rem] leading-relaxed text-slate-700">{s.overview}</p>

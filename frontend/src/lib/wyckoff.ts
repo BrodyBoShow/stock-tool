@@ -278,7 +278,7 @@ export function classifyContext(bars: VsaBar[], range: TradingRange): WyckoffCon
   if (bias >= 0.35) kind = 'accumulation'
   else if (bias <= -0.35) kind = 'distribution'
 
-  let note: string | null = null
+  let note: string | null
   if (kind === 'distribution' && priorTrend < 0) {
     note = 'Could be re-distribution (a pause in a downtrend) — confirmed only on the breakout direction.'
   } else if (kind === 'accumulation' && priorTrend > 0) {
@@ -419,7 +419,6 @@ export function detectEvents(
         const lowVol = (b.relVol ?? 1) <= 1.3
         pushEvent(out, bars, i, 'spring', 'C', lowVol ? 0.75 : 0.45)
         springIdx = i
-        i += 4
         break
       }
     }

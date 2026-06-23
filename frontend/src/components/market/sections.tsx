@@ -15,18 +15,8 @@ import type {
   MarketSectorRow,
 } from '@/types/api'
 
-import {
-  cacheAgeLabel,
-  DivergeBar,
-  FACTOR_LABEL,
-  G,
-  heat,
-  MeterBar,
-  Provenance,
-  RiskGauge,
-  SnapTile,
-  TONE_C,
-} from './shared'
+import { DivergeBar, MeterBar, Provenance, RiskGauge, SnapTile } from './shared'
+import { cacheAgeLabel, FACTOR_LABEL, G, heat, TONE_C } from './utils'
 
 export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
   const cols: { key: keyof MarketSectorRow; label: string; scale: number }[] = [

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Area,
   Bar,
@@ -178,9 +178,9 @@ function WyckoffReadPanel({
 
   // Reset the grade when the ticker/series changes (avoids showing stale stats).
   const seriesKey = prices.length ? `${prices[0]?.date}:${prices[prices.length - 1]?.date}:${prices.length}` : ''
-  const lastKey = useRef(seriesKey)
-  if (lastKey.current !== seriesKey) {
-    lastKey.current = seriesKey
+  const [lastKey, setLastKey] = useState(seriesKey)
+  if (lastKey !== seriesKey) {
+    setLastKey(seriesKey)
     if (grade) setGrade(null)
   }
 
@@ -318,7 +318,7 @@ export function PriceChart({
   const [showMA200, setShowMA200] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
-  const ranges = useMemo(buildRanges, [])
+  const ranges = useMemo(() => buildRanges(), [])
 
   const wyckoff = useMemo(() => analyzeWyckoff(prices), [prices])
 
@@ -337,9 +337,13 @@ export function PriceChart({
   }, [prices])
 
   const hasVolume = priceRows.some((r) => r.vol !== null)
-  const dateRange = priceRows.length > 0
-    ? { start: priceRows[0].date, end: priceRows[priceRows.length - 1].date }
-    : null
+  const dateRange = useMemo(
+    () =>
+      priceRows.length > 0
+        ? { start: priceRows[0].date, end: priceRows[priceRows.length - 1].date }
+        : null,
+    [priceRows],
+  )
 
   const { data: macroData } = useQuery({
     queryKey: ['macro', 'series', seriesId],

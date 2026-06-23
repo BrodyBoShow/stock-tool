@@ -14,15 +14,8 @@ import {
   SectorTable,
   SessionSnapshot,
 } from '@/components/market/sections'
-import {
-  BreadthBar,
-  FilingFreshness,
-  G,
-  marketStatus,
-  maxIsoDate,
-  Provenance,
-  timeAgo,
-} from '@/components/market/shared'
+import { BreadthBar, FilingFreshness, Provenance } from '@/components/market/shared'
+import { G, marketStatus, maxIsoDate, timeAgo } from '@/components/market/utils'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'

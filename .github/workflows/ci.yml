@@ -1,10 +1,10 @@
 # Code-quality gate — runs on every push and PR. Fast, no DB/secrets needed:
-# Python lint (ruff) + frontend typecheck & production build. ESLint runs as an
-# advisory (non-blocking) step because a few files still trip the newest strict
-# react-hooks rules; clear those, then drop `continue-on-error` to make it a gate.
+# Python lint (ruff) + frontend typecheck, production build, and ESLint — all
+# blocking. (ESLint allows warnings, e.g. the unfixable TanStack-Virtual library
+# notice, but fails on any error.)
 #
 # This is the "relapse prevention" from the 2026-06 cleanup: it keeps the tree
-# ruff-clean, type-clean, and buildable so refactors can't silently regress.
+# ruff-clean, lint-clean, type-clean, and buildable so refactors can't silently regress.
 
 name: CI
 
@@ -40,6 +40,5 @@ jobs:
       - run: npm ci
       - name: Typecheck + build
         run: npm run build
-      - name: ESLint (advisory)
+      - name: ESLint
         run: npm run lint
-        continue-on-error: true
