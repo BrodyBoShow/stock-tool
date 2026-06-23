@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 
-import { fmtDate } from '@/lib/format'
+import { fmtDate, fmtVol, tickLabel } from '@/lib/format'
 import type { VsaBar, WyckoffAnalysis, WyckoffEventType } from '@/lib/wyckoff'
 
 const UP = '#16a34a'
@@ -23,20 +23,6 @@ const VOL_BOT = 382
 
 // Events drawn above the bar's high vs below its low.
 const TOP_EVENTS = new Set<WyckoffEventType>(['AR', 'SOS', 'LPS', 'BC', 'UT', 'UTAD', 'STd', 'LPSY'])
-
-function fmtVol(v: number | null): string {
-  if (v == null) return '—'
-  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`
-  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`
-  return String(v)
-}
-
-function tickLabel(iso: string): string {
-  const [y, m] = iso.split('-').map(Number)
-  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return `${names[(m ?? 1) - 1]} '${String(y).slice(2)}`
-}
 
 function borderFor(cls: VsaBar['cls']): string | null {
   if (cls === 'climax') return CLIMAX

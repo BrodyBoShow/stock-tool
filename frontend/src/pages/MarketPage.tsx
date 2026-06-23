@@ -9,7 +9,7 @@ import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { generateMarketBrief, getMarketOverview, getQuotes } from '@/lib/api'
 import { plColor } from '@/lib/colors'
-import { fmtDate, fmtMoney, fmtSignedPct } from '@/lib/format'
+import { fmtDate, fmtMoney, fmtShortDate, fmtSignedPct } from '@/lib/format'
 import type {
   MarketAiBrief,
   MarketFactorDay,
@@ -62,7 +62,7 @@ function FilingFreshness({ date }: { date: string | null }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[0.7rem] font-semibold text-[#64748b]">
       <span className="text-[#94a3b8]">Latest filing</span>
-      <span className="tabular-nums text-[#475569]">{fmtDate(date).replace(', 2026', '')}</span>
+      <span className="tabular-nums text-[#475569]">{fmtShortDate(date)}</span>
       <InfoTip text="The most recent day companies actually filed. SEC EDGAR is closed on weekends and federal holidays, so this can sit a few days back and still be current. Today's filings appear after the nightly refresh." />
     </span>
   )
@@ -914,7 +914,7 @@ export function MarketPage() {
               {d.filings.map((f) => (
                 <div key={f.accession_no + f.security_id} className="flex items-start gap-3">
                   <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-[#94a3b8]">
-                    {fmtDate(f.filed_date).replace(', 2026', '')}
+                    {fmtShortDate(f.filed_date)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2">
@@ -950,7 +950,7 @@ export function MarketPage() {
                 <div key={i.security_id} className="flex items-center gap-2.5 text-[0.84rem]">
                   <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-[#1e293b] hover:text-[#4f46e5]">{i.ticker}</Link>
                   <span className="min-w-0 flex-1 truncate text-[0.76rem] text-[#94a3b8]">
-                    {i.buyers} buyer{i.buyers !== 1 ? 's' : ''} · filed {fmtDate(i.last_filed).replace(', 2026', '')}
+                    {i.buyers} buyer{i.buyers !== 1 ? 's' : ''} · filed {fmtShortDate(i.last_filed)}
                   </span>
                   <span className="shrink-0 font-bold tabular-nums text-[#059669]">{fmtMoney(i.total_value)}</span>
                 </div>

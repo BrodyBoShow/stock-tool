@@ -2,6 +2,12 @@
 
 const DASH = '—' // —
 
+/** Month abbreviations, shared by the short-date + chart-tick formatters. */
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const
+
 function f(v: number | null | undefined): number | null {
   if (v === null || v === undefined || Number.isNaN(v)) return null
   return v
@@ -131,11 +137,22 @@ export function fmtShortDate(iso: string | null | undefined): string {
   if (!iso) return DASH
   const [y, m, d] = iso.split('-').map(Number)
   if (!y || !m || !d) return iso
-  const names = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ]
-  return `${names[m - 1]} ${d}`
+  return `${MONTHS[m - 1]} ${d}`
+}
+
+/** Abbreviated share volume: 1.20B / 3.4M / 50K (DASH on null). */
+export function fmtVol(v: number | null): string {
+  if (v == null) return DASH
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`
+  return String(v)
+}
+
+/** "2026-06-08" -> "Jun '26" — month + 2-digit year, for chart axis ticks. */
+export function tickLabel(iso: string): string {
+  const [y, m] = iso.split('-').map(Number)
+  return `${MONTHS[(m ?? 1) - 1]} '${String(y).slice(2)}`
 }
 
 export { DASH }

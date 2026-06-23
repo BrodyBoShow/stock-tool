@@ -17,7 +17,7 @@ import {
 import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
 import { getEvents, getInsiders, getMacroSeries } from '@/lib/api'
 import { MACRO_DISPLAY } from '@/lib/constants'
-import { fmtDate, fmtSignedPct } from '@/lib/format'
+import { fmtDate, fmtSignedPct, fmtVol, tickLabel } from '@/lib/format'
 import { analyzeWyckoff, buildEvidence, walkForwardGrade } from '@/lib/wyckoff'
 import type { WyckoffAnalysis, WyckoffBacktest } from '@/lib/wyckoff'
 import type { MacroObservation, PricePoint } from '@/types/api'
@@ -40,12 +40,6 @@ function buildRanges(): { label: string; days: number }[] {
 const OVERLAY_COLOR = '#7c3aed'
 const MA50_COLOR = '#06b6d4'   // cyan
 const MA200_COLOR = '#f97316'  // orange
-
-function tickLabel(iso: string): string {
-  const [y, m] = iso.split('-').map(Number)
-  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  return `${names[(m ?? 1) - 1]} '${String(y).slice(2)}`
-}
 
 interface ChartRow {
   date: string
@@ -77,14 +71,6 @@ function rollingMean(vals: (number | null)[], n: number): (number | null)[] {
     const nums = slice.filter((v): v is number => v !== null)
     return nums.length === n ? nums.reduce((a, b) => a + b, 0) / n : null
   })
-}
-
-function fmtVol(v: number | null): string {
-  if (v == null) return '—'
-  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`
-  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`
-  return String(v)
 }
 
 interface TooltipProps {
