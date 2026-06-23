@@ -306,8 +306,8 @@ export function PortfolioPage() {
               broker reinvest rows not imported
             </summary>
             <ul className="mt-1.5 space-y-1 pl-4 text-[0.72rem] text-gray-400">
-              {data.warnings.map((w) => (
-                <li key={w} className="list-disc">{w}</li>
+              {data.warnings.map((w, i) => (
+                <li key={`${i}-${w}`} className="list-disc">{w}</li>
               ))}
             </ul>
           </details>
