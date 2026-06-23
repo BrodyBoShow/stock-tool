@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getFunds } from '@/lib/api'
@@ -107,15 +108,12 @@ export function FundsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-extrabold text-gray-900">Funds &amp; ETFs</h1>
-        <p className="mt-0.5 text-[0.82rem] text-gray-500">
-          Commodity &amp; crypto ETFs and trusts (gold, silver, oil, bitcoin…). These hold
-          assets rather than run a business, so they carry no factor scores — this is a
-          returns view, kept separate from the operating-company screener. Price is live
-          (~15-min delayed); returns are from nightly closes.
-        </p>
-      </div>
+      <PageHeader title="Funds & ETFs">
+        Commodity &amp; crypto ETFs and trusts (gold, silver, oil, bitcoin…). These hold
+        assets rather than run a business, so they carry no factor scores — this is a
+        returns view, kept separate from the operating-company screener. Price is live
+        (~15-min delayed); returns are from nightly closes.
+      </PageHeader>
 
       {data.rows.length === 0 ? (
         <SectionCard title="No funds">

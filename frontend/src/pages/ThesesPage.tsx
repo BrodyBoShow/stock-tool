@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { SectorPill } from '@/components/screener/SectorPill'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getTheses } from '@/lib/api'
 import { DASH, fmtDate, fmtPctl } from '@/lib/format'
@@ -55,15 +56,12 @@ export function ThesesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-gray-900">Thesis tracker</h1>
-        <p className="mt-0.5 text-[0.82rem] text-gray-500">
-          {rows.length === 0
-            ? 'Theses you write on a deep dive show up here, with review dates and the current composite score.'
-            : `${rows.length} active ${rows.length === 1 ? 'thesis' : 'theses'}` +
-              (dueCount > 0 ? ` · ${dueCount} due for review` : '')}
-        </p>
-      </div>
+      <PageHeader title="Thesis tracker">
+        {rows.length === 0
+          ? 'Theses you write on a deep dive show up here, with review dates and the current composite score.'
+          : `${rows.length} active ${rows.length === 1 ? 'thesis' : 'theses'}` +
+            (dueCount > 0 ? ` · ${dueCount} due for review` : '')}
+      </PageHeader>
 
       {rows.length === 0 ? (
         <div className="rounded-card border border-dashed border-slate-300 bg-white/60 p-10 text-center shadow-card">

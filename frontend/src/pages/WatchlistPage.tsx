@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WatchlistChanges } from '@/components/WatchlistChanges'
 import { WatchlistTable } from '@/components/WatchlistTable'
@@ -38,14 +39,11 @@ export function WatchlistPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-gray-900">Watchlist</h1>
-        <p className="mt-0.5 text-[0.82rem] text-gray-500">
-          {rows.length === 0
-            ? 'Names you save from the screener or a deep dive show up here with their latest nightly factor scores.'
-            : `${rows.length} saved ${rows.length === 1 ? 'name' : 'names'} with their latest nightly factor scores.`}
-        </p>
-      </div>
+      <PageHeader title="Watchlist">
+        {rows.length === 0
+          ? 'Names you save from the screener or a deep dive show up here with their latest nightly factor scores.'
+          : `${rows.length} saved ${rows.length === 1 ? 'name' : 'names'} with their latest nightly factor scores.`}
+      </PageHeader>
 
       {rows.length === 0 ? (
         <div className="rounded-card border border-dashed border-slate-300 bg-white/60 p-10 text-center shadow-card">

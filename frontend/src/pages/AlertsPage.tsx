@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/Toast'
@@ -169,15 +170,12 @@ export function AlertsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-extrabold text-gray-900">Alerts</h1>
-        <p className="mt-0.5 text-[0.82rem] text-gray-500">
-          Whole-market scan — biggest factor movers, largest insider buys, and high-signal
-          8-Ks across the entire universe. Refreshed from the nightly pipeline (so each
-          morning reflects the prior session); your watchlist&apos;s own changes live on the
-          Watchlist tab.
-        </p>
-      </div>
+      <PageHeader title="Alerts">
+        Whole-market scan — biggest factor movers, largest insider buys, and high-signal
+        8-Ks across the entire universe. Refreshed from the nightly pipeline (so each
+        morning reflects the prior session); your watchlist&apos;s own changes live on the
+        Watchlist tab.
+      </PageHeader>
 
       <SectionCard
         title={`Triggered now (${triggered.length})`}
