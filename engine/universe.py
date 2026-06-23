@@ -321,6 +321,20 @@ def graduate_ready(*, min_price_days: int = GRAD_MIN_PRICE_DAYS, dry_run: bool =
                 FROM securities s
                 WHERE NOT s.is_active
                   AND s.instrument_type = 'operating'
+                  -- skip if the CIK already has an active listing (the real
+                  -- common): a same-CIK inactive sibling is a note/preferred/
+                  -- class, e.g. ETNs AMJB/AMUB carry JPMorgan/UBS's CIK + 10-K.
+                  AND NOT EXISTS (SELECT 1 FROM securities b
+                                  WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                                    AND b.is_active)
+                  -- only the primary (shortest-ticker) listing per CIK graduates;
+                  -- notes/preferreds/warrants/extra ETNs are longer (AMUB > UBS).
+                  AND NOT EXISTS (SELECT 1 FROM securities b
+                                  WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                                    AND length(b.ticker) < length(s.ticker))
+                  -- and skip note/fund issuers: a CIK with many listings (UBS AG
+                  -- has 19 same-named ETNs) is an issuer, not an operating company.
+                  AND (SELECT count(*) FROM securities b WHERE b.cik = s.cik) <= 4
                   -- exclude SPAC units/warrants/rights (they inherit the parent
                   -- CIK's fundamentals + price history); same two rules as
                   -- deactivate_derivative_listings so the gates agree.
@@ -403,6 +417,20 @@ def run_graduation(*, limit: int | None = None, fetch: bool = True, dry_run: boo
                 FROM securities s
                 WHERE NOT s.is_active
                   AND s.instrument_type = 'operating'
+                  -- skip if the CIK already has an active listing (the real
+                  -- common): a same-CIK inactive sibling is a note/preferred/
+                  -- class, e.g. ETNs AMJB/AMUB carry JPMorgan/UBS's CIK + 10-K.
+                  AND NOT EXISTS (SELECT 1 FROM securities b
+                                  WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                                    AND b.is_active)
+                  -- only the primary (shortest-ticker) listing per CIK graduates;
+                  -- notes/preferreds/warrants/extra ETNs are longer (AMUB > UBS).
+                  AND NOT EXISTS (SELECT 1 FROM securities b
+                                  WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                                    AND length(b.ticker) < length(s.ticker))
+                  -- and skip note/fund issuers: a CIK with many listings (UBS AG
+                  -- has 19 same-named ETNs) is an issuer, not an operating company.
+                  AND (SELECT count(*) FROM securities b WHERE b.cik = s.cik) <= 4
                   AND NOT EXISTS (
                       SELECT 1 FROM securities b
                       WHERE b.cik = s.cik AND b.security_id <> s.security_id
