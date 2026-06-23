@@ -116,10 +116,15 @@ def main() -> int:
     # data (fundamentals + ~12mo of prices) — e.g. an IPO that has matured. Runs
     # BEFORE hygiene so any derivative that slips through is re-deactivated next,
     # and before scoring so the newly graduated names get ranked tonight.
+    # run_graduation fetches SEC facts + computes metrics for up to N price-ready
+    # inactive names, then activates the ones that clear the gate — a few per night
+    # so future IPOs surface on their own. The one-time backlog is cleared by
+    # scripts/backfill_inactive_fundamentals.py (graduate_ipos.yml).
     print("\n=== [2.5] Graduate data-ready names ===")
-    grad = universe.graduate_ready()
+    grad = universe.run_graduation(limit=50)
     print(
-        f"  Graduated {grad['graduated']} name(s)"
+        f"  Graduated {grad['graduated']} name(s) "
+        f"(candidates {grad['candidates']}, facts fetched {grad.get('fetched', 0)})"
         + (f": {', '.join(grad['tickers'][:20])}" if grad["tickers"] else ".")
     )
 

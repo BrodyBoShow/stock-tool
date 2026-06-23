@@ -1,0 +1,39 @@
+# On-demand backlog clear: graduate staged-inactive data-ready names onto the
+# screener (fetch SEC facts + metrics for price-ready inactive names, activate the
+# qualified, re-score). Manual trigger; heavy, so it runs here on Actions rather
+# than locally. Idempotent — safe to re-run. Routine new-IPO graduation is handled
+# a few per night by run_nightly's step 2.5; this is the one-time catch-up.
+name: Graduate IPOs
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report candidate scope only (no writes)'
+        type: boolean
+        default: false
+      limit:
+        description: 'Cap candidates processed (blank = all)'
+        required: false
+        default: ''
+
+jobs:
+  graduate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Graduate data-ready names
+        run: |
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ -n "${{ inputs.limit }}" ]; then ARGS="$ARGS --limit ${{ inputs.limit }}"; fi
+          echo "running: scripts/backfill_inactive_fundamentals.py $ARGS"
+          python -u scripts/backfill_inactive_fundamentals.py $ARGS

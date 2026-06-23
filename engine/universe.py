@@ -367,6 +367,90 @@ def graduate_ready(*, min_price_days: int = GRAD_MIN_PRICE_DAYS, dry_run: bool =
             conn.close()
 
 
+def run_graduation(*, limit: int | None = None, fetch: bool = True, dry_run: bool = False) -> dict:
+    """End-to-end IPO graduation. Takes staged-inactive OPERATING names that are
+    price-ready (>=252 trading days, still trading, non-derivative) but have no
+    computed metrics yet, fetches their SEC facts (when missing) and computes
+    metrics for them, then graduate_ready() activates the ones that now clear the
+    gate. Closes the chicken-and-egg: the nightly otherwise only fetches
+    fundamentals for ALREADY-active names.
+
+    The CI backfill runs it unbounded to clear the backlog; the nightly runs it
+    with a small `limit` so new IPOs are picked up a few per night. dry_run only
+    reports the candidate scope. Does NOT score — the caller scores (the nightly's
+    scoring step, or the backfill script) so newly active names get ranked.
+    """
+    from engine import fundamentals, metrics  # lazy import: avoid an import cycle
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.ticker,
+                       EXISTS (SELECT 1 FROM xbrl_facts f
+                               WHERE f.security_id = s.security_id) AS has_facts
+                FROM securities s
+                WHERE NOT s.is_active
+                  AND s.instrument_type = 'operating'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM securities b
+                      WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                        AND length(b.ticker) < length(s.ticker)
+                        AND s.ticker LIKE b.ticker || '%%'
+                        AND ltrim(substring(s.ticker from length(b.ticker)+1), '-')
+                            IN ('W','WS','WT','U','UN','R','RT')
+                  )
+                  AND NOT (s.ticker ~ '^[A-Z]{3,4}[WUR]$' AND EXISTS (
+                      SELECT 1 FROM securities b WHERE b.cik = s.cik
+                        AND b.security_id <> s.security_id
+                        AND length(b.ticker) < length(s.ticker)
+                  ))
+                  AND NOT EXISTS (SELECT 1 FROM fundamental_metrics m
+                                  WHERE m.security_id = s.security_id)
+                  AND (SELECT count(*) FROM prices_daily p
+                       WHERE p.security_id = s.security_id) >= %s
+                  AND (SELECT max(date) FROM prices_daily p
+                       WHERE p.security_id = s.security_id) >= CURRENT_DATE - INTERVAL '14 days'
+                ORDER BY s.ticker
+                """,
+                (GRAD_MIN_PRICE_DAYS,),
+            )
+            rows = cur.fetchall()
+    finally:
+        if not conn.closed:
+            conn.close()
+
+    if limit is not None:
+        rows = rows[:limit]
+    cand_tickers = [t for t, _hf in rows]
+    need_fetch = [t for t, hf in rows if not hf]
+
+    if dry_run:
+        return {
+            "candidates": len(cand_tickers),
+            "need_fetch": len(need_fetch),
+            "have_facts": len(cand_tickers) - len(need_fetch),
+            "tickers": cand_tickers,
+            "dry_run": True,
+        }
+
+    fetched = 0
+    if fetch and need_fetch:
+        fr = fundamentals.run(tickers=need_fetch, include_inactive=True, resume=False)
+        fetched = fr.get("companies_processed") or fr.get("companies_total") or 0
+    if cand_tickers:
+        metrics.run(tickers=cand_tickers, include_inactive=True)
+    grad = graduate_ready()
+    return {
+        "candidates": len(cand_tickers),
+        "fetched": fetched,
+        "graduated": grad["graduated"],
+        "tickers": grad["tickers"],
+        "dry_run": False,
+    }
+
+
 def _sic_to_sector(sic: int) -> str | None:
     """Map an SEC SIC code to a GICS-like sector label (approximate).
 

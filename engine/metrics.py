@@ -693,21 +693,27 @@ def run(
     limit: int | None = None,
     tickers: list[str] | None = None,
     reconnect_every: int = 200,
+    include_inactive: bool = False,
 ) -> dict:
+    """include_inactive widens the scope to staged-inactive securities — used by
+    the IPO-graduation backfill, which computes metrics for price-ready inactive
+    names so they can clear graduate_ready()'s gate. Nightly leaves it False."""
     today = datetime.now(UTC).date()
     conn = get_connection()
     _ensure_metric_definitions(conn)
 
+    active_clause = "" if include_inactive else "is_active AND "
     with conn.cursor() as cur:
         if tickers:
             cur.execute(
-                "SELECT security_id, ticker FROM securities "
-                "WHERE is_active AND ticker = ANY(%s) ORDER BY ticker",
+                f"SELECT security_id, ticker FROM securities "
+                f"WHERE {active_clause}ticker = ANY(%s) ORDER BY ticker",
                 (tickers,),
             )
         else:
             cur.execute(
-                "SELECT security_id, ticker FROM securities WHERE is_active ORDER BY ticker"
+                f"SELECT security_id, ticker FROM securities "
+                f"WHERE {'TRUE' if include_inactive else 'is_active'} ORDER BY ticker"
             )
         universe = cur.fetchall()
     if limit is not None:
