@@ -4,6 +4,10 @@
 export const PANEL_LABEL =
   'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-gray-500'
 
+/** Header row (<tr>) styling shared by the data tables (Portfolio, Market, Funds, Lab). */
+export const TABLE_HEAD_ROW =
+  'border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400'
+
 /** Sectors whose factor scores are structurally commodity-price-driven — their
  * Value/Momentum/Quality all ride the underlying commodity (oil, metals), so a
  * high rank reflects the commodity trend, not durability. Used to flag "read the

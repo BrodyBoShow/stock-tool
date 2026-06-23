@@ -9,6 +9,7 @@ import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { generateMarketBrief, getMarketOverview, getQuotes } from '@/lib/api'
 import { plColor } from '@/lib/colors'
+import { TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtMoney, fmtShortDate, fmtSignedPct } from '@/lib/format'
 import type {
   MarketAiBrief,
@@ -100,7 +101,7 @@ function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-[0.84rem]">
         <thead>
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
+          <tr className={TABLE_HEAD_ROW}>
             <th className="py-2 pr-4">Sector</th>
             <th className="py-2 pr-3 text-right">Names</th>
             {cols.map((c) => (

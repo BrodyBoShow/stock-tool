@@ -32,6 +32,7 @@ import {
   syncPortfolioLink,
 } from '@/lib/api'
 import { plColor } from '@/lib/colors'
+import { TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtPctl, fmtPrice, fmtRatio, fmtSignedPct } from '@/lib/format'
 import type {
   PortfolioHolding,
@@ -516,7 +517,7 @@ function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
     <div className="max-h-[420px] overflow-auto">
       <table className="w-full text-[0.82rem]">
         <thead className="sticky top-0 bg-white">
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
+          <tr className={TABLE_HEAD_ROW}>
             <th className="py-2 pr-4">Date</th>
             <th className="py-2 pr-4">Type</th>
             <th className="py-2 pr-4">Ticker</th>
@@ -593,7 +594,7 @@ function HoldingsTable({
     <div className="overflow-x-auto">
       <table className="w-full text-[0.84rem]">
         <thead>
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
+          <tr className={TABLE_HEAD_ROW}>
             <th className="py-2 pr-4">Ticker</th>
             <th className="py-2 pr-4">Sector</th>
             <th className="py-2 pr-4 text-right">Shares</th>

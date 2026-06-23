@@ -23,6 +23,7 @@ import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getBacktest } from '@/lib/api'
+import { TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtPct as fmtPctBase, fmtRatio, fmtSignedPct } from '@/lib/format'
 import type {
   BacktestCI,
@@ -718,7 +719,7 @@ export function LabPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[0.84rem]">
             <thead>
-              <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
+              <tr className={TABLE_HEAD_ROW}>
                 <th className="py-2 pr-4">Ranking</th>
                 <th className="py-2 pr-4">Top-Q CAGR</th>
                 <th className="py-2 pr-4">Top-Q Sharpe</th>
