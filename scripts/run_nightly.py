@@ -23,6 +23,7 @@ factor_scores is NOT updated. Every step logs its own job_runs row.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -33,9 +34,36 @@ from engine import (  # noqa: E402
     metrics,
     price_sanity,
     prices,
+    prices_massive,
     scoring,
     universe,
 )
+
+
+def _refresh_prices() -> dict:
+    """Prefer Massive (official API: ~1 grouped-daily call/day for the whole
+    universe) and fall back to the yfinance batch refresh if the key is missing,
+    Massive errors, or it returns suspiciously thin coverage. Set
+    PRICE_SOURCE=yfinance to force the old path."""
+    use_massive = os.getenv("PRICE_SOURCE", "massive").lower() != "yfinance" and bool(
+        os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY")
+    )
+    if use_massive:
+        try:
+            px = prices_massive.run_daily_refresh()
+            if px["price_rows_upserted"] >= 1000:
+                print(
+                    f"  [source: massive] {px['price_rows_upserted']} rows over "
+                    f"{px.get('days_loaded')} day(s)"
+                )
+                return px
+            print(
+                f"  [massive] thin coverage ({px['price_rows_upserted']} rows) — "
+                "falling back to yfinance"
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [massive] failed ({exc!r}) — falling back to yfinance")
+    return prices.run_daily_refresh()
 
 
 def main() -> int:
@@ -47,7 +75,7 @@ def main() -> int:
     # per-ticker run_bulk_backfill() stays for one-time full backfills of brand-
     # new names (no history yet), which the fixed daily lookback doesn't cover.
     print("\n=== [1/6] Price refresh ===")
-    px = prices.run_daily_refresh()
+    px = _refresh_prices()
     print(
         f"  Tickers {px['tickers_loaded']}/{px['tickers_total']} loaded  "
         f"rows upserted {px['price_rows_upserted']}  "
