@@ -1107,6 +1107,7 @@ def market_rank_movers(baseline_days: int = 25) -> list[dict[str, Any]]:
                       AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
                 )
                 SELECT ln.security_id, s.ticker, s.name, s.sector,
+                       (SELECT latest FROM d) AS score_date,
                        ln.composite AS comp_now, ln.rk AS rank_now,
                        bn.composite AS comp_base, bn.rk AS rank_base
                 FROM ranked ln
@@ -1129,6 +1130,7 @@ def market_rank_movers(baseline_days: int = 25) -> list[dict[str, Any]]:
         d["comp_base"] = _f(d.get("comp_base"))
         d["rank_now"] = int(d["rank_now"]) if d.get("rank_now") is not None else None
         d["rank_base"] = int(d["rank_base"]) if d.get("rank_base") is not None else None
+        d["score_date"] = str(d["score_date"]) if d.get("score_date") else None
         out.append(d)
     return out
 

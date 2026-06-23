@@ -411,7 +411,14 @@ class AlertTrigger(BaseModel):
     rule_id: int
     rule_type: str
     rule_label: str
-    severity: str                    # "warn" | "info"
+    severity: str                    # legacy "warn" | "info" (back-compat)
+    tier: str                        # "critical" | "elevated" | "routine"
+    kind: str                        # red_flag|event_8k|earnings|insider|factor_*|review
+    magnitude: float                 # numeric sort key (units vary by kind)
+    magnitude_label: str             # right-rail stat, e.g. "+$25.0M", "−14 pl"
+    item_code: str | None = None     # 8-K item code (new_8k only)
+    item_label: str | None = None    # 8-K plain-English label (new_8k only)
+    observed_date: str | None = None  # filed/last-filed/score/review date (ISO)
     security_id: int
     ticker: str
     name: str | None
@@ -419,9 +426,18 @@ class AlertTrigger(BaseModel):
     message: str
 
 
+class AlertsSummary(BaseModel):
+    critical: int
+    elevated: int
+    routine: int
+    by_kind: dict[str, int]
+
+
 class AlertsResponse(BaseModel):
     triggered: list[AlertTrigger]
     rules: list[AlertRule]
+    as_of: str | None = None
+    summary: AlertsSummary
 
 
 class AlertRuleCreate(BaseModel):

@@ -340,11 +340,28 @@ export interface AlertRule {
   created_at: string | null
 }
 
+export type AlertTier = 'critical' | 'elevated' | 'routine'
+export type AlertKind =
+  | 'red_flag'
+  | 'event_8k'
+  | 'earnings'
+  | 'insider'
+  | 'factor_drop'
+  | 'factor_rise'
+  | 'review'
+
 export interface AlertTrigger {
   rule_id: number
   rule_type: AlertRuleType
   rule_label: string
-  severity: 'warn' | 'info'
+  severity: 'warn' | 'info' // legacy, kept for back-compat
+  tier: AlertTier
+  kind: AlertKind
+  magnitude: number
+  magnitude_label: string
+  item_code: string | null
+  item_label: string | null
+  observed_date: string | null
   security_id: number
   ticker: string
   name: string | null
@@ -352,9 +369,18 @@ export interface AlertTrigger {
   message: string
 }
 
+export interface AlertsSummary {
+  critical: number
+  elevated: number
+  routine: number
+  by_kind: Record<string, number>
+}
+
 export interface AlertsResponse {
   triggered: AlertTrigger[]
   rules: AlertRule[]
+  as_of: string | null
+  summary: AlertsSummary
 }
 
 export interface AlertRuleCreate {

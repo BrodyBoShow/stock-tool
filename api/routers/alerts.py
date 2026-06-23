@@ -7,6 +7,7 @@ from api.schemas import (
     AlertRuleCreate,
     AlertRuleToggle,
     AlertsResponse,
+    AlertsSummary,
     AlertTrigger,
 )
 from engine import alerts as alerts_engine
@@ -27,9 +28,17 @@ def get_alerts() -> AlertsResponse:
     Read-only — evaluated live from existing data, no AI, no writes."""
     triggered = alerts_engine.evaluate()
     rules = queries.alert_rules()
+    summ = alerts_engine.summarize(triggered)
     return AlertsResponse(
         triggered=[AlertTrigger(**t) for t in triggered],
         rules=[AlertRule(**r) for r in rules],
+        as_of=summ["as_of"],
+        summary=AlertsSummary(
+            critical=summ["critical"],
+            elevated=summ["elevated"],
+            routine=summ["routine"],
+            by_kind=summ["by_kind"],
+        ),
     )
 
 
