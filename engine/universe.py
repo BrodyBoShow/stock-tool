@@ -298,6 +298,75 @@ def deactivate_derivative_listings() -> int:
             conn.close()
 
 
+GRAD_MIN_PRICE_DAYS = 252  # ~12 months of sessions -> 12-mo momentum is valid
+
+
+def graduate_ready(*, min_price_days: int = GRAD_MIN_PRICE_DAYS, dry_run: bool = False) -> dict:
+    """Activate staged-inactive OPERATING names that NOW have enough data for a
+    valid factor rank, and only those: computed fundamentals AND >= min_price_days
+    of price history (~12 months, so Growth/Value/Quality plus 12-month Momentum
+    can all be computed), still actively trading (a price bar in the last 2 weeks).
+
+    This is the inverse of deactivate_derivative_listings — how a recent IPO joins
+    the screener once it can be validly ranked, not before. Run it just before the
+    universe-hygiene step so any derivative that inherits a parent's fundamentals
+    and slips through is re-deactivated there. Idempotent; commits once.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.security_id, s.ticker
+                FROM securities s
+                WHERE NOT s.is_active
+                  AND s.instrument_type = 'operating'
+                  -- exclude SPAC units/warrants/rights (they inherit the parent
+                  -- CIK's fundamentals + price history); same two rules as
+                  -- deactivate_derivative_listings so the gates agree.
+                  AND NOT EXISTS (
+                      SELECT 1 FROM securities b
+                      WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                        AND length(b.ticker) < length(s.ticker)
+                        AND s.ticker LIKE b.ticker || '%%'
+                        AND ltrim(substring(s.ticker from length(b.ticker)+1), '-')
+                            IN ('W','WS','WT','U','UN','R','RT')
+                  )
+                  AND NOT (s.ticker ~ '^[A-Z]{3,4}[WUR]$' AND EXISTS (
+                      SELECT 1 FROM securities b WHERE b.cik = s.cik
+                        AND b.security_id <> s.security_id
+                        AND length(b.ticker) < length(s.ticker)
+                  ))
+                  AND EXISTS (SELECT 1 FROM fundamental_metrics m
+                              WHERE m.security_id = s.security_id)
+                  AND (SELECT count(*) FROM prices_daily p
+                       WHERE p.security_id = s.security_id) >= %s
+                  AND (SELECT max(date) FROM prices_daily p
+                       WHERE p.security_id = s.security_id) >= CURRENT_DATE - INTERVAL '14 days'
+                ORDER BY s.ticker
+                """,
+                (min_price_days,),
+            )
+            rows = cur.fetchall()
+            tickers = [t for _sid, t in rows]
+            if rows and not dry_run:
+                cur.execute(
+                    "UPDATE securities SET is_active = true WHERE security_id = ANY(%s)",
+                    ([sid for sid, _t in rows],),
+                )
+        if not dry_run:
+            conn.commit()
+        return {
+            "graduated": len(tickers),
+            "tickers": tickers,
+            "min_price_days": min_price_days,
+            "dry_run": dry_run,
+        }
+    finally:
+        if not conn.closed:
+            conn.close()
+
+
 def _sic_to_sector(sic: int) -> str | None:
     """Map an SEC SIC code to a GICS-like sector label (approximate).
 

@@ -343,16 +343,19 @@ def screener_rows_cached(
     return rows, score_date
 
 
-def security_header(ticker: str) -> dict[str, Any] | None:
+def security_header(ticker: str, *, include_inactive: bool = False) -> dict[str, Any] | None:
     """Security info + latest factor_scores (+ details) + last price.
 
-    Returns None if the ticker is not found or inactive.
+    Returns None if the ticker is not found. By default only active securities
+    resolve; pass include_inactive=True (deep-dive research) to also return a
+    staged-inactive name (e.g. a recent IPO) — its factor fields come back NULL.
     """
+    active_clause = "" if include_inactive else " AND s.is_active"
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT s.security_id, s.ticker, s.name, s.sector,
                        s.exchange, s.industry,
                        fs.score_date, fs.composite,
@@ -371,7 +374,7 @@ def security_header(ticker: str) -> dict[str, Any] | None:
                     WHERE p.security_id = s.security_id
                     ORDER BY p.date DESC LIMIT 1
                 ) lp ON true
-                WHERE s.ticker = %s AND s.is_active
+                WHERE s.ticker = %s{active_clause}
                 """,
                 (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, ticker),
             )

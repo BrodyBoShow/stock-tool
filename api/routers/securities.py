@@ -39,13 +39,16 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _require_active(ticker: str) -> tuple[str, dict]:
-    """Upper-case the ticker and load its header; 404 if it isn't a known active
-    security. Shared by the deep-dive read endpoints (was copy-pasted 5×)."""
+def _require_security(ticker: str) -> tuple[str, dict]:
+    """Upper-case the ticker and load its header for the deep-dive; 404 only if
+    the ticker is unknown. Resolves staged-inactive names too (e.g. a recent IPO
+    like CBRS) so they're researchable even though they aren't on the ranked
+    screener — their factor fields come back NULL. Shared by the 5 deep-dive
+    read endpoints."""
     ticker = ticker.upper()
-    header = queries.security_header(ticker)
+    header = queries.security_header(ticker, include_inactive=True)
     if header is None:
-        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found or inactive")
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found")
     return ticker, header
 
 
@@ -61,7 +64,7 @@ def get_security(
 ) -> SecurityResponse:
     """Deep-dive payload for one security: header, factor scores, prices,
     fundamentals, and recent SEC filings."""
-    ticker, header = _require_active(ticker)
+    ticker, header = _require_security(ticker)
 
     prices = queries.price_history_rows(ticker, days=days)
     fundamentals = queries.fundamental_metric_rows(ticker)
@@ -88,7 +91,7 @@ def get_live_factors(ticker: str) -> LiveFactorsResponse:
     """Live-adjusted Value/Momentum/Composite for one security: the price-driven
     sub-signals recomputed from the latest (~15m delayed) quote against last
     night's frozen cross-section. Growth/Quality are held nightly. Display only."""
-    ticker, header = _require_active(ticker)
+    ticker, header = _require_security(ticker)
 
     quote = quotes_engine.get_quote_one(ticker)
     adj = live_factors.live_adjust(header["security_id"], quote["price"])
@@ -176,7 +179,7 @@ def get_summary(
 def get_insiders(ticker: str) -> InsiderResponse:
     """Form 4 insider activity: 3m/12m open-market buy/sell aggregates plus
     the recent transaction list. Context only — never feeds factor scores."""
-    ticker, header = _require_active(ticker)
+    ticker, header = _require_security(ticker)
 
     rows = queries.insider_rows(ticker, months=12)
     return InsiderResponse(
@@ -193,7 +196,7 @@ def get_insiders(ticker: str) -> InsiderResponse:
 def get_events(ticker: str) -> EventsResponse:
     """Recent 8-K material events (last 12 months), newest first, with
     plain-English item labels and a high-signal flag. Context only."""
-    ticker, header = _require_active(ticker)
+    ticker, header = _require_security(ticker)
 
     rows = queries.events_for_ticker(ticker, months=12)
     events = [
@@ -311,7 +314,7 @@ def get_brief(ticker: str, background_tasks: BackgroundTasks) -> BriefStatusResp
     history) plus the cached brief if one exists.  When no brief is cached yet,
     kicks off generation as a background task so the frontend can poll and pick
     it up automatically — no user click required."""
-    ticker, header = _require_active(ticker)
+    ticker, header = _require_security(ticker)
 
     trend = queries.factor_history(ticker)
     has_scores = header.get("score_date") is not None

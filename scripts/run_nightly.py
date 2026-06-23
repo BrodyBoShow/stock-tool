@@ -111,6 +111,18 @@ def main() -> int:
 
     print("  Sanity gate PASSED.")
 
+    # --- step 2.5: graduate data-ready names onto the screener ---
+    # Activate staged-inactive names that now have a valid factor rank's worth of
+    # data (fundamentals + ~12mo of prices) — e.g. an IPO that has matured. Runs
+    # BEFORE hygiene so any derivative that slips through is re-deactivated next,
+    # and before scoring so the newly graduated names get ranked tonight.
+    print("\n=== [2.5] Graduate data-ready names ===")
+    grad = universe.graduate_ready()
+    print(
+        f"  Graduated {grad['graduated']} name(s)"
+        + (f": {', '.join(grad['tickers'][:20])}" if grad["tickers"] else ".")
+    )
+
     # --- step 3: universe hygiene ---
     # Deactivate warrant/unit/right listings that share a parent CIK (they
     # inherit the parent's fundamentals and otherwise top the screener on pure
