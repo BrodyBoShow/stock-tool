@@ -55,7 +55,5 @@ def rate_limit(max_calls: int, window_seconds: int):
                     headers={"Retry-After": str(max(1, retry))},
                 )
             dq.append(now)
-            if not dq:  # keep the map from growing unbounded with idle keys
-                _hits.pop(key, None)
 
     return _dep

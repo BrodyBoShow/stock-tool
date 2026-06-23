@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useId, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -19,6 +19,8 @@ import {
 } from 'recharts'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { InfoTip } from '@/components/ui/InfoTip'
+import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getBacktest } from '@/lib/api'
 import { fmtDate, fmtPct as fmtPctBase, fmtRatio, fmtSignedPct } from '@/lib/format'
@@ -76,29 +78,6 @@ const pctileTone = (p?: number | null): Tone =>
  * The button carries a short name and points at the description via
  * aria-describedby (not a giant aria-label), so screen readers announce
  * "More information" then read the definition as the description. */
-function InfoTip({ text }: { text: string }) {
-  const id = useId()
-  return (
-    <span className="group relative ml-1 inline-flex align-middle">
-      <button
-        type="button"
-        aria-label="More information"
-        aria-describedby={id}
-        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#cbd5e1] text-[0.55rem] font-bold leading-none text-[#94a3b8] transition-colors hover:border-[#94a3b8] hover:text-[#475569] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5]/40"
-      >
-        <span aria-hidden="true">?</span>
-      </button>
-      <span
-        id={id}
-        role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-56 -translate-x-1/2 rounded-lg bg-[#0f172a] px-2.5 py-1.5 text-left text-[0.7rem] font-normal normal-case leading-snug tracking-normal text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-      >
-        {text}
-      </span>
-    </span>
-  )
-}
-
 /** Dense KPI tile (~35% shorter than before) — traffic-light value + tooltip. */
 function Stat({ label, value, sub, tone = 'neutral', tip }: {
   label: string
@@ -121,30 +100,6 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
       </div>
       {sub && <div className="mt-0.5 text-[0.64rem] leading-tight text-[#9ca3af]">{sub}</div>}
     </div>
-  )
-}
-
-function SectionCard({ title, hint, tip, right, children }: {
-  title: string
-  hint?: string
-  tip?: string
-  right?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center text-base font-bold text-[#111827]">
-            <span>{title}</span>
-            {tip && <InfoTip text={tip} />}
-          </div>
-          {hint && <p className="mt-0.5 text-[0.78rem] text-[#9ca3af]">{hint}</p>}
-        </div>
-        {right}
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
   )
 }
 
