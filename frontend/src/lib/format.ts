@@ -46,6 +46,15 @@ export function fmtPctl(v: number | null | undefined): string {
   return x === null ? DASH : x.toFixed(1)
 }
 
+/** Signed money: +$1,234.00 / -$1,234.00 (2 decimals), DASH on null. */
+export function fmtSignedMoney(v: number | null | undefined): string {
+  if (v == null) return DASH
+  return `${v < 0 ? '-' : '+'}$${Math.abs(v).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
 /** Plain ratio to N decimals (Sharpe/Sortino/beta etc.), DASH on null. */
 export function fmtRatio(v: number | null | undefined, decimals = 2): string {
   const x = f(v)
