@@ -49,10 +49,10 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-sm rounded-2xl border border-[#e5e7eb] bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
+        className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
       >
-        <h2 className="text-base font-bold text-[#111827]">{title}</h2>
-        <div className="mt-1.5 text-[0.88rem] leading-relaxed text-[#64748b]">
+        <h2 className="text-base font-bold text-gray-900">{title}</h2>
+        <div className="mt-1.5 text-[0.88rem] leading-relaxed text-slate-500">
           {message}
         </div>
         <div className="mt-5 flex justify-end gap-2.5">
@@ -60,7 +60,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-lg border border-[#e5e7eb] bg-white px-3.5 py-1.5 text-[0.82rem] font-semibold text-[#475569] hover:bg-[#f8fafc] disabled:opacity-50"
+            className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-[0.82rem] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -72,8 +72,8 @@ export function ConfirmDialog({
             className={
               'rounded-lg px-3.5 py-1.5 text-[0.82rem] font-semibold text-white disabled:opacity-60 ' +
               (danger
-                ? 'bg-[#dc2626] hover:bg-[#b91c1c]'
-                : 'bg-[#4f46e5] hover:bg-[#4338ca]')
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-indigo-600 hover:bg-indigo-700')
             }
           >
             {pending ? 'Working…' : confirmLabel}

@@ -20,16 +20,16 @@ function EventRow({ e }: { e: MaterialEvent }) {
       <div className="flex flex-none flex-col items-center pt-1">
         <span
           className={`h-2.5 w-2.5 rounded-full ${
-            e.high_signal ? 'bg-[#4f46e5]' : 'bg-[#cbd5e1]'
+            e.high_signal ? 'bg-indigo-600' : 'bg-slate-300'
           }`}
         />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-[0.8rem] font-bold text-[#111827] tabular-nums">
+          <span className="text-[0.8rem] font-bold text-gray-900 tabular-nums">
             {fmtDate(date)}
           </span>
-          <span className="text-[0.7rem] text-[#9ca3af]">{e.form}</span>
+          <span className="text-[0.7rem] text-gray-400">{e.form}</span>
         </div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {pairs.map(({ code, label }) => {
@@ -40,8 +40,8 @@ function EventRow({ e }: { e: MaterialEvent }) {
                 title={`Item ${code}`}
                 className={`inline-flex items-center rounded-md px-2 py-0.5 text-[0.74rem] font-medium ${
                   routine
-                    ? 'bg-[#f1f5f9] text-[#94a3b8]'
-                    : 'bg-[#eef2ff] text-[#3730a3]'
+                    ? 'bg-slate-100 text-slate-400'
+                    : 'bg-indigo-50 text-indigo-800'
                 }`}
               >
                 {label}
@@ -55,7 +55,7 @@ function EventRow({ e }: { e: MaterialEvent }) {
           href={e.primary_doc_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-none self-center text-[0.72rem] font-semibold text-[#4f46e5] hover:underline"
+          className="flex-none self-center text-[0.72rem] font-semibold text-indigo-600 hover:underline"
         >
           {e.form} ↗
         </a>
@@ -83,17 +83,17 @@ export function EventsPanel({ ticker }: { ticker: string }) {
   const highCount = events.filter((e) => e.high_signal).length
 
   return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-base font-bold text-[#111827]">Recent events</div>
-          <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+          <div className="text-base font-bold text-gray-900">Recent events</div>
+          <div className="mt-0.5 text-[0.78rem] text-gray-500">
             Material corporate events from SEC 8-K (and foreign-issuer 6-K) filings
             (last 12 months) — what happened, beyond the numbers. Context, not advice.
           </div>
         </div>
         {events.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#eef2ff] px-2.5 py-1.5 text-[0.78rem] font-semibold text-[#3730a3]">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-[0.78rem] font-semibold text-indigo-800">
             {highCount} material · {events.length} total
           </span>
         )}
@@ -101,19 +101,19 @@ export function EventsPanel({ ticker }: { ticker: string }) {
 
       <div className="mt-3">
         {isPending ? (
-          <p className="text-[0.85rem] text-[#9ca3af]">Loading…</p>
+          <p className="text-[0.85rem] text-gray-400">Loading…</p>
         ) : error ? (
-          <p className="text-[0.85rem] text-[#b91c1c]">
+          <p className="text-[0.85rem] text-red-700">
             Couldn’t load recent events.
           </p>
         ) : events.length === 0 ? (
-          <p className="text-[0.85rem] text-[#9ca3af]">
+          <p className="text-[0.85rem] text-gray-400">
             No 8-K or 6-K events on record for {ticker} — a recently-added name may
             still be backfilling overnight.
           </p>
         ) : (
           <>
-            <ul className="divide-y divide-[#f3f4f6]">
+            <ul className="divide-y divide-gray-100">
               {shown.map((e) => (
                 <EventRow key={e.accession_no} e={e} />
               ))}
@@ -122,12 +122,12 @@ export function EventsPanel({ ticker }: { ticker: string }) {
               <button
                 type="button"
                 onClick={() => setExpanded((x) => !x)}
-                className="mt-2.5 rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-[#64748b] hover:bg-[#f8fafc]"
+                className="mt-2.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-slate-500 hover:bg-slate-50"
               >
                 {expanded ? 'Show fewer' : `Show all ${events.length} events`}
               </button>
             )}
-            <p className="mt-2.5 text-[0.7rem] text-[#9ca3af]">
+            <p className="mt-2.5 text-[0.7rem] text-gray-400">
               Indigo dots/badges mark genuinely market-moving items (M&amp;A,
               exec changes, results, impairments, delisting, restatements);
               grey = routine (exhibits, Reg-FD, votes).

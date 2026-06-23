@@ -1,7 +1,7 @@
 import { sectorPillColors } from '@/lib/constants'
 
 export function SectorPill({ sector }: { sector: string | null }) {
-  if (!sector) return <span className="text-xs text-[#9ca3af]">—</span>
+  if (!sector) return <span className="text-xs text-gray-400">—</span>
   const [bg, fg] = sectorPillColors(sector)
   return (
     <span

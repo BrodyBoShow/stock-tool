@@ -79,12 +79,12 @@ function AddRuleForm() {
 
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-[#64748b]">
+      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-slate-500">
         Condition
         <select
           value={ruleType}
           onChange={(e) => setRuleType(e.target.value as AlertRuleType)}
-          className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[0.82rem] font-medium text-[#1e293b]"
+          className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] font-medium text-slate-800"
         >
           {Object.entries(RULE_LABELS).map(([k, label]) => (
             <option key={k} value={k}>{label}</option>
@@ -93,25 +93,25 @@ function AddRuleForm() {
       </label>
 
       {THRESHOLD_TYPES.has(ruleType) && (
-        <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-[#64748b]">
+        <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-slate-500">
           Threshold
           <input
             type="number"
             value={threshold}
             onChange={(e) => setThreshold(e.target.value)}
-            className="w-24 rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[0.82rem] text-[#1e293b]"
+            className="w-24 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] text-slate-800"
           />
         </label>
       )}
 
-      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-[#64748b]">
+      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-slate-500">
         Ticker (optional)
         <input
           type="text"
           value={ticker}
           placeholder="whole market"
           onChange={(e) => setTicker(e.target.value)}
-          className="w-32 rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[0.82rem] uppercase text-[#1e293b] placeholder:normal-case placeholder:text-[#cbd5e1]"
+          className="w-32 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] uppercase text-slate-800 placeholder:normal-case placeholder:text-slate-300"
         />
       </label>
 
@@ -119,7 +119,7 @@ function AddRuleForm() {
         type="button"
         onClick={() => create.mutate()}
         disabled={create.isPending}
-        className="rounded-lg bg-[#4f46e5] px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca] disabled:opacity-50"
+        className="rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
       >
         {create.isPending ? 'Adding…' : 'Add rule'}
       </button>
@@ -170,8 +170,8 @@ export function AlertsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-extrabold text-[#111827]">Alerts</h1>
-        <p className="mt-0.5 text-[0.82rem] text-[#6b7280]">
+        <h1 className="text-xl font-extrabold text-gray-900">Alerts</h1>
+        <p className="mt-0.5 text-[0.82rem] text-gray-500">
           Whole-market scan — biggest factor movers, largest insider buys, and high-signal
           8-Ks across the entire universe. Refreshed from the nightly pipeline (so each
           morning reflects the prior session); your watchlist&apos;s own changes live on the
@@ -184,7 +184,7 @@ export function AlertsPage() {
         hint="What currently matches your rules across the whole market."
       >
         {triggered.length === 0 ? (
-          <p className="text-[0.85rem] text-[#9ca3af]">
+          <p className="text-[0.85rem] text-gray-400">
             Nothing triggered right now. Add or adjust rules below.
           </p>
         ) : (
@@ -211,11 +211,11 @@ export function AlertsPage() {
                 </span>
                 <Link
                   to={`/securities/${t.ticker}`}
-                  className="w-16 flex-none font-bold text-[#111827] hover:text-[#4f46e5] hover:underline"
+                  className="w-16 flex-none font-bold text-gray-900 hover:text-indigo-600 hover:underline"
                 >
                   {t.ticker}
                 </Link>
-                <span className="min-w-0 flex-1 text-[0.85rem] text-[#1e293b]">{t.message}</span>
+                <span className="min-w-0 flex-1 text-[0.85rem] text-slate-800">{t.message}</span>
               </div>
             ))}
           </div>
@@ -236,29 +236,29 @@ export function AlertsPage() {
                   'flex-none rounded-full px-2 py-0.5 text-[0.66rem] font-bold uppercase tracking-wide ' +
                   (r.enabled
                     ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-[#f1f5f9] text-[#94a3b8]')
+                    : 'bg-slate-100 text-slate-400')
                 }
               >
                 {r.enabled ? 'On' : 'Off'}
               </button>
-              <span className="min-w-0 flex-1 text-[0.84rem] text-[#334155]">
-                <span className="font-semibold text-[#111827]">{RULE_LABELS[r.rule_type]}</span>
-                <span className="text-[#9ca3af]"> — {ruleDescription(r)}</span>
+              <span className="min-w-0 flex-1 text-[0.84rem] text-slate-700">
+                <span className="font-semibold text-gray-900">{RULE_LABELS[r.rule_type]}</span>
+                <span className="text-gray-400"> — {ruleDescription(r)}</span>
               </span>
               <button
                 type="button"
                 onClick={() => remove.mutate(r.id)}
-                className="flex-none text-[0.78rem] font-semibold text-[#dc2626] hover:underline"
+                className="flex-none text-[0.78rem] font-semibold text-red-600 hover:underline"
               >
                 Remove
               </button>
             </div>
           ))}
           {rules.length === 0 && (
-            <p className="text-[0.85rem] text-[#9ca3af]">No rules yet — add one below.</p>
+            <p className="text-[0.85rem] text-gray-400">No rules yet — add one below.</p>
           )}
         </div>
-        <div className="mt-4 border-t border-[#f1f5f9] pt-4">
+        <div className="mt-4 border-t border-slate-100 pt-4">
           <AddRuleForm />
         </div>
       </SectionCard>

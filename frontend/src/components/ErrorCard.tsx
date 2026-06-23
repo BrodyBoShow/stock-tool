@@ -27,14 +27,14 @@ export function ErrorCard({
   }
 
   return (
-    <div className="rounded-card border border-[#fecaca] bg-[#fef2f2] p-5 shadow-card">
-      <div className="text-sm font-bold text-[#b91c1c]">{title}</div>
-      <p className="mt-1 text-sm text-[#7f1d1d]">{detail}</p>
+    <div className="rounded-card border border-red-200 bg-red-50 p-5 shadow-card">
+      <div className="text-sm font-bold text-red-700">{title}</div>
+      <p className="mt-1 text-sm text-red-900">{detail}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 rounded-lg border border-[#fca5a5] bg-white px-3 py-1.5 text-xs font-bold text-[#b91c1c] hover:bg-[#fff1f1]"
+          className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-[#fff1f1]"
         >
           Retry
         </button>

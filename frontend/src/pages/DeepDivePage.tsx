@@ -58,8 +58,8 @@ function SectionNav({ ticker }: { ticker: string }) {
   }
 
   return (
-    <nav className="sticky top-0 z-30 -mx-4 flex items-center gap-1 border-b border-[#e5e7eb] bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_1px_6px_rgba(15,23,42,0.04)]">
-      <span className="mr-2 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">
+    <nav className="sticky top-0 z-30 -mx-4 flex items-center gap-1 border-b border-gray-200 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_1px_6px_rgba(15,23,42,0.04)]">
+      <span className="mr-2 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-300">
         {ticker}
       </span>
       {NAV_SECTIONS.map((s) => (
@@ -69,8 +69,8 @@ function SectionNav({ ticker }: { ticker: string }) {
           onClick={() => scrollTo(s.id)}
           className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold transition-all ${
             active === s.id
-              ? 'bg-[#1e293b] text-white'
-              : 'text-[#6b7280] hover:bg-[#f1f5f9] hover:text-[#1e293b]'
+              ? 'bg-slate-800 text-white'
+              : 'text-gray-500 hover:bg-slate-100 hover:text-slate-800'
           }`}
         >
           {s.label}
@@ -109,7 +109,7 @@ export function DeepDivePage() {
   const backLink = (
     <Link
       to="/"
-      className="inline-flex items-center gap-1 text-[0.82rem] font-semibold text-[#64748b] hover:text-[#1e293b]"
+      className="inline-flex items-center gap-1 text-[0.82rem] font-semibold text-slate-500 hover:text-slate-800"
     >
       ← Screener
     </Link>
@@ -170,7 +170,7 @@ export function DeepDivePage() {
 
       <div id="factors">
         <FactorCards header={header} ticker={header.ticker} />
-        <p className="mt-2 text-[0.72rem] text-[#9ca3af]">
+        <p className="mt-2 text-[0.72rem] text-gray-400">
           Cross-sectional percentile ranks within the US-listed universe (100 =
           top), as of {header.score_date ?? 'n/a'} (nightly)
           {weightStr ? ` · Weights: ${weightStr}` : ''}.

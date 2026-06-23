@@ -60,9 +60,9 @@ function maxIsoDate(dates: (string | null | undefined)[]): string | null {
 function FilingFreshness({ date }: { date: string | null }) {
   if (!date) return null
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[0.7rem] font-semibold text-[#64748b]">
-      <span className="text-[#94a3b8]">Latest filing</span>
-      <span className="tabular-nums text-[#475569]">{fmtShortDate(date)}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-500">
+      <span className="text-slate-400">Latest filing</span>
+      <span className="tabular-nums text-slate-600">{fmtShortDate(date)}</span>
       <InfoTip text="The most recent day companies actually filed. SEC EDGAR is closed on weekends and federal holidays, so this can sit a few days back and still be current. Today's filings appear after the nightly refresh." />
     </span>
   )
@@ -94,13 +94,13 @@ function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
     { key: 'rytd', label: 'YTD', scale: 0.25 },
   ]
   if (sectors.length === 0) {
-    return <p className="text-sm text-[#9ca3af]">No sector data for this session — prices may still be loading.</p>
+    return <p className="text-sm text-gray-400">No sector data for this session — prices may still be loading.</p>
   }
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[0.84rem]">
         <thead>
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
             <th className="py-2 pr-4">Sector</th>
             <th className="py-2 pr-3 text-right">Names</th>
             {cols.map((c) => (
@@ -111,9 +111,9 @@ function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
         </thead>
         <tbody>
           {sectors.map((s) => (
-            <tr key={s.sector} className="border-b border-[#f8fafc]">
-              <td className="py-2 pr-4 font-bold text-[#1e293b]">{s.sector}</td>
-              <td className="py-2 pr-3 text-right tabular-nums text-[#94a3b8]">{s.n}</td>
+            <tr key={s.sector} className="border-b border-slate-50">
+              <td className="py-2 pr-4 font-bold text-slate-800">{s.sector}</td>
+              <td className="py-2 pr-3 text-right tabular-nums text-slate-400">{s.n}</td>
               {cols.map((c) => {
                 const v = s[c.key] as number | null
                 return (
@@ -122,7 +122,7 @@ function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
                   </td>
                 )
               })}
-              <td className="py-2 pl-3 text-right tabular-nums text-[#64748b]">
+              <td className="py-2 pl-3 text-right tabular-nums text-slate-500">
                 {s.adv_pct == null ? '—' : `${(s.adv_pct * 100).toFixed(0)}%`}
               </td>
             </tr>
@@ -142,16 +142,16 @@ function BreadthBar({ label, pct, detail, tip }: {
   return (
     <div>
       <div className="flex items-baseline justify-between text-[0.78rem]">
-        <span className="flex items-center font-semibold text-[#475569]">
+        <span className="flex items-center font-semibold text-slate-600">
           {label}
           {tip && <InfoTip text={tip} />}
         </span>
-        <span className="font-bold tabular-nums text-[#1e293b]">
-          {pct == null ? <span className="text-[#94a3b8]">no data</span> : `${(pct * 100).toFixed(0)}%`}
-          {detail && pct != null && <span className="ml-1.5 font-normal text-[#94a3b8]">{detail}</span>}
+        <span className="font-bold tabular-nums text-slate-800">
+          {pct == null ? <span className="text-slate-400">no data</span> : `${(pct * 100).toFixed(0)}%`}
+          {detail && pct != null && <span className="ml-1.5 font-normal text-slate-400">{detail}</span>}
         </span>
       </div>
-      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-[#fee2e2]">
+      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-red-100">
         {pct != null && (
           <div className="h-full rounded-full bg-emerald-500/80" style={{ width: `${pct * 100}%` }} />
         )}
@@ -166,22 +166,22 @@ function MacroCardBox({ card }: { card: MarketMacroCard }) {
   const trendUp = card.spark_values.length >= 2 && card.spark_values[card.spark_values.length - 1] >= card.spark_values[0]
   const deltaStr = card.delta == null ? '' : `${card.delta > 0 ? '+' : ''}${card.delta.toFixed(card.dec)}`
   return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white px-4 py-3 shadow-card">
+    <div className="rounded-card border border-gray-200 bg-white px-4 py-3 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">{card.label}</div>
+          <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">{card.label}</div>
           {hasData ? (
-            <div className="mt-0.5 text-[1.15rem] font-extrabold tabular-nums text-[#0f172a]">
+            <div className="mt-0.5 text-[1.15rem] font-extrabold tabular-nums text-slate-900">
               {card.latest.toFixed(card.dec)}{card.unit}
               {deltaStr && (
                 // Rates/yields: direction only, neutral color (a move isn't "good" or "bad").
-                <span className="ml-1.5 text-[0.74rem] font-semibold text-[#64748b]">
+                <span className="ml-1.5 text-[0.74rem] font-semibold text-slate-500">
                   {card.delta! > 0 ? '▲' : card.delta! < 0 ? '▼' : ''}{deltaStr}
                 </span>
               )}
             </div>
           ) : (
-            <div className="mt-0.5 text-[0.9rem] font-semibold text-[#94a3b8]">no recent reading</div>
+            <div className="mt-0.5 text-[0.9rem] font-semibold text-slate-400">no recent reading</div>
           )}
         </div>
         {points.length > 1 && (
@@ -196,7 +196,7 @@ function MacroCardBox({ card }: { card: MarketMacroCard }) {
           </div>
         )}
       </div>
-      <div className="mt-1 text-[0.68rem] text-[#94a3b8]">as of {fmtDate(card.as_of)}</div>
+      <div className="mt-1 text-[0.68rem] text-slate-400">as of {fmtDate(card.as_of)}</div>
     </div>
   )
 }
@@ -204,15 +204,15 @@ function MacroCardBox({ card }: { card: MarketMacroCard }) {
 function MoverList({ movers, title }: { movers: MarketMover[]; title: string }) {
   return (
     <div>
-      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">{title}</div>
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">{title}</div>
       <div className="mt-2 space-y-1.5">
         {movers.map((m) => (
           <div key={m.security_id} className="flex items-center gap-2.5 text-[0.82rem]">
-            <Link to={`/securities/${m.ticker}`} className="w-14 shrink-0 font-bold text-[#1e293b] hover:text-[#4f46e5]">
+            <Link to={`/securities/${m.ticker}`} className="w-14 shrink-0 font-bold text-slate-800 hover:text-indigo-600">
               {m.ticker}
             </Link>
-            <span className="min-w-0 flex-1 truncate text-[#94a3b8]">{m.name}</span>
-            <span className="shrink-0 tabular-nums text-[#94a3b8]">{fmtMoney(m.market_cap)}</span>
+            <span className="min-w-0 flex-1 truncate text-slate-400">{m.name}</span>
+            <span className="shrink-0 tabular-nums text-slate-400">{fmtMoney(m.market_cap)}</span>
             <span className="w-16 shrink-0 text-right font-bold tabular-nums" style={{ color: plColor(m.r1d) }}>
               {fmtSignedPct(m.r1d)}
             </span>
@@ -251,9 +251,9 @@ function FactorOfDay({ factors }: { factors: MarketFactorDay[] }) {
         const pos = f.spread >= 0
         return (
           <div key={f.factor} className="flex items-center gap-3 text-[0.82rem]">
-            <span className="w-20 shrink-0 font-semibold text-[#475569]">{FACTOR_LABEL[f.factor]}</span>
+            <span className="w-20 shrink-0 font-semibold text-slate-600">{FACTOR_LABEL[f.factor]}</span>
             <div className="relative flex h-3 flex-1 items-center">
-              <div className="absolute left-1/2 h-full w-px bg-[#e5e7eb]" />
+              <div className="absolute left-1/2 h-full w-px bg-gray-200" />
               <div
                 className="absolute h-2 rounded-sm"
                 style={{
@@ -269,7 +269,7 @@ function FactorOfDay({ factors }: { factors: MarketFactorDay[] }) {
           </div>
         )
       })}
-      <p className="pt-1 text-[0.72rem] text-[#94a3b8]">
+      <p className="pt-1 text-[0.72rem] text-slate-400">
         Top fifth minus bottom fifth, by 1-day return. The leader is the style the market rewarded today.
       </p>
     </div>
@@ -336,11 +336,11 @@ function RegimeStrip({ d }: { d: MarketOverviewResponse }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">Last close</span>
+      <span className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-slate-400">Last close</span>
       {chips.map((s) => (
-        <div key={s.label} className="flex items-center gap-1.5 rounded-full border border-[#e5e7eb] px-3 py-1.5" style={{ background: s.bg }}>
+        <div key={s.label} className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5" style={{ background: s.bg }}>
           <span aria-hidden style={{ color: s.color }}>{s.glyph}</span>
-          <span className="text-[0.66rem] font-bold uppercase tracking-[0.07em] text-[#475569]">{s.label}</span>
+          <span className="text-[0.66rem] font-bold uppercase tracking-[0.07em] text-slate-600">{s.label}</span>
           <span className="text-[0.78rem] font-bold" style={{ color: s.color }}>{s.value}</span>
           <InfoTip text={s.tip} />
         </div>
@@ -360,7 +360,7 @@ function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
 
   let tone: 'calm' | 'info' | 'warn' = 'calm'
   let msg: React.ReactNode = (
-    <span><span className="font-bold text-[#374151]">Up to date</span> through {fmtDate(d.as_of)} (latest US session)</span>
+    <span><span className="font-bold text-gray-700">Up to date</span> through {fmtDate(d.as_of)} (latest US session)</span>
   )
   if (f && f.tier === 'lagging') {
     tone = 'info'
@@ -379,9 +379,9 @@ function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
     )
   }
   const styles = {
-    calm: 'border-[#e5e7eb] bg-[#f9fafb] text-[#6b7280]',
-    info: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]',
-    warn: 'border-[#fcd34d] bg-[#fffbeb] text-[#b45309]',
+    calm: 'border-gray-200 bg-gray-50 text-gray-500',
+    info: 'border-blue-200 bg-blue-50 text-blue-700',
+    warn: 'border-amber-300 bg-amber-50 text-amber-700',
   }[tone]
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-3 py-2 text-[0.74rem] ${styles}`}>
@@ -391,12 +391,12 @@ function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
         <InfoTip text={G.freshness} />
       </span>
       {cov && (
-        <span className={covShrunk ? 'font-semibold text-[#b45309]' : 'text-[#9ca3af]'}>
+        <span className={covShrunk ? 'font-semibold text-amber-700' : 'text-gray-400'}>
           Priced {cov.priced.toLocaleString()} of {cov.active.toLocaleString()} active names
           {covShrunk && ` (down from ${cov.priced_prev.toLocaleString()} last session — ingest catching up)`}
         </span>
       )}
-      <span className="text-[#9ca3af]">{cache}</span>
+      <span className="text-gray-400">{cache}</span>
     </div>
   )
 }
@@ -416,10 +416,10 @@ function RiskGauge({ score }: { score: number }) {
     <div className="mt-3">
       <div className="relative h-2 rounded-full"
         style={{ background: 'linear-gradient(90deg,#f87171 0%,#fbbf24 50%,#34d399 100%)' }}>
-        <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#0f172a] shadow-[0_1px_4px_rgba(15,23,42,0.45)]"
+        <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-900 shadow-[0_1px_4px_rgba(15,23,42,0.45)]"
           style={{ left: `${pct}%` }} aria-hidden />
       </div>
-      <div className="mt-1 flex justify-between text-[0.58rem] font-bold uppercase tracking-[0.08em] text-[#94a3b8]">
+      <div className="mt-1 flex justify-between text-[0.58rem] font-bold uppercase tracking-[0.08em] text-slate-400">
         <span>Risk-off</span><span>Cautious</span><span>Risk-on</span>
       </div>
     </div>
@@ -450,14 +450,14 @@ function RegimeHero({ read, spyLive, spy1d, ewr1d, breadth, liveVsLast }: {
           </span>
           <InfoTip text="Plain-English read of the last session's tape — from the index move, breadth, and sector rotation. Not advice." />
         </div>
-        {read?.text && <p className="mt-1 text-[0.92rem] leading-snug text-[#334155]">{read.text}</p>}
+        {read?.text && <p className="mt-1 text-[0.92rem] leading-snug text-slate-700">{read.text}</p>}
         <RiskGauge score={riskScore} />
       </div>
-      <div className="flex flex-col justify-center rounded-xl border border-[#e5e7eb] bg-white px-4 py-3.5">
+      <div className="flex flex-col justify-center rounded-xl border border-gray-200 bg-white px-4 py-3.5">
         {spyLive?.price != null ? (
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#94a3b8]">SPY</span>
-            <span className="text-[1.35rem] font-extrabold tabular-nums text-[#0f172a]">${spyLive.price.toFixed(2)}</span>
+            <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400">SPY</span>
+            <span className="text-[1.35rem] font-extrabold tabular-nums text-slate-900">${spyLive.price.toFixed(2)}</span>
             <span className="text-[0.95rem] font-bold tabular-nums" style={{ color: plColor(spyLive.change_pct) }}>
               {spyLive.change_pct == null ? '' : `${spyLive.change_pct > 0 ? '+' : ''}${spyLive.change_pct.toFixed(2)}%`}
             </span>
@@ -465,15 +465,15 @@ function RegimeHero({ read, spyLive, spy1d, ewr1d, breadth, liveVsLast }: {
           </div>
         ) : (
           <div className="flex items-baseline gap-2">
-            <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#94a3b8]">SPY</span>
-            <span className="text-[0.82rem] text-[#94a3b8]">market closed</span>
+            <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400">SPY</span>
+            <span className="text-[0.82rem] text-slate-400">market closed</span>
           </div>
         )}
-        {liveVsLast && <div className="mt-0.5 text-[0.7rem] text-[#94a3b8]">Live SPY is {liveVsLast}</div>}
-        <div className="mt-2 border-t border-[#f1f5f9] pt-2 text-[0.76rem]">
-          <span className="text-[#94a3b8]">Last close </span>
+        {liveVsLast && <div className="mt-0.5 text-[0.7rem] text-slate-400">Live SPY is {liveVsLast}</div>}
+        <div className="mt-2 border-t border-slate-100 pt-2 text-[0.76rem]">
+          <span className="text-slate-400">Last close </span>
           <span className="font-bold tabular-nums" style={{ color: plColor(spy1d) }}>SPY {fmtSignedPct(spy1d)}</span>
-          <span className="mx-1 text-[#d1d5db]">·</span>
+          <span className="mx-1 text-gray-300">·</span>
           <span className="font-bold tabular-nums" style={{ color: plColor(ewr1d) }}>avg {fmtSignedPct(ewr1d)}</span>
         </div>
       </div>
@@ -486,7 +486,7 @@ function DivergeBar({ left, right }: { left: number; right: number }) {
   const total = left + right || 1
   const lp = Math.max(0, Math.min(100, (left / total) * 100))
   return (
-    <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+    <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-slate-100">
       <div style={{ width: `${lp}%`, background: '#34d399' }} />
       <div style={{ width: `${100 - lp}%`, background: '#f87171' }} />
     </div>
@@ -495,10 +495,10 @@ function DivergeBar({ left, right }: { left: number; right: number }) {
 
 /** Fill meter colored by breadth thresholds (≥60 green, ≥40 amber, else red). */
 function MeterBar({ pct }: { pct: number | null }) {
-  if (pct == null) return <div className="mt-2 h-2 rounded-full bg-[#f1f5f9]" />
+  if (pct == null) return <div className="mt-2 h-2 rounded-full bg-slate-100" />
   const c = pct >= 0.6 ? '#34d399' : pct >= 0.4 ? '#fbbf24' : '#f87171'
   return (
-    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
       <div className="h-full rounded-full" style={{ width: `${Math.max(3, Math.min(100, pct * 100))}%`, background: c }} />
     </div>
   )
@@ -506,8 +506,8 @@ function MeterBar({ pct }: { pct: number | null }) {
 
 function SnapTile({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-[#e5e7eb] bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-[0.07em] text-[#94a3b8]">
+    <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-[0.07em] text-slate-400">
         {label}{tip && <InfoTip text={tip} />}
       </div>
       {children}
@@ -529,43 +529,43 @@ function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
       <SnapTile label="Advancers · decliners" tip="Active names that rose vs fell last session — the broad participation read.">
         <div className="mt-1 flex items-baseline gap-1.5">
           <span className="text-[1.25rem] font-extrabold tabular-nums" style={{ color: advPct >= 0.5 ? '#047857' : '#b91c1c' }}>{(advPct * 100).toFixed(0)}%</span>
-          <span className="text-[0.7rem] text-[#94a3b8]">advancing</span>
+          <span className="text-[0.7rem] text-slate-400">advancing</span>
         </div>
         <DivergeBar left={b.advancers} right={b.decliners} />
         <div className="mt-1.5 flex justify-between text-[0.7rem] tabular-nums">
-          <span className="font-semibold text-[#047857]">{b.advancers.toLocaleString()} up</span>
-          <span className="font-semibold text-[#b91c1c]">{b.decliners.toLocaleString()} down</span>
+          <span className="font-semibold text-emerald-700">{b.advancers.toLocaleString()} up</span>
+          <span className="font-semibold text-red-700">{b.decliners.toLocaleString()} down</span>
         </div>
       </SnapTile>
 
       <SnapTile label="Above 50-day avg" tip={G.ma50}>
         <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-[1.25rem] font-extrabold tabular-nums text-[#0f172a]">{b.pct_above_ma50 == null ? '—' : `${(b.pct_above_ma50 * 100).toFixed(0)}%`}</span>
-          <span className="text-[0.7rem] text-[#94a3b8]">in uptrend</span>
+          <span className="text-[1.25rem] font-extrabold tabular-nums text-slate-900">{b.pct_above_ma50 == null ? '—' : `${(b.pct_above_ma50 * 100).toFixed(0)}%`}</span>
+          <span className="text-[0.7rem] text-slate-400">in uptrend</span>
         </div>
         <MeterBar pct={b.pct_above_ma50} />
-        <div className="mt-1.5 text-[0.7rem] tabular-nums text-[#94a3b8]">
+        <div className="mt-1.5 text-[0.7rem] tabular-nums text-slate-400">
           {b.pct_above_ma200 == null ? ' ' : `${(b.pct_above_ma200 * 100).toFixed(0)}% above 200-day`}
         </div>
       </SnapTile>
 
       <SnapTile label="New 52-wk highs · lows" tip="Stocks at fresh 1-year highs vs lows — the momentum extremes of the tape.">
         <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-[1.25rem] font-extrabold tabular-nums text-[#047857]">{b.new_highs}</span>
-          <span className="text-[0.7rem] text-[#94a3b8]">highs ·</span>
-          <span className="text-[1.05rem] font-bold tabular-nums text-[#b91c1c]">{b.new_lows}</span>
-          <span className="text-[0.7rem] text-[#94a3b8]">lows</span>
+          <span className="text-[1.25rem] font-extrabold tabular-nums text-emerald-700">{b.new_highs}</span>
+          <span className="text-[0.7rem] text-slate-400">highs ·</span>
+          <span className="text-[1.05rem] font-bold tabular-nums text-red-700">{b.new_lows}</span>
+          <span className="text-[0.7rem] text-slate-400">lows</span>
         </div>
         <DivergeBar left={b.new_highs} right={b.new_lows} />
-        <div className="mt-1.5 text-[0.7rem] text-[#94a3b8]">{b.new_highs >= b.new_lows ? 'highs leading' : 'lows leading'}</div>
+        <div className="mt-1.5 text-[0.7rem] text-slate-400">{b.new_highs >= b.new_lows ? 'highs leading' : 'lows leading'}</div>
       </SnapTile>
 
       <SnapTile label="Index vs typical stock" tip={G.equalWeight}>
         <div className="mt-1.5 space-y-2">
           {[{ k: 'SPY', v: spy }, { k: 'Avg stock', v: avg }].map((row) => (
             <div key={row.k} className="flex items-center gap-2">
-              <span className="w-[3.6rem] shrink-0 text-[0.66rem] font-semibold text-[#64748b]">{row.k}</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f1f5f9]">
+              <span className="w-[3.6rem] shrink-0 text-[0.66rem] font-semibold text-slate-500">{row.k}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
                 <div className="h-full rounded-full" style={{ width: `${barW(row.v)}%`, background: (row.v ?? 0) >= 0 ? '#34d399' : '#f87171' }} />
               </div>
               <span className="w-12 shrink-0 text-right text-[0.72rem] font-bold tabular-nums" style={{ color: plColor(row.v) }}>{fmtSignedPct(row.v)}</span>
@@ -573,10 +573,10 @@ function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
           ))}
         </div>
         {b.divergence?.state === 'narrow' && (
-          <div className="mt-1.5 text-[0.64rem] font-bold uppercase tracking-wide text-[#b45309]">Narrow — index ≠ typical stock</div>
+          <div className="mt-1.5 text-[0.64rem] font-bold uppercase tracking-wide text-amber-700">Narrow — index ≠ typical stock</div>
         )}
         {b.divergence?.state === 'resilient' && (
-          <div className="mt-1.5 text-[0.64rem] font-bold uppercase tracking-wide text-[#047857]">Resilient — stocks holding up</div>
+          <div className="mt-1.5 text-[0.64rem] font-bold uppercase tracking-wide text-emerald-700">Resilient — stocks holding up</div>
         )}
       </SnapTile>
     </div>
@@ -595,15 +595,15 @@ function AiBrief({ brief, computed, generating, asOf, stale }: {
       {!brief ? (
         <div>
           {generating && (
-            <div className="mb-3 flex items-center gap-2 text-[0.78rem] font-semibold text-[#4f46e5]">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#4f46e5]" />
+            <div className="mb-3 flex items-center gap-2 text-[0.78rem] font-semibold text-indigo-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-600" />
               Writing today's market summary…
             </div>
           )}
           <ul className="space-y-2">
             {computed.map((s) => (
-              <li key={s} className="flex items-start gap-2.5 text-[0.9rem] leading-relaxed text-[#334155]">
-                <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#94a3b8]" />
+              <li key={s} className="flex items-start gap-2.5 text-[0.9rem] leading-relaxed text-slate-700">
+                <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
                 {s}
               </li>
             ))}
@@ -612,29 +612,29 @@ function AiBrief({ brief, computed, generating, asOf, stale }: {
       ) : (
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#eef2ff] px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wide text-[#4f46e5]">
+            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wide text-indigo-600">
               {brief.regime.label}
             </span>
-            <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[0.66rem] font-semibold text-[#64748b]">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.66rem] font-semibold text-slate-500">
               based on the {fmtDate(asOf)} close
             </span>
-            <span className="text-[0.72rem] text-[#94a3b8]">{brief.regime.rationale}</span>
+            <span className="text-[0.72rem] text-slate-400">{brief.regime.rationale}</span>
           </div>
           {stale && (
-            <p className="mt-2 text-[0.74rem] font-medium text-[#b45309]">
+            <p className="mt-2 text-[0.74rem] font-medium text-amber-700">
               Note: this brief reflects the {fmtDate(asOf)} session — newer closes aren't in the data yet.
             </p>
           )}
-          <p className="mt-3 border-l-[3px] border-[#c7d2fe] pl-3.5 text-[1.18rem] font-bold leading-snug text-[#0f172a]">
+          <p className="mt-3 border-l-[3px] border-indigo-200 pl-3.5 text-[1.18rem] font-bold leading-snug text-slate-900">
             {brief.headline}
           </p>
           {brief.watch.length > 0 && (
             <div className="mt-4">
-              <div className="text-[0.66rem] font-bold uppercase tracking-[0.09em] text-[#94a3b8]">What to watch next</div>
+              <div className="text-[0.66rem] font-bold uppercase tracking-[0.09em] text-slate-400">What to watch next</div>
               <div className="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {brief.watch.map((w) => (
-                  <div key={w} className="rounded-xl border border-[#eef1f6] bg-[#f8fafc] p-3 text-[0.82rem] leading-relaxed text-[#475569]">
-                    <span className="mr-1.5 font-bold text-[#4f46e5]">→</span>{w}
+                  <div key={w} className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3 text-[0.82rem] leading-relaxed text-slate-600">
+                    <span className="mr-1.5 font-bold text-indigo-600">→</span>{w}
                   </div>
                 ))}
               </div>
@@ -642,7 +642,7 @@ function AiBrief({ brief, computed, generating, asOf, stale }: {
           )}
           {brief.narrative.length > 0 && (
             <details className="group mt-4">
-              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-[#4f46e5] hover:text-[#4338ca]">
+              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-indigo-600 hover:text-indigo-700">
                 <svg className="h-3.5 w-3.5 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
                 </svg>
@@ -650,19 +650,19 @@ function AiBrief({ brief, computed, generating, asOf, stale }: {
               </summary>
               <div className="mt-2.5 space-y-2.5">
                 {brief.narrative.map((p) => (
-                  <p key={p} className="text-[0.9rem] leading-relaxed text-[#334155]">{p}</p>
+                  <p key={p} className="text-[0.9rem] leading-relaxed text-slate-700">{p}</p>
                 ))}
               </div>
             </details>
           )}
-          <details className="mt-3 border-t border-[#f1f5f9] pt-2.5">
-            <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-[#9ca3af] hover:text-[#64748b]">
+          <details className="mt-3 border-t border-slate-100 pt-2.5">
+            <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-gray-400 hover:text-slate-500">
               By the numbers
             </summary>
             <ul className="mt-1.5 space-y-1 pl-1">
               {computed.map((s) => (
-                <li key={s} className="flex items-start gap-2 text-[0.78rem] text-[#64748b]">
-                  <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-[#cbd5e1]" />
+                <li key={s} className="flex items-start gap-2 text-[0.78rem] text-slate-500">
+                  <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-slate-300" />
                   {s}
                 </li>
               ))}
@@ -715,7 +715,7 @@ export function MarketPage() {
     return (
       <div className="space-y-5">
         <Skeleton className="h-[150px] w-full rounded-card" />
-        <div className="text-center text-xs text-[#9ca3af]">
+        <div className="text-center text-xs text-gray-400">
           Computing market internals across ~5,500 stocks — first load after a server start can take half a minute…
         </div>
         <Skeleton className="h-[360px] w-full rounded-card" />
@@ -739,18 +739,18 @@ export function MarketPage() {
 
   return (
     <div className="space-y-5">
-      <header className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
-        <div className="h-1 bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#0ea5e9]" />
+      <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+        <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-            <span className="text-[#4f46e5]">StockBud</span>
-            <span className="text-[#d1d5db]">/</span>
-            <span className="text-[#94a3b8]">Market</span>
+            <span className="text-indigo-600">StockBud</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-slate-400">Market</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
+          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
             Market overview
           </h1>
-          <p className="mt-1 text-[0.8rem] text-[#94a3b8]">
+          <p className="mt-1 text-[0.8rem] text-slate-400">
             Equal-weight internals across our active universe — the 2-second read first, the full story below.
           </p>
           <RegimeHero
@@ -763,10 +763,10 @@ export function MarketPage() {
           />
         </div>
         {/* Freshness FIRST — the trust signal leads, and gets prominence when stale. */}
-        <div className={`px-7 py-2.5 ${stale ? 'bg-[#fffbeb]' : 'border-t border-[#f1f5f9]'}`}>
+        <div className={`px-7 py-2.5 ${stale ? 'bg-amber-50' : 'border-t border-slate-100'}`}>
           <FreshnessRow d={d} />
         </div>
-        <div className="border-t border-[#f1f5f9] px-7 py-3">
+        <div className="border-t border-slate-100 px-7 py-3">
           <RegimeStrip d={d} />
         </div>
       </header>
@@ -784,7 +784,7 @@ export function MarketPage() {
           </div>
         )}
         <SessionSnapshot d={d} />
-        <div className="mt-4 border-t border-[#f1f5f9] pt-4">
+        <div className="mt-4 border-t border-slate-100 pt-4">
           <AiBrief brief={aiBrief} computed={d.brief} generating={briefMut.isPending} asOf={d.as_of} stale={stale} />
         </div>
       </SectionCard>
@@ -820,20 +820,20 @@ export function MarketPage() {
               detail={`${b.advancers.toLocaleString()} up · ${b.decliners.toLocaleString()} down`} />
             <BreadthBar label="Above 50-day average" pct={b.pct_above_ma50} tip={G.ma50} />
             <BreadthBar label="Above 200-day average" pct={b.pct_above_ma200} tip={G.ma200} />
-            <div className="flex gap-6 border-t border-[#f1f5f9] pt-3 text-[0.84rem]">
+            <div className="flex gap-6 border-t border-slate-100 pt-3 text-[0.84rem]">
               <span>
-                <span className="font-extrabold tabular-nums text-[#059669]">{b.new_highs}</span>{' '}
-                <span className="text-[#64748b]">new 52-week highs</span>
+                <span className="font-extrabold tabular-nums text-emerald-600">{b.new_highs}</span>{' '}
+                <span className="text-slate-500">new 52-week highs</span>
               </span>
               <span className="flex items-center">
-                <span className="font-extrabold tabular-nums text-[#dc2626]">{b.new_lows}</span>{' '}
-                <span className="ml-1 text-[#64748b]">new 52-week lows</span>
+                <span className="font-extrabold tabular-nums text-red-600">{b.new_lows}</span>{' '}
+                <span className="ml-1 text-slate-500">new 52-week lows</span>
                 <InfoTip text={G.highsLows} />
               </span>
             </div>
             {dd && (
-              <div className="border-t border-[#f1f5f9] pt-3">
-                <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">
+              <div className="border-t border-slate-100 pt-3">
+                <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
                   Distance from 52-week highs<InfoTip text={G.drawdown} />
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-center">
@@ -842,11 +842,11 @@ export function MarketPage() {
                     { k: 'corr', label: 'in a correction (10%+)', v: dd.correction_pct, c: '#b45309' },
                     { k: 'bear', label: '20%+ off highs', v: dd.bear_pct, c: '#b91c1c' },
                   ].map((x) => (
-                    <div key={x.k} className="rounded-lg bg-[#f8fafc] px-2 py-2">
+                    <div key={x.k} className="rounded-lg bg-slate-50 px-2 py-2">
                       <div className="text-[1.05rem] font-extrabold tabular-nums" style={{ color: x.c }}>
                         {(x.v * 100).toFixed(0)}%
                       </div>
-                      <div className="text-[0.66rem] text-[#94a3b8]">{x.label}</div>
+                      <div className="text-[0.66rem] text-slate-400">{x.label}</div>
                     </div>
                   ))}
                 </div>
@@ -860,11 +860,11 @@ export function MarketPage() {
           <div className="grid grid-cols-2 gap-3">
             {d.macro.cards.map((c) => <MacroCardBox key={c.id} card={c} />)}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-[0.8rem] text-[#64748b]">
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-[0.8rem] text-slate-500">
             {d.macro.curve_bps != null && (
               <span className="flex items-center">
                 2s10s curve{' '}
-                <strong className="ml-1 tabular-nums text-[#1e293b]">
+                <strong className="ml-1 tabular-nums text-slate-800">
                   {d.macro.curve_bps > 0 ? '+' : ''}{d.macro.curve_bps.toFixed(0)}bps
                 </strong>
                 {d.macro.curve_bps < 0 && ' (inverted)'}
@@ -873,7 +873,7 @@ export function MarketPage() {
             )}
             {d.macro.cpi_yoy != null && (
               <span>
-                CPI <strong className="tabular-nums text-[#1e293b]">{fmtSignedPct(d.macro.cpi_yoy)}</strong>{' '}
+                CPI <strong className="tabular-nums text-slate-800">{fmtSignedPct(d.macro.cpi_yoy)}</strong>{' '}
                 YoY {d.macro.cpi_as_of && `(as of ${fmtDate(d.macro.cpi_as_of)})`}
               </span>
             )}
@@ -910,28 +910,28 @@ export function MarketPage() {
             right={<FilingFreshness date={maxIsoDate(d.filings.map((f) => f.filed_date))} />}
           >
             <div className="max-h-[460px] space-y-3 overflow-auto pr-1">
-              {d.filings.length === 0 && <p className="text-sm text-[#9ca3af]">No high-signal filings in the window.</p>}
+              {d.filings.length === 0 && <p className="text-sm text-gray-400">No high-signal filings in the window.</p>}
               {d.filings.map((f) => (
                 <div key={f.accession_no + f.security_id} className="flex items-start gap-3">
-                  <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-[#94a3b8]">
+                  <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-slate-400">
                     {fmtShortDate(f.filed_date)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       {f.ticker && (
-                        <Link to={`/securities/${f.ticker}`} className="font-bold text-[#1e293b] hover:text-[#4f46e5]">{f.ticker}</Link>
+                        <Link to={`/securities/${f.ticker}`} className="font-bold text-slate-800 hover:text-indigo-600">{f.ticker}</Link>
                       )}
-                      <span className="truncate text-[0.76rem] text-[#94a3b8]">
+                      <span className="truncate text-[0.76rem] text-slate-400">
                         {f.name} {f.market_cap ? `· ${fmtMoney(f.market_cap)}` : ''}
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {f.labels.slice(0, 3).map((l) => (
-                        <span key={l} className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[0.68rem] font-semibold text-[#4f46e5]">{l}</span>
+                        <span key={l} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[0.68rem] font-semibold text-indigo-600">{l}</span>
                       ))}
                       {f.primary_doc_url && (
                         <a href={f.primary_doc_url} target="_blank" rel="noreferrer"
-                          className="rounded-full bg-[#f8fafc] px-2 py-0.5 text-[0.68rem] font-semibold text-[#94a3b8] hover:text-[#4f46e5]">SEC filing ↗</a>
+                          className="rounded-full bg-slate-50 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-400 hover:text-indigo-600">SEC filing ↗</a>
                       )}
                     </div>
                   </div>
@@ -945,14 +945,14 @@ export function MarketPage() {
             hint="Largest open-market insider purchases filed in the last 7 days (Form 4, code P). Context only."
             right={<FilingFreshness date={maxIsoDate(d.insider_buys.map((i) => i.last_filed))} />}>
             <div className="space-y-2.5">
-              {d.insider_buys.length === 0 && <p className="text-sm text-[#9ca3af]">No open-market buys filed this week.</p>}
+              {d.insider_buys.length === 0 && <p className="text-sm text-gray-400">No open-market buys filed this week.</p>}
               {d.insider_buys.map((i) => (
                 <div key={i.security_id} className="flex items-center gap-2.5 text-[0.84rem]">
-                  <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-[#1e293b] hover:text-[#4f46e5]">{i.ticker}</Link>
-                  <span className="min-w-0 flex-1 truncate text-[0.76rem] text-[#94a3b8]">
+                  <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-slate-800 hover:text-indigo-600">{i.ticker}</Link>
+                  <span className="min-w-0 flex-1 truncate text-[0.76rem] text-slate-400">
                     {i.buyers} buyer{i.buyers !== 1 ? 's' : ''} · filed {fmtShortDate(i.last_filed)}
                   </span>
-                  <span className="shrink-0 font-bold tabular-nums text-[#059669]">{fmtMoney(i.total_value)}</span>
+                  <span className="shrink-0 font-bold tabular-nums text-emerald-600">{fmtMoney(i.total_value)}</span>
                 </div>
               ))}
             </div>
@@ -963,19 +963,19 @@ export function MarketPage() {
       <SectionCard title="Headlines" hint="Top stories from public feeds (CNBC, MarketWatch, Yahoo Finance) — refreshed ~15 min.">
         <div className="space-y-2.5">
           {d.headlines.length === 0 && (
-            <p className="text-sm text-[#9ca3af]">Feeds unreachable right now — the rest of the page is unaffected.</p>
+            <p className="text-sm text-gray-400">Feeds unreachable right now — the rest of the page is unaffected.</p>
           )}
           {d.headlines.map((h) => (
             <a key={h.url} href={h.url} target="_blank" rel="noreferrer" className="group flex items-baseline gap-3 no-underline">
-              <span className="w-24 shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-[#94a3b8]">{h.source}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.88rem] font-medium text-[#334155] group-hover:text-[#4f46e5]">{h.title}</span>
-              <span className="shrink-0 text-[0.7rem] text-[#94a3b8]">{timeAgo(h.published_epoch)}</span>
+              <span className="w-24 shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">{h.source}</span>
+              <span className="min-w-0 flex-1 truncate text-[0.88rem] font-medium text-slate-700 group-hover:text-indigo-600">{h.title}</span>
+              <span className="shrink-0 text-[0.7rem] text-slate-400">{timeAgo(h.published_epoch)}</span>
             </a>
           ))}
         </div>
       </SectionCard>
 
-      <p className="pb-2 text-center text-xs text-[#9ca3af]">
+      <p className="pb-2 text-center text-xs text-gray-400">
         Whole-market context from nightly data, SEC filings and public feeds — not investment advice.
       </p>
     </div>

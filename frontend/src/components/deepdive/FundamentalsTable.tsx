@@ -67,11 +67,11 @@ export function FundamentalsTable({
 
   if (fundamentals.length === 0) {
     return (
-      <div className="rounded-card border border-[#bfdbfe] bg-[#eff6ff] p-5 shadow-card">
-        <div className="text-sm font-bold text-[#1d4ed8]">
+      <div className="rounded-card border border-blue-200 bg-blue-50 p-5 shadow-card">
+        <div className="text-sm font-bold text-blue-700">
           No fundamental data available for {ticker}
         </div>
-        <p className="mt-1 text-[0.82rem] text-[#1e40af]">
+        <p className="mt-1 text-[0.82rem] text-blue-800">
           This security has no XBRL filings yet (likely a recent spinoff or IPO).
           Metrics will populate automatically once filings are ingested by the
           weekly pipeline.
@@ -81,11 +81,11 @@ export function FundamentalsTable({
   }
 
   return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-[#111827]">
+    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+      <div className="text-base font-bold text-gray-900">
         Fundamental metrics — point-in-time history
       </div>
-      <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+      <div className="mt-0.5 text-[0.78rem] text-gray-500">
         Values as known at each filing date (point-in-time correct — restatements
         apply forward only, never backward). TTM = trailing twelve months. Showing
         the eight most recent filing dates.
@@ -94,14 +94,14 @@ export function FundamentalsTable({
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
-              <th className="whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]">
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500">
                 Metric
               </th>
               {dates.map((d) => (
                 <th
                   key={d}
-                  className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]"
+                  className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500"
                 >
                   {fmtDate(d)}
                 </th>
@@ -111,8 +111,8 @@ export function FundamentalsTable({
           <tbody>
             {METRIC_DISPLAY_ORDER.filter((metric) => byMetric.has(metric)).map(
               (metric) => (
-                <tr key={metric} className="border-b border-[#f3f4f6]">
-                  <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-[#374151]">
+                <tr key={metric} className="border-b border-gray-100">
+                  <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-gray-700">
                     {METRIC_LABELS[metric] ?? metric}
                   </td>
                   {dates.map((d) => {
@@ -137,7 +137,7 @@ export function FundamentalsTable({
                     return (
                       <td
                         key={d}
-                        className="whitespace-nowrap px-3 py-2 text-right text-[0.82rem] text-[#111827] tabular-nums"
+                        className="whitespace-nowrap px-3 py-2 text-right text-[0.82rem] text-gray-900 tabular-nums"
                         style={tint ? { background: tint } : undefined}
                       >
                         {cell}
@@ -151,7 +151,7 @@ export function FundamentalsTable({
         </table>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-[#6b7280]">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-gray-500">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(16,185,129,0.5)' }} />
           stronger
@@ -160,14 +160,14 @@ export function FundamentalsTable({
           <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(239,68,68,0.45)' }} />
           weaker
         </span>
-        <span className="text-[#9ca3af]">
+        <span className="text-gray-400">
           — each cell shaded against that metric’s own range over these periods
           (green = the better direction for the metric); a quick read of each
           metric’s trajectory, not a cross-company score.
         </span>
       </div>
 
-      <div className="mt-3 space-y-1 text-[0.72rem] text-[#9ca3af]">
+      <div className="mt-3 space-y-1 text-[0.72rem] text-gray-400">
         {showFinancialNa && (
           <p>
             * Not meaningful for banks / insurers / REITs — these metrics assume a

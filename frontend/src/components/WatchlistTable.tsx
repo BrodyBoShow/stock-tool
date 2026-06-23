@@ -84,17 +84,17 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
   const cell = 'pointer-events-none relative z-[1]'
 
   return (
-    <section className="overflow-hidden rounded-card border border-[#e5e7eb] bg-white shadow-card">
+    <section className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
       <div className="overflow-x-auto">
         {/* header */}
         <div
-          className="grid min-w-[820px] border-b border-[#e5e7eb] bg-[#f9fafb]"
+          className="grid min-w-[820px] border-b border-gray-200 bg-gray-50"
           style={{ gridTemplateColumns: GRID }}
         >
-          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
             Company{arrow('ticker')}
           </button>
-          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-gray-500`}>
             Sector{arrow('sector')}
           </button>
           {FACTOR_ORDER.map((k) => (
@@ -109,7 +109,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
               {arrow(FACTOR_SORT[k])}
             </button>
           ))}
-          <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-gray-500`}>
             Price{arrow('last_price')}
           </button>
           <div className={`${TH} justify-center`} />
@@ -120,7 +120,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
           {sorted.map((r) => (
             <div
               key={r.security_id}
-              className="group relative grid border-b border-[#f3f4f6] transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-[#f8fafc] hover:shadow-[inset_3px_0_0_#1e293b]"
+              className="group relative grid border-b border-gray-100 transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-slate-50 hover:shadow-[inset_3px_0_0_#1e293b]"
               style={{ gridTemplateColumns: GRID, height: 52 }}
             >
               <Link
@@ -129,10 +129,10 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                 className="absolute inset-0 z-0"
               />
               <div className={`${cell} flex h-full min-w-0 flex-col justify-center px-3 py-2`}>
-                <span className="text-[0.88rem] font-bold leading-[1.15] text-[#111827]">
+                <span className="text-[0.88rem] font-bold leading-[1.15] text-gray-900">
                   {r.ticker}
                 </span>
-                <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-[#9ca3af]">
+                <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                   {r.name ?? DASH}
                 </span>
               </div>
@@ -155,7 +155,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                 <ScoreCell factor="momentum" value={r.momentum_pctl} />
               </div>
               <div className={`${cell} flex h-full flex-col items-end justify-center px-3 py-2`}>
-                <span className="text-[0.85rem] font-semibold text-[#111827]">
+                <span className="text-[0.85rem] font-semibold text-gray-900">
                   {fmtPrice(r.last_price)}
                 </span>
               </div>

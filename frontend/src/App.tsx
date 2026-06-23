@@ -38,7 +38,7 @@ const LabPage = lazy(() =>
 function PageFallback() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
+      <span className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
     </div>
   )
 }
@@ -63,7 +63,7 @@ export default function App() {
               <Route
                 path="*"
                 element={
-                  <div className="mt-16 text-center text-sm text-[#6b7280]">
+                  <div className="mt-16 text-center text-sm text-gray-500">
                     Page not found.
                   </div>
                 }

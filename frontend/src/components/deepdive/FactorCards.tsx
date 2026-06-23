@@ -97,13 +97,13 @@ export function FactorCards({
             Live-adjusted scores
           </span>
           {data?.price != null && (
-            <span className="text-[0.72rem] text-[#94a3b8]">
+            <span className="text-[0.72rem] text-slate-400">
               from ${data.price.toFixed(2)}
               {changePct != null && changePct !== 0 && (
                 <span
                   className={
                     'ml-1 font-semibold ' +
-                    (changePct > 0 ? 'text-[#059669]' : 'text-[#dc2626]')
+                    (changePct > 0 ? 'text-emerald-600' : 'text-red-600')
                   }
                 >
                   {changePct > 0 ? '▲' : '▼'}
@@ -135,7 +135,7 @@ export function FactorCards({
               key={key}
               className={
                 'rounded-card border p-4 shadow-card ' +
-                (dark ? 'border-[#0f172a]' : 'border-[#e5e7eb] bg-white')
+                (dark ? 'border-slate-900' : 'border-gray-200 bg-white')
               }
               style={
                 dark
@@ -147,7 +147,7 @@ export function FactorCards({
                 <div
                   className={
                     'text-[0.78rem] font-bold uppercase tracking-[0.04em] ' +
-                    (dark ? 'text-[#94a3b8]' : 'text-[#6b7280]')
+                    (dark ? 'text-slate-400' : 'text-gray-500')
                   }
                 >
                   {label}
@@ -169,11 +169,11 @@ export function FactorCards({
                   'mb-2 mt-1 text-[1.8rem] font-extrabold ' +
                   (v === null
                     ? dark
-                      ? 'text-[#64748b]'
-                      : 'text-[#9ca3af]'
+                      ? 'text-slate-500'
+                      : 'text-gray-400'
                     : dark
                       ? 'text-white'
-                      : 'text-[#111827]')
+                      : 'text-gray-900')
                 }
               >
                 {v === null ? DASH : v.toFixed(1)}
@@ -181,7 +181,7 @@ export function FactorCards({
               <div
                 className={
                   'h-[7px] overflow-hidden rounded-full ' +
-                  (dark ? 'bg-white/15' : 'bg-[#f3f4f6]')
+                  (dark ? 'bg-white/15' : 'bg-gray-100')
                 }
               >
                 {v !== null && (
@@ -198,12 +198,12 @@ export function FactorCards({
                 <div
                   className={
                     'mt-[7px] text-[0.72rem] ' +
-                    (dark ? 'text-[#94a3b8]' : 'text-[#9ca3af]')
+                    (dark ? 'text-slate-400' : 'text-gray-400')
                   }
                 >
                   <span
                     className={
-                      live > nightly ? 'text-[#059669]' : 'text-[#dc2626]'
+                      live > nightly ? 'text-emerald-600' : 'text-red-600'
                     }
                   >
                     {live > nightly ? '▲' : '▼'}
@@ -215,7 +215,7 @@ export function FactorCards({
                 <div
                   className={
                     'mt-[7px] text-[0.72rem] ' +
-                    (dark ? 'text-[#94a3b8]' : 'text-[#9ca3af]')
+                    (dark ? 'text-slate-400' : 'text-gray-400')
                   }
                 >
                   {v === null ? 'n/a' : `Top ${Math.max(1, Math.round(100 - v))}%`}

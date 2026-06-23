@@ -92,9 +92,9 @@ function PriceTooltip({
   const ma50 = payload.find((p) => p.dataKey === 'ma50')?.value
   const ma200 = payload.find((p) => p.dataKey === 'ma200')?.value
   return (
-    <div className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs shadow-card">
-      <div className="font-semibold text-[#111827]">{fmtDate(label)}</div>
-      <div className="mt-0.5 text-[#2563eb]">
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-card">
+      <div className="font-semibold text-gray-900">{fmtDate(label)}</div>
+      <div className="mt-0.5 text-blue-600">
         {typeof price === 'number' ? `$${price.toFixed(2)}` : '—'}
       </div>
       {showMA && (
@@ -116,9 +116,9 @@ function VolumeTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null
   const vol = payload.find((p) => p.dataKey === 'vol')?.value
   return (
-    <div className="rounded-lg border border-[#e5e7eb] bg-white px-2 py-1 text-xs shadow-card">
-      <div className="font-semibold text-[#111827]">{fmtDate(label)}</div>
-      <div className="text-[#6b7280]">Vol {fmtVol(typeof vol === 'number' ? vol : null)}</div>
+    <div className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs shadow-card">
+      <div className="font-semibold text-gray-900">{fmtDate(label)}</div>
+      <div className="text-gray-500">Vol {fmtVol(typeof vol === 'number' ? vol : null)}</div>
     </div>
   )
 }
@@ -142,7 +142,7 @@ function OverlayToggle({ on, onToggle, label, color, bgOn, textOn, borderOn }: O
       className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[0.76rem] font-semibold transition-colors ${
         on
           ? `${borderOn} ${bgOn} ${textOn}`
-          : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]'
+          : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50'
       }`}
     >
       <span className="h-2 w-2 rounded-full" style={{ background: on ? color : '#cbd5e1' }} />
@@ -153,10 +153,10 @@ function OverlayToggle({ on, onToggle, label, color, bgOn, textOn, borderOn }: O
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg bg-[#f8fafc] px-2 py-1.5">
-      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-[#94a3b8]">{label}</div>
-      <div className="text-[0.95rem] font-bold tabular-nums text-[#0f172a]">{value}</div>
-      {sub && <div className="text-[0.58rem] text-[#9ca3af]">{sub}</div>}
+    <div className="rounded-lg bg-slate-50 px-2 py-1.5">
+      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="text-[0.95rem] font-bold tabular-nums text-slate-900">{value}</div>
+      {sub && <div className="text-[0.58rem] text-gray-400">{sub}</div>}
     </div>
   )
 }
@@ -199,53 +199,53 @@ function WyckoffReadPanel({
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-2">
       {/* evidence rows */}
-      <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] p-3">
-        <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-[#475569]">
+      <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
+        <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-slate-600">
           Wyckoff read · evidence
         </div>
         {narration.rows.length === 0 ? (
-          <p className="mt-2 text-[0.8rem] text-[#64748b]">{analysis.summary}</p>
+          <p className="mt-2 text-[0.8rem] text-slate-500">{analysis.summary}</p>
         ) : (
           <table className="mt-2 w-full text-[0.78rem]">
             <tbody>
               {narration.rows.map((r, i) => (
                 <tr key={i} className="border-b border-[#eef1f6] last:border-0">
-                  <td className="whitespace-nowrap py-1 pr-3 align-top font-semibold text-[#1e293b]">{r.term}</td>
-                  <td className="py-1 pr-3 align-top text-[#64748b]">{r.meaning}</td>
-                  <td className="whitespace-nowrap py-1 text-right align-top font-medium tabular-nums text-[#0f172a]">{r.value}</td>
+                  <td className="whitespace-nowrap py-1 pr-3 align-top font-semibold text-slate-800">{r.term}</td>
+                  <td className="py-1 pr-3 align-top text-slate-500">{r.meaning}</td>
+                  <td className="whitespace-nowrap py-1 text-right align-top font-medium tabular-nums text-slate-900">{r.value}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-[0.7rem] text-[#9ca3af]">{narration.caveat}</p>
-        <p className="mt-1 text-[0.72rem] text-[#475569]">
+        <p className="mt-2 text-[0.7rem] text-gray-400">{narration.caveat}</p>
+        <p className="mt-1 text-[0.72rem] text-slate-600">
           <span className="font-semibold">Watch:</span> {narration.watch}
         </p>
       </div>
 
       {/* walk-forward grader */}
-      <div className="rounded-xl border border-[#e5e7eb] bg-white p-3">
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-[#475569]">
+          <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-slate-600">
             Signal track record · walk-forward
           </div>
           <button
             type="button"
             onClick={runGrade}
             disabled={grading}
-            className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-[0.72rem] font-semibold text-[#4f46e5] transition-colors hover:bg-[#f8fafc] disabled:opacity-60"
+            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[0.72rem] font-semibold text-indigo-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
           >
             {grading ? 'Grading…' : grade ? 'Re-run' : 'Grade signals'}
           </button>
         </div>
         {!grade ? (
-          <p className="mt-2 text-[0.78rem] text-[#64748b]">
+          <p className="mt-2 text-[0.78rem] text-slate-500">
             Replays each bar using only prior data, fires the Wyckoff signals point-in-time, then
             grades them on what happened next — no look-ahead. This name only, small sample.
           </p>
         ) : grade.overall.signals === 0 ? (
-          <p className="mt-2 text-[0.78rem] text-[#64748b]">
+          <p className="mt-2 text-[0.78rem] text-slate-500">
             No gradeable signals fired across this history.
           </p>
         ) : (
@@ -259,7 +259,7 @@ function WyckoffReadPanel({
               />
               <Stat label="Avg fwd return" value={fmtSignedPct(grade.overall.avgFwdReturn)} />
             </div>
-            <div className="mt-2 text-[0.72rem] text-[#64748b]">
+            <div className="mt-2 text-[0.72rem] text-slate-500">
               Target-before-stop:{' '}
               {grade.overall.tbsResolved
                 ? `${Math.round(grade.overall.tbsRate * 100)}% of ${grade.overall.tbsResolved} resolved`
@@ -267,7 +267,7 @@ function WyckoffReadPanel({
             </div>
             <table className="mt-2 w-full text-[0.74rem]">
               <thead>
-                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-[#94a3b8]">
+                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-slate-400">
                   <th className="py-1">Signal</th>
                   <th className="py-1">N</th>
                   <th className="py-1">Hit</th>
@@ -276,8 +276,8 @@ function WyckoffReadPanel({
               </thead>
               <tbody>
                 {Object.entries(grade.byType).map(([t, s]) => (
-                  <tr key={t} className="border-t border-[#f8fafc]">
-                    <td className="py-1 font-semibold text-[#1e293b]">{t}</td>
+                  <tr key={t} className="border-t border-slate-50">
+                    <td className="py-1 font-semibold text-slate-800">{t}</td>
                     <td className="py-1 tabular-nums">{s.signals}</td>
                     <td className="py-1 tabular-nums">{Math.round(s.fwdRate * 100)}%</td>
                     <td className="py-1 tabular-nums">{fmtSignedPct(s.avgFwdReturn)}</td>
@@ -285,7 +285,7 @@ function WyckoffReadPanel({
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-[0.68rem] text-[#9ca3af]">
+            <p className="mt-2 text-[0.68rem] text-gray-400">
               Walk-forward, no look-ahead · one ticker, small sample — directional, not proof.
             </p>
           </div>
@@ -415,21 +415,21 @@ export function PriceChart({
   const overlayMeta = MACRO_DISPLAY.find((m) => m.id === seriesId) ?? null
 
   return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       {/* Header + mode toggle + range buttons */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-[#111827]">
+          <div className="text-base font-bold text-gray-900">
             {mode === 'wyckoff' ? 'Wyckoff · volume-spread' : 'Price history'}
           </div>
-          <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+          <div className="mt-0.5 text-[0.78rem] text-gray-500">
             {mode === 'wyckoff'
               ? 'Daily candles · spread + volume · objective measures only'
               : 'Adjusted close (splits & dividends) · nightly data'}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-lg bg-[#f1f5f9] p-1">
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
             {(['price', 'wyckoff'] as const).map((m) => (
               <button
                 key={m}
@@ -439,15 +439,15 @@ export function PriceChart({
                 className={
                   'rounded-md px-3 py-1 text-xs font-bold capitalize transition-colors ' +
                   (mode === m
-                    ? 'bg-white text-[#111827] shadow-sm'
-                    : 'text-[#64748b] hover:text-[#111827]')
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-slate-500 hover:text-gray-900')
                 }
               >
                 {m === 'wyckoff' ? 'Wyckoff' : 'Price'}
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-1 rounded-lg bg-[#f1f5f9] p-1">
+          <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
             {ranges.map((r) => (
               <button
                 key={r.label}
@@ -456,8 +456,8 @@ export function PriceChart({
                 className={
                   'rounded-md px-3 py-1 text-xs font-bold transition-colors ' +
                   (days === r.days
-                    ? 'bg-white text-[#111827] shadow-sm'
-                    : 'text-[#64748b] hover:text-[#111827]')
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-slate-500 hover:text-gray-900')
                 }
               >
                 {r.label}
@@ -511,7 +511,7 @@ export function PriceChart({
         />
 
         {/* Divider */}
-        <span className="text-[#e5e7eb]">|</span>
+        <span className="text-gray-200">|</span>
 
         {/* Macro overlay */}
         <OverlayToggle
@@ -529,13 +529,13 @@ export function PriceChart({
               value={seriesId}
               onChange={(e) => setSeriesId(e.target.value)}
               aria-label="Macro overlay series"
-              className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-[0.76rem] font-semibold text-[#1e293b] focus:border-[#7c3aed] focus:outline-none"
+              className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[0.76rem] font-semibold text-slate-800 focus:border-violet-600 focus:outline-none"
             >
               {MACRO_DISPLAY.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
               ))}
             </select>
-            <span className="text-[0.7rem] text-[#9ca3af]">right axis · context only</span>
+            <span className="text-[0.7rem] text-gray-400">right axis · context only</span>
           </>
         )}
       </div>
@@ -548,19 +548,19 @@ export function PriceChart({
             <span className="h-2 w-2 rounded-sm bg-[#ef9f27]" />
             Climax volume
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#f1f5f9] px-2 py-0.5 text-[0.72rem] font-semibold text-[#475569]">
-            <span className="h-2 w-2 rounded-sm border border-[#64748b]" />
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-600">
+            <span className="h-2 w-2 rounded-sm border border-slate-500" />
             Wide spread
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-[#f1f5f9] px-2 py-0.5 text-[0.72rem] font-semibold text-[#475569]">
-            <span className="h-2 w-2 rounded-sm bg-[#94a3b8]" />
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-600">
+            <span className="h-2 w-2 rounded-sm bg-slate-400" />
             Churn / no-demand
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 px-2 py-0.5 text-[0.72rem] font-semibold text-sky-700">
             <span className="h-2 w-3 rounded-sm border border-dashed border-[#378ADD] bg-[rgba(55,138,221,0.15)]" />
             Trading range
           </span>
-          <span className="mx-0.5 h-3 w-px bg-[#e5e7eb]" aria-hidden="true" />
+          <span className="mx-0.5 h-3 w-px bg-gray-200" aria-hidden="true" />
           <button
             type="button"
             onClick={() => setShowSignals((x) => !x)}
@@ -570,7 +570,7 @@ export function PriceChart({
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showSignals
                 ? 'border-violet-200 bg-violet-50 text-violet-700'
-                : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
             }
           >
             <span className="h-2 w-2 rounded-full" style={{ background: showSignals ? '#7c3aed' : '#cbd5e1' }} />
@@ -585,7 +585,7 @@ export function PriceChart({
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showPhases
                 ? 'border-slate-300 bg-slate-100 text-slate-700'
-                : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
             }
           >
             <span className="h-2 w-2 rounded-sm" style={{ background: showPhases ? '#64748b' : '#cbd5e1' }} />
@@ -600,7 +600,7 @@ export function PriceChart({
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showTarget
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
             }
           >
             <span className="h-2 w-2 rounded-full" style={{ background: showTarget ? '#15803d' : '#cbd5e1' }} />
@@ -630,10 +630,10 @@ export function PriceChart({
                   ? `Distribution · ${Math.round(wyckoff.context.confidence * 100)}%`
                   : 'No trading range'}
             </span>
-            <span className="text-[#475569]">{wyckoff.summary}</span>
+            <span className="text-slate-600">{wyckoff.summary}</span>
           </div>
           {(!wyckoff.context || wyckoff.context.kind === 'undetermined') && (
-            <p className="mt-1.5 rounded-md border border-[#fde68a] bg-[#fffbeb] px-2.5 py-1.5 leading-snug text-[#92400e]">
+            <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 leading-snug text-amber-800">
               <span className="font-semibold">Why the schematic is empty:</span> this stock is trending, not
               basing, so there's no sideways range to anchor Wyckoff events to. The labels (spring, phases,
               target) are deliberately suppressed — drawing them without a range is how false signals creep in.
@@ -663,21 +663,21 @@ export function PriceChart({
               so an empty result reads as "no data", not a broken toggle. */}
           {showEvents &&
             (visibleEvents.length > 0 ? (
-              <span className="flex items-center gap-1 text-[#b45309]">
+              <span className="flex items-center gap-1 text-amber-700">
                 <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#f59e0b' }} />
                 8-K filing ({visibleEvents.length})
               </span>
             ) : (
-              <span className="text-[#9ca3af]">No high-signal 8-Ks in this range</span>
+              <span className="text-gray-400">No high-signal 8-Ks in this range</span>
             ))}
           {showEvents &&
             (visibleBuys.length > 0 ? (
-              <span className="flex items-center gap-1 text-[#15803d]">
+              <span className="flex items-center gap-1 text-green-700">
                 <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#22c55e' }} />
                 Insider buy ({visibleBuys.length})
               </span>
             ) : (
-              <span className="text-[#9ca3af]">No insider buys in this range</span>
+              <span className="text-gray-400">No insider buys in this range</span>
             ))}
         </div>
       )}
@@ -696,7 +696,7 @@ export function PriceChart({
       ) : (
       <div className="mt-4 transition-opacity" style={{ opacity: isFetching ? 0.55 : 1 }}>
         {priceRows.length < 2 ? (
-          <div className="flex h-[300px] items-center justify-center text-sm text-[#9ca3af]">
+          <div className="flex h-[300px] items-center justify-center text-sm text-gray-400">
             Not enough price data for this range.
           </div>
         ) : (
@@ -839,7 +839,7 @@ export function PriceChart({
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="pr-1 text-right text-[0.65rem] text-[#9ca3af]">Volume</div>
+                <div className="pr-1 text-right text-[0.65rem] text-gray-400">Volume</div>
               </div>
             )}
           </>

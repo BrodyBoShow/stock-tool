@@ -159,7 +159,7 @@ function TiltBars({ data }: { data: PortfolioResponse }) {
   const tilt = data.factor_tilt
   if (!tilt || tilt.composite == null) {
     return (
-      <p className="text-sm text-[#9ca3af]">
+      <p className="text-sm text-gray-400">
         None of the current holdings have factor scores yet.
       </p>
     )
@@ -175,23 +175,23 @@ function TiltBars({ data }: { data: PortfolioResponse }) {
     <div className="space-y-2.5">
       {rows.map((r) => (
         <div key={r.label} className="flex items-center gap-3">
-          <div className="w-20 shrink-0 text-[0.78rem] font-semibold text-[#475569]">
+          <div className="w-20 shrink-0 text-[0.78rem] font-semibold text-slate-600">
             {r.label}
           </div>
-          <div className="relative h-3.5 flex-1 rounded-full bg-[#f1f5f9]">
+          <div className="relative h-3.5 flex-1 rounded-full bg-slate-100">
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#6366f1] to-[#4f46e5]"
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600"
               style={{ width: `${Math.max(2, r.v ?? 0)}%` }}
             />
             {/* universe-median marker */}
-            <div className="absolute inset-y-[-3px] left-1/2 w-px bg-[#cbd5e1]" />
+            <div className="absolute inset-y-[-3px] left-1/2 w-px bg-slate-300" />
           </div>
-          <div className="w-10 shrink-0 text-right text-[0.8rem] font-bold tabular-nums text-[#1e293b]">
+          <div className="w-10 shrink-0 text-right text-[0.8rem] font-bold tabular-nums text-slate-800">
             {fmtPctl(r.v)}
           </div>
         </div>
       ))}
-      <p className="pt-1 text-[0.72rem] text-[#9ca3af]">
+      <p className="pt-1 text-[0.72rem] text-gray-400">
         Market-value-weighted percentile of your holdings (50 = universe median).
         Coverage: {(tilt.coverage * 100).toFixed(0)}% of position value is scored.
       </p>
@@ -206,7 +206,7 @@ const SECTOR_COLORS = [
 
 function AllocationBars({ data }: { data: PortfolioResponse }) {
   const sectors = data.allocation?.sectors ?? []
-  if (!sectors.length) return <p className="text-sm text-[#9ca3af]">No positions.</p>
+  if (!sectors.length) return <p className="text-sm text-gray-400">No positions.</p>
   return (
     <div className="space-y-2.5">
       {/* stacked strip */}
@@ -229,20 +229,20 @@ function AllocationBars({ data }: { data: PortfolioResponse }) {
               className="h-2.5 w-2.5 shrink-0 rounded-sm"
               style={{ background: SECTOR_COLORS[i % SECTOR_COLORS.length] }}
             />
-            <span className="flex-1 truncate text-[#475569]">{s.sector}</span>
-            <span className="tabular-nums font-semibold text-[#1e293b]">
+            <span className="flex-1 truncate text-slate-600">{s.sector}</span>
+            <span className="tabular-nums font-semibold text-slate-800">
               {((s.weight ?? 0) * 100).toFixed(1)}%
             </span>
-            <span className="w-24 text-right tabular-nums text-[#94a3b8]">
+            <span className="w-24 text-right tabular-nums text-slate-400">
               {fmtPrice(s.value)}
             </span>
           </div>
         ))}
         {data.allocation?.cash != null && (
-          <div className="flex items-center gap-2.5 border-t border-[#f1f5f9] pt-1.5 text-[0.8rem]">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-[#e2e8f0]" />
-            <span className="flex-1 text-[#475569]">Cash</span>
-            <span className="w-24 text-right tabular-nums text-[#94a3b8]">
+          <div className="flex items-center gap-2.5 border-t border-slate-100 pt-1.5 text-[0.8rem]">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-slate-200" />
+            <span className="flex-1 text-slate-600">Cash</span>
+            <span className="w-24 text-right tabular-nums text-slate-400">
               {fmtPrice(data.allocation.cash)}
             </span>
           </div>
@@ -264,8 +264,8 @@ function StatCard({
   color?: string
 }) {
   return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white px-4 py-3.5 shadow-card">
-      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+    <div className="rounded-card border border-gray-200 bg-white px-4 py-3.5 shadow-card">
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
         {label}
       </div>
       <div
@@ -274,7 +274,7 @@ function StatCard({
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[0.72rem] text-[#94a3b8]">{sub}</div>}
+      {sub && <div className="mt-0.5 text-[0.72rem] text-slate-400">{sub}</div>}
     </div>
   )
 }
@@ -326,12 +326,12 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
   }
 
   const inputCls =
-    'rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[0.84rem] ' +
-    'text-[#1e293b] focus:border-[#4f46e5] focus:outline-none'
+    'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.84rem] ' +
+    'text-slate-800 focus:border-indigo-600 focus:outline-none'
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2.5">
-      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
         Type
         <select
           value={form.txn_type}
@@ -345,7 +345,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
         </select>
       </label>
       {needsTicker && (
-        <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+        <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
           Ticker
           <input
             value={form.ticker}
@@ -356,7 +356,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           />
         </label>
       )}
-      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
         Date
         <input
           type="date"
@@ -368,7 +368,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
       </label>
       {needsShares && (
         <>
-          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
             Shares
             <input
               type="number" step="any" min="0"
@@ -378,7 +378,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
               className={inputCls + ' w-24'}
             />
           </label>
-          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
             Price / share
             <input
               type="number" step="any" min="0"
@@ -390,7 +390,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           </label>
         </>
       )}
-      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
         {needsShares ? 'Total $ (optional)' : 'Amount $'}
         <input
           type="number" step="any" min="0"
@@ -401,7 +401,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           className={inputCls + ' w-32'}
         />
       </label>
-      <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[0.7rem] font-semibold text-[#64748b]">
+      <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
         Note
         <input
           value={form.note}
@@ -413,7 +413,7 @@ function AddTransactionForm({ onDone }: { onDone?: () => void }) {
       <button
         type="submit"
         disabled={mut.isPending}
-        className="rounded-lg bg-[#4f46e5] px-4 py-2 text-[0.82rem] font-bold text-white transition-colors hover:bg-[#4338ca] disabled:opacity-60"
+        className="rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
       >
         {mut.isPending ? 'Adding…' : 'Add'}
       </button>
@@ -487,7 +487,7 @@ function CsvImportButton() {
         onClick={() => fileRef.current?.click()}
         disabled={mut.isPending}
         title="Header: type,date plus ticker,shares,price,amount,note as needed"
-        className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[0.78rem] font-bold text-[#475569] transition-colors hover:bg-[#f8fafc] disabled:opacity-60"
+        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
       >
         {mut.isPending ? 'Importing…' : 'Import CSV'}
       </button>
@@ -510,13 +510,13 @@ function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
   })
 
   if (!rows.length)
-    return <p className="text-sm text-[#9ca3af]">No transactions yet.</p>
+    return <p className="text-sm text-gray-400">No transactions yet.</p>
 
   return (
     <div className="max-h-[420px] overflow-auto">
       <table className="w-full text-[0.82rem]">
         <thead className="sticky top-0 bg-white">
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
             <th className="py-2 pr-4">Date</th>
             <th className="py-2 pr-4">Type</th>
             <th className="py-2 pr-4">Ticker</th>
@@ -529,12 +529,12 @@ function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} className="border-b border-[#f8fafc]">
-              <td className="py-2 pr-4 tabular-nums text-[#475569]">{fmtDate(r.trade_date)}</td>
-              <td className="py-2 pr-4 font-semibold capitalize text-[#1e293b]">{r.txn_type}</td>
-              <td className="py-2 pr-4 font-bold text-[#1e293b]">
+            <tr key={r.id} className="border-b border-slate-50">
+              <td className="py-2 pr-4 tabular-nums text-slate-600">{fmtDate(r.trade_date)}</td>
+              <td className="py-2 pr-4 font-semibold capitalize text-slate-800">{r.txn_type}</td>
+              <td className="py-2 pr-4 font-bold text-slate-800">
                 {r.ticker ? (
-                  <Link to={`/securities/${r.ticker}`} className="hover:text-[#4f46e5]">
+                  <Link to={`/securities/${r.ticker}`} className="hover:text-indigo-600">
                     {r.ticker}
                   </Link>
                 ) : '—'}
@@ -542,12 +542,12 @@ function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
               <td className="py-2 pr-4 text-right tabular-nums">{r.shares ?? '—'}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{r.price != null ? fmtPrice(r.price) : '—'}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{r.amount != null ? fmtPrice(r.amount) : '—'}</td>
-              <td className="max-w-[180px] truncate py-2 pr-4 text-[#94a3b8]">{r.note ?? ''}</td>
+              <td className="max-w-[180px] truncate py-2 pr-4 text-slate-400">{r.note ?? ''}</td>
               <td className="py-2 text-right">
                 <button
                   type="button"
                   onClick={() => setToDelete(r)}
-                  className="rounded-md px-2 py-0.5 text-[0.72rem] font-bold text-[#94a3b8] hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                  className="rounded-md px-2 py-0.5 text-[0.72rem] font-bold text-slate-400 hover:bg-red-50 hover:text-red-600"
                 >
                   Delete
                 </button>
@@ -582,7 +582,7 @@ function HoldingsTable({
   quotes: Record<string, { price: number | null; change_pct: number | null }>
 }) {
   if (!holdings.length)
-    return <p className="text-sm text-[#9ca3af]">No open positions.</p>
+    return <p className="text-sm text-gray-400">No open positions.</p>
   // Weights are computed off the SAME (live-when-available) values shown in the
   // Value column, so the column reconciles with the live header total below.
   const liveTotal = holdings.reduce((acc, h) => {
@@ -593,7 +593,7 @@ function HoldingsTable({
     <div className="overflow-x-auto">
       <table className="w-full text-[0.84rem]">
         <thead>
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
             <th className="py-2 pr-4">Ticker</th>
             <th className="py-2 pr-4">Sector</th>
             <th className="py-2 pr-4 text-right">Shares</th>
@@ -618,21 +618,21 @@ function HoldingsTable({
             const upl = value != null ? value - h.cost_basis : h.unrealized_pl
             const uplPct = upl != null && h.cost_basis > 0 ? upl / h.cost_basis : null
             return (
-              <tr key={h.security_id} className="border-b border-[#f8fafc]">
+              <tr key={h.security_id} className="border-b border-slate-50">
                 <td className="py-2.5 pr-4">
                   {h.ticker ? (
                     <Link
                       to={`/securities/${h.ticker}`}
-                      className="font-bold text-[#1e293b] hover:text-[#4f46e5]"
+                      className="font-bold text-slate-800 hover:text-indigo-600"
                     >
                       {h.ticker}
                     </Link>
                   ) : '—'}
-                  <div className="max-w-[180px] truncate text-[0.7rem] text-[#94a3b8]">
+                  <div className="max-w-[180px] truncate text-[0.7rem] text-slate-400">
                     {h.name}
                   </div>
                 </td>
-                <td className="py-2.5 pr-4 text-[#64748b]">{h.sector ?? '—'}</td>
+                <td className="py-2.5 pr-4 text-slate-500">{h.sector ?? '—'}</td>
                 <td className="py-2.5 pr-4 text-right tabular-nums">{h.shares}</td>
                 <td className="py-2.5 pr-4 text-right tabular-nums">{fmtPrice(h.avg_cost)}</td>
                 <td className="py-2.5 pr-4 text-right tabular-nums">{fmtPrice(price)}</td>
@@ -703,55 +703,55 @@ function ProjectionSection() {
       hint="Simulates your current holdings forward, drawn correlated (Cholesky) so positions move together in stress. Volatility & correlation are trailing; expected returns are shrunk toward a market prior. A projection, not a forecast."
     >
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <label className="text-[0.72rem] font-semibold text-[#475569]">
+        <label className="text-[0.72rem] font-semibold text-slate-600">
           Years
           <input
             type="number" min={1} max={40} value={years}
             onChange={(e) => setYears(Math.max(1, Math.min(40, Number(e.target.value) || 1)))}
-            className="ml-2 w-16 rounded-lg border border-[#e5e7eb] px-2 py-1 text-[0.8rem]"
+            className="ml-2 w-16 rounded-lg border border-gray-200 px-2 py-1 text-[0.8rem]"
           />
         </label>
-        <label className="text-[0.72rem] font-semibold text-[#475569]">
+        <label className="text-[0.72rem] font-semibold text-slate-600">
           Monthly $
           <input
             type="number" min={0} step={50} value={monthly}
             onChange={(e) => setMonthly(Math.max(0, Number(e.target.value) || 0))}
-            className="ml-2 w-24 rounded-lg border border-[#e5e7eb] px-2 py-1 text-[0.8rem]"
+            className="ml-2 w-24 rounded-lg border border-gray-200 px-2 py-1 text-[0.8rem]"
           />
         </label>
-        <label className="text-[0.72rem] font-semibold text-[#475569]">
+        <label className="text-[0.72rem] font-semibold text-slate-600">
           Fee %/yr
           <input
             type="number" min={0} max={10} step={0.1} value={feePct}
             onChange={(e) => setFeePct(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
-            className="ml-2 w-16 rounded-lg border border-[#e5e7eb] px-2 py-1 text-[0.8rem]"
+            className="ml-2 w-16 rounded-lg border border-gray-200 px-2 py-1 text-[0.8rem]"
           />
         </label>
         <button
           type="button" onClick={() => setStress((s) => !s)} aria-pressed={stress}
           className={
             'rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors ' +
-            (stress ? 'border-red-300 bg-red-50 text-red-700' : 'border-[#e5e7eb] bg-white text-[#64748b] hover:bg-[#f8fafc]')
+            (stress ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
           }
         >
           Stress regime
         </button>
         <button
           type="button" onClick={run} disabled={isFetching}
-          className="rounded-lg bg-[#4f46e5] px-3 py-1 text-[0.78rem] font-semibold text-white transition-colors hover:bg-[#4338ca] disabled:opacity-60"
+          className="rounded-lg bg-indigo-600 px-3 py-1 text-[0.78rem] font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
         >
           {isFetching ? 'Running…' : 'Run'}
         </button>
       </div>
 
       {error ? (
-        <p className="text-sm text-[#dc2626]">Couldn&rsquo;t run the projection.</p>
+        <p className="text-sm text-red-600">Couldn&rsquo;t run the projection.</p>
       ) : !data ? (
         <Skeleton className="h-[260px] w-full rounded-card" />
       ) : !data.has_portfolio ? (
-        <p className="text-sm text-[#64748b]">Add holdings to project your portfolio forward.</p>
+        <p className="text-sm text-slate-500">Add holdings to project your portfolio forward.</p>
       ) : data.insufficient_history ? (
-        <p className="text-sm text-[#64748b]">
+        <p className="text-sm text-slate-500">
           Not enough price history for your holdings to project yet.
         </p>
       ) : (
@@ -790,7 +790,7 @@ function ProjectionSection() {
             </ResponsiveContainer>
           </div>
           {data.prob_gain != null && (
-            <p className="mt-2 text-[0.78rem] text-[#475569]">
+            <p className="mt-2 text-[0.78rem] text-slate-600">
               In {Math.round(data.prob_gain * 100)}% of simulations the portfolio ends above what
               you put in{data.excluded && data.excluded.length > 0
                 ? ` · excluded (too little history): ${data.excluded.join(', ')}`
@@ -798,14 +798,14 @@ function ProjectionSection() {
             </p>
           )}
           <details className="mt-2">
-            <summary className="cursor-pointer text-[0.72rem] font-semibold text-[#64748b]">
+            <summary className="cursor-pointer text-[0.72rem] font-semibold text-slate-500">
               Assumptions — portfolio {Math.round((data.portfolio_assumptions?.ann_return ?? 0) * 100)}%/yr
               return, {Math.round((data.portfolio_assumptions?.ann_vol ?? 0) * 100)}% vol
               {data.stress ? ' · STRESS regime' : ''}
             </summary>
             <table className="mt-2 w-full text-[0.74rem]">
               <thead>
-                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-[#94a3b8]">
+                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-slate-400">
                   <th className="py-1">Holding</th>
                   <th className="py-1">Weight</th>
                   <th className="py-1">Return (used)</th>
@@ -815,18 +815,18 @@ function ProjectionSection() {
               </thead>
               <tbody>
                 {data.holdings_assumptions?.map((a) => (
-                  <tr key={a.ticker} className="border-t border-[#f8fafc]">
-                    <td className="py-1 font-semibold text-[#1e293b]">{a.ticker}</td>
+                  <tr key={a.ticker} className="border-t border-slate-50">
+                    <td className="py-1 font-semibold text-slate-800">{a.ticker}</td>
                     <td className="py-1 tabular-nums">{Math.round(a.weight * 100)}%</td>
                     <td className="py-1 tabular-nums">{Math.round(a.ann_return * 100)}%</td>
-                    <td className="py-1 tabular-nums text-[#9ca3af]">{Math.round(a.ann_return_trailing * 100)}%</td>
+                    <td className="py-1 tabular-nums text-gray-400">{Math.round(a.ann_return_trailing * 100)}%</td>
                     <td className="py-1 tabular-nums">{Math.round(a.ann_vol * 100)}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </details>
-          <p className="mt-2 text-[0.7rem] text-[#9ca3af]">{data.disclaimer}</p>
+          <p className="mt-2 text-[0.7rem] text-gray-400">{data.disclaimer}</p>
         </>
       )}
     </SectionCard>
@@ -919,24 +919,24 @@ function LinkedAccountsSection() {
           {accounts.map((a) => (
             <li
               key={a.id}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e5e7eb] bg-white px-4 py-2.5 text-[0.84rem]"
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-[0.84rem]"
             >
-              <span className="font-semibold text-[#1e293b]">
+              <span className="font-semibold text-slate-800">
                 {a.display_name ?? a.provider}
               </span>
-              <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-[#64748b]">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-slate-500">
                 {a.status}
                 {a.last_synced_at ? ` · ${fmtDate(a.last_synced_at.slice(0, 10))}` : ''}
               </span>
               {a.last_error && (
-                <span className="text-[0.7rem] text-[#dc2626]">{a.last_error}</span>
+                <span className="text-[0.7rem] text-red-600">{a.last_error}</span>
               )}
               <span className="ml-auto flex gap-1.5">
                 <button
                   type="button"
                   disabled={busy}
                   onClick={() => syncM.mutate(a.id)}
-                  className="rounded-full bg-[#eef2ff] px-3 py-1 text-[0.72rem] font-semibold text-[#4f46e5] disabled:opacity-50"
+                  className="rounded-full bg-indigo-50 px-3 py-1 text-[0.72rem] font-semibold text-indigo-600 disabled:opacity-50"
                 >
                   {syncM.isPending ? 'Syncing…' : 'Sync now'}
                 </button>
@@ -944,7 +944,7 @@ function LinkedAccountsSection() {
                   type="button"
                   disabled={busy}
                   onClick={() => unlinkM.mutate(a.id)}
-                  className="rounded-full px-3 py-1 text-[0.72rem] font-semibold text-[#94a3b8] hover:text-[#dc2626] disabled:opacity-50"
+                  className="rounded-full px-3 py-1 text-[0.72rem] font-semibold text-slate-400 hover:text-red-600 disabled:opacity-50"
                 >
                   Unlink
                 </button>
@@ -965,11 +965,11 @@ function LinkedAccountsSection() {
           return (
             <div
               key={p.key}
-              className="flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-[#fafbff] px-4 py-3"
+              className="flex items-center justify-between rounded-xl border border-gray-200 bg-[#fafbff] px-4 py-3"
             >
               <div>
-                <div className="text-[0.9rem] font-bold text-[#1e293b]">{p.label}</div>
-                <div className="text-[0.72rem] text-[#94a3b8]">{label}</div>
+                <div className="text-[0.9rem] font-bold text-slate-800">{p.label}</div>
+                <div className="text-[0.72rem] text-slate-400">{label}</div>
               </div>
               <button
                 type="button"
@@ -978,8 +978,8 @@ function LinkedAccountsSection() {
                 className={
                   'rounded-full px-3.5 py-1.5 text-[0.74rem] font-semibold transition-shadow ' +
                   (ready
-                    ? 'bg-[#4f46e5] text-white hover:shadow-[0_2px_10px_rgba(79,70,229,0.4)] disabled:opacity-50'
-                    : 'cursor-not-allowed bg-[#f1f5f9] text-[#9ca3af]')
+                    ? 'bg-indigo-600 text-white hover:shadow-[0_2px_10px_rgba(79,70,229,0.4)] disabled:opacity-50'
+                    : 'cursor-not-allowed bg-slate-100 text-gray-400')
                 }
               >
                 {!p.implemented ? 'Soon' : connectM.isPending ? 'Opening…' : 'Connect'}
@@ -990,11 +990,11 @@ function LinkedAccountsSection() {
       </div>
 
       {data && !data.ready && (
-        <p className="mt-3 text-[0.72rem] text-[#9ca3af]">
+        <p className="mt-3 text-[0.72rem] text-gray-400">
           Setup pending — apply migration 0021_linked_accounts to enable account linking.
         </p>
       )}
-      <p className="mt-2 text-[0.7rem] text-[#9ca3af]">
+      <p className="mt-2 text-[0.7rem] text-gray-400">
         Read-only. After connecting, click "Sync now" to import — it can take a moment
         after you finish the broker login while data populates. Re-syncing never
         double-imports.
@@ -1037,9 +1037,9 @@ export function PortfolioPage() {
   if (!data.has_transactions) {
     return (
       <div className="space-y-5">
-        <div className="rounded-card border border-[#e5e7eb] bg-white p-10 text-center shadow-card">
-          <h1 className="text-xl font-extrabold text-[#0f172a]">Portfolio</h1>
-          <p className="mx-auto mt-3 max-w-[560px] text-sm text-[#64748b]">
+        <div className="rounded-card border border-gray-200 bg-white p-10 text-center shadow-card">
+          <h1 className="text-xl font-extrabold text-slate-900">Portfolio</h1>
+          <p className="mx-auto mt-3 max-w-[560px] text-sm text-slate-500">
             Log your real buys and sells and StockBud derives everything else from
             its own nightly price, dividend, and factor data: time-weighted returns
             vs the S&amp;P 500, risk stats, factor tilt, sector concentration, and
@@ -1052,9 +1052,9 @@ export function PortfolioPage() {
           hint="Enter the shares and price as they were on the trade date — later splits are applied automatically."
         >
           <AddTransactionForm />
-          <div className="mt-4 flex items-center gap-3 border-t border-[#f1f5f9] pt-4">
+          <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
             <CsvImportButton />
-            <span className="text-[0.74rem] text-[#9ca3af]">
+            <span className="text-[0.74rem] text-gray-400">
               or bulk-import a CSV with header columns: type, date, ticker, shares,
               price, amount, note
             </span>
@@ -1107,20 +1107,20 @@ export function PortfolioPage() {
   return (
     <div className="space-y-5">
       {/* header */}
-      <header className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
-        <div className="h-1 bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#0ea5e9]" />
+      <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+        <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-            <span className="text-[#4f46e5]">StockBud</span>
-            <span className="text-[#d1d5db]">/</span>
-            <span className="text-[#94a3b8]">Portfolio</span>
+            <span className="text-indigo-600">StockBud</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-slate-400">Portfolio</span>
           </div>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
+              <h1 className="text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
                 {fmtPrice(view.total_value)}
               </h1>
-              <p className="mt-1 text-[0.9rem] text-[#64748b]">
+              <p className="mt-1 text-[0.9rem] text-slate-500">
                 <span style={{ color: plColor(view.day_change) }} className="font-semibold">
                   {fmtSignedMoney(view.day_change)} ({fmtSignedPct(view.day_change_pct, 2)})
                 </span>{' '}
@@ -1176,8 +1176,8 @@ export function PortfolioPage() {
 
       {/* action center */}
       {data.flags.length > 0 && (
-        <div className="rounded-card border border-[#e5e7eb] bg-white p-4 shadow-card">
-          <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+        <div className="rounded-card border border-gray-200 bg-white p-4 shadow-card">
+          <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
             Things to review
           </div>
           <ul className="mt-2 space-y-1.5">
@@ -1189,7 +1189,7 @@ export function PortfolioPage() {
                     (f.level === 'warn' ? 'bg-amber-400' : 'bg-sky-400')
                   }
                 />
-                <span className="text-[#475569]">{f.text}</span>
+                <span className="text-slate-600">{f.text}</span>
               </li>
             ))}
           </ul>
@@ -1279,9 +1279,9 @@ export function PortfolioPage() {
         hint="The ledger everything above is computed from. Enter shares/prices as they were on the trade date — splits are applied automatically."
       >
         <AddTransactionForm />
-        <div className="mt-3 flex items-center gap-3 border-b border-[#f1f5f9] pb-4">
+        <div className="mt-3 flex items-center gap-3 border-b border-slate-100 pb-4">
           <CsvImportButton />
-          <span className="text-[0.74rem] text-[#9ca3af]">
+          <span className="text-[0.74rem] text-gray-400">
             CSV header: type, date (+ ticker, shares, price, amount, note as needed)
           </span>
         </div>
@@ -1289,12 +1289,12 @@ export function PortfolioPage() {
           <LedgerTable rows={ledgerRows} />
         </div>
         {data.warnings.length > 0 && (
-          <details className="mt-3 border-t border-[#f1f5f9] pt-2.5">
-            <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-[#9ca3af] hover:text-[#64748b]">
+          <details className="mt-3 border-t border-slate-100 pt-2.5">
+            <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-gray-400 hover:text-slate-500">
               Data notes ({data.warnings.length}) — minor ledger gaps, e.g.
               broker reinvest rows not imported
             </summary>
-            <ul className="mt-1.5 space-y-1 pl-4 text-[0.72rem] text-[#9ca3af]">
+            <ul className="mt-1.5 space-y-1 pl-4 text-[0.72rem] text-gray-400">
               {data.warnings.map((w) => (
                 <li key={w} className="list-disc">{w}</li>
               ))}
@@ -1306,7 +1306,7 @@ export function PortfolioPage() {
       {/* linked brokerage accounts (scaffold) */}
       <LinkedAccountsSection />
 
-      <p className="pb-2 text-center text-xs text-[#9ca3af]">
+      <p className="pb-2 text-center text-xs text-gray-400">
         Tracking and analytics over your own ledger — measurements, not investment
         advice. Dividends/splits from nightly market data; figures may differ
         slightly from your broker.

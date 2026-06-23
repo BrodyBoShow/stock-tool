@@ -21,14 +21,14 @@ const CATEGORY_ORDER = [
 
 // Tint the form badge by category so the list scans at a glance.
 const CATEGORY_TINT: Record<string, string> = {
-  'Annual report': 'bg-[#eef2ff] text-[#3730a3]',
-  'Quarterly report': 'bg-[#eff6ff] text-[#1d4ed8]',
-  'Current report': 'bg-[#ecfeff] text-[#0e7490]',
-  'Proxy & governance': 'bg-[#f5f3ff] text-[#6d28d9]',
-  'Ownership & insiders': 'bg-[#fef2f2] text-[#b91c1c]',
-  'Tender & M&A': 'bg-[#fff7ed] text-[#c2410c]',
-  'Offering & registration': 'bg-[#fefce8] text-[#a16207]',
-  'Status & other': 'bg-[#f1f5f9] text-[#64748b]',
+  'Annual report': 'bg-indigo-50 text-indigo-800',
+  'Quarterly report': 'bg-blue-50 text-blue-700',
+  'Current report': 'bg-cyan-50 text-cyan-700',
+  'Proxy & governance': 'bg-violet-50 text-violet-700',
+  'Ownership & insiders': 'bg-red-50 text-red-700',
+  'Tender & M&A': 'bg-orange-50 text-orange-700',
+  'Offering & registration': 'bg-yellow-50 text-yellow-700',
+  'Status & other': 'bg-slate-100 text-slate-500',
 }
 
 function groupByCategory(filings: FilingRow[]): [string, FilingRow[]][] {
@@ -49,13 +49,13 @@ function SummaryInline({ summary }: { summary: FilingSummary }) {
   const Block = ({ label, items }: { label: string; items: string[] }) =>
     items.length ? (
       <div className="mt-2">
-        <div className="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-[#94a3b8]">
+        <div className="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-slate-400">
           {label}
         </div>
         <ul className="mt-0.5 space-y-1">
           {items.map((it, i) => (
-            <li key={i} className="flex gap-2 text-[0.8rem] leading-relaxed text-[#1e293b]">
-              <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-[#cbd5e1]" />
+            <li key={i} className="flex gap-2 text-[0.8rem] leading-relaxed text-slate-800">
+              <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-slate-300" />
               <span>{it}</span>
             </li>
           ))}
@@ -63,12 +63,12 @@ function SummaryInline({ summary }: { summary: FilingSummary }) {
       </div>
     ) : null
   return (
-    <div className="mt-2 rounded-lg border border-[#e5e7eb] bg-[#fafbff] p-3">
-      <p className="text-[0.82rem] leading-relaxed text-[#334155]">{s.overview}</p>
+    <div className="mt-2 rounded-lg border border-gray-200 bg-[#fafbff] p-3">
+      <p className="text-[0.82rem] leading-relaxed text-slate-700">{s.overview}</p>
       <Block label="Key points" items={s.what_changed} />
       <Block label="Risks / cautions" items={s.risk_factors} />
       <Block label="Key figures & terms" items={s.key_metrics} />
-      <p className="mt-2 border-t border-[#eef2f7] pt-1.5 text-[0.66rem] text-[#9ca3af]">
+      <p className="mt-2 border-t border-[#eef2f7] pt-1.5 text-[0.66rem] text-gray-400">
         AI-generated from the filing via {summary.model ?? 'Claude'} — grounded in the
         text, not advice.
       </p>
@@ -105,13 +105,13 @@ export function FilingsListPanel({
   const groups = groupByCategory(filings)
 
   return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-start gap-3">
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="mt-0.5 shrink-0 text-[#9ca3af] hover:text-[#64748b]"
+            className="mt-0.5 shrink-0 text-gray-400 hover:text-slate-500"
             aria-label={collapsed ? 'Expand' : 'Collapse'}
           >
             <svg className={`h-4 w-4 transition-transform ${collapsed ? '-rotate-90' : ''}`}
@@ -120,15 +120,15 @@ export function FilingsListPanel({
             </svg>
           </button>
           <div>
-            <div className="text-base font-bold text-[#111827]">All SEC filings</div>
-            <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+            <div className="text-base font-bold text-gray-900">All SEC filings</div>
+            <div className="mt-0.5 text-[0.78rem] text-gray-500">
               Every form on file — reports, proxies, ownership stakes, offerings.
               Hit “AI summary” on any narrative filing for a grounded read.
             </div>
           </div>
         </div>
         {filings.length > 0 && (
-          <span className="inline-flex items-center rounded-lg bg-[#f1f5f9] px-2.5 py-1.5 text-[0.78rem] font-semibold text-[#475569]">
+          <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.78rem] font-semibold text-slate-600">
             {filings.length} filings
           </span>
         )}
@@ -137,7 +137,7 @@ export function FilingsListPanel({
       {!collapsed && (
         <div className="mt-3">
           {filings.length === 0 ? (
-            <p className="text-[0.85rem] text-[#9ca3af]">
+            <p className="text-[0.85rem] text-gray-400">
               No filings catalogued for {ticker} yet — a recently-added name may
               still be backfilling overnight.
             </p>
@@ -145,17 +145,17 @@ export function FilingsListPanel({
             <div className="space-y-4">
               {groups.map(([category, rows]) => (
                 <div key={category}>
-                  <div className="text-[0.66rem] font-bold uppercase tracking-[0.06em] text-[#94a3b8]">
+                  <div className="text-[0.66rem] font-bold uppercase tracking-[0.06em] text-slate-400">
                     {category}
                   </div>
-                  <ul className="mt-1 divide-y divide-[#f3f4f6]">
+                  <ul className="mt-1 divide-y divide-gray-100">
                     {rows.map((f) => {
                       const pending = gen.isPending && gen.variables === f.accession_no
                       const summary = open[f.accession_no]
                       return (
                         <li key={f.accession_no} className="py-2">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span className="text-[0.78rem] font-bold text-[#111827] tabular-nums">
+                            <span className="text-[0.78rem] font-bold text-gray-900 tabular-nums">
                               {fmtDate(f.filed_date)}
                             </span>
                             <span
@@ -166,7 +166,7 @@ export function FilingsListPanel({
                             >
                               {f.form}
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-[0.82rem] text-[#475569]">
+                            <span className="min-w-0 flex-1 truncate text-[0.82rem] text-slate-600">
                               {f.label ?? f.form}
                             </span>
                             {f.analyzable && !summary && (
@@ -174,7 +174,7 @@ export function FilingsListPanel({
                                 type="button"
                                 onClick={() => gen.mutate(f.accession_no)}
                                 disabled={pending}
-                                className="flex-none rounded-md border border-[#e5e7eb] bg-white px-2 py-1 text-[0.72rem] font-semibold text-[#4f46e5] hover:bg-[#f8fafc] disabled:opacity-50"
+                                className="flex-none rounded-md border border-gray-200 bg-white px-2 py-1 text-[0.72rem] font-semibold text-indigo-600 hover:bg-slate-50 disabled:opacity-50"
                               >
                                 {pending ? 'Reading…' : 'AI summary'}
                               </button>
@@ -184,7 +184,7 @@ export function FilingsListPanel({
                                 href={f.primary_doc_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-none text-[0.72rem] font-semibold text-[#64748b] hover:underline"
+                                className="flex-none text-[0.72rem] font-semibold text-slate-500 hover:underline"
                               >
                                 SEC ↗
                               </a>

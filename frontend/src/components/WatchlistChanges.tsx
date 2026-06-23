@@ -24,12 +24,12 @@ function Chip({
   children: React.ReactNode
 }) {
   const styles: Record<string, string> = {
-    rank: 'border-[#e5e7eb] bg-[#f8fafc] text-[#334155]',
+    rank: 'border-gray-200 bg-slate-50 text-slate-700',
     live: 'border-sky-200 bg-sky-50 text-sky-700',
     event: 'border-amber-200 bg-amber-50 text-amber-700',
     insider: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     review: 'border-amber-300 bg-amber-100 text-amber-800',
-    quiet: 'border-[#eef1f6] bg-[#fafbfc] text-[#9ca3af]',
+    quiet: 'border-[#eef1f6] bg-[#fafbfc] text-gray-400',
   }
   return (
     <span
@@ -68,7 +68,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
           ? 'border-amber-200'
           : quiet
             ? 'border-[#eef1f6]'
-            : 'border-[#e5e7eb]')
+            : 'border-gray-200')
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -76,21 +76,21 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
           <div className="flex items-center gap-2">
             <Link
               to={`/securities/${c.ticker}`}
-              className="text-[0.95rem] font-bold text-[#111827] hover:text-[#4f46e5] hover:underline"
+              className="text-[0.95rem] font-bold text-gray-900 hover:text-indigo-600 hover:underline"
             >
               {c.ticker}
             </Link>
             {c.sector && <SectorPill sector={c.sector} />}
           </div>
           {c.name && (
-            <div className="mt-0.5 truncate text-[0.75rem] text-[#9ca3af]">{c.name}</div>
+            <div className="mt-0.5 truncate text-[0.75rem] text-gray-400">{c.name}</div>
           )}
         </div>
         <div className="flex-none text-right">
-          <div className="text-[1.15rem] font-extrabold tabular-nums text-[#111827]">
+          <div className="text-[1.15rem] font-extrabold tabular-nums text-gray-900">
             {c.composite != null ? c.composite.toFixed(1) : '—'}
           </div>
-          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-[#94a3b8]">
+          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">
             Composite
           </div>
         </div>
@@ -105,7 +105,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
               <>
                 {' '}
                 <Delta value={rankMove} />
-                <span className="text-[#9ca3af]">
+                <span className="text-gray-400">
                   {c.baseline_date ? ` vs ${fmtDate(c.baseline_date)}` : ''}
                 </span>
               </>
@@ -115,7 +115,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
                 <Delta value={compMove} />
               </>
             ) : (
-              <span className="text-[#cbd5e1]"> · trend builds nightly</span>
+              <span className="text-slate-300"> · trend builds nightly</span>
             )}
           </Chip>
         )}
@@ -168,8 +168,8 @@ export function WatchlistChanges({ rows }: { rows: WatchlistChange[] }) {
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[0.95rem] font-bold text-[#111827]">What&apos;s changed</h2>
-        <span className="text-[0.74rem] text-[#9ca3af]">
+        <h2 className="text-[0.95rem] font-bold text-gray-900">What&apos;s changed</h2>
+        <span className="text-[0.74rem] text-gray-400">
           {active > 0
             ? `${active} of ${rows.length} ${rows.length === 1 ? 'name has' : 'names have'} updates`
             : 'no material updates'}{' '}

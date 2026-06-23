@@ -29,7 +29,7 @@ function WaterfallBar({ entry, maxContrib }: { entry: FactorEntry; maxContrib: n
           />
           {entry.label}
         </span>
-        <span className="ml-1 text-[0.7rem] text-[#9ca3af]">
+        <span className="ml-1 text-[0.7rem] text-gray-400">
           {(entry.weight * 100).toFixed(0)}%
         </span>
       </div>
@@ -44,13 +44,13 @@ function WaterfallBar({ entry, maxContrib }: { entry: FactorEntry; maxContrib: n
 
       {/* Contribution bar */}
       <div className="flex flex-1 items-center gap-2">
-        <div className="relative flex-1 h-2.5 overflow-hidden rounded-full bg-[#f1f5f9]">
+        <div className="relative flex-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
           <div
             className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
             style={{ width: `${barPct}%`, background: color, opacity: 0.8 }}
           />
         </div>
-        <span className="w-10 shrink-0 text-right text-[0.78rem] font-bold tabular-nums text-[#374151]">
+        <span className="w-10 shrink-0 text-right text-[0.78rem] font-bold tabular-nums text-gray-700">
           +{entry.contribution.toFixed(1)}
         </span>
       </div>
@@ -91,16 +91,16 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
   if (composite === null && entries.every((e) => e.pctl === null)) return null
 
   return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-[#111827]">Score breakdown</div>
-          <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+          <div className="text-base font-bold text-gray-900">Score breakdown</div>
+          <div className="mt-0.5 text-[0.78rem] text-gray-500">
             Composite = Σ (factor weight × percentile rank)
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[0.78rem] text-[#9ca3af]">Composite</span>
+          <span className="text-[0.78rem] text-gray-400">Composite</span>
           <span
             className="rounded-lg px-3 py-1 text-[1.1rem] font-extrabold tabular-nums"
             style={{ background: compBg, color: compFg }}
@@ -117,9 +117,9 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
       </div>
 
       {/* Sum check */}
-      <div className="mt-4 flex items-center gap-2 border-t border-[#f1f5f9] pt-3">
-        <div className="flex-1 border-t-2 border-dashed border-[#e5e7eb]" />
-        <span className="text-[0.72rem] text-[#9ca3af]">
+      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+        <div className="flex-1 border-t-2 border-dashed border-gray-200" />
+        <span className="text-[0.72rem] text-gray-400">
           {entries.map((e) => `${e.label.slice(0, 1)} ${(e.weight * 100).toFixed(0)}%`).join(' · ')} ·{' '}
           bar = weighted contribution
         </span>

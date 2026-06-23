@@ -45,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               'pointer-events-auto rounded-xl border px-4 py-2.5 text-[0.84rem] font-semibold shadow-[0_8px_30px_rgba(15,23,42,0.12)] ' +
               (t.kind === 'success'
                 ? 'border-emerald-200 bg-white text-emerald-700'
-                : 'border-red-200 bg-white text-[#b91c1c]')
+                : 'border-red-200 bg-white text-red-700')
             }
           >
             {t.message}

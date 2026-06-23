@@ -37,19 +37,19 @@ export function ScoreCell({
       }
     >
       {shown === null ? (
-        <span className="text-[0.82rem] text-[#9ca3af]">{DASH}</span>
+        <span className="text-[0.82rem] text-gray-400">{DASH}</span>
       ) : (
         <>
           <span
             className={
               'text-[0.82rem] font-bold ' +
-              (moved ? 'text-[#0369a1]' : 'text-[#111827]')
+              (moved ? 'text-sky-700' : 'text-gray-900')
             }
           >
             {shown.toFixed(1)}
-            {moved && <span className="align-super text-[0.6em] text-[#38bdf8]">●</span>}
+            {moved && <span className="align-super text-[0.6em] text-sky-400">●</span>}
           </span>
-          <span className="mt-1 block h-1 w-12 overflow-hidden rounded-full bg-[#e5e7eb]">
+          <span className="mt-1 block h-1 w-12 overflow-hidden rounded-full bg-gray-200">
             <span
               className="block h-full rounded-full"
               style={{

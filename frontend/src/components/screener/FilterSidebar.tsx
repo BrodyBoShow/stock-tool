@@ -16,7 +16,7 @@ const FACTOR_LABEL: Record<FactorKey, string> = {
 }
 
 const SECTION =
-  'text-[0.67rem] font-bold uppercase tracking-[0.07em] text-[#6b7280]'
+  'text-[0.67rem] font-bold uppercase tracking-[0.07em] text-gray-500'
 
 interface Preset {
   label: string
@@ -65,14 +65,14 @@ export function FilterSidebar({
   const active = activeFilterCount(filters)
 
   return (
-    <aside className="w-full shrink-0 rounded-card border border-[#e5e7eb] bg-white p-4 shadow-card lg:w-[270px]">
+    <aside className="w-full shrink-0 rounded-card border border-gray-200 bg-white p-4 shadow-card lg:w-[270px]">
       {/* header */}
-      <div className="border-b border-[#f1f5f9] pb-2.5">
+      <div className="border-b border-slate-100 pb-2.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#1e293b]">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
             Filters
             {active > 0 && (
-              <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#1e293b] text-[0.64rem] font-extrabold text-white">
+              <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-800 text-[0.64rem] font-extrabold text-white">
                 {active}
               </span>
             )}
@@ -81,13 +81,13 @@ export function FilterSidebar({
             type="button"
             onClick={onReset}
             disabled={active === 0}
-            className="text-xs font-bold text-[#64748b] hover:text-[#1e293b] disabled:cursor-default disabled:opacity-40"
+            className="text-xs font-bold text-slate-500 hover:text-slate-800 disabled:cursor-default disabled:opacity-40"
           >
             Reset
           </button>
         </div>
-        <div className="mt-1.5 text-[0.8rem] text-[#6b7280]">
-          <span className="text-[0.9rem] font-extrabold text-[#1e293b]">
+        <div className="mt-1.5 text-[0.8rem] text-gray-500">
+          <span className="text-[0.9rem] font-extrabold text-slate-800">
             {resultCount}
           </span>{' '}
           of {totalCount} companies
@@ -111,8 +111,8 @@ export function FilterSidebar({
                 }
                 className={`rounded-lg border px-2 py-1.5 text-left text-[0.72rem] font-semibold transition-all ${
                   isActive
-                    ? 'border-[#4f46e5] bg-[#eef2ff] text-[#4f46e5]'
-                    : 'border-[#e5e7eb] bg-white text-[#475569] hover:border-[#c7d2fe] hover:bg-[#f5f7ff]'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                    : 'border-gray-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-[#f5f7ff]'
                 }`}
               >
                 <span className="mr-1">{p.emoji}</span>
@@ -129,13 +129,13 @@ export function FilterSidebar({
           type="checkbox"
           checked={filters.completeOnly}
           onChange={(e) => onChange({ ...filters, completeOnly: e.target.checked })}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-[#4f46e5]"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-indigo-600"
         />
         <span>
-          <span className="block text-[0.8rem] font-semibold text-[#374151]">
+          <span className="block text-[0.8rem] font-semibold text-gray-700">
             Complete factors only
           </span>
-          <span className="mt-0.5 block text-[0.68rem] leading-snug text-[#9ca3af]">
+          <span className="mt-0.5 block text-[0.68rem] leading-snug text-gray-400">
             Rank only names scored on all four factors (recommended). Off = include
             partial names like momentum-only micro-caps.
           </span>
@@ -150,7 +150,7 @@ export function FilterSidebar({
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
           placeholder="Ticker or company…"
-          className="mt-1.5 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#111827] placeholder:text-[#9ca3af] focus:border-[#1e293b] focus:outline-none"
+          className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-slate-800 focus:outline-none"
         />
       </div>
 
@@ -194,7 +194,7 @@ export function FilterSidebar({
             onChange({ ...filters, minMarketCap: Number(e.target.value) })
           }
           aria-label="Minimum market cap"
-          className="mt-1.5 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#111827] focus:border-[#1e293b] focus:outline-none"
+          className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-slate-800 focus:outline-none"
         >
           {MARKET_CAP_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -214,14 +214,14 @@ export function FilterSidebar({
             return (
               <div key={key}>
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center text-[0.78rem] font-semibold text-[#374151]">
+                  <span className="inline-flex items-center text-[0.78rem] font-semibold text-gray-700">
                     <span
                       className="mr-1.5 inline-block h-2 w-2 rounded-full"
                       style={{ background: accent }}
                     />
                     {FACTOR_LABEL[key]}
                   </span>
-                  <span className="rounded-md bg-[#f1f5f9] px-2 py-0.5 text-[0.7rem] font-extrabold text-[#1e293b]">
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[0.7rem] font-extrabold text-slate-800">
                     {v === 0 ? 'Any' : `${v}+`}
                   </span>
                 </div>
@@ -244,11 +244,11 @@ export function FilterSidebar({
 
       {/* active banner */}
       {active > 0 && (
-        <div className="mt-4 rounded-[10px] bg-[#1e293b] px-3 py-2.5 text-white">
+        <div className="mt-4 rounded-[10px] bg-slate-800 px-3 py-2.5 text-white">
           <strong className="text-[0.8rem] font-bold">
             {active} filter{active === 1 ? '' : 's'} active
           </strong>
-          <div className="mt-0.5 text-[0.69rem] text-[#94a3b8]">
+          <div className="mt-0.5 text-[0.69rem] text-slate-400">
             {resultCount} of {totalCount} companies match
           </div>
         </div>

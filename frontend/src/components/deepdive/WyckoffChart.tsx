@@ -120,7 +120,7 @@ export function WyckoffChart({
 
   if (!layout) {
     return (
-      <div className="flex h-[300px] items-center justify-center text-sm text-[#9ca3af]">
+      <div className="flex h-[300px] items-center justify-center text-sm text-gray-400">
         Not enough price data for this range.
       </div>
     )
@@ -281,17 +281,17 @@ export function WyckoffChart({
       {/* tooltip */}
       {hb && (
         <div
-          className="pointer-events-none absolute top-1 z-10 rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs shadow-card"
+          className="pointer-events-none absolute top-1 z-10 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-card"
           style={{ left: `${(hover!.frac * 100).toFixed(2)}%`, transform: hover!.frac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)' }}
         >
-          <div className="font-semibold text-[#111827]">{fmtDate(hb.date)}</div>
-          <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[#374151]">
+          <div className="font-semibold text-gray-900">{fmtDate(hb.date)}</div>
+          <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-700">
             <span>O ${hb.o.toFixed(2)}</span>
             <span>H ${hb.h.toFixed(2)}</span>
             <span>L ${hb.l.toFixed(2)}</span>
             <span style={{ color: hb.up ? UP : DOWN }}>C ${hb.c.toFixed(2)}</span>
           </div>
-          <div className="mt-1 border-t border-[#f1f5f9] pt-1 text-[#6b7280]">
+          <div className="mt-1 border-t border-slate-100 pt-1 text-gray-500">
             <div>Vol {fmtVol(hb.vol)}{hb.relVol != null && ` · ${hb.relVol.toFixed(1)}× avg`}</div>
             {hb.spreadRel != null && <div>Spread {hb.spreadRel.toFixed(1)}× avg</div>}
             {hb.closeLoc != null && <div>Close {Math.round(hb.closeLoc * 100)}% up the bar</div>}
@@ -305,11 +305,11 @@ export function WyckoffChart({
             </div>
           )}
           {hev && (
-            <div className="mt-1.5 max-w-[220px] border-t border-[#f1f5f9] pt-1.5">
+            <div className="mt-1.5 max-w-[220px] border-t border-slate-100 pt-1.5">
               <span className="font-semibold" style={{ color: hev.bullish ? EV_BULL : EV_BEAR }}>
                 {hev.label} · candidate · {Math.round(hev.confidence * 100)}%
               </span>
-              <div className="mt-0.5 text-[0.68rem] leading-snug text-[#6b7280]">{hev.note}</div>
+              <div className="mt-0.5 text-[0.68rem] leading-snug text-gray-500">{hev.note}</div>
             </div>
           )}
         </div>

@@ -67,18 +67,18 @@ function PriceCell({ row }: { row: ScreenerRow }) {
     const chg = (last - prev) / prev
     delta =
       chg >= 0 ? (
-        <span className="text-[0.7rem] font-semibold text-[#16a34a]">
+        <span className="text-[0.7rem] font-semibold text-green-600">
           ▲ {(chg * 100).toFixed(2)}%
         </span>
       ) : (
-        <span className="text-[0.7rem] font-semibold text-[#dc2626]">
+        <span className="text-[0.7rem] font-semibold text-red-600">
           ▼ {(Math.abs(chg) * 100).toFixed(2)}%
         </span>
       )
   }
   return (
     <div className="flex h-full flex-col items-end justify-center px-3 py-2">
-      <span className="text-[0.85rem] font-semibold text-[#111827]">
+      <span className="text-[0.85rem] font-semibold text-gray-900">
         {fmtPrice(last)}
       </span>
       {delta}
@@ -141,21 +141,21 @@ export function ScreenerTable({
     : false
 
   return (
-    <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-[#e5e7eb] bg-white shadow-card">
+    <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
       {/* card header */}
       <div className="px-4 pb-2.5 pt-3.5">
-        <div className="text-base font-bold text-[#111827]">US-listed companies</div>
-        <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+        <div className="text-base font-bold text-gray-900">US-listed companies</div>
+        <div className="mt-0.5 text-[0.78rem] text-gray-500">
           {rows.length} companies · ranked by composite factor score · scores as of{' '}
           {scoreDate ?? 'n/a'} (nightly)
         </div>
       </div>
 
       {/* legend */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-y border-[#f3f4f6] bg-[#f9fafb] px-4 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-y border-gray-100 bg-gray-50 px-4 py-2">
         <div className="flex flex-wrap gap-3.5">
           {FACTOR_ORDER.map((k) => (
-            <span key={k} className="flex items-center text-[0.73rem] text-[#4b5563]">
+            <span key={k} className="flex items-center text-[0.73rem] text-gray-600">
               <span
                 className="mr-[5px] inline-block h-[9px] w-[9px] rounded-full"
                 style={{ background: FACTOR_TABLE[k].bar }}
@@ -164,10 +164,10 @@ export function ScreenerTable({
             </span>
           ))}
         </div>
-        <span className="whitespace-nowrap text-[0.7rem] italic text-[#9ca3af]">
+        <span className="whitespace-nowrap text-[0.7rem] italic text-gray-400">
           {hasLive && (
-            <span className="not-italic text-[#0369a1]">
-              <span className="align-super text-[0.7em] text-[#38bdf8]">●</span> live-adjusted ·{' '}
+            <span className="not-italic text-sky-700">
+              <span className="align-super text-[0.7em] text-sky-400">●</span> live-adjusted ·{' '}
             </span>
           )}
           Bars are percentile ranks (0–100) · click row = preview · click ticker = deep dive
@@ -177,16 +177,16 @@ export function ScreenerTable({
       {/* virtualized grid */}
       <div ref={parentRef} className="overflow-auto" style={{ maxHeight: 640 }}>
         <div
-          className={`sticky top-0 z-10 grid ${minW} border-b border-[#e5e7eb] bg-[#f9fafb]`}
+          className={`sticky top-0 z-10 grid ${minW} border-b border-gray-200 bg-gray-50`}
           style={{ gridTemplateColumns: gridCols }}
         >
-          <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-gray-500`}>
             #{arrow('rank')}
           </button>
-          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
             Company{arrow('ticker')}
           </button>
-          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-gray-500`}>
             Sector{arrow('sector')}
           </button>
           {FACTOR_ORDER.map((k) => (
@@ -201,14 +201,14 @@ export function ScreenerTable({
               {arrow(FACTOR_SORT[k])}
             </button>
           ))}
-          <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-[#6b7280]`}>
+          <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-gray-500`}>
             Price{arrow('last_price')}
           </button>
           {rowAccessory && <div className={TH} aria-hidden="true" />}
         </div>
 
         {visible.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-[#6b7280]">
+          <div className="px-4 py-10 text-center text-sm text-gray-500">
             No companies match the current filters.
           </div>
         ) : (
@@ -229,7 +229,7 @@ export function ScreenerTable({
               return (
                 <div
                   key={r.security_id}
-                  className="absolute left-0 grid w-full border-b border-[#f3f4f6] transition-[box-shadow,background] duration-100 hover:bg-[#f8fafc] hover:shadow-[inset_3px_0_0_#1e293b]"
+                  className="absolute left-0 grid w-full border-b border-gray-100 transition-[box-shadow,background] duration-100 hover:bg-slate-50 hover:shadow-[inset_3px_0_0_#1e293b]"
                   style={{
                     gridTemplateColumns: gridCols,
                     height: vi.size,
@@ -238,7 +238,7 @@ export function ScreenerTable({
                   }}
                   onClick={handleRowClick}
                 >
-                  <div className="flex h-full items-center justify-end pr-2 text-[0.74rem] font-semibold tabular-nums text-[#64748b]">
+                  <div className="flex h-full items-center justify-end pr-2 text-[0.74rem] font-semibold tabular-nums text-slate-500">
                     {r.rank}
                   </div>
                   <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1.5">
@@ -246,12 +246,12 @@ export function ScreenerTable({
                       <>
                         <Link
                           to={`/securities/${r.ticker}`}
-                          className="text-[0.88rem] font-bold leading-[1.15] text-[#111827] hover:text-[#4f46e5] hover:underline"
+                          className="text-[0.88rem] font-bold leading-[1.15] text-gray-900 hover:text-indigo-600 hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {r.ticker}
                         </Link>
-                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-[#9ca3af]">
+                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
                         </span>
                       </>
@@ -260,10 +260,10 @@ export function ScreenerTable({
                         to={`/securities/${r.ticker}`}
                         className="contents text-inherit no-underline"
                       >
-                        <span className="text-[0.88rem] font-bold leading-[1.15] text-[#111827]">
+                        <span className="text-[0.88rem] font-bold leading-[1.15] text-gray-900">
                           {r.ticker}
                         </span>
-                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-[#9ca3af]">
+                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
                         </span>
                       </Link>
@@ -304,11 +304,11 @@ export function ScreenerTable({
 
       {/* expand toggle */}
       {rows.length > PREVIEW_N && (
-        <div className="border-t border-[#f3f4f6] bg-[#f9fafb] px-4 py-2.5 text-center">
+        <div className="border-t border-gray-100 bg-gray-50 px-4 py-2.5 text-center">
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="text-[0.78rem] font-bold text-[#1e293b] hover:underline"
+            className="text-[0.78rem] font-bold text-slate-800 hover:underline"
           >
             {expanded
               ? `Show top ${PREVIEW_N}`

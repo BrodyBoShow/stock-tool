@@ -21,7 +21,7 @@ export const Slider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-[#e5e7eb]">
+    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-gray-200">
       <SliderPrimitive.Range
         className="absolute h-full rounded-full"
         style={{ background: accent }}

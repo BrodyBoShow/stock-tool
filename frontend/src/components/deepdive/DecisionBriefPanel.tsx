@@ -48,19 +48,19 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-[#eef2ff] px-2.5 py-1.5 text-[0.78rem] font-semibold text-[#3730a3]">
+      <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-[0.78rem] font-semibold text-indigo-800">
         Composite {latest.composite?.toFixed(1) ?? '—'}
         {base?.composite != null && latest.composite != null && (
           <Delta value={latest.composite - base.composite} zeroDash />
         )}
       </span>
       {latest.rank != null && (
-        <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-[#f1f5f9] px-2.5 py-1.5 text-[0.78rem] font-semibold text-[#334155]">
+        <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.78rem] font-semibold text-slate-700">
           Rank #{latest.rank}
           {base?.rank != null && base.rank !== latest.rank && (
             <span
               className={
-                latest.rank < base.rank ? 'text-[#059669]' : 'text-[#dc2626]'
+                latest.rank < base.rank ? 'text-emerald-600' : 'text-red-600'
               }
             >
               {latest.rank < base.rank ? '▲' : '▼'} from #{base.rank}
@@ -71,7 +71,7 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
       {factors.map(([name, now, then]) => (
         <span
           key={name}
-          className="inline-flex items-baseline gap-1 rounded-lg border border-[#e5e7eb] bg-white px-2 py-1.5 text-[0.72rem] font-medium text-[#475569]"
+          className="inline-flex items-baseline gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[0.72rem] font-medium text-slate-600"
         >
           {name} {now != null ? Math.round(now) : '—'}
           {then != null && now != null && Math.round(now - then) !== 0 && (
@@ -79,7 +79,7 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
           )}
         </span>
       ))}
-      <span className="text-[0.68rem] text-[#9ca3af]">
+      <span className="text-[0.68rem] text-gray-400">
         {base
           ? `vs ${span} day${span === 1 ? '' : 's'} ago · history builds nightly`
           : 'trend appears as nightly score history accrues'}
@@ -90,9 +90,9 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
 
 function ConfidenceBadge({ confidence }: { confidence: DataConfidence }) {
   const styles: Record<DataConfidence['level'], string> = {
-    high: 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]',
-    medium: 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]',
-    low: 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]',
+    high: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200',
+    low: 'bg-red-50 text-red-700 border-red-200',
   }
   return (
     <span
@@ -105,11 +105,11 @@ function ConfidenceBadge({ confidence }: { confidence: DataConfidence }) {
 }
 
 function CaseList({ items, tone }: { items: string[]; tone: 'bull' | 'bear' }) {
-  const dot = tone === 'bull' ? 'bg-[#10b981]' : 'bg-[#ef4444]'
+  const dot = tone === 'bull' ? 'bg-emerald-500' : 'bg-red-500'
   return (
     <ul className="mt-1.5 space-y-1.5">
       {items.map((it, i) => (
-        <li key={i} className="flex gap-2 text-[0.85rem] leading-relaxed text-[#1e293b]">
+        <li key={i} className="flex gap-2 text-[0.85rem] leading-relaxed text-slate-800">
           <span className={`mt-[7px] h-1.5 w-1.5 flex-none rounded-full ${dot}`} />
           <span>{it}</span>
         </li>
@@ -122,23 +122,23 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
   const b = cached.brief
   return (
     <div className="space-y-4">
-      <p className="text-[0.95rem] font-medium leading-relaxed text-[#111827]">
+      <p className="text-[0.95rem] font-medium leading-relaxed text-gray-900">
         {b.one_liner}
       </p>
 
       {b.score_read && (
-        <div className="rounded-xl border border-[#e0e7ff] bg-[#f5f7ff] p-3.5">
-          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#4338ca]">
+        <div className="rounded-xl border border-indigo-100 bg-[#f5f7ff] p-3.5">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-indigo-700">
             How to read this score
           </div>
-          <p className="mt-1.5 text-[0.85rem] leading-relaxed text-[#1e293b]">
-            <span className="font-semibold text-[#3730a3]">
+          <p className="mt-1.5 text-[0.85rem] leading-relaxed text-slate-800">
+            <span className="font-semibold text-indigo-800">
               Drives the rank:{' '}
             </span>
             {b.score_read.drivers}
           </p>
-          <p className="mt-1.5 text-[0.85rem] leading-relaxed text-[#1e293b]">
-            <span className="font-semibold text-[#b45309]">
+          <p className="mt-1.5 text-[0.85rem] leading-relaxed text-slate-800">
+            <span className="font-semibold text-amber-700">
               What the score can’t see:{' '}
             </span>
             {b.score_read.blind_spot}
@@ -147,14 +147,14 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-[#d1fae5] bg-[#f7fefb] p-3.5">
-          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#047857]">
+        <div className="rounded-xl border border-emerald-100 bg-[#f7fefb] p-3.5">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-emerald-700">
             Bull case
           </div>
           <CaseList items={b.bull_case} tone="bull" />
         </div>
-        <div className="rounded-xl border border-[#fee2e2] bg-[#fffafa] p-3.5">
-          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#b91c1c]">
+        <div className="rounded-xl border border-red-100 bg-[#fffafa] p-3.5">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-red-700">
             Bear case
           </div>
           <CaseList items={b.bear_case} tone="bear" />
@@ -164,13 +164,13 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <div className={LABEL}>Key catalyst</div>
-          <p className="mt-1 text-[0.85rem] leading-relaxed text-[#1e293b]">
+          <p className="mt-1 text-[0.85rem] leading-relaxed text-slate-800">
             {b.key_catalyst}
           </p>
         </div>
         <div>
           <div className={LABEL}>Main risk</div>
-          <p className="mt-1 text-[0.85rem] leading-relaxed text-[#1e293b]">
+          <p className="mt-1 text-[0.85rem] leading-relaxed text-slate-800">
             {b.main_risk}
           </p>
         </div>
@@ -180,15 +180,15 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
         <div className={LABEL}>What to investigate next</div>
         <ul className="mt-1 space-y-1.5">
           {b.next_questions.map((q, i) => (
-            <li key={i} className="flex gap-2 text-[0.85rem] leading-relaxed text-[#334155]">
-              <span className="font-bold text-[#4f46e5]">{i + 1}.</span>
+            <li key={i} className="flex gap-2 text-[0.85rem] leading-relaxed text-slate-700">
+              <span className="font-bold text-indigo-600">{i + 1}.</span>
               <span>{q}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      <p className="border-t border-[#f1f5f9] pt-3 text-[0.7rem] text-[#9ca3af]">
+      <p className="border-t border-slate-100 pt-3 text-[0.7rem] text-gray-400">
         AI synthesis of StockBud&apos;s own factor data (snapshot{' '}
         {fmtDate(cached.score_date)}) via {cached.model ?? 'Claude'} — an
         organized read of the evidence, not investment advice.
@@ -231,10 +231,10 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
 
 
   return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="text-base font-bold text-[#111827]">Decision brief</div>
+          <div className="text-base font-bold text-gray-900">Decision brief</div>
           {data?.brief && (
             <ConfidenceBadge confidence={data.brief.brief.data_confidence} />
           )}
@@ -244,7 +244,7 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
             type="button"
             onClick={() => gen.mutate()}
             disabled={gen.isPending}
-            className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-[#64748b] hover:bg-[#f8fafc] disabled:opacity-50"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-50"
           >
             {gen.isPending ? 'Regenerating…' : 'Regenerate'}
           </button>
@@ -253,13 +253,13 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
 
       <div className="mt-3 space-y-4">
         {isPending ? (
-          <p className="text-[0.85rem] text-[#9ca3af]">Loading…</p>
+          <p className="text-[0.85rem] text-gray-400">Loading…</p>
         ) : error ? (
-          <p className="text-[0.85rem] text-[#b91c1c]">
+          <p className="text-[0.85rem] text-red-700">
             Couldn’t load the decision brief.
           </p>
         ) : !data.has_scores ? (
-          <p className="text-[0.85rem] text-[#9ca3af]">
+          <p className="text-[0.85rem] text-gray-400">
             {ticker} hasn’t been scored yet — the brief appears after the first
             scoring run.
           </p>
@@ -269,11 +269,11 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
             {data.brief ? (
               <BriefBody cached={data.brief} />
             ) : gen.isError ? (
-              <div className="rounded-xl border border-dashed border-[#fecaca] bg-[#fff7f7] p-5 text-center">
-                <p className="text-[0.85rem] font-semibold text-[#b91c1c]">
+              <div className="rounded-xl border border-dashed border-red-200 bg-[#fff7f7] p-5 text-center">
+                <p className="text-[0.85rem] font-semibold text-red-700">
                   Couldn&apos;t generate the brief
                 </p>
-                <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-[#9ca3af]">
+                <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-gray-400">
                   {gen.error instanceof ApiError
                     ? gen.error.message
                     : "Something went wrong reaching the model."}
@@ -281,15 +281,15 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
                 <button
                   type="button"
                   onClick={() => gen.mutate()}
-                  className="mt-3 inline-flex items-center rounded-lg bg-[#4f46e5] px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca]"
+                  className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-indigo-700"
                 >
                   Try again
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3 rounded-xl border border-[#e0e7ff] bg-[#fafbff] p-4">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-[#c7d2fe] border-t-[#4f46e5]" />
-                <p className="text-[0.85rem] text-[#475569]">
+              <div className="flex items-center gap-3 rounded-xl border border-indigo-100 bg-[#fafbff] p-4">
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+                <p className="text-[0.85rem] text-slate-600">
                   Preparing brief for {ticker} — usually ready in 15–30 seconds…
                 </p>
               </div>

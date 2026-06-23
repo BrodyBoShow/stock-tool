@@ -22,15 +22,15 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="mx-auto mt-10 max-w-xl rounded-card border border-[#fecaca] bg-[#fef2f2] p-6 shadow-card">
-          <div className="text-sm font-bold text-[#b91c1c]">
+        <div className="mx-auto mt-10 max-w-xl rounded-card border border-red-200 bg-red-50 p-6 shadow-card">
+          <div className="text-sm font-bold text-red-700">
             Something broke while rendering this page
           </div>
-          <p className="mt-1 text-sm text-[#7f1d1d]">{this.state.error.message}</p>
+          <p className="mt-1 text-sm text-red-900">{this.state.error.message}</p>
           <button
             type="button"
             onClick={() => this.setState({ error: null })}
-            className="mt-3 rounded-lg border border-[#fca5a5] bg-white px-3 py-1.5 text-xs font-bold text-[#b91c1c] hover:bg-[#fff1f1]"
+            className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-[#fff1f1]"
           >
             Try again
           </button>

@@ -38,7 +38,7 @@ function Stat({
 }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
         {label}
       </span>
       <span
@@ -47,7 +47,7 @@ function Stat({
       >
         {value}
       </span>
-      {hint && <span className="mt-0.5 text-[0.65rem] text-[#cbd5e1]">{hint}</span>}
+      {hint && <span className="mt-0.5 text-[0.65rem] text-slate-300">{hint}</span>}
     </div>
   )
 }
@@ -156,9 +156,9 @@ export function ScreenerHeader({
   const ratio = dec > 0 ? (adv / dec).toFixed(2) : '—'
 
   return (
-    <header className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+    <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
       {/* brand accent strip */}
-      <div className="h-1 bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#0ea5e9]" />
+      <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
 
       <div
         className="px-7 pb-5 pt-6"
@@ -168,14 +168,14 @@ export function ScreenerHeader({
           {/* identity */}
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-              <span className="text-[#4f46e5]">StockBud</span>
-              <span className="text-[#d1d5db]">/</span>
-              <span className="text-[#94a3b8]">Equity Screener</span>
+              <span className="text-indigo-600">StockBud</span>
+              <span className="text-gray-300">/</span>
+              <span className="text-slate-400">Equity Screener</span>
             </div>
-            <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
+            <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
               US Equity Factor Screener
             </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-[#64748b]">
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-slate-500">
               <span>
                 Factor rankings across {rows.length} companies
               </span>
@@ -213,10 +213,10 @@ export function ScreenerHeader({
               {open ? 'Markets open' : 'Markets closed'}
             </span>
             <div className="text-right">
-              <div className="font-mono text-[1.1rem] font-semibold tabular-nums text-[#334155]">
+              <div className="font-mono text-[1.1rem] font-semibold tabular-nums text-slate-700">
                 {clock}
               </div>
-              <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
+              <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-slate-400">
                 {etDateLabel} · New York · ET
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 /** Small uppercase section/field label used across the deep-dive panels. */
 export const PANEL_LABEL =
-  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
+  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-gray-500'
 
 /** Sectors whose factor scores are structurally commodity-price-driven — their
  * Value/Momentum/Quality all ride the underlying commodity (oil, metals), so a

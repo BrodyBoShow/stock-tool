@@ -17,14 +17,14 @@ export function SectionCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
+    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center text-base font-bold text-[#111827]">
+          <div className="flex items-center text-base font-bold text-gray-900">
             <span>{title}</span>
             {tip && <InfoTip text={tip} />}
           </div>
-          {hint && <p className="mt-0.5 text-[0.78rem] text-[#9ca3af]">{hint}</p>}
+          {hint && <p className="mt-0.5 text-[0.78rem] text-gray-400">{hint}</p>}
         </div>
         {right && <div className="shrink-0">{right}</div>}
       </div>

@@ -39,7 +39,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (phase === 'checking') {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-[#94a3b8]">
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">
         Loading…
       </div>
     )
@@ -47,16 +47,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (phase === 'locked') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-6">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
         <form
           onSubmit={submit}
-          className="w-full max-w-[360px] rounded-2xl border border-[#e5e7eb] bg-white p-7 shadow-[0_4px_24px_rgba(15,23,42,0.08)]"
+          className="w-full max-w-[360px] rounded-2xl border border-gray-200 bg-white p-7 shadow-[0_4px_24px_rgba(15,23,42,0.08)]"
         >
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-            <span className="text-[#4f46e5]">StockBud</span>
+            <span className="text-indigo-600">StockBud</span>
           </div>
-          <h1 className="mt-2 text-[1.4rem] font-extrabold text-[#0f172a]">Private access</h1>
-          <p className="mt-1 text-[0.85rem] text-[#64748b]">
+          <h1 className="mt-2 text-[1.4rem] font-extrabold text-slate-900">Private access</h1>
+          <p className="mt-1 text-[0.85rem] text-slate-500">
             Enter the access password to continue.
           </p>
           <input
@@ -65,13 +65,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             onChange={(e) => setPw(e.target.value)}
             autoFocus
             placeholder="Password"
-            className="mt-4 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#111827] focus:border-[#4f46e5] focus:outline-none"
+            className="mt-4 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-600 focus:outline-none"
           />
-          {error && <p className="mt-2 text-[0.8rem] font-medium text-[#dc2626]">{error}</p>}
+          {error && <p className="mt-2 text-[0.8rem] font-medium text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={submitting || !pw.trim()}
-            className="mt-4 w-full rounded-lg bg-[#4f46e5] px-3 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="mt-4 w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             {submitting ? 'Checking…' : 'Enter'}
           </button>

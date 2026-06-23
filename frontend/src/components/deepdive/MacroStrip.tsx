@@ -34,26 +34,26 @@ function MacroTile({
   }
 
   return (
-    <div className="rounded-xl border border-[#e5e7eb] bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
-      <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+    <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+      <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-gray-500">
         {label}
       </div>
-      <div className="mt-0.5 text-[1.3rem] font-extrabold leading-tight text-[#111827]">
+      <div className="mt-0.5 text-[1.3rem] font-extrabold leading-tight text-gray-900">
         {fmtVal(latest?.value ?? null, unit, dec)}
       </div>
       {delta && prior ? (
         <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
-          <span className="text-[0.74rem] font-bold text-[#475569]">
+          <span className="text-[0.74rem] font-bold text-slate-600">
             {delta.arrow}
             {delta.mag}
           </span>
-          <span className="text-[0.66rem] text-[#9ca3af]">vs {fmtShortDate(prior.date)}</span>
+          <span className="text-[0.66rem] text-gray-400">vs {fmtShortDate(prior.date)}</span>
         </div>
       ) : (
-        <div className="mt-0.5 text-[0.72rem] text-[#9ca3af]">no prior reading</div>
+        <div className="mt-0.5 text-[0.72rem] text-gray-400">no prior reading</div>
       )}
       {latest && (
-        <div className="mt-1 text-[0.63rem] text-[#cbd5e1]">as of {fmtShortDate(latest.date)}</div>
+        <div className="mt-1 text-[0.63rem] text-slate-300">as of {fmtShortDate(latest.date)}</div>
       )}
     </div>
   )
@@ -81,9 +81,9 @@ export function MacroStrip() {
   )
 
   return (
-    <section className="rounded-card border border-[#e5e7eb] bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-[#111827]">Macro backdrop</div>
-      <div className="mt-0.5 text-[0.78rem] text-[#6b7280]">
+    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+      <div className="text-base font-bold text-gray-900">Macro backdrop</div>
+      <div className="mt-0.5 text-[0.78rem] text-gray-500">
         Where rates, inflation and volatility sit — broad market context, not a
         per-stock signal. Latest nightly readings from FRED.
       </div>
@@ -93,7 +93,7 @@ export function MacroStrip() {
           ? MACRO_DISPLAY.map((m) => (
               <div
                 key={m.id}
-                className="h-[92px] animate-pulse rounded-xl border border-[#e5e7eb] bg-slate-100"
+                className="h-[92px] animate-pulse rounded-xl border border-gray-200 bg-slate-100"
               />
             ))
           : MACRO_DISPLAY.map((m) => (

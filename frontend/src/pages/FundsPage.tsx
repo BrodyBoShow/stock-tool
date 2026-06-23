@@ -12,7 +12,7 @@ import type { FundRow } from '@/types/api'
 const CATEGORY_ORDER = ['Commodity', 'Crypto', 'Leveraged/Inverse', 'Other']
 
 function Ret({ v }: { v: number | null }) {
-  if (v == null) return <span className="text-[#cbd5e1]">—</span>
+  if (v == null) return <span className="text-slate-300">—</span>
   return (
     <span className="font-semibold tabular-nums" style={{ color: plColor(v) }}>
       {fmtSignedPct(v)}
@@ -25,7 +25,7 @@ function FundTable({ rows }: { rows: FundRow[] }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-[0.84rem]">
         <thead>
-          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+          <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
             <th className="py-2 pr-3">Ticker</th>
             <th className="py-2 pr-3">Name</th>
             <th className="py-2 pr-3 text-right">Price</th>
@@ -39,10 +39,10 @@ function FundTable({ rows }: { rows: FundRow[] }) {
           {rows.map((f) => {
             const price = f.price ?? f.last_close
             return (
-              <tr key={f.security_id} className="border-b border-[#f8fafc] hover:bg-[#f8fafc]">
-                <td className="py-2.5 pr-3 font-bold text-[#1e293b]">{f.ticker}</td>
-                <td className="max-w-[280px] truncate py-2.5 pr-3 text-[#64748b]">{f.name}</td>
-                <td className="py-2.5 pr-3 text-right tabular-nums text-[#111827]">
+              <tr key={f.security_id} className="border-b border-slate-50 hover:bg-slate-50">
+                <td className="py-2.5 pr-3 font-bold text-slate-800">{f.ticker}</td>
+                <td className="max-w-[280px] truncate py-2.5 pr-3 text-slate-500">{f.name}</td>
+                <td className="py-2.5 pr-3 text-right tabular-nums text-gray-900">
                   {fmtPrice(price)}
                   {f.change_pct != null && (
                     <span
@@ -108,8 +108,8 @@ export function FundsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-extrabold text-[#111827]">Funds &amp; ETFs</h1>
-        <p className="mt-0.5 text-[0.82rem] text-[#6b7280]">
+        <h1 className="text-xl font-extrabold text-gray-900">Funds &amp; ETFs</h1>
+        <p className="mt-0.5 text-[0.82rem] text-gray-500">
           Commodity &amp; crypto ETFs and trusts (gold, silver, oil, bitcoin…). These hold
           assets rather than run a business, so they carry no factor scores — this is a
           returns view, kept separate from the operating-company screener. Price is live
@@ -119,7 +119,7 @@ export function FundsPage() {
 
       {data.rows.length === 0 ? (
         <SectionCard title="No funds">
-          <p className="text-[0.85rem] text-[#9ca3af]">No funds classified yet.</p>
+          <p className="text-[0.85rem] text-gray-400">No funds classified yet.</p>
         </SectionCard>
       ) : (
         cats.map((cat) => (

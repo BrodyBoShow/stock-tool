@@ -2,9 +2,9 @@ import { SectorPill } from '@/components/screener/SectorPill'
 import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
 
-const STAT_LABEL = 'text-[0.75rem] text-[#6b7280]'
-const STAT_VALUE = 'text-[1.35rem] font-extrabold text-[#111827]'
-const STAT_SUB = 'text-[0.72rem] text-[#9ca3af]'
+const STAT_LABEL = 'text-[0.75rem] text-gray-500'
+const STAT_VALUE = 'text-[1.35rem] font-extrabold text-gray-900'
+const STAT_SUB = 'text-[0.72rem] text-gray-400'
 
 export function HeaderCard({
   header,
@@ -14,7 +14,7 @@ export function HeaderCard({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-[18px] rounded-card border border-[#e5e7eb] bg-white px-[22px] py-5 shadow-card">
+    <div className="flex flex-wrap items-center justify-between gap-[18px] rounded-card border border-gray-200 bg-white px-[22px] py-5 shadow-card">
       <div className="flex items-center gap-3.5">
         <div
           className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[13px] text-[1.15rem] font-extrabold text-white"
@@ -24,21 +24,21 @@ export function HeaderCard({
         </div>
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[1.45rem] font-extrabold text-[#111827]">
+            <span className="text-[1.45rem] font-extrabold text-gray-900">
               {header.ticker}
             </span>
             {header.exchange && (
-              <span className="rounded-full bg-[#f3f4f6] px-2.5 py-[3px] text-[0.72rem] font-semibold text-[#374151]">
+              <span className="rounded-full bg-gray-100 px-2.5 py-[3px] text-[0.72rem] font-semibold text-gray-700">
                 {header.exchange}
               </span>
             )}
             <SectorPill sector={header.sector} />
           </div>
-          <div className="mt-px text-[0.95rem] text-[#374151]">
+          <div className="mt-px text-[0.95rem] text-gray-700">
             {header.name ?? DASH}
           </div>
           {header.industry && (
-            <div className="mt-0.5 text-[0.78rem] text-[#9ca3af]">
+            <div className="mt-0.5 text-[0.78rem] text-gray-400">
               {header.industry}
             </div>
           )}

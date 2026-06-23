@@ -8,8 +8,8 @@ import { getAlerts } from '@/lib/api'
 const link = ({ isActive }: { isActive: boolean }) =>
   'border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
   (isActive
-    ? 'border-[#4f46e5] text-[#0f172a]'
-    : 'border-transparent text-[#64748b] hover:text-[#0f172a]')
+    ? 'border-indigo-600 text-slate-900'
+    : 'border-transparent text-slate-500 hover:text-slate-900')
 
 /**
  * Pull the latest data from the API on demand — the React equivalent of the
@@ -35,7 +35,7 @@ function RefreshButton() {
       disabled={spinning}
       title="Refresh data"
       aria-label="Refresh data"
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] disabled:opacity-60"
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-60"
     >
       <svg
         width="16"
@@ -93,7 +93,7 @@ function AlertsLink() {
       <span className="inline-flex items-center gap-1.5">
         Alerts
         {n > 0 && (
-          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#dc2626] px-1 text-[0.62rem] font-bold text-white">
+          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[0.62rem] font-bold text-white">
             {n}
           </span>
         )}
@@ -104,7 +104,7 @@ function AlertsLink() {
 
 export function TopNav() {
   return (
-    <nav className="sticky top-0 z-30 border-b border-[#e5e7eb] bg-white/85 backdrop-blur">
+    <nav className="sticky top-0 z-30 border-b border-gray-200 bg-white/85 backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1760px] items-center gap-3 px-4 py-3 lg:gap-4 lg:px-8">
         <NavLink
           to="/"
@@ -112,8 +112,8 @@ export function TopNav() {
         >
           <Logo />
           <span className="text-[1.2rem] font-extrabold tracking-[-0.01em]">
-            <span className="text-[#0f172a]">Stock</span>
-            <span className="text-[#4f46e5]">Bud</span>
+            <span className="text-slate-900">Stock</span>
+            <span className="text-indigo-600">Bud</span>
           </span>
         </NavLink>
         <HeaderSearch />
@@ -143,7 +143,7 @@ export function TopNav() {
             Lab
           </NavLink>
         </div>
-        <span className="h-5 w-px flex-none bg-[#e5e7eb]" aria-hidden="true" />
+        <span className="h-5 w-px flex-none bg-gray-200" aria-hidden="true" />
         <RefreshButton />
       </div>
     </nav>

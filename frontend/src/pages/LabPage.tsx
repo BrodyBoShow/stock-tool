@@ -87,8 +87,8 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
   tip?: string
 }) {
   return (
-    <div className="rounded-card border border-[#e5e7eb] bg-white px-3 py-2.5 shadow-card">
-      <div className="flex items-center text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">
+    <div className="rounded-card border border-gray-200 bg-white px-3 py-2.5 shadow-card">
+      <div className="flex items-center text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
         <span>{label}</span>
         {tip && <InfoTip text={tip} />}
       </div>
@@ -98,7 +98,7 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[0.64rem] leading-tight text-[#9ca3af]">{sub}</div>}
+      {sub && <div className="mt-0.5 text-[0.64rem] leading-tight text-gray-400">{sub}</div>}
     </div>
   )
 }
@@ -110,7 +110,7 @@ function Segmented<T extends string>({ options, value, onChange }: {
   onChange: (v: T) => void
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-[#e5e7eb] bg-[#f8fafc] p-0.5">
+    <div className="inline-flex rounded-lg border border-gray-200 bg-slate-50 p-0.5">
       {options.map((o) => {
         const on = o.value === value
         return (
@@ -246,11 +246,11 @@ function VerdictBanner({ v }: { v: Verdict }) {
         >
           {s.label}
         </span>
-        <h2 className="text-[1.05rem] font-extrabold text-[#0f172a]">{v.headline}</h2>
+        <h2 className="text-[1.05rem] font-extrabold text-slate-900">{v.headline}</h2>
       </div>
       <ul className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {v.points.map((p, i) => (
-          <li key={i} className="flex items-start gap-2 text-[0.82rem] text-[#334155]">
+          <li key={i} className="flex items-start gap-2 text-[0.82rem] text-slate-700">
             <span
               aria-hidden
               className="mt-[1px] font-bold"
@@ -262,8 +262,8 @@ function VerdictBanner({ v }: { v: Verdict }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 border-t border-black/5 pt-3 text-[0.84rem] font-semibold text-[#0f172a]">
-        <span className="text-[#64748b]">What to do: </span>
+      <p className="mt-3 border-t border-black/5 pt-3 text-[0.84rem] font-semibold text-slate-900">
+        <span className="text-slate-500">What to do: </span>
         {v.action}
       </p>
     </section>
@@ -452,13 +452,13 @@ export function LabPage() {
 
   if (!data.has_results || !data.results) {
     return (
-      <div className="rounded-card border border-[#e5e7eb] bg-white p-10 text-center shadow-card">
-        <h1 className="text-xl font-extrabold text-[#0f172a]">Factor Lab</h1>
-        <p className="mx-auto mt-3 max-w-[520px] text-sm text-[#64748b]">
+      <div className="rounded-card border border-gray-200 bg-white p-10 text-center shadow-card">
+        <h1 className="text-xl font-extrabold text-slate-900">Factor Lab</h1>
+        <p className="mx-auto mt-3 max-w-[520px] text-sm text-slate-500">
           No backtest stored yet. The monthly workflow
-          (<code className="rounded bg-[#f1f5f9] px-1">backtest.yml</code>) computes and stores
+          (<code className="rounded bg-slate-100 px-1">backtest.yml</code>) computes and stores
           one automatically on the 2nd of each month — or run it once now with{' '}
-          <code className="rounded bg-[#f1f5f9] px-1">python scripts/run_backtest.py --store</code>.
+          <code className="rounded bg-slate-100 px-1">python scripts/run_backtest.py --store</code>.
         </p>
       </div>
     )
@@ -501,24 +501,24 @@ export function LabPage() {
   return (
     <div className="space-y-5">
       {/* header */}
-      <header className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
-        <div className="h-1 bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#0ea5e9]" />
+      <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+        <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-            <span className="text-[#4f46e5]">StockBud</span>
-            <span className="text-[#d1d5db]">/</span>
-            <span className="text-[#94a3b8]">Factor Lab</span>
+            <span className="text-indigo-600">StockBud</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-slate-400">Factor Lab</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-[#0f172a]">
+          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
             Does the model actually work?
           </h1>
-          <p className="mt-2 text-[0.9rem] text-[#64748b]">
+          <p className="mt-2 text-[0.9rem] text-slate-500">
             Point-in-time backtest of <code>{data.config_version}</code> · {data.start_date} →{' '}
             {data.end_date} · {data.params?.rebalances} monthly rebalances · quintiles, equal-weight,{' '}
             {data.params?.cost_bps}bps/side · sub-$1 names dropped, returns winsorized
           </p>
           {data.generated_at && (
-            <p className="mt-1 text-[0.74rem] text-[#94a3b8]">
+            <p className="mt-1 text-[0.74rem] text-slate-400">
               Computed {fmtDate(data.generated_at.slice(0, 10))} · served from store · refreshes monthly
             </p>
           )}
@@ -527,7 +527,7 @@ export function LabPage() {
 
       {/* factor selector — drives the verdict and every chart below */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
           Ranking
         </span>
         {FactorPills}
@@ -613,7 +613,7 @@ export function LabPage() {
         }
       >
         {showLongShort && logScale && (
-          <p className="mb-2 text-[0.72rem] text-[#b45309]">
+          <p className="mb-2 text-[0.72rem] text-amber-700">
             Long-short is hidden on the log axis (its growth-of-$1 can cross zero, which a log scale
             can't plot). Switch to Linear to see it.
           </p>
@@ -670,12 +670,12 @@ export function LabPage() {
           </div>
 
           {rp && (
-            <div className="mt-4 rounded-card border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3">
-              <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+            <div className="mt-4 rounded-card border border-gray-200 bg-slate-50 px-4 py-3">
+              <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
                 Random-portfolio null (composite top quintile)
                 <InfoTip text="The 'monkey' test: 1,000 random equal-weight baskets of the same size, chained over the same window. Where the real strategy's CAGR lands tells you how much is skill vs market beta." />
               </div>
-              <p className="mt-1 text-[0.86rem] text-[#334155]">
+              <p className="mt-1 text-[0.86rem] text-slate-700">
                 The composite top quintile beat{' '}
                 <strong style={{ color: TONE_HEX[pctileTone(rp.percentile)] }}>
                   {(rp.percentile * 100).toFixed(0)}%
@@ -689,7 +689,7 @@ export function LabPage() {
 
           {sel.ic && (
             <div className="mt-4">
-              <div className="mb-1 flex items-center text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-[#475569]">
+              <div className="mb-1 flex items-center text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
                 Information Coefficient over time — {selLabel}
                 <InfoTip text="Green/red bars are each month's rank IC; the indigo line is the trailing 6-month average. A line drifting toward zero is a factor losing its edge." />
               </div>
@@ -702,9 +702,9 @@ export function LabPage() {
           title="Is the edge real, or luck?"
           hint="Significance & robustness (IC, bootstrap CIs, random-portfolio null)."
         >
-          <p className="text-sm text-[#64748b]">
+          <p className="text-sm text-slate-500">
             Significance stats populate on the next backtest run — the monthly workflow, or{' '}
-            <code className="rounded bg-[#f1f5f9] px-1">python scripts/run_backtest.py --store</code>.
+            <code className="rounded bg-slate-100 px-1">python scripts/run_backtest.py --store</code>.
             The currently stored run predates this feature.
           </p>
         </SectionCard>
@@ -718,7 +718,7 @@ export function LabPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[0.84rem]">
             <thead>
-              <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-[#94a3b8]">
+              <tr className="border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
                 <th className="py-2 pr-4">Ranking</th>
                 <th className="py-2 pr-4">Top-Q CAGR</th>
                 <th className="py-2 pr-4">Top-Q Sharpe</th>
@@ -740,12 +740,12 @@ export function LabPage() {
                     key={k}
                     onClick={() => setFactorKey(k)}
                     className={
-                      'cursor-pointer border-b border-[#f8fafc] transition-colors hover:bg-[#f8fafc] ' +
-                      (isSel ? 'bg-[#eef2ff]' : '')
+                      'cursor-pointer border-b border-slate-50 transition-colors hover:bg-slate-50 ' +
+                      (isSel ? 'bg-indigo-50' : '')
                     }
                   >
-                    <td className="py-2.5 pr-4 font-bold text-[#1e293b]">
-                      {isSel && <span className="mr-1 text-[#4f46e5]">▸</span>}
+                    <td className="py-2.5 pr-4 font-bold text-slate-800">
+                      {isSel && <span className="mr-1 text-indigo-600">▸</span>}
                       {KEY_LABELS[k] ?? k}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(top?.cagr)}</td>
@@ -757,7 +757,7 @@ export function LabPage() {
                       {r.ic?.t_stat != null ? r.ic.t_stat.toFixed(2) : '—'}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.win_rate_top, false)}</td>
-                    <td className="py-2.5 pr-4 tabular-nums text-[#dc2626]">
+                    <td className="py-2.5 pr-4 tabular-nums text-red-600">
                       {fmtPct(top?.max_drawdown, false)}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.long_short.cagr)}</td>
@@ -773,12 +773,12 @@ export function LabPage() {
               })}
               {data.benchmarks && (
                 <tr>
-                  <td className="py-2.5 pr-4 font-bold text-[#64748b]">S&amp;P 500 (SPY)</td>
+                  <td className="py-2.5 pr-4 font-bold text-slate-500">S&amp;P 500 (SPY)</td>
                   <td className="py-2.5 pr-4 tabular-nums">{fmtPct(data.benchmarks.spy_stats.cagr)}</td>
                   <td className="py-2.5 pr-4 tabular-nums">{fmtSharpe(data.benchmarks.spy_stats.sharpe)}</td>
                   <td className="py-2.5 pr-4">—</td>
                   <td className="py-2.5 pr-4">—</td>
-                  <td className="py-2.5 pr-4 tabular-nums text-[#dc2626]">
+                  <td className="py-2.5 pr-4 tabular-nums text-red-600">
                     {fmtPct(data.benchmarks.spy_stats.max_drawdown, false)}
                   </td>
                   <td className="py-2.5 pr-4">—</td>
@@ -803,7 +803,7 @@ export function LabPage() {
         investment advice.
       </div>
 
-      <p className="pb-2 text-center text-xs text-[#9ca3af]">
+      <p className="pb-2 text-center text-xs text-gray-400">
         Backtest recomputed monthly by GitHub Actions (point-in-time data, no look-ahead).
       </p>
     </div>

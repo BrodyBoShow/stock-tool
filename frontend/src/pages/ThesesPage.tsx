@@ -10,7 +10,7 @@ import { DASH, fmtDate, fmtPctl } from '@/lib/format'
 import type { ThesisRow } from '@/types/api'
 
 const TH =
-  'whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-[#6b7280]'
+  'whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500'
 const TD = 'px-3 py-3 text-[0.84rem] align-top'
 
 function truncate(s: string | null, n: number): string {
@@ -56,8 +56,8 @@ export function ThesesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-extrabold text-[#111827]">Thesis tracker</h1>
-        <p className="mt-0.5 text-[0.82rem] text-[#6b7280]">
+        <h1 className="text-xl font-extrabold text-gray-900">Thesis tracker</h1>
+        <p className="mt-0.5 text-[0.82rem] text-gray-500">
           {rows.length === 0
             ? 'Theses you write on a deep dive show up here, with review dates and the current composite score.'
             : `${rows.length} active ${rows.length === 1 ? 'thesis' : 'theses'}` +
@@ -66,28 +66,28 @@ export function ThesesPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-card border border-dashed border-[#cbd5e1] bg-white/60 p-10 text-center shadow-card">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-[1.2rem] text-[#4f46e5]">
+        <div className="rounded-card border border-dashed border-slate-300 bg-white/60 p-10 text-center shadow-card">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-[1.2rem] text-indigo-600">
             ✎
           </div>
-          <p className="mt-3 text-sm font-semibold text-[#374151]">No theses yet</p>
-          <p className="mx-auto mt-1 max-w-sm text-[0.82rem] text-[#9ca3af]">
+          <p className="mt-3 text-sm font-semibold text-gray-700">No theses yet</p>
+          <p className="mx-auto mt-1 max-w-sm text-[0.82rem] text-gray-400">
             Open any company’s deep dive and write down your thesis — the core
             argument, what would invalidate it, and when to review. It’ll appear
             here.
           </p>
           <Link
             to="/"
-            className="mt-4 inline-flex items-center rounded-lg bg-[#4f46e5] px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-[#4338ca]"
+            className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-indigo-700"
           >
             Browse the screener
           </Link>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-card border border-[#e5e7eb] bg-white shadow-card">
+        <div className="overflow-x-auto rounded-card border border-gray-200 bg-white shadow-card">
           <table className="w-full min-w-[820px] border-collapse">
             <thead>
-              <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+              <tr className="border-b border-gray-200 bg-gray-50">
                 <th className={TH}>Company</th>
                 <th className={TH}>Thesis</th>
                 <th className={TH}>Invalidation</th>
@@ -100,48 +100,48 @@ export function ThesesPage() {
                 <tr
                   key={r.thesis_id}
                   onClick={() => navigate(`/securities/${r.ticker}`)}
-                  className="cursor-pointer border-b border-[#f3f4f6] last:border-b-0 hover:bg-[#f8fafc]"
+                  className="cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-slate-50"
                 >
                   <td className={`${TD} min-w-[150px]`}>
                     <Link
                       to={`/securities/${r.ticker}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="font-bold text-[#111827] hover:underline"
+                      className="font-bold text-gray-900 hover:underline"
                     >
                       {r.ticker}
                     </Link>
-                    <div className="mt-0.5 max-w-[160px] truncate text-[0.74rem] text-[#9ca3af]">
+                    <div className="mt-0.5 max-w-[160px] truncate text-[0.74rem] text-gray-400">
                       {r.name ?? DASH}
                     </div>
                     <div className="mt-1">
                       <SectorPill sector={r.sector} />
                     </div>
                   </td>
-                  <td className={`${TD} max-w-[280px] text-[#374151]`}>
+                  <td className={`${TD} max-w-[280px] text-gray-700`}>
                     {truncate(r.summary, 140)}
                   </td>
-                  <td className={`${TD} max-w-[220px] text-[#64748b]`}>
+                  <td className={`${TD} max-w-[220px] text-slate-500`}>
                     {r.invalidation_rules ? (
                       truncate(r.invalidation_rules, 90)
                     ) : (
-                      <span className="text-[#cbd5e1]">{DASH}</span>
+                      <span className="text-slate-300">{DASH}</span>
                     )}
                   </td>
                   <td className={`${TD} whitespace-nowrap text-right`}>
                     {r.review_date ? (
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-[#1e293b]">{fmtDate(r.review_date)}</span>
+                        <span className="text-slate-800">{fmtDate(r.review_date)}</span>
                         {r.review_due && (
-                          <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.66rem] font-bold text-[#b91c1c]">
+                          <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.66rem] font-bold text-red-700">
                             Review due
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-[#cbd5e1]">{DASH}</span>
+                      <span className="text-slate-300">{DASH}</span>
                     )}
                   </td>
-                  <td className={`${TD} text-right font-bold tabular-nums text-[#111827]`}>
+                  <td className={`${TD} text-right font-bold tabular-nums text-gray-900`}>
                     {fmtPctl(r.composite)}
                   </td>
                 </tr>
