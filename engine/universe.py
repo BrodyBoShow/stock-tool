@@ -335,6 +335,16 @@ def graduate_ready(*, min_price_days: int = GRAD_MIN_PRICE_DAYS, dry_run: bool =
                   -- and skip note/fund issuers: a CIK with many listings (UBS AG
                   -- has 19 same-named ETNs) is an issuer, not an operating company.
                   AND (SELECT count(*) FROM securities b WHERE b.cik = s.cik) <= 4
+                  -- and not one of a lettered series (preferred tranches like
+                  -- BPYPM/N/O/P): a same-CIK, same-length ticker differing only in
+                  -- the last char marks a series, not a common stock.
+                  AND NOT EXISTS (
+                      SELECT 1 FROM securities b
+                      WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                        AND length(b.ticker) = length(s.ticker)
+                        AND left(b.ticker, length(s.ticker) - 1)
+                            = left(s.ticker, length(s.ticker) - 1)
+                  )
                   -- exclude SPAC units/warrants/rights (they inherit the parent
                   -- CIK's fundamentals + price history); same two rules as
                   -- deactivate_derivative_listings so the gates agree.
@@ -431,6 +441,16 @@ def run_graduation(*, limit: int | None = None, fetch: bool = True, dry_run: boo
                   -- and skip note/fund issuers: a CIK with many listings (UBS AG
                   -- has 19 same-named ETNs) is an issuer, not an operating company.
                   AND (SELECT count(*) FROM securities b WHERE b.cik = s.cik) <= 4
+                  -- and not one of a lettered series (preferred tranches like
+                  -- BPYPM/N/O/P): a same-CIK, same-length ticker differing only in
+                  -- the last char marks a series, not a common stock.
+                  AND NOT EXISTS (
+                      SELECT 1 FROM securities b
+                      WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                        AND length(b.ticker) = length(s.ticker)
+                        AND left(b.ticker, length(s.ticker) - 1)
+                            = left(s.ticker, length(s.ticker) - 1)
+                  )
                   AND NOT EXISTS (
                       SELECT 1 FROM securities b
                       WHERE b.cik = s.cik AND b.security_id <> s.security_id
@@ -458,7 +478,16 @@ def run_graduation(*, limit: int | None = None, fetch: bool = True, dry_run: boo
                        WHERE p.security_id = s.security_id) >= %s
                   AND (SELECT max(date) FROM prices_daily p
                        WHERE p.security_id = s.security_id) >= CURRENT_DATE - INTERVAL '14 days'
-                ORDER BY s.ticker
+                -- have-facts candidates first: they just need metrics computed and
+                -- graduate without an SEC fetch, and then leave the pool. The
+                -- need-fetch tail is shuffled daily so a no-facts CEF can't sit at
+                -- the alphabetical top forever and starve genuine names — every
+                -- name gets a turn across successive nights.
+                ORDER BY has_facts DESC,
+                         CASE WHEN EXISTS (SELECT 1 FROM xbrl_facts f
+                                           WHERE f.security_id = s.security_id)
+                              THEN s.ticker
+                              ELSE md5(s.ticker || CURRENT_DATE::text) END
                 """,
                 (GRAD_MIN_PRICE_DAYS,),
             )
