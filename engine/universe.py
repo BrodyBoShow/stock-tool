@@ -337,6 +337,16 @@ def graduate_ready(*, min_price_days: int = GRAD_MIN_PRICE_DAYS, dry_run: bool =
                         AND b.security_id <> s.security_id
                         AND length(b.ticker) < length(s.ticker)
                   ))
+                  -- exclude preferred shares (they inherit the parent CIK's
+                  -- fundamentals): dash-P series + a 1-letter depositary suffix
+                  -- on a same-CIK common (ACGLN = ACGL + N, ALL-PB).
+                  AND s.ticker !~ '-P[A-Z]?$'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM securities b
+                      WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                        AND length(b.ticker) = length(s.ticker) - 1
+                        AND s.ticker LIKE b.ticker || '_'
+                  )
                   AND EXISTS (SELECT 1 FROM fundamental_metrics m
                               WHERE m.security_id = s.security_id)
                   AND (SELECT count(*) FROM prices_daily p
@@ -406,6 +416,14 @@ def run_graduation(*, limit: int | None = None, fetch: bool = True, dry_run: boo
                         AND b.security_id <> s.security_id
                         AND length(b.ticker) < length(s.ticker)
                   ))
+                  -- exclude preferred shares (inherit parent CIK fundamentals)
+                  AND s.ticker !~ '-P[A-Z]?$'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM securities b
+                      WHERE b.cik = s.cik AND b.security_id <> s.security_id
+                        AND length(b.ticker) = length(s.ticker) - 1
+                        AND s.ticker LIKE b.ticker || '_'
+                  )
                   AND NOT EXISTS (SELECT 1 FROM fundamental_metrics m
                                   WHERE m.security_id = s.security_id)
                   AND (SELECT count(*) FROM prices_daily p
