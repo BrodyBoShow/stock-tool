@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── screener ──────────────────────────────────────────────────────────────────
 
@@ -530,17 +530,19 @@ class ThesisMutationResponse(BaseModel):
 # ── portfolio tracker (derived from the user ledger, migration 0014) ─────────
 
 class PortfolioTransactionCreate(BaseModel):
+    # Bounds are generous sanity limits (far beyond any real retail entry) that
+    # reject malformed/abusive input at the schema boundary before it hits the DB.
     txn_type: str                     # buy|sell|dividend|deposit|withdrawal|fee
     trade_date: date
-    ticker: str | None = None         # required for buy/sell/dividend
-    shares: float | None = None       # buy/sell
-    price: float | None = None        # buy/sell (per share)
-    amount: float | None = None       # cash moved (required for cash types)
-    note: str | None = None
+    ticker: str | None = Field(default=None, max_length=12)   # required for buy/sell/dividend
+    shares: float | None = Field(default=None, ge=0, le=1e12)  # buy/sell
+    price: float | None = Field(default=None, ge=0, le=1e9)    # buy/sell (per share)
+    amount: float | None = Field(default=None, ge=-1e12, le=1e12)  # cash moved
+    note: str | None = Field(default=None, max_length=500)
 
 
 class PortfolioTransactionsCreateRequest(BaseModel):
-    transactions: list[PortfolioTransactionCreate]
+    transactions: list[PortfolioTransactionCreate] = Field(..., max_length=1000)
 
 
 class PortfolioTransactionRow(BaseModel):

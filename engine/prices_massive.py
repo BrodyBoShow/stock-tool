@@ -89,6 +89,15 @@ def _get(client: httpx.Client, path: str, params: dict | None = None) -> dict:
     raise last_exc  # type: ignore[misc]
 
 
+def _safe_float(x) -> float | None:
+    """Parse a numeric API field, returning None for missing/non-numeric values
+    so one bad row is skipped instead of aborting the whole night's batch."""
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
 def grouped_daily(client: httpx.Client, d: date, *, adjusted: bool = False) -> list[dict]:
     """Daily OHLCV for every US stock on date `d`, in one request.
 
@@ -102,19 +111,29 @@ def grouped_daily(client: httpx.Client, d: date, *, adjusted: bool = False) -> l
     return payload.get("results") or []
 
 
-def _paginated(client: httpx.Client, path: str, params: dict) -> list[dict]:
-    """Collect all pages of a v3 reference endpoint (follows next_url)."""
+def _paginated(
+    client: httpx.Client, path: str, params: dict, *, max_pages: int = 100
+) -> list[dict]:
+    """Collect all pages of a v3 reference endpoint (follows next_url).
+
+    Hard-capped at max_pages with a seen-url guard so a buggy or self-referential
+    next_url from the API can't loop the nightly job indefinitely (the call sites
+    already bound the result set with .gte/.lte + limit; this is defense-in-depth)."""
     out: list[dict] = []
     payload = _get(client, path, params)
     out.extend(payload.get("results") or [])
     next_url = payload.get("next_url")
-    while next_url:
+    seen: set[str] = set()
+    pages = 1
+    while next_url and pages < max_pages and next_url not in seen:
+        seen.add(next_url)
         time.sleep(THROTTLE_SECONDS)
         # next_url is absolute; strip the base so the client's base_url applies.
         rel = next_url[len(BASE_URL):] if next_url.startswith(BASE_URL) else next_url
         payload = _get(client, rel)
         out.extend(payload.get("results") or [])
         next_url = payload.get("next_url")
+        pages += 1
     return out
 
 
@@ -227,10 +246,10 @@ def run_daily_refresh(
                                  "execution_date.lte": today.isoformat(), "limit": 1000}):
                 sid = tmap.get(s.get("ticker"))
                 ex = s.get("execution_date")
-                frm, to = s.get("split_from"), s.get("split_to")
+                frm, to = _safe_float(s.get("split_from")), _safe_float(s.get("split_to"))
                 if sid is None or not ex or not frm or not to:
                     continue
-                split_rows.append((sid, ex, "split", float(to) / float(frm), None, "massive"))
+                split_rows.append((sid, ex, "split", to / frm, None, "massive"))
             if conn.closed:
                 conn = _reopen(conn)
             with conn.cursor() as cur:
@@ -247,10 +266,10 @@ def run_daily_refresh(
                                   "ex_dividend_date.lte": today.isoformat(), "limit": 1000}):
                 sid = tmap.get(dv.get("ticker"))
                 ex = dv.get("ex_dividend_date")
-                amt = dv.get("cash_amount")
+                amt = _safe_float(dv.get("cash_amount"))
                 if sid is None or not ex or amt is None:
                     continue
-                div_rows.append((sid, ex, "dividend", None, float(amt), "massive"))
+                div_rows.append((sid, ex, "dividend", None, amt, "massive"))
             if conn.closed:
                 conn = _reopen(conn)
             with conn.cursor() as cur:

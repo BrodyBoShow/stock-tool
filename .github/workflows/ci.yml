@@ -1,7 +1,8 @@
 # Code-quality gate — runs on every push and PR. Fast, no DB/secrets needed:
-# Python lint (ruff) + frontend typecheck, production build, and ESLint — all
-# blocking. (ESLint allows warnings, e.g. the unfixable TanStack-Virtual library
-# notice, but fails on any error.)
+# Python lint (ruff) + Python tests (pytest, the golden-number engine math) +
+# frontend typecheck, production build, and ESLint — all blocking. (ESLint allows
+# warnings, e.g. the unfixable TanStack-Virtual library notice, but fails on any
+# error.)
 #
 # This is the "relapse prevention" from the 2026-06 cleanup: it keeps the tree
 # ruff-clean, lint-clean, type-clean, and buildable so refactors can't silently regress.
@@ -24,6 +25,17 @@ jobs:
       - run: pip install ruff==0.15.16
       - name: Ruff
         run: ruff check engine api scripts
+
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt pytest
+      - name: Pytest
+        run: pytest -q
 
   frontend:
     runs-on: ubuntu-latest

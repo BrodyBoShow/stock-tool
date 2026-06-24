@@ -18,6 +18,7 @@ Access control (deploy):
 """
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 
@@ -41,6 +42,11 @@ from api.routers import (
 )
 from api.schemas import HealthResponse
 from engine.db import healthcheck
+
+# Server-side logging. The catch-all handler below logs full tracebacks here
+# (visible in the host's log stream); the client only ever sees a generic 500.
+log = logging.getLogger("stockbud")
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
     title="Stock Research API",
@@ -99,7 +105,13 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def _generic_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Catch-all: never leak DB connection strings or internal stack traces."""
+    """Catch-all: log the full traceback server-side (visible in the host logs),
+    but never leak DB connection strings or internal stack traces to the client.
+
+    Registering a handler for base Exception suppresses Starlette's default
+    unhandled-500 traceback, so without this log line genuinely unexpected errors
+    would vanish with no server-side trace."""
+    log.exception("Unhandled error on %s %s", request.method, request.url.path)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
