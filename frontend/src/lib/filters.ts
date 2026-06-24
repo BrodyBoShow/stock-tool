@@ -86,6 +86,7 @@ export type ScreenerSortKey =
   | 'quality_pctl'
   | 'momentum_pctl'
   | 'last_price'
+  | 'market_cap'
   | 'rank_delta'
 
 export interface ScreenerSort {
@@ -97,7 +98,7 @@ export const DEFAULT_SORT: ScreenerSort = { key: 'composite', dir: -1 }
 
 const SORT_KEYS = new Set<string>([
   'rank', 'ticker', 'sector', 'composite', 'growth_pctl', 'value_pctl',
-  'quality_pctl', 'momentum_pctl', 'last_price', 'rank_delta',
+  'quality_pctl', 'momentum_pctl', 'last_price', 'market_cap', 'rank_delta',
 ])
 
 /** Serialize filters + sort into URL query params (defaults omitted, so a

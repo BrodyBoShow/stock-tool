@@ -146,10 +146,11 @@ export function FilterSidebar({
       <div className="mt-4">
         <div className={SECTION}>Search</div>
         <input
+          id="screener-search"
           type="text"
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          placeholder="Ticker or company…"
+          placeholder="Ticker or company…  ( / )"
           className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-slate-800 focus:outline-none"
         />
       </div>

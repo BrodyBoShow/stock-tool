@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
@@ -11,6 +11,7 @@ import { ScreenerTable } from '@/components/screener/ScreenerTable'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getQuotes, getScreener } from '@/lib/api'
+import { FACTOR_ORDER, type FactorKey } from '@/lib/constants'
 import {
   applyFilters,
   filtersFromParams,
@@ -19,6 +20,14 @@ import {
   type ScreenerSort,
 } from '@/lib/filters'
 import type { ScreenerRow } from '@/types/api'
+
+const FACTOR_LABEL: Record<FactorKey, string> = {
+  composite: 'Composite',
+  growth: 'Growth',
+  value: 'Value',
+  quality: 'Quality',
+  momentum: 'Momentum',
+}
 
 function ScreenerSkeleton() {
   return (
@@ -99,6 +108,41 @@ export function ScreenerPage() {
     [rows, filters],
   )
 
+  // Smart empty-state: name the likely binding filter when nothing matches.
+  const emptyHint = useMemo(() => {
+    if (rows.length === 0 || filtered.length > 0) return undefined
+    let top: FactorKey | null = null
+    for (const k of FACTOR_ORDER) {
+      if (filters.mins[k] > 0 && (top === null || filters.mins[k] > filters.mins[top]))
+        top = k
+    }
+    if (top)
+      return `Nothing clears all your filters — try lowering ${FACTOR_LABEL[top]} ≥ ${filters.mins[top]}, or remove a chip above.`
+    if (filters.minMarketCap > 0)
+      return 'Nothing clears the size floor — try a smaller market-cap minimum.'
+    if (filters.sector !== 'All')
+      return `No ${filters.sector} names match the rest of your filters.`
+    if (filters.search.trim())
+      return `No ticker or company matches “${filters.search.trim()}”.`
+    return undefined
+  }, [rows.length, filtered.length, filters])
+
+  // "/" focuses the screener search (unless already typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+        const el = document.getElementById('screener-search') as HTMLInputElement | null
+        if (el) {
+          e.preventDefault()
+          el.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   if (isPending) return <ScreenerSkeleton />
   if (error) return <ErrorCard error={error} onRetry={() => void refetch()} />
 
@@ -125,6 +169,7 @@ export function ScreenerPage() {
             liveByTicker={quotes?.quotes}
             sort={sort}
             onSortChange={setSort}
+            emptyHint={emptyHint}
             rowAccessory={(ticker) => <WatchlistButton ticker={ticker} variant="icon" />}
             onRowClick={(row) => setDrawerRow(row)}
           />

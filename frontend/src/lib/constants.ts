@@ -221,9 +221,10 @@ export const FINANCIAL_NULL_METRICS = new Set([
 ])
 export const FINANCIAL_SECTORS = new Set(['Financials', 'Real Estate'])
 
-/** Shared CSS grid template for the screener table header + rows. */
+/** Shared CSS grid template for the screener table header + rows.
+ * Columns: # | Company | Sector | 5 factors | Mkt cap | Price */
 export const SCREENER_GRID =
-  '38px minmax(150px,1.6fr) minmax(130px,1.3fr) repeat(5,minmax(78px,1fr)) minmax(90px,0.9fr)'
+  '38px minmax(150px,1.6fr) minmax(130px,1.3fr) repeat(5,minmax(78px,1fr)) minmax(82px,0.8fr) minmax(90px,0.9fr)'
 
 export const PREVIEW_N = 100
 

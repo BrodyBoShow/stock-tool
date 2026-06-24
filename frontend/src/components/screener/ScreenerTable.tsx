@@ -18,7 +18,7 @@ import {
   type ScreenerSort,
   type ScreenerSortKey,
 } from '@/lib/filters'
-import { DASH, fmtPrice } from '@/lib/format'
+import { DASH, fmtMoney, fmtPrice } from '@/lib/format'
 import type { QuoteRow, ScreenerRow } from '@/types/api'
 
 const FACTOR_SORT: Record<FactorKey, ScreenerSortKey> = {
@@ -104,6 +104,7 @@ export function ScreenerTable({
   liveByTicker,
   sort: controlledSort,
   onSortChange,
+  emptyHint,
 }: {
   rows: ScreenerRow[]
   scoreDate: string | null
@@ -116,6 +117,8 @@ export function ScreenerTable({
   /** Controlled sort (for URL state). Falls back to internal state when omitted. */
   sort?: ScreenerSort
   onSortChange?: (s: ScreenerSort) => void
+  /** Hint shown under the empty state naming the binding filter. */
+  emptyHint?: string
 }) {
   const [internalSort, setInternalSort] = useState<ScreenerSort>(DEFAULT_SORT)
   const sort = controlledSort ?? internalSort
@@ -128,6 +131,37 @@ export function ScreenerTable({
     [rows, sort],
   )
   const visible = expanded ? sorted : sorted.slice(0, PREVIEW_N)
+
+  // Export the FULL filtered + sorted set (not just the visible page).
+  const exportCsv = () => {
+    const head = [
+      'rank', 'ticker', 'name', 'sector', 'composite', 'growth', 'value',
+      'quality', 'momentum', 'market_cap', 'price', 'rank_delta',
+    ]
+    const esc = (v: unknown) => {
+      const s = v == null ? '' : String(v)
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const lines = [head.join(',')]
+    for (const r of sorted) {
+      lines.push(
+        [
+          r.rank, r.ticker, r.name, r.sector, r.composite, r.growth_pctl,
+          r.value_pctl, r.quality_pctl, r.momentum_pctl, r.market_cap,
+          r.last_price, r.rank_delta,
+        ]
+          .map(esc)
+          .join(','),
+      )
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `stockbud-screener-${scoreDate ?? 'export'}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const parentRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer({
@@ -149,7 +183,7 @@ export function ScreenerTable({
 
   // append a 44px control column when an accessory is provided
   const gridCols = rowAccessory ? `${SCREENER_GRID} 44px` : SCREENER_GRID
-  const minW = rowAccessory ? 'min-w-[864px]' : 'min-w-[820px]'
+  const minW = rowAccessory ? 'min-w-[946px]' : 'min-w-[902px]'
 
   const hasLive = liveByTicker
     ? Object.values(liveByTicker).some((q) => q.composite_live != null)
@@ -158,12 +192,27 @@ export function ScreenerTable({
   return (
     <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
       {/* card header */}
-      <div className="px-4 pb-2.5 pt-3.5">
-        <div className="text-base font-bold text-gray-900">US-listed companies</div>
-        <div className="mt-0.5 text-[0.78rem] text-gray-500">
-          {rows.length} companies · ranked by composite factor score · scores as of{' '}
-          {scoreDate ?? 'n/a'} (nightly)
+      <div className="flex items-start justify-between gap-3 px-4 pb-2.5 pt-3.5">
+        <div>
+          <div className="text-base font-bold text-gray-900">US-listed companies</div>
+          <div className="mt-0.5 text-[0.78rem] text-gray-500">
+            {rows.length} companies · ranked by composite factor score · scores as of{' '}
+            {scoreDate ?? 'n/a'} (nightly)
+          </div>
         </div>
+        {rows.length > 0 && (
+          <button
+            type="button"
+            onClick={exportCsv}
+            title="Download the current filtered + sorted list as CSV"
+            className="inline-flex flex-none items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/* legend */}
@@ -235,6 +284,9 @@ export function ScreenerTable({
               {arrow(FACTOR_SORT[k])}
             </button>
           ))}
+          <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-gray-500`}>
+            Mkt cap{arrow('market_cap')}
+          </button>
           <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-gray-500`}>
             Price{arrow('last_price')}
           </button>
@@ -244,6 +296,11 @@ export function ScreenerTable({
         {visible.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-gray-500">
             No companies match the current filters.
+            {emptyHint && (
+              <div className="mx-auto mt-1.5 max-w-md text-[0.8rem] text-gray-400">
+                {emptyHint}
+              </div>
+            )}
           </div>
         ) : (
           <div
@@ -338,6 +395,9 @@ export function ScreenerTable({
                     value={r.momentum_pctl}
                     live={liveByTicker?.[r.ticker]?.momentum_live}
                   />
+                  <div className="flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold tabular-nums text-slate-600">
+                    {fmtMoney(r.market_cap)}
+                  </div>
                   <PriceCell row={r} />
                   {rowAccessory && (
                     <div className="flex h-full items-center justify-center">
