@@ -12,6 +12,18 @@
       ],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4321",
+        "--directory",
+        "landing"
+      ],
+      "port": 4321
     }
   ]
 }
