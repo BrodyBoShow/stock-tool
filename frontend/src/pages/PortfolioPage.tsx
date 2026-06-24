@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { AddTransactionForm, CsvImportButton } from '@/components/portfolio/AddTransactionForm'
+import { BenchmarkComparison } from '@/components/portfolio/BenchmarkComparison'
 import { LinkedAccountsSection } from '@/components/portfolio/LinkedAccountsSection'
 import { AllocationBars, TiltBars, TwrChart, ValueChart } from '@/components/portfolio/PortfolioCharts'
 import { HoldingsTable, LedgerTable } from '@/components/portfolio/PortfolioTables'
@@ -261,6 +262,9 @@ export function PortfolioPage() {
         </div>
         {chartMode === 'twr' ? <TwrChart data={data} /> : <ValueChart data={data} />}
       </SectionCard>
+
+      {/* how aggressive vs the market */}
+      <BenchmarkComparison data={data} />
 
       {/* forward projection */}
       <ProjectionSection />
