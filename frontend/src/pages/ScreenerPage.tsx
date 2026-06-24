@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { ActiveFilterChips } from '@/components/screener/ActiveFilterChips'
 import { FilterSidebar } from '@/components/screener/FilterSidebar'
 import { ScreenerDrawer } from '@/components/screener/ScreenerDrawer'
 import { ScreenerHeader } from '@/components/ScreenerHeader'
@@ -9,7 +11,13 @@ import { ScreenerTable } from '@/components/screener/ScreenerTable'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getQuotes, getScreener } from '@/lib/api'
-import { applyFilters, DEFAULT_FILTERS, type Filters } from '@/lib/filters'
+import {
+  applyFilters,
+  filtersFromParams,
+  filtersToParams,
+  type Filters,
+  type ScreenerSort,
+} from '@/lib/filters'
 import type { ScreenerRow } from '@/types/api'
 
 function ScreenerSkeleton() {
@@ -30,7 +38,18 @@ function ScreenerSkeleton() {
 }
 
 export function ScreenerPage() {
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
+  // Filters + sort live in the URL — screens are bookmarkable, shareable and
+  // survive a refresh / back-button (replace: live edits don't spam history).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { filters, sort } = useMemo(
+    () => filtersFromParams(searchParams),
+    [searchParams],
+  )
+  const setFilters = (next: Filters) =>
+    setSearchParams(filtersToParams(next, sort), { replace: true })
+  const setSort = (next: ScreenerSort) =>
+    setSearchParams(filtersToParams(filters, next), { replace: true })
+  const resetAll = () => setSearchParams(new URLSearchParams(), { replace: true })
   const [drawerRow, setDrawerRow] = useState<ScreenerRow | null>(null)
 
   // "Complete factors only" is a server-side filter (it rebuilds the rank over
@@ -93,18 +112,23 @@ export function ScreenerPage() {
         <FilterSidebar
           filters={filters}
           onChange={setFilters}
-          onReset={() => setFilters(DEFAULT_FILTERS)}
+          onReset={resetAll}
           resultCount={filtered.length}
           totalCount={rows.length}
           sectors={sectors}
         />
-        <ScreenerTable
-          rows={filtered}
-          scoreDate={data.score_date}
-          liveByTicker={quotes?.quotes}
-          rowAccessory={(ticker) => <WatchlistButton ticker={ticker} variant="icon" />}
-          onRowClick={(row) => setDrawerRow(row)}
-        />
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <ActiveFilterChips filters={filters} onChange={setFilters} onReset={resetAll} />
+          <ScreenerTable
+            rows={filtered}
+            scoreDate={data.score_date}
+            liveByTicker={quotes?.quotes}
+            sort={sort}
+            onSortChange={setSort}
+            rowAccessory={(ticker) => <WatchlistButton ticker={ticker} variant="icon" />}
+            onRowClick={(row) => setDrawerRow(row)}
+          />
+        </div>
       </div>
       <p className="pb-2 text-center text-xs text-gray-400">
         Factor scores are cross-sectional percentile rankings within the US-listed

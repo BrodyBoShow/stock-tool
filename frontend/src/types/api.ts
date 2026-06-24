@@ -14,6 +14,8 @@ export interface ScreenerRow {
   last_price: number | null
   prev_close: number | null
   market_cap: number | null
+  rank_prev: number | null
+  rank_delta: number | null
   security_id: number
 }
 

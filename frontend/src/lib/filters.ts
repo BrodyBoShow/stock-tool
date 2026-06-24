@@ -73,3 +73,73 @@ export function activeFilterCount(f: Filters): number {
   }
   return n
 }
+
+// ── sort + URL state ──────────────────────────────────────────────────────────
+
+export type ScreenerSortKey =
+  | 'rank'
+  | 'ticker'
+  | 'sector'
+  | 'composite'
+  | 'growth_pctl'
+  | 'value_pctl'
+  | 'quality_pctl'
+  | 'momentum_pctl'
+  | 'last_price'
+  | 'rank_delta'
+
+export interface ScreenerSort {
+  key: ScreenerSortKey
+  dir: 1 | -1
+}
+
+export const DEFAULT_SORT: ScreenerSort = { key: 'composite', dir: -1 }
+
+const SORT_KEYS = new Set<string>([
+  'rank', 'ticker', 'sector', 'composite', 'growth_pctl', 'value_pctl',
+  'quality_pctl', 'momentum_pctl', 'last_price', 'rank_delta',
+])
+
+/** Serialize filters + sort into URL query params (defaults omitted, so a
+ * pristine screen has a clean URL). Makes a screen bookmarkable + shareable. */
+export function filtersToParams(f: Filters, sort: ScreenerSort): URLSearchParams {
+  const sp = new URLSearchParams()
+  if (f.search.trim()) sp.set('q', f.search.trim())
+  if (f.sector !== 'All') sp.set('sector', f.sector)
+  if (f.minMarketCap > 0) sp.set('mcap', String(f.minMarketCap))
+  if (!f.completeOnly) sp.set('partial', '1')
+  for (const key of Object.keys(f.mins) as FactorKey[]) {
+    if (f.mins[key] > 0) sp.set(key, String(f.mins[key]))
+  }
+  if (sort.key !== DEFAULT_SORT.key || sort.dir !== DEFAULT_SORT.dir) {
+    sp.set('sort', sort.key)
+    sp.set('dir', sort.dir === 1 ? 'asc' : 'desc')
+  }
+  return sp
+}
+
+/** Rebuild filters + sort from URL params (inverse of filtersToParams). */
+export function filtersFromParams(sp: URLSearchParams): {
+  filters: Filters
+  sort: ScreenerSort
+} {
+  const mins = { ...DEFAULT_FILTERS.mins }
+  for (const key of Object.keys(mins) as FactorKey[]) {
+    const v = Number(sp.get(key))
+    if (Number.isFinite(v) && v > 0) mins[key] = Math.min(100, Math.max(0, Math.round(v)))
+  }
+  const mcap = Number(sp.get('mcap'))
+  const filters: Filters = {
+    search: sp.get('q') ?? '',
+    sector: sp.get('sector') ?? 'All',
+    minMarketCap: Number.isFinite(mcap) && mcap > 0 ? mcap : 0,
+    completeOnly: sp.get('partial') !== '1',
+    mins,
+  }
+  const sk = sp.get('sort')
+  const sort: ScreenerSort =
+    sk && SORT_KEYS.has(sk)
+      ? { key: sk as ScreenerSortKey, dir: sp.get('dir') === 'asc' ? 1 : -1 }
+      : DEFAULT_SORT
+  return { filters, sort }
+}

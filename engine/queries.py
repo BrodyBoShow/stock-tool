@@ -190,6 +190,9 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
         if complete_only
         else ""
     )
+    # Same filter against the baseline snapshot (fs2) so the ~week-ago rank is
+    # computed over the identical complete-data set — apples-to-apples deltas.
+    complete_clause2 = complete_clause.replace("fs.", "fs2.")
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -200,17 +203,33 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
             score_date = cur.fetchone()[0]
             cur.execute(
                 f"""
+                WITH base AS (
+                    SELECT max(score_date) AS d FROM factor_scores
+                    WHERE config_version = %s
+                      AND score_date <= %s - INTERVAL '7 days'
+                ),
+                prev_rank AS (
+                    SELECT fs2.security_id,
+                           RANK() OVER (ORDER BY fs2.composite DESC NULLS LAST) AS rk
+                    FROM factor_scores fs2
+                    JOIN securities s2 ON s2.security_id = fs2.security_id
+                    WHERE fs2.config_version = %s
+                      AND fs2.score_date = (SELECT d FROM base)
+                      AND s2.is_active{complete_clause2}
+                )
                 SELECT s.ticker, s.name, s.sector, s.exchange,
                        fs.composite,
                        fs.growth_pctl, fs.value_pctl, fs.quality_pctl, fs.momentum_pctl,
                        lp.close  AS last_price,
                        lp2.close AS prev_close,
                        lp.close * sh.value AS market_cap,
+                       pr.rk AS rank_prev,
                        s.security_id
                 FROM securities s
                 JOIN factor_scores fs
                     ON fs.security_id = s.security_id AND fs.score_date = %s
                     AND fs.config_version = %s
+                LEFT JOIN prev_rank pr ON pr.security_id = s.security_id
                 LEFT JOIN LATERAL (
                     SELECT close FROM prices_daily p
                     WHERE p.security_id = s.security_id
@@ -230,7 +249,8 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                 WHERE s.is_active{complete_clause}
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
-                (score_date, ACTIVE_CONFIG_VERSION),
+                (ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION,
+                 score_date, ACTIVE_CONFIG_VERSION),
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -246,7 +266,11 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
         row = dict(zip(cols, raw, strict=True))
         for k in numeric:
             row[k] = _f(row.get(k))
+        rp = row.get("rank_prev")
+        row["rank_prev"] = int(rp) if rp is not None else None
         row["rank"] = rank
+        # positive delta = climbed the ranking since ~a week ago (lower # = better)
+        row["rank_delta"] = (row["rank_prev"] - rank) if row["rank_prev"] is not None else None
         rows.append(row)
     return rows, score_date
 

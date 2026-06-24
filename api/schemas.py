@@ -26,6 +26,8 @@ class ScreenerRow(BaseModel):
     last_price: float | None
     prev_close: float | None
     market_cap: float | None = None
+    rank_prev: int | None = None   # rank ~1 week ago (None if no baseline / new name)
+    rank_delta: int | None = None  # rank_prev - rank; + = climbed since last week
     security_id: int
 
 

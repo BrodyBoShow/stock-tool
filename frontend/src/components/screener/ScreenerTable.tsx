@@ -5,6 +5,7 @@ import type { MouseEvent } from 'react'
 
 import { ScoreCell } from '@/components/screener/ScoreCell'
 import { SectorPill } from '@/components/screener/SectorPill'
+import { InfoTip } from '@/components/ui/InfoTip'
 import {
   FACTOR_ORDER,
   FACTOR_TABLE,
@@ -12,21 +13,15 @@ import {
   SCREENER_GRID,
   type FactorKey,
 } from '@/lib/constants'
+import {
+  DEFAULT_SORT,
+  type ScreenerSort,
+  type ScreenerSortKey,
+} from '@/lib/filters'
 import { DASH, fmtPrice } from '@/lib/format'
 import type { QuoteRow, ScreenerRow } from '@/types/api'
 
-type SortKey =
-  | 'rank'
-  | 'ticker'
-  | 'sector'
-  | 'composite'
-  | 'growth_pctl'
-  | 'value_pctl'
-  | 'quality_pctl'
-  | 'momentum_pctl'
-  | 'last_price'
-
-const FACTOR_SORT: Record<FactorKey, SortKey> = {
+const FACTOR_SORT: Record<FactorKey, ScreenerSortKey> = {
   composite: 'composite',
   growth: 'growth_pctl',
   value: 'value_pctl',
@@ -42,12 +37,27 @@ const FACTOR_HEAD: Record<FactorKey, string> = {
   momentum: 'Mom',
 }
 
+const FACTOR_TIP: Record<FactorKey, string> = {
+  composite:
+    'Overall standing — a weighted blend of the four factor percentiles. Higher = better-ranked across the whole universe.',
+  growth: 'Revenue & EPS growth, percentile-ranked vs the universe.',
+  value: 'Valuation — cheaper on P/E, P/S, EV/EBITDA and FCF yield ranks higher.',
+  quality:
+    'Profitability & balance-sheet strength — ROIC, margins, low leverage, clean accruals, low share issuance.',
+  momentum: 'Price trend — 3/6/12-month returns (12-minus-1).',
+}
+
 const ROW_H = 44
 
 const TH =
   'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
 
-function compareRows(a: ScreenerRow, b: ScreenerRow, key: SortKey, dir: 1 | -1): number {
+function compareRows(
+  a: ScreenerRow,
+  b: ScreenerRow,
+  key: ScreenerSortKey,
+  dir: 1 | -1,
+): number {
   const av = a[key]
   const bv = b[key]
   // nulls always sink to the bottom, regardless of direction
@@ -92,6 +102,8 @@ export function ScreenerTable({
   rowAccessory,
   onRowClick,
   liveByTicker,
+  sort: controlledSort,
+  onSortChange,
 }: {
   rows: ScreenerRow[]
   scoreDate: string | null
@@ -101,11 +113,14 @@ export function ScreenerTable({
   onRowClick?: (row: ScreenerRow) => void
   /** Live-adjusted scores by ticker (display overlay; rank/sort stay nightly). */
   liveByTicker?: Record<string, QuoteRow>
+  /** Controlled sort (for URL state). Falls back to internal state when omitted. */
+  sort?: ScreenerSort
+  onSortChange?: (s: ScreenerSort) => void
 }) {
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
-    key: 'composite',
-    dir: -1,
-  })
+  const [internalSort, setInternalSort] = useState<ScreenerSort>(DEFAULT_SORT)
+  const sort = controlledSort ?? internalSort
+  const applySort = (s: ScreenerSort) =>
+    onSortChange ? onSortChange(s) : setInternalSort(s)
   const [expanded, setExpanded] = useState(false)
 
   const sorted = useMemo(
@@ -122,14 +137,14 @@ export function ScreenerTable({
     overscan: 12,
   })
 
-  const toggleSort = (key: SortKey) =>
-    setSort((s) =>
-      s.key === key
-        ? { key, dir: s.dir === 1 ? -1 : 1 }
-        : { key, dir: key === 'ticker' || key === 'sector' ? 1 : -1 },
+  const toggleSort = (key: ScreenerSortKey) =>
+    applySort(
+      sort.key === key
+        ? { key, dir: (sort.dir === 1 ? -1 : 1) as 1 | -1 }
+        : { key, dir: (key === 'ticker' || key === 'sector' ? 1 : -1) as 1 | -1 },
     )
 
-  const arrow = (key: SortKey) =>
+  const arrow = (key: ScreenerSortKey) =>
     sort.key === key ? (sort.dir === -1 ? ' ▼' : ' ▲') : ''
 
   // append a 44px control column when an accessory is provided
@@ -153,7 +168,7 @@ export function ScreenerTable({
 
       {/* legend */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-y border-gray-100 bg-gray-50 px-4 py-2">
-        <div className="flex flex-wrap gap-3.5">
+        <div className="flex flex-wrap items-center gap-3.5">
           {FACTOR_ORDER.map((k) => (
             <span key={k} className="flex items-center text-[0.73rem] text-gray-600">
               <span
@@ -161,8 +176,27 @@ export function ScreenerTable({
                 style={{ background: FACTOR_TABLE[k].bar }}
               />
               {k.charAt(0).toUpperCase() + k.slice(1)}
+              <InfoTip text={FACTOR_TIP[k]} />
             </span>
           ))}
+          <button
+            type="button"
+            onClick={() =>
+              applySort(
+                sort.key === 'rank_delta'
+                  ? DEFAULT_SORT
+                  : { key: 'rank_delta', dir: -1 },
+              )
+            }
+            title="Sort by biggest rank gains vs ~last week"
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[0.7rem] font-bold transition ${
+              sort.key === 'rank_delta'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-white text-slate-500 ring-1 ring-inset ring-gray-200 hover:text-slate-700'
+            }`}
+          >
+            ▲ Movers
+          </button>
         </div>
         <span className="whitespace-nowrap text-[0.7rem] italic text-gray-400">
           {hasLive && (
@@ -238,8 +272,23 @@ export function ScreenerTable({
                   }}
                   onClick={handleRowClick}
                 >
-                  <div className="flex h-full items-center justify-end pr-2 text-[0.74rem] font-semibold tabular-nums text-slate-500">
-                    {r.rank}
+                  <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
+                    <span className="text-[0.74rem] font-semibold tabular-nums text-slate-600">
+                      {r.rank}
+                    </span>
+                    {r.rank_delta != null && r.rank_delta !== 0 && (
+                      <span
+                        className={`text-[0.58rem] font-bold tabular-nums ${
+                          r.rank_delta > 0 ? 'text-emerald-600' : 'text-red-500'
+                        }`}
+                        title={`Rank ${r.rank_delta > 0 ? 'up' : 'down'} ${Math.abs(
+                          r.rank_delta,
+                        )} vs ~last week (was #${r.rank_prev})`}
+                      >
+                        {r.rank_delta > 0 ? '▲' : '▼'}
+                        {Math.abs(r.rank_delta)}
+                      </span>
+                    )}
                   </div>
                   <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1.5">
                     {onRowClick ? (
