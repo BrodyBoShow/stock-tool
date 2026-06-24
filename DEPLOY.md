@@ -27,9 +27,10 @@ Private vs public is one env var: `APP_ACCESS_PASSWORD`.
    `https://stockbud-api.onrender.com`. Open `<that URL>/health` → should show
    `{"status":"ok","db":"ok"}`.
 
-> Plan: `render.yaml` defaults to **Starter (~$7/mo, always-on)**. To trial for
-> free, change `plan: starter` → `plan: free` (it sleeps after 15 min idle →
-> ~30 s cold start, and the live-score endpoint may be tight on RAM).
+> Plan: `render.yaml` defaults to **Free** ($0) — but Free **sleeps after ~15 min
+> idle** (~30-50 s cold start on the next visit) and RAM is tight (~512 MB). For a
+> genuinely *always-on* site, change `plan: free` → `plan: starter` (~$7/mo) in
+> `render.yaml`, or flip it later under Render → the service → **Settings → Plan**.
 
 ## 2. Frontend → Vercel (~5 min)
 

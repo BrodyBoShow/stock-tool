@@ -1,11 +1,21 @@
 # Render blueprint for the StockBud FastAPI backend.
-# Connect this repo at https://dashboard.render.com → New → Blueprint.
-# Set the marked secrets in the Render dashboard (sync:false = not in git).
+# Frontend deploys separately on Vercel (see DEPLOY.md); Supabase stays the DB;
+# the GitHub Actions nightly pipeline is unchanged. Connect this repo at
+# https://dashboard.render.com → New → Blueprint and fill the marked secrets
+# (sync:false = never stored in git).
+#
+# The web service only READS the database, so it needs no price/macro keys —
+# those run only in the nightly GitHub Action. ANTHROPIC + SEC_USER_AGENT are
+# here because on-demand AI deep-dives / filing fetches run in this process.
+#
+# Privacy switch: set APP_ACCESS_PASSWORD → the whole site needs that password
+# (frontend shows a login gate). Remove it → fully public. No code change.
 services:
   - type: web
     name: stockbud-api
     runtime: python
-    plan: free             # $0; sleeps after ~15 min idle (~30-50s cold start). Switch to "starter" (~$7/mo, always-on) anytime in Render → Settings.
+    plan: free             # $0; sleeps after ~15 min idle (~30-50s cold start).
+                           # Switch to "starter" (~$7/mo, always-on) in Render → Settings.
     region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
