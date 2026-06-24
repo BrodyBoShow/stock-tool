@@ -253,7 +253,7 @@ export function ScreenerTable({
               <span className="align-super text-[0.7em] text-sky-400">●</span> live-adjusted ·{' '}
             </span>
           )}
-          Bars are percentile ranks (0–100) · click row = preview · click ticker = deep dive
+          Bars are percentile ranks (0–100, line = median) · click row = preview · click ticker = deep dive
         </span>
       </div>
 

@@ -49,13 +49,18 @@ export function ScoreCell({
             {shown.toFixed(1)}
             {moved && <span className="align-super text-[0.6em] text-sky-400">●</span>}
           </span>
-          <span className="mt-1 block h-1 w-12 overflow-hidden rounded-full bg-gray-200">
+          <span className="relative mt-1 block h-1 w-12 overflow-hidden rounded-full bg-gray-200">
             <span
               className="block h-full rounded-full"
               style={{
                 width: `${Math.max(0, Math.min(100, shown))}%`,
                 background: moved ? '#0ea5e9' : bar,
               }}
+            />
+            {/* 50th-percentile (median) reference line */}
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-500/45"
             />
           </span>
         </>
