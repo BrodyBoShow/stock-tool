@@ -114,7 +114,7 @@ export function LinkedAccountsSection() {
                   type="button"
                   disabled={busy}
                   onClick={() => syncM.mutate(a.id)}
-                  className="rounded-full bg-indigo-50 px-3 py-1 text-[0.72rem] font-semibold text-indigo-600 disabled:opacity-50"
+                  className="rounded-full bg-indigo-50 px-3 py-1 text-[0.72rem] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:opacity-50"
                 >
                   {syncM.isPending ? 'Syncing…' : 'Sync now'}
                 </button>
@@ -122,7 +122,7 @@ export function LinkedAccountsSection() {
                   type="button"
                   disabled={busy}
                   onClick={() => unlinkM.mutate(a.id)}
-                  className="rounded-full px-3 py-1 text-[0.72rem] font-semibold text-slate-400 hover:text-red-600 disabled:opacity-50"
+                  className="rounded-full px-3 py-1 text-[0.72rem] font-semibold text-slate-400 transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 disabled:opacity-50"
                 >
                   Unlink
                 </button>

@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 
 import { useToast } from '@/components/ui/Toast'
 import { addPortfolioTransactions } from '@/lib/api'
+import { FORM_INPUT } from '@/lib/constants'
 import type { PortfolioTransactionCreate, PortfolioTxnType } from '@/types/api'
 
 const TXN_TYPES: { value: PortfolioTxnType; label: string }[] = [
@@ -60,9 +61,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
     })
   }
 
-  const inputCls =
-    'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.84rem] ' +
-    'text-slate-800 focus:border-indigo-600 focus:outline-none'
+  const inputCls = FORM_INPUT
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2.5">

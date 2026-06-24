@@ -14,6 +14,7 @@ import {
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getProjection } from '@/lib/api'
+import { FORM_INPUT, FORM_LABEL } from '@/lib/constants'
 
 import { StatCard } from './StatCard'
 
@@ -57,28 +58,28 @@ export function ProjectionSection() {
       hint="Simulates your current holdings forward, drawn correlated (Cholesky) so positions move together in stress. Volatility & correlation are trailing; expected returns are shrunk toward a market prior. A projection, not a forecast."
     >
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <label className="text-[0.72rem] font-semibold text-slate-600">
+        <label className={FORM_LABEL}>
           Years
           <input
             type="number" min={1} max={40} value={years}
             onChange={(e) => setYears(Math.max(1, Math.min(40, Number(e.target.value) || 1)))}
-            className="ml-2 w-16 rounded-lg border border-gray-200 px-2 py-1 text-[0.8rem]"
+            className={`${FORM_INPUT} ml-2 w-16`}
           />
         </label>
-        <label className="text-[0.72rem] font-semibold text-slate-600">
+        <label className={FORM_LABEL}>
           Monthly $
           <input
             type="number" min={0} step={50} value={monthly}
             onChange={(e) => setMonthly(Math.max(0, Number(e.target.value) || 0))}
-            className="ml-2 w-24 rounded-lg border border-gray-200 px-2 py-1 text-[0.8rem]"
+            className={`${FORM_INPUT} ml-2 w-24`}
           />
         </label>
-        <label className="text-[0.72rem] font-semibold text-slate-600">
+        <label className={FORM_LABEL}>
           Fee %/yr
           <input
             type="number" min={0} max={10} step={0.1} value={feePct}
             onChange={(e) => setFeePct(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
-            className="ml-2 w-16 rounded-lg border border-gray-200 px-2 py-1 text-[0.8rem]"
+            className={`${FORM_INPUT} ml-2 w-16`}
           />
         </label>
         <button

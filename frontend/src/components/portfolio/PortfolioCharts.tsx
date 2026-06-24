@@ -12,6 +12,8 @@ import {
   YAxis,
 } from 'recharts'
 
+import { InfoTip } from '@/components/ui/InfoTip'
+import { FACTOR_TIP } from '@/lib/constants'
 import { fmtDate, fmtPctl, fmtPrice } from '@/lib/format'
 import type { PortfolioResponse } from '@/types/api'
 
@@ -119,19 +121,20 @@ export function TiltBars({ data }: { data: PortfolioResponse }) {
       </p>
     )
   }
-  const rows: { label: string; v: number | undefined }[] = [
-    { label: 'Composite', v: tilt.composite },
-    { label: 'Growth', v: tilt.growth_pctl },
-    { label: 'Value', v: tilt.value_pctl },
-    { label: 'Quality', v: tilt.quality_pctl },
-    { label: 'Momentum', v: tilt.momentum_pctl },
+  const rows: { label: string; v: number | undefined; tip: string }[] = [
+    { label: 'Composite', v: tilt.composite, tip: FACTOR_TIP.composite },
+    { label: 'Growth', v: tilt.growth_pctl, tip: FACTOR_TIP.growth },
+    { label: 'Value', v: tilt.value_pctl, tip: FACTOR_TIP.value },
+    { label: 'Quality', v: tilt.quality_pctl, tip: FACTOR_TIP.quality },
+    { label: 'Momentum', v: tilt.momentum_pctl, tip: FACTOR_TIP.momentum },
   ]
   return (
     <div className="space-y-2.5">
       {rows.map((r) => (
         <div key={r.label} className="flex items-center gap-3">
-          <div className="w-20 shrink-0 text-[0.78rem] font-semibold text-slate-600">
+          <div className="flex w-24 shrink-0 items-center whitespace-nowrap text-[0.78rem] font-semibold text-slate-600">
             {r.label}
+            <InfoTip text={r.tip} />
           </div>
           <div className="relative h-3.5 flex-1 rounded-full bg-slate-100">
             <div

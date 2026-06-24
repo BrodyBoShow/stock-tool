@@ -8,6 +8,12 @@ export const PANEL_LABEL =
 export const TABLE_HEAD_ROW =
   'border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400'
 
+/** Shared form-control styling so every form on the app reads identically. */
+export const FORM_LABEL = 'text-[0.7rem] font-semibold text-slate-500'
+export const FORM_INPUT =
+  'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] text-slate-800 ' +
+  'focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600/40'
+
 /** Sectors whose factor scores are structurally commodity-price-driven — their
  * Value/Momentum/Quality all ride the underlying commodity (oil, metals), so a
  * high rank reflects the commodity trend, not durability. Used to flag "read the
@@ -38,6 +44,18 @@ export const FACTOR_TABLE: Record<
   value: { bar: '#10b981', tint: 'rgba(16,185,129,0.10)', header: '#059669' },
   quality: { bar: '#a855f7', tint: 'rgba(168,85,247,0.10)', header: '#9333ea' },
   momentum: { bar: '#f59e0b', tint: 'rgba(245,158,11,0.10)', header: '#d97706' },
+}
+
+/** Plain-English factor definitions — shared by the screener legend, the holdings
+ *  Score column and the portfolio factor-tilt bars (one source of truth). */
+export const FACTOR_TIP: Record<FactorKey, string> = {
+  composite:
+    'Overall standing — a weighted blend of the four factor percentiles. 50 = median stock; higher is better-ranked across the whole universe.',
+  growth: 'Revenue & EPS growth, percentile-ranked vs the universe.',
+  value: 'Valuation — cheaper on P/E, P/S, EV/EBITDA and FCF yield ranks higher.',
+  quality:
+    'Profitability & balance-sheet strength — ROIC, margins, low leverage, clean accruals, low share issuance.',
+  momentum: 'Price trend — 3/6/12-month returns (12-minus-1).',
 }
 
 export const LOW_SCORE_TINT = 'rgba(239,68,68,0.07)'
