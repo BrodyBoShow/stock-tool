@@ -78,6 +78,40 @@ snaptrade.com/pricing & /developer-terms-of-use.
 > Thanks!
 > [YOUR NAME] — [CONTACT EMAIL]
 
+## Ready-to-send: Tiingo redistribution email (the priority one)
+
+Send to **sales@tiingo.com**. Tiingo's redistribution license is historically the most
+affordable/indie-friendly (flat-rate + attribution), so this is the first email to send.
+
+> **Subject:** Redistribution license — displaying EOD US equity data to paying subscribers
+>
+> Hi Tiingo team,
+>
+> I'm building **StockBud**, a consumer web app for retail investors (currently a private
+> beta on your free tier — username **[YOUR TIINGO USERNAME]**). I'm preparing a paid
+> subscription and need to license **redistribution** before launch.
+>
+> **What I need:** the right license to **display Tiingo EOD US equity data to my paying
+> subscribers** in the app UI — i.e. third-party display/redistribution, not internal use.
+>
+> - **Data:** end-of-day US equity prices (OHLCV) + corporate actions (splits & dividends)
+>   for ~4,500 US common stocks and ETFs. (I source *fundamentals* from SEC EDGAR, so I
+>   likely don't need the Tiingo fundamentals add-on.)
+> - **Use:** shown in charts/tables to subscribers; cached in my database for display between
+>   refreshes.
+> - **Freshness:** end-of-day is sufficient — no real-time needed.
+>
+> Could you let me know:
+> 1. Which license/plan permits this redistribution to paying end users?
+> 2. Cost — is it flat-rate, or does it scale with subscriber count? Pricing at ~10, ~100,
+>    and ~1,000 subscribers would help me model it.
+> 3. Required attribution wording and where it must appear.
+> 4. Whether caching/storing the EOD data in our database for display is permitted.
+> 5. Any minimum contract term.
+>
+> Thanks very much,
+> [YOUR NAME] — StockBud — [CONTACT EMAIL]
+
 ## What's blocking what
 - ✅ SEC EDGAR + FRED: already compliant, no action.
 - 🔴 Price feed: **hard blocker** — no paid user may see yfinance/Tiingo-free/Massive-free
