@@ -14,6 +14,10 @@ export const FORM_INPUT =
   'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] text-slate-800 ' +
   'focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600/40'
 
+/** Recharts font sizes — shared so every chart's axis ticks + legend match. */
+export const CHART_TICK_SIZE = 11
+export const CHART_LABEL_SIZE = 12
+
 /** Sectors whose factor scores are structurally commodity-price-driven — their
  * Value/Momentum/Quality all ride the underlying commodity (oil, metals), so a
  * high rank reflects the commodity trend, not durability. Used to flag "read the

@@ -28,7 +28,7 @@ export function StatCard({
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[0.72rem] text-slate-400">{sub}</div>}
+      {sub && <div className="mt-0.5 text-[0.72rem] text-slate-500">{sub}</div>}
     </div>
   )
 }

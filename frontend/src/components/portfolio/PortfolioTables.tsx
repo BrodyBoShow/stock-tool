@@ -12,8 +12,14 @@ import { FACTOR_TIP, TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtPctl, fmtPrice, fmtSignedMoney, fmtSignedPct } from '@/lib/format'
 import type { PortfolioHolding, PortfolioTransactionRow } from '@/types/api'
 
+type LedgerSortKey = 'trade_date' | 'txn_type' | 'ticker' | 'amount'
+
 export function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
   const [toDelete, setToDelete] = useState<PortfolioTransactionRow | null>(null)
+  const [sort, setSort] = useState<{ key: LedgerSortKey; dir: 1 | -1 }>({
+    key: 'trade_date',
+    dir: -1,
+  })
   const qc = useQueryClient()
   const toast = useToast()
   const mut = useMutation({
@@ -29,23 +35,58 @@ export function LedgerTable({ rows }: { rows: PortfolioTransactionRow[] }) {
   if (!rows.length)
     return <p className="text-sm text-gray-400">No transactions yet.</p>
 
+  const sorted = [...rows].sort((a, b) => {
+    const get = (r: PortfolioTransactionRow): string | number | null => {
+      switch (sort.key) {
+        case 'trade_date': return r.trade_date
+        case 'txn_type': return r.txn_type
+        case 'ticker': return r.ticker ?? ''
+        case 'amount': return r.amount
+      }
+    }
+    const av = get(a), bv = get(b)
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
+    if (typeof av === 'string' && typeof bv === 'string')
+      return av.localeCompare(bv) * sort.dir
+    return ((av as number) - (bv as number)) * sort.dir
+  })
+  const toggle = (k: LedgerSortKey) =>
+    setSort((s) =>
+      s.key === k
+        ? { key: k, dir: (s.dir === 1 ? -1 : 1) as 1 | -1 }
+        : { key: k, dir: k === 'amount' ? -1 : 1 },
+    )
+  const arrow = (k: LedgerSortKey) =>
+    sort.key === k ? (sort.dir === -1 ? ' ▼' : ' ▲') : ''
+  const lth = (k: LedgerSortKey, label: string, right = false) => (
+    <th
+      key={k}
+      onClick={() => toggle(k)}
+      className={`cursor-pointer select-none py-2 pr-4 hover:text-slate-600 ${right ? 'text-right' : ''}`}
+    >
+      {label}{arrow(k)}
+    </th>
+  )
+
   return (
     <div className="max-h-[420px] overflow-auto">
       <table className="w-full text-[0.82rem]">
-        <thead className="sticky top-0 bg-white">
+        <thead className="sticky top-0 z-10 bg-white">
           <tr className={TABLE_HEAD_ROW}>
-            <th className="py-2 pr-4">Date</th>
-            <th className="py-2 pr-4">Type</th>
-            <th className="py-2 pr-4">Ticker</th>
+            {lth('trade_date', 'Date')}
+            {lth('txn_type', 'Type')}
+            {lth('ticker', 'Ticker')}
             <th className="py-2 pr-4 text-right">Shares</th>
             <th className="py-2 pr-4 text-right">Price</th>
-            <th className="py-2 pr-4 text-right">Amount</th>
+            {lth('amount', 'Amount', true)}
             <th className="py-2 pr-4">Note</th>
             <th className="py-2" />
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {sorted.map((r) => (
             <tr key={r.id} className="border-b border-slate-50">
               <td className="py-2 pr-4 tabular-nums text-slate-600">{fmtDate(r.trade_date)}</td>
               <td className="py-2 pr-4 font-semibold capitalize text-slate-800">{r.txn_type}</td>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
+import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { useToast } from '@/components/ui/Toast'
 import {
@@ -147,7 +148,12 @@ export function LinkedAccountsSection() {
             >
               <div>
                 <div className="text-[0.9rem] font-bold text-slate-800">{p.label}</div>
-                <div className="text-[0.72rem] text-slate-400">{label}</div>
+                <div className="flex items-center text-[0.72rem] text-slate-400">
+                  {label}
+                  {label === 'Add API keys to .env' && (
+                    <InfoTip text="These credentials live in the backend .env — add this provider's API keys there and restart the API to enable Connect. Read-only: your password is entered at the broker, never here." />
+                  )}
+                </div>
               </div>
               <button
                 type="button"

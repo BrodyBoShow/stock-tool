@@ -294,7 +294,7 @@ export function PortfolioPage() {
           title="Dividend income"
           hint="Credited automatically from ex-dividend data for the shares you held — no manual entry needed. Forward estimate = trailing 12-month rate × current shares."
         >
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
             <StatCard
               label="Received (TTM)"
               value={fmtPrice(data.income.ttm_received)}
@@ -328,7 +328,8 @@ export function PortfolioPage() {
         <div className="mt-3 flex items-center gap-3 border-b border-slate-100 pb-4">
           <CsvImportButton />
           <span className="text-[0.74rem] text-gray-400">
-            CSV header: type, date (+ ticker, shares, price, amount, note as needed)
+            CSV header: type, date (+ ticker, shares, price, amount, note as needed) ·
+            type ∈ buy / sell / dividend / deposit / withdrawal / fee · column order is free
           </span>
         </div>
         <div className="mt-4">
@@ -352,10 +353,11 @@ export function PortfolioPage() {
       {/* linked brokerage accounts (scaffold) */}
       <LinkedAccountsSection />
 
-      <p className="pb-2 text-center text-xs text-gray-400">
+      <p className="mx-auto max-w-3xl pb-2 text-center text-xs text-gray-400">
         Tracking and analytics over your own ledger — measurements, not investment
-        advice. Dividends/splits from nightly market data; figures may differ
-        slightly from your broker.
+        advice. Dividends and splits come from nightly market data and prices are
+        ~15-minute-delayed, so totals can differ slightly from your broker&rsquo;s —
+        treat your official brokerage statements as the source of truth.
       </p>
     </div>
   )

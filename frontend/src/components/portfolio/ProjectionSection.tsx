@@ -11,10 +11,16 @@ import {
   YAxis,
 } from 'recharts'
 
+import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getProjection } from '@/lib/api'
-import { FORM_INPUT, FORM_LABEL } from '@/lib/constants'
+import {
+  CHART_LABEL_SIZE,
+  CHART_TICK_SIZE,
+  FORM_INPUT,
+  FORM_LABEL,
+} from '@/lib/constants'
 
 import { StatCard } from './StatCard'
 
@@ -82,15 +88,18 @@ export function ProjectionSection() {
             className={`${FORM_INPUT} ml-2 w-16`}
           />
         </label>
-        <button
-          type="button" onClick={() => setStress((s) => !s)} aria-pressed={stress}
-          className={
-            'rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors ' +
-            (stress ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
-          }
-        >
-          Stress regime
-        </button>
+        <span className="inline-flex items-center">
+          <button
+            type="button" onClick={() => setStress((s) => !s)} aria-pressed={stress}
+            className={
+              'rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors ' +
+              (stress ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+            }
+          >
+            Stress regime
+          </button>
+          <InfoTip text="Runs the simulation in a crisis regime — volatility and cross-holding correlations are raised toward 2008/2020 levels, so positions fall together. A stress test, not the base case." />
+        </span>
         <button
           type="button" onClick={run} disabled={isFetching}
           className="rounded-lg bg-indigo-600 px-3 py-1 text-[0.78rem] font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
@@ -112,30 +121,40 @@ export function ProjectionSection() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard label={`Median in ${data.params?.years}y`} value={fmtMoney(data.terminal?.p50)} />
+            <StatCard
+              label={`Median in ${data.params?.years}y`}
+              value={fmtMoney(data.terminal?.p50)}
+              tip="The middle outcome — half the simulations end above this, half below. The center of a wide range, not a target."
+            />
             <StatCard
               label="Range (P10–P90)"
               value={`${fmtMoney(data.terminal?.p10)} – ${fmtMoney(data.terminal?.p90)}`}
+              tip="80% of simulated outcomes land between these (10th–90th percentile) — the edges of the cone."
             />
-            <StatCard label="You contribute" value={fmtMoney(data.contributed)} />
             <StatCard
-              label="Typical worst drawdown"
+              label="You contribute"
+              value={fmtMoney(data.contributed)}
+              tip="Today's value plus any monthly contributions over the horizon — the cash you put in."
+            />
+            <StatCard
+              label="Median worst drawdown"
               value={data.max_drawdown ? `${Math.round(data.max_drawdown.p50 * 100)}%` : '—'}
+              tip="The 50th-percentile deepest peak-to-trough drop across the simulations — a normal valley to expect, not the worst case."
             />
           </div>
           <div className="mt-4">
             <ResponsiveContainer width="100%" height={260}>
               <ComposedChart data={coneData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={20} />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} width={56} tickFormatter={(v: number) => fmtMoney(v)} />
+                <XAxis dataKey="year" tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }} minTickGap={20} />
+                <YAxis tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }} width={56} tickFormatter={(v: number) => fmtMoney(v)} />
                 <Tooltip
                   formatter={(value: number | number[], name) =>
                     Array.isArray(value)
                       ? [`${fmtMoney(value[0])} – ${fmtMoney(value[1])}`, 'P10–P90']
                       : [fmtMoney(value), name === 'p50' ? 'Median' : String(name)]
                   }
-                  contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+                  contentStyle={{ fontSize: CHART_LABEL_SIZE, borderRadius: 8, borderColor: '#e5e7eb' }}
                 />
                 <Area dataKey="band" stroke="none" fill="#c7d2fe" fillOpacity={0.45} isAnimationActive={false} />
                 <Line dataKey="p90" stroke="#a5b4fc" strokeWidth={1} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
@@ -145,12 +164,16 @@ export function ProjectionSection() {
             </ResponsiveContainer>
           </div>
           {data.prob_gain != null && (
-            <p className="mt-2 text-[0.78rem] text-slate-600">
-              In {Math.round(data.prob_gain * 100)}% of simulations the portfolio ends above what
-              you put in{data.excluded && data.excluded.length > 0
-                ? ` · excluded (too little history): ${data.excluded.join(', ')}`
-                : ''}.
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[0.78rem] text-slate-600">
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[0.72rem] font-bold text-emerald-700">
+                {Math.round(data.prob_gain * 100)}% of simulations end above what you put in
+              </span>
+              {data.excluded && data.excluded.length > 0 && (
+                <span className="text-[0.72rem] text-slate-400">
+                  excluded (too little history): {data.excluded.join(', ')}
+                </span>
+              )}
+            </div>
           )}
           <details className="mt-2">
             <summary className="cursor-pointer text-[0.72rem] font-semibold text-slate-500">
@@ -163,8 +186,14 @@ export function ProjectionSection() {
                 <tr className="text-left text-[0.6rem] uppercase tracking-wide text-slate-400">
                   <th className="py-1">Holding</th>
                   <th className="py-1">Weight</th>
-                  <th className="py-1">Return (used)</th>
-                  <th className="py-1">Return (trailing)</th>
+                  <th className="py-1">
+                    Return (used)
+                    <InfoTip text="The annual return fed into the simulation — shrunk 50% toward a long-run market prior (~8%/yr) because short-window estimates are unreliable." />
+                  </th>
+                  <th className="py-1">
+                    Return (trailing)
+                    <InfoTip text="The raw trailing annualized return from this holding's own history — shown for reference; the simulation uses the shrunk figure at left." />
+                  </th>
                   <th className="py-1">Vol</th>
                 </tr>
               </thead>

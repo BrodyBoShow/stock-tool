@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 
 import { InfoTip } from '@/components/ui/InfoTip'
-import { FACTOR_TIP } from '@/lib/constants'
+import { CHART_LABEL_SIZE, CHART_TICK_SIZE, FACTOR_TIP } from '@/lib/constants'
 import { fmtDate, fmtPctl, fmtPrice } from '@/lib/format'
 import type { PortfolioResponse } from '@/types/api'
 
@@ -35,12 +35,12 @@ export function TwrChart({ data }: { data: PortfolioResponse }) {
         <CartesianGrid stroke="#f1f5f9" vertical={false} />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }}
           minTickGap={48}
           tickFormatter={(d: string) => d.slice(0, 7)}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }}
           tickFormatter={(v: number) => `${v.toFixed(2)}x`}
           domain={['auto', 'auto']}
           width={52}
@@ -48,9 +48,9 @@ export function TwrChart({ data }: { data: PortfolioResponse }) {
         <Tooltip
           labelFormatter={(d) => fmtDate(String(d))}
           formatter={(v: number, name: string) => [`${v?.toFixed(3)}x`, name]}
-          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+          contentStyle={{ fontSize: CHART_LABEL_SIZE, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Legend wrapperStyle={{ fontSize: CHART_LABEL_SIZE }} />
         <Line type="monotone" dataKey="portfolio" name="Portfolio (TWR)"
           stroke="#4f46e5" strokeWidth={2.2} dot={false} connectNulls />
         <Line type="monotone" dataKey="spy" name="S&P 500 (SPY)"
@@ -84,12 +84,12 @@ export function ValueChart({ data }: { data: PortfolioResponse }) {
         <CartesianGrid stroke="#f1f5f9" vertical={false} />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }}
           minTickGap={48}
           tickFormatter={(d: string) => d.slice(0, 7)}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }}
           tickFormatter={(v: number) =>
             Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(1)}M`
             : Math.abs(v) >= 1e3 ? `$${(v / 1e3).toFixed(0)}k` : `$${v.toFixed(0)}`}
@@ -99,9 +99,9 @@ export function ValueChart({ data }: { data: PortfolioResponse }) {
         <Tooltip
           labelFormatter={(d) => fmtDate(String(d))}
           formatter={(v: number, name: string) => [fmtPrice(v), name]}
-          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+          contentStyle={{ fontSize: CHART_LABEL_SIZE, borderRadius: 8, borderColor: '#e5e7eb' }}
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Legend wrapperStyle={{ fontSize: CHART_LABEL_SIZE }} />
         <Area type="monotone" dataKey="value" name="Market value"
           stroke="#4f46e5" strokeWidth={2} fill="url(#pf-fill)" />
         <Line type="stepAfter" dataKey="invested" name="Net invested"

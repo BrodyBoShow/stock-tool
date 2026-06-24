@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
+import { InfoTip } from '@/components/ui/InfoTip'
 import { useToast } from '@/components/ui/Toast'
 import { addPortfolioTransactions } from '@/lib/api'
 import { FORM_INPUT } from '@/lib/constants'
@@ -48,6 +49,17 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
   const needsAmount = !needsShares
   const num = (s: string) => (s.trim() === '' ? null : Number(s))
 
+  // Disable Add until the fields this txn type requires are filled.
+  const canSubmit =
+    (!needsTicker || form.ticker.trim() !== '') &&
+    (!needsShares || (form.shares.trim() !== '' && form.price.trim() !== '')) &&
+    (!needsAmount || form.amount.trim() !== '')
+  // Live "shares × price" preview shown in the optional Total field's placeholder.
+  const totalHint =
+    needsShares && form.shares.trim() !== '' && form.price.trim() !== ''
+      ? `= ${(Number(form.shares) * Number(form.price)).toFixed(2)}`
+      : 'shares × price'
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     mut.mutate({
@@ -66,7 +78,10 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2.5">
       <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
-        Type
+        <span className="flex items-center">
+          Type
+          <InfoTip text="Buy / Sell move shares. Dividend (cash) logs income for a ticker. Deposit / Withdrawal are cash flows (used for return timing). Fee reduces returns." />
+        </span>
         <select
           value={form.txn_type}
           onChange={(e) =>
@@ -131,7 +146,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           value={form.amount}
           onChange={(e) => setForm({ ...form, amount: e.target.value })}
           required={needsAmount}
-          placeholder={needsShares ? 'shares × price' : ''}
+          placeholder={needsShares ? totalHint : ''}
           className={inputCls + ' w-32'}
         />
       </label>
@@ -146,8 +161,8 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
       </label>
       <button
         type="submit"
-        disabled={mut.isPending}
-        className="rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+        disabled={mut.isPending || !canSubmit}
+        className="rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-bold text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {mut.isPending ? 'Adding…' : 'Add'}
       </button>
@@ -205,6 +220,10 @@ export function CsvImportButton() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast('error', 'CSV is larger than 5 MB — split it into smaller files.')
+      return
+    }
     void file.text().then((text) => {
       const { txns, error } = parseCsv(text)
       if (error) return toast('error', error)
