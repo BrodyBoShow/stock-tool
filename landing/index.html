@@ -69,10 +69,14 @@
   <main id="top">
     <!-- ───────────── Hero ───────────── -->
     <section class="relative overflow-hidden">
-      <div aria-hidden="true" class="tk-wrap pointer-events-none absolute inset-0 z-0 flex flex-col justify-around overflow-hidden py-10 opacity-[0.15]">
+      <div aria-hidden="true" class="tk-wrap pointer-events-none absolute inset-0 z-0 flex flex-col justify-around overflow-hidden py-6 opacity-[0.14]">
         <div id="tickerA" class="tk-row tk-l text-sm"></div>
         <div id="tickerB" class="tk-row tk-r text-sm"></div>
         <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
+        <div id="tickerD" class="tk-row tk-r text-sm" style="animation-duration:80s"></div>
+        <div id="tickerE" class="tk-row tk-l text-sm" style="animation-duration:65s"></div>
+        <div id="tickerF" class="tk-row tk-r text-sm" style="animation-duration:105s"></div>
+        <div id="tickerG" class="tk-row tk-l text-sm" style="animation-duration:48s"></div>
       </div>
       <div class="relative z-10 mx-auto max-w-3xl px-5 pb-16 pt-20 text-center sm:pt-28">
         <span
@@ -343,7 +347,11 @@
         ['AMZN', '186.40', 0.91], ['GOOGL', '179.22', -0.44], ['META', '565.30', 1.83],
         ['TSLA', '248.50', -3.21], ['JPM', '214.05', 0.52], ['V', '289.66', 0.34],
         ['WMT', '81.12', 1.07], ['XOM', '114.48', -0.71], ['UNH', '512.30', 0.84],
-        ['AVGO', '171.40', 2.41], ['COST', '905.10', 0.58], ['HD', '389.20', -0.49], ['LLY', '812.40', 1.32]
+        ['AVGO', '171.40', 2.41], ['COST', '905.10', 0.58], ['HD', '389.20', -0.49], ['LLY', '812.40', 1.32],
+        ['NFLX', '702.10', 1.05], ['AMD', '158.30', -1.42], ['ORCL', '168.90', 0.77],
+        ['CRM', '312.55', -0.58], ['ADBE', '556.20', 0.41], ['KO', '62.18', 0.19],
+        ['PEP', '171.05', -0.33], ['DIS', '96.40', 1.12], ['BAC', '42.66', 0.47],
+        ['INTC', '23.91', -1.88], ['CVX', '156.20', 0.63], ['MRK', '99.74', -0.52]
       ];
       const chip = (t) => {
         const up = t[2] >= 0;
@@ -356,8 +364,12 @@
       const rot = (a, n) => a.slice(n).concat(a.slice(0, n));
       const fill = (id, data) => { const el = document.getElementById(id); if (!el) return; const h = data.map(chip).join(''); el.innerHTML = h + h; };
       fill('tickerA', T);
-      fill('tickerB', rot(T, 5));
-      fill('tickerC', rot(T, 10));
+      fill('tickerB', rot(T, 4));
+      fill('tickerC', rot(T, 8));
+      fill('tickerD', rot(T, 12));
+      fill('tickerE', rot(T, 16));
+      fill('tickerF', rot(T, 20));
+      fill('tickerG', rot(T, 24));
     })();
   </script>
 </body>
