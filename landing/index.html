@@ -47,6 +47,22 @@
 
 <body class="min-h-screen font-sans text-slate-300 antialiased">
 
+  <!-- ───────────── Page-wide ticker backdrop ───────────── -->
+  <div aria-hidden="true" class="tk-wrap pointer-events-none fixed inset-0 z-0 flex flex-col justify-around overflow-hidden py-4 opacity-[0.18]">
+    <div id="tickerA" class="tk-row tk-l text-sm"></div>
+    <div id="tickerB" class="tk-row tk-r text-sm"></div>
+    <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
+    <div id="tickerD" class="tk-row tk-r text-sm" style="animation-duration:80s"></div>
+    <div id="tickerE" class="tk-row tk-l text-sm" style="animation-duration:65s"></div>
+    <div id="tickerF" class="tk-row tk-r text-sm" style="animation-duration:105s"></div>
+    <div id="tickerG" class="tk-row tk-l text-sm" style="animation-duration:48s"></div>
+    <div id="tickerH" class="tk-row tk-r text-sm" style="animation-duration:88s"></div>
+    <div id="tickerI" class="tk-row tk-l text-sm" style="animation-duration:60s"></div>
+    <div id="tickerJ" class="tk-row tk-r text-sm" style="animation-duration:72s"></div>
+    <div id="tickerK" class="tk-row tk-l text-sm" style="animation-duration:52s"></div>
+    <div id="tickerL" class="tk-row tk-r text-sm" style="animation-duration:96s"></div>
+  </div>
+
   <!-- ───────────── Nav ───────────── -->
   <header class="sticky top-0 z-40 border-b border-white/10 bg-slate-950/50 backdrop-blur">
     <nav class="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
@@ -66,18 +82,9 @@
     </nav>
   </header>
 
-  <main id="top">
+  <main id="top" class="relative z-10">
     <!-- ───────────── Hero ───────────── -->
     <section class="relative overflow-hidden">
-      <div aria-hidden="true" class="tk-wrap pointer-events-none absolute inset-0 z-0 flex flex-col justify-around overflow-hidden py-6 opacity-[0.14]">
-        <div id="tickerA" class="tk-row tk-l text-sm"></div>
-        <div id="tickerB" class="tk-row tk-r text-sm"></div>
-        <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
-        <div id="tickerD" class="tk-row tk-r text-sm" style="animation-duration:80s"></div>
-        <div id="tickerE" class="tk-row tk-l text-sm" style="animation-duration:65s"></div>
-        <div id="tickerF" class="tk-row tk-r text-sm" style="animation-duration:105s"></div>
-        <div id="tickerG" class="tk-row tk-l text-sm" style="animation-duration:48s"></div>
-      </div>
       <div class="relative z-10 mx-auto max-w-3xl px-5 pb-16 pt-20 text-center sm:pt-28">
         <span
           class="inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200">
@@ -242,7 +249,7 @@
   </main>
 
   <!-- ───────────── Footer ───────────── -->
-  <footer class="border-t border-white/10">
+  <footer class="relative z-10 border-t border-white/10">
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-slate-400 sm:flex-row">
       <p>© <span id="year"></span> StockBud. Informational only — not investment advice.</p>
       <div class="flex gap-6">
@@ -363,13 +370,9 @@
       };
       const rot = (a, n) => a.slice(n).concat(a.slice(0, n));
       const fill = (id, data) => { const el = document.getElementById(id); if (!el) return; const h = data.map(chip).join(''); el.innerHTML = h + h; };
-      fill('tickerA', T);
-      fill('tickerB', rot(T, 4));
-      fill('tickerC', rot(T, 8));
-      fill('tickerD', rot(T, 12));
-      fill('tickerE', rot(T, 16));
-      fill('tickerF', rot(T, 20));
-      fill('tickerG', rot(T, 24));
+      ['tickerA', 'tickerB', 'tickerC', 'tickerD', 'tickerE', 'tickerF',
+        'tickerG', 'tickerH', 'tickerI', 'tickerJ', 'tickerK', 'tickerL']
+        .forEach((id, i) => fill(id, rot(T, (i * 5) % T.length)));
     })();
   </script>
 </body>
