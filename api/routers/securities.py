@@ -6,7 +6,7 @@ import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from api.auth import get_current_user
-from api.ratelimit import rate_limit
+from api.ratelimit import ai_daily_cap, rate_limit
 from api.schemas import (
     BriefStatusResponse,
     DecisionBrief,
@@ -266,7 +266,12 @@ def get_filing_qa(ticker: str) -> FilingQaStatusResponse:
 @router.post(
     "/{ticker}/filing-qa",
     response_model=FilingAnswers,
-    dependencies=[Depends(rate_limit(5, 300))],  # Opus-class cost — tightest cap
+    dependencies=[
+        Depends(rate_limit(5, 300)),  # per-IP burst guard
+        # per-account + service-wide per-day cap on the costliest (Opus-class) AI
+        # call; the owner (UNCAPPED_EMAILS) is exempt from both.
+        Depends(ai_daily_cap(5, 40)),
+    ],
 )
 def generate_filing_qa(
     ticker: str,

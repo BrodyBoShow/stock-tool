@@ -12,11 +12,15 @@ runs on; swap for a shared store (Redis) only if it ever scales horizontally.
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from collections import defaultdict, deque
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, Request
+
+from api.auth import CurrentUser
 
 _lock = threading.Lock()
 _hits: dict[str, deque[float]] = defaultdict(deque)
@@ -55,5 +59,58 @@ def rate_limit(max_calls: int, window_seconds: int):
                     headers={"Retry-After": str(max(1, retry))},
                 )
             dq.append(now)
+
+    return _dep
+
+
+# ── Per-account daily AI cost cap (for the expensive Opus-class endpoints) ───────
+_daily_lock = threading.Lock()
+_acct_daily: dict[str, tuple[str, int]] = {}                 # user_id -> (utc_day, count)
+_global_daily: dict[str, object] = {"day": "", "count": 0}  # service-wide ceiling
+
+
+def _uncapped_emails() -> set[str]:
+    """Owner/allowlisted logins (env UNCAPPED_EMAILS, comma-separated) that bypass
+    the AI caps entirely. Case-insensitive; keeps the address out of the repo."""
+    raw = os.getenv("UNCAPPED_EMAILS", "")
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
+def ai_daily_cap(per_account: int, global_cap: int):
+    """FastAPI dependency: per-account AND service-wide per-UTC-day caps on an
+    expensive AI endpoint, so neither a single user nor a crowd of beta signups can
+    run up the Anthropic bill. Accounts in UNCAPPED_EMAILS (e.g. the owner) bypass
+    both caps and don't count toward the global. The numbers can be tuned without a
+    code deploy via AI_CAP_PER_ACCOUNT / AI_CAP_GLOBAL. In-process counters — fine
+    for the single instance this runs on; a restart only resets (loosens), never
+    wrongly locks anyone out.
+    """
+
+    def _dep(user: CurrentUser) -> None:
+        if user.email and user.email.lower() in _uncapped_emails():
+            return  # owner / allowlisted — never capped
+        pa = int(os.getenv("AI_CAP_PER_ACCOUNT", str(per_account)))
+        gl = int(os.getenv("AI_CAP_GLOBAL", str(global_cap)))
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        with _daily_lock:
+            if _global_daily["day"] != today:
+                _global_daily["day"], _global_daily["count"] = today, 0
+            if int(_global_daily["count"]) >= gl:
+                raise HTTPException(
+                    status_code=429,
+                    detail="This AI feature has reached today's overall limit. "
+                           "Please try again tomorrow.",
+                )
+            day, count = _acct_daily.get(user.id, (today, 0))
+            if day != today:
+                day, count = today, 0
+            if count >= pa:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"You've reached today's limit for this AI feature "
+                           f"({pa}/day). It resets tomorrow.",
+                )
+            _acct_daily[user.id] = (day, count + 1)
+            _global_daily["count"] = int(_global_daily["count"]) + 1
 
     return _dep
