@@ -26,3 +26,43 @@ body {
     opacity: 0.2;
   }
 }
+
+/* Scrolling stock-ticker backdrop (login screen). */
+@keyframes tkL {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes tkR {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.tk-row {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  will-change: transform;
+}
+.tk-l {
+  animation: tkL 70s linear infinite;
+}
+.tk-r {
+  animation: tkR 95s linear infinite;
+}
+.tk-wrap {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tk-l,
+  .tk-r {
+    animation: none;
+  }
+}
