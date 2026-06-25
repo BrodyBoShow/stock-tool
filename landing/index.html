@@ -47,16 +47,6 @@
 
 <body class="min-h-screen font-sans text-slate-300 antialiased">
 
-  <!-- ───────────── Page-wide ticker backdrop ───────────── -->
-  <div aria-hidden="true" class="tk-wrap pointer-events-none fixed inset-0 z-0 flex flex-col justify-around overflow-hidden py-4 opacity-[0.10]">
-    <div id="tickerA" class="tk-row tk-l text-sm"></div>
-    <div id="tickerB" class="tk-row tk-r text-sm"></div>
-    <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
-    <div id="tickerD" class="tk-row tk-r text-sm" style="animation-duration:80s"></div>
-    <div id="tickerE" class="tk-row tk-l text-sm" style="animation-duration:65s"></div>
-    <div id="tickerF" class="tk-row tk-r text-sm" style="animation-duration:105s"></div>
-  </div>
-
   <!-- ───────────── Nav ───────────── -->
   <header class="sticky top-0 z-40 border-b border-white/10 bg-slate-950/50 backdrop-blur">
     <nav class="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
@@ -79,6 +69,14 @@
   <main id="top" class="relative z-10">
     <!-- ───────────── Hero ───────────── -->
     <section class="relative overflow-hidden">
+      <div aria-hidden="true" class="tk-wrap pointer-events-none absolute inset-0 z-0 flex flex-col justify-around overflow-hidden py-8 opacity-[0.14]">
+        <div id="tickerA" class="tk-row tk-l text-sm"></div>
+        <div id="tickerB" class="tk-row tk-r text-sm"></div>
+        <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
+        <div id="tickerD" class="tk-row tk-r text-sm" style="animation-duration:80s"></div>
+        <div id="tickerE" class="tk-row tk-l text-sm" style="animation-duration:65s"></div>
+        <div id="tickerF" class="tk-row tk-r text-sm" style="animation-duration:105s"></div>
+      </div>
       <div class="relative z-10 mx-auto max-w-3xl px-5 pb-16 pt-20 text-center sm:pt-28">
         <span
           class="inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200">
