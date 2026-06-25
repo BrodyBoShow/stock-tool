@@ -48,19 +48,13 @@
 <body class="min-h-screen font-sans text-slate-300 antialiased">
 
   <!-- ───────────── Page-wide ticker backdrop ───────────── -->
-  <div aria-hidden="true" class="tk-wrap pointer-events-none fixed inset-0 z-0 flex flex-col justify-around overflow-hidden py-4 opacity-[0.18]">
+  <div aria-hidden="true" class="tk-wrap pointer-events-none fixed inset-0 z-0 flex flex-col justify-around overflow-hidden py-4 opacity-[0.10]">
     <div id="tickerA" class="tk-row tk-l text-sm"></div>
     <div id="tickerB" class="tk-row tk-r text-sm"></div>
     <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
     <div id="tickerD" class="tk-row tk-r text-sm" style="animation-duration:80s"></div>
     <div id="tickerE" class="tk-row tk-l text-sm" style="animation-duration:65s"></div>
     <div id="tickerF" class="tk-row tk-r text-sm" style="animation-duration:105s"></div>
-    <div id="tickerG" class="tk-row tk-l text-sm" style="animation-duration:48s"></div>
-    <div id="tickerH" class="tk-row tk-r text-sm" style="animation-duration:88s"></div>
-    <div id="tickerI" class="tk-row tk-l text-sm" style="animation-duration:60s"></div>
-    <div id="tickerJ" class="tk-row tk-r text-sm" style="animation-duration:72s"></div>
-    <div id="tickerK" class="tk-row tk-l text-sm" style="animation-duration:52s"></div>
-    <div id="tickerL" class="tk-row tk-r text-sm" style="animation-duration:96s"></div>
   </div>
 
   <!-- ───────────── Nav ───────────── -->
@@ -370,8 +364,7 @@
       };
       const rot = (a, n) => a.slice(n).concat(a.slice(0, n));
       const fill = (id, data) => { const el = document.getElementById(id); if (!el) return; const h = data.map(chip).join(''); el.innerHTML = h + h; };
-      ['tickerA', 'tickerB', 'tickerC', 'tickerD', 'tickerE', 'tickerF',
-        'tickerG', 'tickerH', 'tickerI', 'tickerJ', 'tickerK', 'tickerL']
+      ['tickerA', 'tickerB', 'tickerC', 'tickerD', 'tickerE', 'tickerF']
         .forEach((id, i) => fill(id, rot(T, (i * 5) % T.length)));
     })();
   </script>
