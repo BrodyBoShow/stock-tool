@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from api.auth import get_current_user
 from api.schemas import SearchResponse, SearchRow
 from engine import queries
 
-router = APIRouter()
+# Login required for beta. Global typeahead — no owner scoping.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=SearchResponse)

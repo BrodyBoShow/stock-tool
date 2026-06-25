@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from api.auth import get_current_user
 from api.schemas import (
     MacroLatestResponse,
     MacroObservation,
@@ -10,7 +11,8 @@ from api.schemas import (
 )
 from engine import queries
 
-router = APIRouter()
+# Login required for beta. Global macro context — no owner scoping.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/latest", response_model=MacroLatestResponse)

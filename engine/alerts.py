@@ -178,11 +178,11 @@ def _movers(rule: dict, rows: list[dict], label: str, sev: str) -> list[dict]:
     return [a for _, a in hits[:_MOVER_CAP]]
 
 
-def _theses_due() -> list[dict]:
+def _theses_due(owner_id: str | None = None) -> list[dict]:
     """Your theses whose review date is on/before today (inherently personal)."""
     today = str(date.today())
     out = []
-    for t in queries.all_theses_rows():
+    for t in queries.all_theses_rows(owner_id=owner_id):
         rd = t.get("review_date")
         if rd is not None and str(rd) <= today:
             out.append({
@@ -229,9 +229,14 @@ def _ticker_signal(ticker: str) -> dict | None:
     }
 
 
-def evaluate() -> list[dict[str, Any]]:
-    """All currently-triggered alerts, most important first."""
-    rules = [r for r in queries.alert_rules() if r["enabled"]]
+def evaluate(owner_id: str | None = None) -> list[dict[str, Any]]:
+    """All currently-triggered alerts, most important first.
+
+    owner_id (default None) preserves legacy global behavior; when set, the user's
+    own rules + theses drive the scan. The market-wide signal feeds (movers,
+    insider buys, 8-Ks) are shared universe data and stay un-scoped.
+    """
+    rules = [r for r in queries.alert_rules(owner_id=owner_id) if r["enabled"]]
     if not rules:
         return []
 
@@ -245,7 +250,7 @@ def evaluate() -> list[dict[str, Any]]:
 
         # ── thesis review (personal, scope-agnostic) ──
         if rt == "review_due":
-            for s in _theses_due():
+            for s in _theses_due(owner_id=owner_id):
                 rd = s.get("review_date")
                 days = (date.today() - date.fromisoformat(rd)).days if rd else 0
                 tier = "elevated" if days > REVIEW_ELEV_DAYS else "routine"

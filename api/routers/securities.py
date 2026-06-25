@@ -5,6 +5,7 @@ import logging
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from api.auth import get_current_user
 from api.ratelimit import rate_limit
 from api.schemas import (
     BriefStatusResponse,
@@ -36,7 +37,10 @@ from engine.filing_taxonomy import analysis_profile, form_category, form_label
 
 log = logging.getLogger(__name__)
 
-router = APIRouter()
+# Login required for every deep-dive + AI route. Shared global data (no owner
+# scoping), but a valid Supabase session is required — this also auth-gates the
+# paid Anthropic POSTs (brief/summary/filing-qa), which keep their rate limits.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def _require_security(ticker: str) -> tuple[str, dict]:

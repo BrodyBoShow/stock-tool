@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
+from api.auth import get_current_user
 from api.ratelimit import rate_limit
 from api.schemas import MarketBriefResponse, MarketOverviewResponse
 from engine import market as market_engine
 from engine import market_brief
 
-router = APIRouter()
+# Login required for beta. Global market overview — no owner scoping.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/overview", response_model=MarketOverviewResponse)

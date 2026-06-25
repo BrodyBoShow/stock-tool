@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 
+from api.auth import CurrentUser
 from api.schemas import (
     WatchlistAddRequest,
     WatchlistChange,
@@ -17,19 +18,19 @@ router = APIRouter()
 
 
 @router.get("", response_model=WatchlistResponse)
-def get_watchlist() -> WatchlistResponse:
+def get_watchlist(user: CurrentUser) -> WatchlistResponse:
     """All saved watchlist entries with current factor scores."""
-    rows = queries.watchlist_rows()
+    rows = queries.watchlist_rows(owner_id=user.id)
     return WatchlistResponse(rows=[WatchlistRow(**r) for r in rows])
 
 
 @router.get("/changes", response_model=WatchlistChangesResponse)
-def get_watchlist_changes() -> WatchlistChangesResponse:
+def get_watchlist_changes(user: CurrentUser) -> WatchlistChangesResponse:
     """"What changed" digest for each watchlist name: nightly rank/composite move
     vs ~1 month ago, today's live-adjusted composite, recent high-signal 8-Ks,
     trailing-3m insider buys, and whether a thesis review is due. Read-only —
     composed from existing data, no model calls."""
-    signals = watchlist_signals.compute()
+    signals = watchlist_signals.compute(owner_id=user.id)
     if not signals:
         return WatchlistChangesResponse(as_of_epoch=None, rows=[])
 
@@ -52,15 +53,16 @@ def get_watchlist_changes() -> WatchlistChangesResponse:
     )
 
 
-# TODO: add authentication before any public deploy
 @router.post("", response_model=WatchlistMutationResponse, status_code=status.HTTP_200_OK)
-def add_to_watchlist(body: WatchlistAddRequest) -> WatchlistMutationResponse:
+def add_to_watchlist(
+    body: WatchlistAddRequest, user: CurrentUser
+) -> WatchlistMutationResponse:
     """Idempotent: add a ticker to the watchlist.
 
     Returns status "added" if newly inserted, "already_present" if it was there.
     """
     ticker = body.ticker.upper()
-    wl_status, security_id = queries.watchlist_add_by_ticker(ticker)
+    wl_status, security_id = queries.watchlist_add_by_ticker(ticker, owner_id=user.id)
     if wl_status == "not_found":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -73,12 +75,11 @@ def add_to_watchlist(body: WatchlistAddRequest) -> WatchlistMutationResponse:
     )
 
 
-# TODO: add authentication before any public deploy
 @router.delete("/{ticker}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_from_watchlist(ticker: str) -> None:
+def remove_from_watchlist(ticker: str, user: CurrentUser) -> None:
     """Remove a ticker from the watchlist. 404 if the ticker is unknown."""
     ticker = ticker.upper()
-    deleted, del_status = queries.watchlist_remove_by_ticker(ticker)
+    deleted, del_status = queries.watchlist_remove_by_ticker(ticker, owner_id=user.id)
     if del_status == "not_found":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

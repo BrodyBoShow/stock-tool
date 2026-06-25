@@ -784,8 +784,9 @@ def watchlist_add_by_ticker(
       "not_found"       — ticker not in securities or inactive
 
     owner_id (default None) preserves current behavior — the DB default fills
-    owner_id on insert. When set, the row is inserted for that owner. The
-    ON CONFLICT (security_id) target is unchanged (migration 0023 territory).
+    owner_id on insert and the legacy global ON CONFLICT (security_id) target is
+    used. When set, the row is inserted for that owner and conflicts resolve on
+    the per-user composite (owner_id, security_id) that migration 0023 adds.
     """
     conn = acquire()
     try:
@@ -802,7 +803,7 @@ def watchlist_add_by_ticker(
             if owner_id is not None:
                 cur.execute(
                     "INSERT INTO watchlist (security_id, owner_id) VALUES (%s, %s) "
-                    "ON CONFLICT (security_id) DO NOTHING",
+                    "ON CONFLICT (owner_id, security_id) DO NOTHING",
                     (security_id, owner_id),
                 )
             else:

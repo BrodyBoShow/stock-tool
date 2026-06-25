@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom'
 import { HeaderSearch } from '@/components/HeaderSearch'
 import { useToast } from '@/components/ui/Toast'
 import { getAlerts } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   'border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
@@ -47,6 +48,48 @@ function RefreshButton() {
       >
         <path
           d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  )
+}
+
+/**
+ * Sign out, then wipe the React Query cache so the previous user's portfolio /
+ * watchlist / theses never flash for the next person who logs in on this
+ * browser. AuthGate's onAuthStateChange swaps in the login screen.
+ */
+function LogoutButton() {
+  const qc = useQueryClient()
+  const toast = useToast()
+
+  const onClick = async () => {
+    await supabase.auth.signOut()
+    qc.clear()
+    toast('success', 'Signed out.')
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void onClick()}
+      title="Sign out"
+      aria-label="Sign out"
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
@@ -145,6 +188,7 @@ export function TopNav() {
         </div>
         <span className="h-5 w-px flex-none bg-gray-200" aria-hidden="true" />
         <RefreshButton />
+        <LogoutButton />
       </div>
     </nav>
   )

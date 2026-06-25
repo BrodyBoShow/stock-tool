@@ -37,39 +37,30 @@ import type {
   WatchlistResponse,
 } from '@/types/api'
 
+import { supabase } from '@/lib/supabase'
+
 /** Single config point for the API origin — components never hardcode it. */
 const API_URL: string =
   (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
 
-const APP_PW_KEY = 'stockbud.appPassword'
+/**
+ * The current Supabase access token, kept in a module-level cache so request
+ * helpers stay synchronous. Seeded once from getSession() and then updated by
+ * onAuthStateChange (login, logout, and the SDK's silent token refresh all
+ * fire this), so it tracks the live session without an await per request.
+ */
+let accessToken: string | null = null
 
-/** Access password (private-mode gate). Stored locally; sent on every call. */
-export function getAppPassword(): string {
-  return localStorage.getItem(APP_PW_KEY) ?? ''
-}
-export function setAppPassword(pw: string): void {
-  if (pw) localStorage.setItem(APP_PW_KEY, pw)
-  else localStorage.removeItem(APP_PW_KEY)
-}
+void supabase.auth.getSession().then(({ data }) => {
+  accessToken = data.session?.access_token ?? null
+})
+supabase.auth.onAuthStateChange((_event, session) => {
+  accessToken = session?.access_token ?? null
+})
 
-/** Headers common to every request, including the access password when set. */
+/** Headers common to every request, including the bearer token when signed in. */
 function authHeaders(base: Record<string, string>): Record<string, string> {
-  const pw = getAppPassword()
-  return pw ? { ...base, 'X-App-Password': pw } : base
-}
-
-/** Probe the auth gate. ok=false means a password is required and missing/wrong. */
-export async function checkAuth(): Promise<{ ok: boolean; authRequired: boolean }> {
-  try {
-    const res = await fetch(`${API_URL}/auth/check`, {
-      headers: authHeaders({ Accept: 'application/json' }),
-    })
-    if (res.status === 401) return { ok: false, authRequired: true }
-    if (!res.ok) return { ok: false, authRequired: false }
-    return (await res.json()) as { ok: boolean; authRequired: boolean }
-  } catch {
-    return { ok: false, authRequired: false }
-  }
+  return accessToken ? { ...base, Authorization: `Bearer ${accessToken}` } : base
 }
 
 export class ApiError extends Error {
@@ -82,24 +73,51 @@ export class ApiError extends Error {
   }
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  let res: Response
+/**
+ * On a 401, force a token refresh once and report whether it produced a new
+ * token to retry with. If the refresh fails (refresh token expired/revoked),
+ * sign out so AuthGate falls back to the login screen instead of looping.
+ */
+async function refreshAccessToken(): Promise<boolean> {
+  const { data, error } = await supabase.auth.refreshSession()
+  const token = data.session?.access_token ?? null
+  if (error || !token) {
+    await supabase.auth.signOut()
+    accessToken = null
+    return false
+  }
+  accessToken = token
+  return true
+}
+
+/** Pull `detail` out of a JSON error body, falling back to the status text. */
+async function errorDetail(res: Response): Promise<string> {
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    const body = (await res.json()) as { detail?: string }
+    if (body.detail) return body.detail
+  } catch {
+    /* non-JSON error body — keep statusText */
+  }
+  return res.statusText
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const run = (): Promise<Response> =>
+    fetch(`${API_URL}${path}`, {
       headers: authHeaders({ Accept: 'application/json' }),
     })
+
+  let res: Response
+  try {
+    res = await run()
+    if (res.status === 401 && (await refreshAccessToken())) {
+      res = await run()
+    }
   } catch {
     throw new ApiError(0, 'API unreachable — is the FastAPI server running?')
   }
   if (!res.ok) {
-    let detail = res.statusText
-    try {
-      const body = (await res.json()) as { detail?: string }
-      if (body.detail) detail = body.detail
-    } catch {
-      /* non-JSON error body — keep statusText */
-    }
-    throw new ApiError(res.status, detail)
+    throw new ApiError(res.status, await errorDetail(res))
   }
   return (await res.json()) as T
 }
@@ -127,25 +145,24 @@ async function sendJson<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  let res: Response
-  try {
-    res = await fetch(`${API_URL}${path}`, {
+  const run = (): Promise<Response> =>
+    fetch(`${API_URL}${path}`, {
       method,
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
       body: body === undefined ? undefined : JSON.stringify(body),
     })
+
+  let res: Response
+  try {
+    res = await run()
+    if (res.status === 401 && (await refreshAccessToken())) {
+      res = await run()
+    }
   } catch {
     throw new ApiError(0, 'API unreachable — is the FastAPI server running?')
   }
   if (!res.ok) {
-    let detail = res.statusText
-    try {
-      const b = (await res.json()) as { detail?: string }
-      if (b.detail) detail = b.detail
-    } catch {
-      /* non-JSON error body — keep statusText */
-    }
-    throw new ApiError(res.status, detail)
+    throw new ApiError(res.status, await errorDetail(res))
   }
   if (res.status === 204) return undefined as T
   return (await res.json()) as T

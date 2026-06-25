@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.auth import get_current_user
 from api.schemas import FundRow, FundsResponse
 from engine import queries
 from engine import quotes as quotes_engine
 
-router = APIRouter()
+# Login required for beta. Global fund list — no owner scoping.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Lightweight category from the fund name (we have no fund-metadata feed).
 _CRYPTO = re.compile(

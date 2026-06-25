@@ -15,9 +15,13 @@ from engine import events as events_engine
 from engine import queries
 
 
-def compute() -> list[dict[str, Any]]:
-    """One signal record per watchlist name (most recently added first)."""
-    core = queries.watchlist_change_core()
+def compute(owner_id: str | None = None) -> list[dict[str, Any]]:
+    """One signal record per watchlist name (most recently added first).
+
+    owner_id (default None) preserves legacy global behavior; when set, only
+    that user's watchlist names are scanned (passed through to the core query).
+    """
+    core = queries.watchlist_change_core(owner_id=owner_id)
     today = str(date.today())
     out: list[dict[str, Any]] = []
     for c in core:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 
+from api.auth import CurrentUser
 from api.schemas import (
     AlertRule,
     AlertRuleCreate,
@@ -12,6 +13,7 @@ from api.schemas import (
 )
 from engine import alerts as alerts_engine
 from engine import queries
+from engine.users import provision_user
 
 router = APIRouter()
 
@@ -23,11 +25,15 @@ _THRESHOLD_TYPES = {"rank_drop", "composite_drop", "composite_rise"}
 
 
 @router.get("", response_model=AlertsResponse)
-def get_alerts() -> AlertsResponse:
+def get_alerts(user: CurrentUser) -> AlertsResponse:
     """Currently-triggered alerts across the watchlist + the rule list.
-    Read-only — evaluated live from existing data, no AI, no writes."""
-    triggered = alerts_engine.evaluate()
-    rules = queries.alert_rules()
+    Read-only — evaluated live from existing data, no AI, no writes.
+
+    Lazily seeds a new user's default rules (idempotent) before reading, so a
+    first-time login lands on a populated rule set instead of an empty one."""
+    provision_user(user.id)
+    triggered = alerts_engine.evaluate(owner_id=user.id)
+    rules = queries.alert_rules(owner_id=user.id)
     summ = alerts_engine.summarize(triggered)
     return AlertsResponse(
         triggered=[AlertTrigger(**t) for t in triggered],
@@ -42,9 +48,8 @@ def get_alerts() -> AlertsResponse:
     )
 
 
-# TODO: gated by the access password in private mode (api.main middleware).
 @router.post("/rules", response_model=AlertRule, status_code=status.HTTP_201_CREATED)
-def create_rule(body: AlertRuleCreate) -> AlertRule:
+def create_rule(body: AlertRuleCreate, user: CurrentUser) -> AlertRule:
     """Add an alert rule. scope='watchlist' applies to every tracked name;
     scope='ticker' needs a ticker and targets that one name."""
     if body.rule_type not in _VALID_TYPES:
@@ -68,25 +73,31 @@ def create_rule(body: AlertRuleCreate) -> AlertRule:
         security_id = header["security_id"]
 
     threshold = body.threshold if body.rule_type in _THRESHOLD_TYPES else None
-    new_id = queries.alert_rule_add(body.scope, security_id, body.rule_type, threshold)
-    created = next((r for r in queries.alert_rules() if r["id"] == new_id), None)
+    new_id = queries.alert_rule_add(
+        body.scope, security_id, body.rule_type, threshold, owner_id=user.id
+    )
+    created = next(
+        (r for r in queries.alert_rules(owner_id=user.id) if r["id"] == new_id), None
+    )
     if created is None:  # pragma: no cover — just-inserted row should always exist
         raise HTTPException(status_code=500, detail="Rule created but not found")
     return AlertRule(**created)
 
 
 @router.patch("/rules/{rule_id}", response_model=AlertRule)
-def toggle_rule(rule_id: int, body: AlertRuleToggle) -> AlertRule:
+def toggle_rule(rule_id: int, body: AlertRuleToggle, user: CurrentUser) -> AlertRule:
     """Enable/disable a rule without deleting it."""
-    if not queries.alert_rule_set_enabled(rule_id, body.enabled):
+    if not queries.alert_rule_set_enabled(rule_id, body.enabled, owner_id=user.id):
         raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found")
-    updated = next((r for r in queries.alert_rules() if r["id"] == rule_id), None)
+    updated = next(
+        (r for r in queries.alert_rules(owner_id=user.id) if r["id"] == rule_id), None
+    )
     if updated is None:  # pragma: no cover
         raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found")
     return AlertRule(**updated)
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_rule(rule_id: int) -> None:
+def delete_rule(rule_id: int, user: CurrentUser) -> None:
     """Remove a rule. Idempotent — deleting an unknown id is accepted."""
-    queries.alert_rule_delete(rule_id)
+    queries.alert_rule_delete(rule_id, owner_id=user.id)

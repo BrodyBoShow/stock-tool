@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.auth import get_current_user
 from api.schemas import BacktestRunResponse
 from engine import queries
 
-router = APIRouter()
+# Login required for beta. Global backtest results — no owner scoping.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/backtest", response_model=BacktestRunResponse)

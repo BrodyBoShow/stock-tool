@@ -11,16 +11,15 @@ Swagger UI: http://localhost:8000/docs
 Access control (deploy):
   - CORS origins come from ALLOWED_ORIGINS (comma-separated); localhost dev
     origins are always allowed.
-  - APP_ACCESS_PASSWORD gates every endpoint behind an X-App-Password header.
-    Set it -> private (only holders of the password get in). Unset it ->
-    public. Flipping this one env var is the private<->public switch; no code
-    change or redeploy of the image is needed.
+  - Auth is per-route via `Depends(get_current_user)` (a valid Supabase
+    `Authorization: Bearer` token). There is no global auth middleware, so the
+    open endpoints — /health, /docs, and the broker OAuth callback (PKCE-guarded,
+    carries no token) — stay reachable without a session.
 """
 from __future__ import annotations
 
 import logging
 import os
-import secrets
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,38 +53,6 @@ app = FastAPI(
     description="Read/write layer over the Stock-Tool pipeline database.",
     version="0.1.0",
 )
-
-# Paths reachable without the access password: health (host liveness probes)
-# and the API docs. NOTE: /auth/check is intentionally NOT here — it must stay
-# gated so it returns 401 when locked, which is how the frontend detects that a
-# password is required (and 200 in public mode, where the middleware no-ops).
-_OPEN_PATHS = (
-    "/health", "/docs", "/openapi.json", "/redoc",
-    # OAuth redirect target — the browser hits it with no app-password header, and
-    # it's CSRF-guarded by the random PKCE `state` it validates.
-    "/portfolio/links/callback",
-)
-
-
-@app.middleware("http")
-async def _access_password(request: Request, call_next):
-    """Require X-App-Password when APP_ACCESS_PASSWORD is set (private mode).
-
-    No-ops when the env var is empty (public mode). CORS preflight (OPTIONS)
-    and the open paths always pass so the browser handshake and host health
-    checks work even while locked.
-    """
-    password = os.getenv("APP_ACCESS_PASSWORD", "")
-    if (
-        password
-        and request.method != "OPTIONS"
-        and not request.url.path.startswith(_OPEN_PATHS)
-    ):
-        provided = request.headers.get("X-App-Password", "")
-        if not secrets.compare_digest(provided, password):
-            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
-    return await call_next(request)
-
 
 def _allowed_origins() -> list[str]:
     """Deployed frontend origins from env + always-on localhost dev origins."""
@@ -141,23 +108,12 @@ def _close_pool() -> None:
     db.close_pool()
 
 
-@app.get("/auth/check", tags=["meta"])
-def auth_check() -> dict:
-    """Returns 200 when the request is authorized (or no password is set).
-
-    The access middleware returns 401 first when a password is required and the
-    header is missing/wrong, so the frontend uses this as its login probe.
-    """
-    return {"ok": True, "authRequired": bool(os.getenv("APP_ACCESS_PASSWORD", ""))}
-
-
 @app.get("/auth/me", tags=["meta"])
 def auth_me(user: CurrentUser) -> dict:
     """Return the authenticated user's id + email — validates a Supabase session.
 
-    Per-user identity for multi-tenancy. Not yet used to gate other routes (that
-    is Phase 3, alongside the frontend login swap), so this changes no live
-    behavior — it just lets the SPA confirm a token verifies once it logs in.
+    The SPA's login probe: a 200 confirms the bearer token verifies, a 401 means
+    the user must (re)authenticate.
     """
     return {"id": user.id, "email": user.email}
 

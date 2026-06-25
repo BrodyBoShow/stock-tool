@@ -7,6 +7,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 
+from api.auth import CurrentUser
 from api.ratelimit import rate_limit
 from api.schemas import (
     LinkConnectRequest,
@@ -35,6 +36,7 @@ router = APIRouter()
     dependencies=[Depends(rate_limit(20, 60))],
 )
 def get_projection(
+    user: CurrentUser,
     years: int = Query(10, ge=1, le=40),
     monthly: float = Query(0.0, ge=0.0, le=1_000_000.0),
     annual_fee: float = Query(0.0, ge=0.0, le=0.1),
@@ -42,30 +44,34 @@ def get_projection(
 ) -> ProjectionResponse:
     """Correlated Monte Carlo projection cone for the current holdings. Computed
     on demand (a 1k-path sim); display-only, never feeds the factor model."""
-    out = project_portfolio(years=years, monthly=monthly, annual_fee=annual_fee, stress=stress)
+    out = project_portfolio(
+        years=years, monthly=monthly, annual_fee=annual_fee, stress=stress,
+        owner_id=user.id,
+    )
     return ProjectionResponse(**out)
 
 
 @router.get("", response_model=PortfolioResponse)
-def get_portfolio() -> PortfolioResponse:
+def get_portfolio(user: CurrentUser) -> PortfolioResponse:
     """The whole Portfolio tab: holdings, TWR/MWR performance vs SPY, risk
     stats, factor tilt, allocation, dividend income, and action-center flags —
     all derived live from the transaction ledger (nothing precomputed)."""
-    return PortfolioResponse(**portfolio_engine.compute_portfolio())
+    return PortfolioResponse(**portfolio_engine.compute_portfolio(owner_id=user.id))
 
 
 @router.get("/transactions", response_model=PortfolioTransactionsResponse)
-def get_transactions() -> PortfolioTransactionsResponse:
+def get_transactions(user: CurrentUser) -> PortfolioTransactionsResponse:
     """Full ledger, newest first."""
-    rows = portfolio_engine.get_transactions()
+    rows = portfolio_engine.get_transactions(owner_id=user.id)
     return PortfolioTransactionsResponse(
         rows=[PortfolioTransactionRow(**r) for r in rows]
     )
 
 
-# TODO: add authentication before any public deploy
 @router.post("/transactions", response_model=PortfolioMutationResponse)
-def add_transactions(body: PortfolioTransactionsCreateRequest) -> PortfolioMutationResponse:
+def add_transactions(
+    body: PortfolioTransactionsCreateRequest, user: CurrentUser
+) -> PortfolioMutationResponse:
     """Insert a batch of ledger rows (single add and CSV import share this).
 
     All-or-nothing: any validation error rejects the whole batch with 422 and
@@ -77,7 +83,7 @@ def add_transactions(body: PortfolioTransactionsCreateRequest) -> PortfolioMutat
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="No transactions provided",
         )
-    inserted, errors = portfolio_engine.add_transactions(items)
+    inserted, errors = portfolio_engine.add_transactions(items, owner_id=user.id)
     if errors:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -86,11 +92,10 @@ def add_transactions(body: PortfolioTransactionsCreateRequest) -> PortfolioMutat
     return PortfolioMutationResponse(inserted=inserted, errors=[])
 
 
-# TODO: add authentication before any public deploy
 @router.delete("/transactions/{txn_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_transaction(txn_id: int) -> None:
+def delete_transaction(txn_id: int, user: CurrentUser) -> None:
     """Remove one ledger row. 404 if it doesn't exist."""
-    if not portfolio_engine.delete_transaction(txn_id):
+    if not portfolio_engine.delete_transaction(txn_id, owner_id=user.id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Transaction {txn_id} not found",
@@ -100,10 +105,10 @@ def delete_transaction(txn_id: int) -> None:
 # ── linked brokerage accounts (scaffold — providers not implemented yet) ──────
 
 @router.get("/links", response_model=LinkedAccountsResponse)
-def get_links() -> LinkedAccountsResponse:
+def get_links(user: CurrentUser) -> LinkedAccountsResponse:
     """Linked brokerage accounts + available providers. Tokens are never
     returned. ``ready`` is False until migration 0021 is applied."""
-    state = portfolio_sync.list_links()
+    state = portfolio_sync.list_links(owner_id=user.id)
     return LinkedAccountsResponse(
         ready=state["ready"],
         accounts=[LinkedAccountRow(**a) for a in state["accounts"]],
@@ -111,14 +116,13 @@ def get_links() -> LinkedAccountsResponse:
     )
 
 
-# TODO: add authentication before any public deploy
 @router.post("/links/connect", response_model=LinkConnectResponse)
-def connect_link(body: LinkConnectRequest) -> LinkConnectResponse:
+def connect_link(body: LinkConnectRequest, user: CurrentUser) -> LinkConnectResponse:
     """Begin (or refresh) a brokerage link. Returns a 5-minute connection-portal
     URL the user opens to log in at the broker (read-only). The user never enters
     their broker password here. Unbuilt/unconfigured providers return a status."""
     try:
-        out = portfolio_sync.connect(body.provider)
+        out = portfolio_sync.connect(body.provider, owner_id=user.id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
@@ -164,12 +168,11 @@ def links_callback(
     return RedirectResponse(f"{frontend}/portfolio?linked=ok")
 
 
-# TODO: add authentication before any public deploy
 @router.post("/links/{link_id}/sync", response_model=LinkSyncResponse)
-def sync_link(link_id: int) -> LinkSyncResponse:
+def sync_link(link_id: int, user: CurrentUser) -> LinkSyncResponse:
     """Pull new activity for a linked account into the ledger (idempotent)."""
     try:
-        out = portfolio_sync.sync_account(link_id)
+        out = portfolio_sync.sync_account(link_id, owner_id=user.id)
     except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -190,11 +193,10 @@ def sync_link(link_id: int) -> LinkSyncResponse:
     return LinkSyncResponse(**out)
 
 
-# TODO: add authentication before any public deploy
 @router.delete("/links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_link(link_id: int) -> None:
+def delete_link(link_id: int, user: CurrentUser) -> None:
     """Unlink an account. Imported transactions are kept (orphaned)."""
-    if not portfolio_sync.delete_link(link_id):
+    if not portfolio_sync.delete_link(link_id, owner_id=user.id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Linked account {link_id} not found",
