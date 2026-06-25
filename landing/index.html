@@ -35,6 +35,13 @@
       background-image: linear-gradient(160deg, #0f172a 0%, #1e1b4b 58%, #312e81 100%);
       background-attachment: fixed;
     }
+    @keyframes tkL { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @keyframes tkR { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+    .tk-row { display: flex; width: max-content; white-space: nowrap; will-change: transform; }
+    .tk-l { animation: tkL 70s linear infinite; }
+    .tk-r { animation: tkR 95s linear infinite; }
+    .tk-wrap { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 16%, #000 84%, transparent); }
+    @media (prefers-reduced-motion: reduce) { .tk-l, .tk-r { animation: none; } }
   </style>
 </head>
 
@@ -62,7 +69,12 @@
   <main id="top">
     <!-- ───────────── Hero ───────────── -->
     <section class="relative overflow-hidden">
-      <div class="mx-auto max-w-3xl px-5 pb-16 pt-20 text-center sm:pt-28">
+      <div aria-hidden="true" class="tk-wrap pointer-events-none absolute inset-0 z-0 flex flex-col justify-around overflow-hidden py-10 opacity-[0.15]">
+        <div id="tickerA" class="tk-row tk-l text-sm"></div>
+        <div id="tickerB" class="tk-row tk-r text-sm"></div>
+        <div id="tickerC" class="tk-row tk-l text-sm" style="animation-duration:55s"></div>
+      </div>
+      <div class="relative z-10 mx-auto max-w-3xl px-5 pb-16 pt-20 text-center sm:pt-28">
         <span
           class="inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200">
           ● Now in private beta — early access opening soon
@@ -91,7 +103,7 @@
       </div>
 
       <!-- App preview -->
-      <div class="mx-auto max-w-5xl px-5 pb-20">
+      <div class="relative z-10 mx-auto max-w-5xl px-5 pb-20">
         <div class="overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl shadow-indigo-950/50">
           <div class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-4 py-2.5">
             <span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>
@@ -322,6 +334,31 @@
       }
       return false;
     }
+  </script>
+
+  <script>
+    (function () {
+      const T = [
+        ['AAPL', '229.35', 1.24], ['MSFT', '441.10', 0.62], ['NVDA', '131.26', -2.13],
+        ['AMZN', '186.40', 0.91], ['GOOGL', '179.22', -0.44], ['META', '565.30', 1.83],
+        ['TSLA', '248.50', -3.21], ['JPM', '214.05', 0.52], ['V', '289.66', 0.34],
+        ['WMT', '81.12', 1.07], ['XOM', '114.48', -0.71], ['UNH', '512.30', 0.84],
+        ['AVGO', '171.40', 2.41], ['COST', '905.10', 0.58], ['HD', '389.20', -0.49], ['LLY', '812.40', 1.32]
+      ];
+      const chip = (t) => {
+        const up = t[2] >= 0;
+        const cls = up ? 'text-emerald-400' : 'text-rose-400';
+        const arr = up ? '▲' : '▼';
+        return '<span class="inline-flex items-center gap-1.5 px-6"><span class="font-semibold text-slate-200">' + t[0] +
+          '</span><span class="text-slate-400">$' + t[1] + '</span><span class="' + cls + '">' + arr + ' ' +
+          Math.abs(t[2]).toFixed(2) + '%</span></span>';
+      };
+      const rot = (a, n) => a.slice(n).concat(a.slice(0, n));
+      const fill = (id, data) => { const el = document.getElementById(id); if (!el) return; const h = data.map(chip).join(''); el.innerHTML = h + h; };
+      fill('tickerA', T);
+      fill('tickerB', rot(T, 5));
+      fill('tickerC', rot(T, 10));
+    })();
   </script>
 </body>
 
