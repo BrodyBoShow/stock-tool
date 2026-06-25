@@ -1,36 +1,36 @@
 -- 0022_multitenant_owner_id.sql
--- MULTI-TENANCY, Phase 0: give the per-user tables an owner_id, backfill the
--- existing (single-user) rows to you, and make uniqueness/indexes per-user.
+-- MULTI-TENANCY, Phase 0 (ADDITIVE — safe to apply to the live DB right now).
 --
--- WHY: today portfolio_transactions, watchlist, theses, linked_accounts and
--- alert_rules are global (no owner). The moment a second person logs in they'd
--- see YOUR data. owner_id = the Supabase auth user's id (the JWT `sub`); the app
--- will filter every query by it (WHERE owner_id = <current user>).
+-- Gives the 5 per-user tables an owner_id and backfills existing rows to you.
+-- This migration is DELIBERATELY non-breaking: owner_id has a DEFAULT (your id),
+-- so your CURRENT app keeps working unchanged (inserts that omit owner_id just
+-- default to you), and the old uniqueness/ON CONFLICT targets are left in place.
 --
--- TABLES THAT INTENTIONALLY STAY GLOBAL (do NOT add owner_id — shared caches,
--- keeps AI cost at "generate once, share"):
---   ai_summaries, decision_briefs, filing_answers, market_brief,
---   backtest_results, material_events, insider_transactions, and all
---   market/screener/factor tables.
+-- The BREAKING changes (drop the default so the app must pass owner_id; swap
+-- UNIQUE(security_id) -> UNIQUE(owner_id, security_id); etc.) live in 0023 and
+-- get applied LATER, in lockstep with the per-user backend code — so there is
+-- never a window where the live app is broken.
 --
--- HOW TO APPLY (manual, per CONVENTIONS.md — assistant never runs DDL):
---   1. Supabase dashboard -> SQL Editor.
---   2. First, see your accounts + ids:
---          select id, email, created_at from auth.users order by created_at;
---   3. Set owner_email below to the email you will LOG IN to StockBud with
---      (the account whose login should "own" all your current data).
---   4. Run this whole script. You should see a NOTICE confirming the backfill.
---   5. Verify (see the SELECT at the very bottom).
+-- owner_id = the Supabase auth user's id (the JWT `sub`). No FK to auth.users
+-- (Supabase recommends against public->auth FKs; the app enforces it).
 --
--- MUST be applied + verified BEFORE any owner_id-filtering app code is deployed,
--- or every authenticated query errors on a missing column.
+-- STAYS GLOBAL (shared caches — do NOT add owner_id): ai_summaries,
+-- decision_briefs, filing_answers, market_brief, backtest_results,
+-- material_events, insider_transactions, and all market/screener/factor tables.
+--
+-- HOW TO APPLY (manual, per CONVENTIONS.md):
+--   1. Supabase -> SQL Editor.
+--   2. See your accounts:  select id, email, created_at from auth.users order by created_at;
+--   3. Set owner_email below to the email you LOG IN to StockBud with
+--      (the account that should own all your existing data).
+--   4. Run the whole script (expect a NOTICE confirming the backfill).
+--   5. Verify with the SELECT at the bottom (5 rows).
 --
 -- Idempotent: safe to re-run.
 
--- ── 1. add owner_id to the 5 per-user tables, backfilled to your account ──────
 do $$
 declare
-  owner_email text := '__YOUR_LOGIN_EMAIL__';   -- <<< SET THIS (step 3 above)
+  owner_email text := '__YOUR_LOGIN_EMAIL__';   -- <<< SET THIS (step 3)
   owner uuid;
 begin
   select id into owner from auth.users where lower(email) = lower(owner_email);
@@ -40,47 +40,27 @@ begin
       owner_email;
   end if;
 
-  -- ADD with a DEFAULT so existing rows are backfilled to you atomically...
+  -- Add owner_id with a DEFAULT = you. Existing rows backfill atomically, and the
+  -- default keeps the current (owner_id-unaware) app working until 0023 + code land.
   execute format('alter table watchlist              add column if not exists owner_id uuid not null default %L', owner);
   execute format('alter table theses                 add column if not exists owner_id uuid not null default %L', owner);
   execute format('alter table portfolio_transactions add column if not exists owner_id uuid not null default %L', owner);
   execute format('alter table linked_accounts        add column if not exists owner_id uuid not null default %L', owner);
   execute format('alter table alert_rules            add column if not exists owner_id uuid not null default %L', owner);
 
-  -- ...then DROP the default so every FUTURE insert must supply owner_id
-  -- (prevents silently recreating a single global "default owner").
-  alter table watchlist              alter column owner_id drop default;
-  alter table theses                 alter column owner_id drop default;
-  alter table portfolio_transactions alter column owner_id drop default;
-  alter table linked_accounts        alter column owner_id drop default;
-  alter table alert_rules            alter column owner_id drop default;
-
   raise notice 'owner_id added + existing rows backfilled to % (%)', owner_email, owner;
 end $$;
 
--- ── 2. per-user uniqueness (drop the old global unique, add a scoped one) ─────
-alter table watchlist drop constraint if exists watchlist_security_id_key;
-alter table watchlist drop constraint if exists watchlist_owner_security_key;
-alter table watchlist add  constraint watchlist_owner_security_key unique (owner_id, security_id);
+-- Owner-leading indexes (additive — old indexes are left in place; 0023 prunes
+-- the now-redundant ones). create-if-not-exists keeps this re-runnable.
+create index if not exists idx_watchlist_owner          on watchlist (owner_id);
+create index if not exists idx_theses_owner_sec         on theses (owner_id, security_id);
+create index if not exists idx_ptx_owner_security_date  on portfolio_transactions (owner_id, security_id, trade_date);
+create index if not exists idx_ptx_owner_date           on portfolio_transactions (owner_id, trade_date);
+create index if not exists idx_linked_owner             on linked_accounts (owner_id);
+create index if not exists idx_alert_rules_owner        on alert_rules (owner_id);
 
-alter table linked_accounts drop constraint if exists linked_accounts_provider_external_id_key;
-alter table linked_accounts drop constraint if exists linked_accounts_owner_provider_external_key;
-alter table linked_accounts add  constraint linked_accounts_owner_provider_external_key
-  unique (owner_id, provider, external_id);
-
--- ── 3. owner-leading indexes (queries are now always owner-scoped) ───────────
-create index if not exists idx_watchlist_owner         on watchlist (owner_id);
-create index if not exists idx_theses_owner_sec        on theses (owner_id, security_id);
-
-drop   index if exists     idx_ptx_security_date;
-create index if not exists idx_ptx_owner_security_date on portfolio_transactions (owner_id, security_id, trade_date);
-drop   index if exists     idx_ptx_date;
-create index if not exists idx_ptx_owner_date          on portfolio_transactions (owner_id, trade_date);
-
-create index if not exists idx_linked_owner            on linked_accounts (owner_id);
-create index if not exists idx_alert_rules_owner       on alert_rules (owner_id);
-
--- ── 4. VERIFY (run this after; all 5 should print one row each) ───────────────
+-- ── VERIFY (run after; expect one row per table) ─────────────────────────────
 -- select table_name, column_name
 --   from information_schema.columns
 --  where column_name = 'owner_id'
