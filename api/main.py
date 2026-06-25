@@ -26,6 +26,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from api.auth import CurrentUser
 from api.routers import (
     alerts,
     funds,
@@ -148,6 +149,17 @@ def auth_check() -> dict:
     header is missing/wrong, so the frontend uses this as its login probe.
     """
     return {"ok": True, "authRequired": bool(os.getenv("APP_ACCESS_PASSWORD", ""))}
+
+
+@app.get("/auth/me", tags=["meta"])
+def auth_me(user: CurrentUser) -> dict:
+    """Return the authenticated user's id + email — validates a Supabase session.
+
+    Per-user identity for multi-tenancy. Not yet used to gate other routes (that
+    is Phase 3, alongside the frontend login swap), so this changes no live
+    behavior — it just lets the SPA confirm a token verifies once it logs in.
+    """
+    return {"id": user.id, "email": user.email}
 
 
 app.include_router(screener.router, prefix="/screener", tags=["screener"])
