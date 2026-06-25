@@ -410,12 +410,17 @@ def _row_to_dict(r: tuple) -> dict[str, Any]:
     }
 
 
-def list_links() -> dict[str, Any]:
+def list_links(owner_id: str | None = None) -> dict[str, Any]:
     """All linked accounts (secrets excluded) + whether migration 0021 is applied."""
     conn = acquire()
+    owner_clause = " WHERE owner_id = %s" if owner_id is not None else ""
+    params = (owner_id,) if owner_id is not None else ()
     try:
         with conn.cursor() as cur:
-            cur.execute(f"SELECT {_PUBLIC_COLS} FROM linked_accounts ORDER BY id")
+            cur.execute(
+                f"SELECT {_PUBLIC_COLS} FROM linked_accounts{owner_clause} ORDER BY id",
+                params,
+            )
             rows = cur.fetchall()
         return {"ready": True, "accounts": [_row_to_dict(r) for r in rows]}
     except psycopg.errors.UndefinedTable:
@@ -425,33 +430,17 @@ def list_links() -> dict[str, Any]:
         release(conn)
 
 
-def get_link(link_id: int) -> dict[str, Any] | None:
+def get_link(link_id: int, owner_id: str | None = None) -> dict[str, Any] | None:
     """One account INCLUDING its encrypted secret (engine-internal use only)."""
     conn = acquire()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"SELECT {_PUBLIC_COLS}, secret_enc FROM linked_accounts WHERE id = %s",
-                (link_id,),
-            )
-            r = cur.fetchone()
-    finally:
-        release(conn)
-    if r is None:
-        return None
-    d = _row_to_dict(r)
-    d["secret_enc"] = r[10]
-    return d
-
-
-def _latest_row_for_provider(provider: str) -> dict[str, Any] | None:
-    conn = acquire()
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (link_id, owner_id) if owner_id is not None else (link_id,)
     try:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT {_PUBLIC_COLS}, secret_enc FROM linked_accounts "
-                f"WHERE provider = %s ORDER BY id DESC LIMIT 1",
-                (provider,),
+                f"WHERE id = %s{owner_clause}",
+                params,
             )
             r = cur.fetchone()
     finally:
@@ -463,12 +452,38 @@ def _latest_row_for_provider(provider: str) -> dict[str, Any] | None:
     return d
 
 
-def delete_link(link_id: int) -> bool:
-    """Unlink an account. Imported transactions are kept (FK is SET NULL)."""
+def _latest_row_for_provider(provider: str,
+                             owner_id: str | None = None) -> dict[str, Any] | None:
     conn = acquire()
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (provider, owner_id) if owner_id is not None else (provider,)
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM linked_accounts WHERE id = %s", (link_id,))
+            cur.execute(
+                f"SELECT {_PUBLIC_COLS}, secret_enc FROM linked_accounts "
+                f"WHERE provider = %s{owner_clause} ORDER BY id DESC LIMIT 1",
+                params,
+            )
+            r = cur.fetchone()
+    finally:
+        release(conn)
+    if r is None:
+        return None
+    d = _row_to_dict(r)
+    d["secret_enc"] = r[10]
+    return d
+
+
+def delete_link(link_id: int, owner_id: str | None = None) -> bool:
+    """Unlink an account. Imported transactions are kept (FK is SET NULL)."""
+    conn = acquire()
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (link_id, owner_id) if owner_id is not None else (link_id,)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"DELETE FROM linked_accounts WHERE id = %s{owner_clause}", params
+            )
             deleted = cur.rowcount > 0
         conn.commit()
         return deleted
@@ -489,7 +504,7 @@ def _mark(conn, link_id: int, **fields: Any) -> None:
 
 # ── connect + sync orchestration ──────────────────────────────────────────────
 
-def connect(provider: str) -> dict[str, Any]:
+def connect(provider: str, owner_id: str | None = None) -> dict[str, Any]:
     """Begin (or refresh) a brokerage link. Registers/reuses the provider user,
     persists the encrypted secret, and returns the connection-portal URL."""
     prov = PROVIDERS.get(provider)
@@ -502,7 +517,7 @@ def connect(provider: str) -> dict[str, Any]:
         return {"status": "not_configured",
                 "detail": f"{prov.label} credentials are not set in the environment."}
 
-    existing = _latest_row_for_provider(provider)
+    existing = _latest_row_for_provider(provider, owner_id)
     prior_secret = None
     if existing and existing.get("secret_enc"):
         try:
@@ -524,6 +539,16 @@ def connect(provider: str) -> dict[str, Any]:
                     "updated_at = now() WHERE id = %s",
                     (res["external_id"], res["display_name"], secret_enc, link_id),
                 )
+            elif owner_id is not None:
+                cur.execute(
+                    "INSERT INTO linked_accounts "
+                    "(provider, external_id, display_name, status, secret_enc, "
+                    "owner_id) "
+                    "VALUES (%s, %s, %s, 'pending', %s, %s) RETURNING id",
+                    (provider, res["external_id"], res["display_name"], secret_enc,
+                     owner_id),
+                )
+                link_id = int(cur.fetchone()[0])
             else:
                 cur.execute(
                     "INSERT INTO linked_accounts "
@@ -540,7 +565,8 @@ def connect(provider: str) -> dict[str, Any]:
 
 
 def _insert_synced(conn, link_id: int, provider: str,
-                   txns: list[dict[str, Any]]) -> tuple[int, list[str]]:
+                   txns: list[dict[str, Any]],
+                   owner_id: str | None = None) -> tuple[int, list[str]]:
     """Insert normalised provider transactions as portfolio_transactions rows.
 
     Idempotent via ON CONFLICT on the partial-unique (linked_account_id,
@@ -592,28 +618,38 @@ def _insert_synced(conn, link_id: int, provider: str,
                     skipped.append(f"{ext}: {txn} needs positive shares and a price")
                     continue
                 amount = None
-        rows.append((sid, txn, it["trade_date"], shares, price, amount,
-                     it.get("note") or None, provider, ext, link_id))
+        row = (sid, txn, it["trade_date"], shares, price, amount,
+               it.get("note") or None, provider, ext, link_id)
+        rows.append(row + (owner_id,) if owner_id is not None else row)
 
     inserted = 0
     if rows:
-        with conn.cursor() as cur:
-            cur.executemany(
+        if owner_id is not None:
+            sql = """
+                INSERT INTO portfolio_transactions
+                    (security_id, txn_type, trade_date, shares, price, amount,
+                     note, source, external_id, linked_account_id, owner_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (linked_account_id, external_id)
+                    WHERE external_id IS NOT NULL DO NOTHING
                 """
+        else:
+            sql = """
                 INSERT INTO portfolio_transactions
                     (security_id, txn_type, trade_date, shares, price, amount,
                      note, source, external_id, linked_account_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (linked_account_id, external_id)
                     WHERE external_id IS NOT NULL DO NOTHING
-                """,
-                rows,
-            )
+                """
+        with conn.cursor() as cur:
+            cur.executemany(sql, rows)
             inserted = cur.rowcount
     return inserted, skipped
 
 
-def _reconcile_positions(conn, link_id: int, positions: list[dict]) -> int:
+def _reconcile_positions(conn, link_id: int, positions: list[dict],
+                         owner_id: str | None = None) -> int:
     """Insert synthetic 'opening balance' lots so holdings match the broker's
     actual position counts even when the activity feed is incomplete (shares
     acquired before SnapTrade's available history — e.g. transfers / old lots).
@@ -623,11 +659,12 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict]) -> int:
     net. Priced at the position's average cost so value AND cost basis line up."""
     if not positions:
         return 0
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
     with conn.cursor() as cur:
         cur.execute(
             "DELETE FROM portfolio_transactions "
-            "WHERE linked_account_id = %s AND external_id LIKE 'opening:%%'",
-            (link_id,),
+            f"WHERE linked_account_id = %s AND external_id LIKE 'opening:%%'{owner_clause}",
+            (link_id, owner_id) if owner_id is not None else (link_id,),
         )
         cur.execute(
             "SELECT security_id, "
@@ -635,14 +672,14 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict]) -> int:
             "           WHEN txn_type='sell' THEN -shares ELSE 0 END) "
             "FROM portfolio_transactions "
             "WHERE linked_account_id = %s AND txn_type IN ('buy','sell') "
-            "  AND security_id IS NOT NULL GROUP BY security_id",
-            (link_id,),
+            f"  AND security_id IS NOT NULL{owner_clause} GROUP BY security_id",
+            (link_id, owner_id) if owner_id is not None else (link_id,),
         )
         net_by_sid = {int(s): float(n or 0) for s, n in cur.fetchall()}
         cur.execute(
             "SELECT min(trade_date) FROM portfolio_transactions "
-            "WHERE linked_account_id = %s AND external_id NOT LIKE 'opening:%%'",
-            (link_id,),
+            f"WHERE linked_account_id = %s AND external_id NOT LIKE 'opening:%%'{owner_clause}",
+            (link_id, owner_id) if owner_id is not None else (link_id,),
         )
         first = cur.fetchone()[0]
     open_date = first or date.today()
@@ -665,36 +702,48 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict]) -> int:
         if gap > 0:
             if not price:
                 continue
-            rows.append((sid, "buy", open_date, gap, price, None,
-                         "opening balance (shares predating sync history)",
-                         "snaptrade", ext, link_id))
+            row = (sid, "buy", open_date, gap, price, None,
+                   "opening balance (shares predating sync history)",
+                   "snaptrade", ext, link_id)
         else:  # broker holds fewer than the activity feed implies
-            rows.append((sid, "sell", open_date, -gap, price or 0.0, None,
-                         "opening adjustment (reconciled to broker position)",
-                         "snaptrade", ext, link_id))
+            row = (sid, "sell", open_date, -gap, price or 0.0, None,
+                   "opening adjustment (reconciled to broker position)",
+                   "snaptrade", ext, link_id)
+        rows.append(row + (owner_id,) if owner_id is not None else row)
     if rows:
-        with conn.cursor() as cur:
-            cur.executemany(
+        if owner_id is not None:
+            sql = """
+                INSERT INTO portfolio_transactions
+                    (security_id, txn_type, trade_date, shares, price, amount,
+                     note, source, external_id, linked_account_id, owner_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (linked_account_id, external_id)
+                    WHERE external_id IS NOT NULL DO NOTHING
                 """
+        else:
+            sql = """
                 INSERT INTO portfolio_transactions
                     (security_id, txn_type, trade_date, shares, price, amount,
                      note, source, external_id, linked_account_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (linked_account_id, external_id)
                     WHERE external_id IS NOT NULL DO NOTHING
-                """,
-                rows,
-            )
+                """
+        with conn.cursor() as cur:
+            cur.executemany(sql, rows)
     return len(rows)
 
 
-def sync_account(link_id: int) -> dict[str, Any]:
+def sync_account(link_id: int, owner_id: str | None = None) -> dict[str, Any]:
     """Pull new activity for one linked account into the ledger (idempotent).
 
     Returns {"pending": True} when the user hasn't finished linking yet. Raises
     NotImplementedError for unbuilt providers, LookupError if the link is gone.
-    Tokens never appear in any message."""
-    link = get_link(link_id)
+    Tokens never appear in any message.
+
+    When ``owner_id`` is provided the link is fetched owner-scoped, so a sync of
+    another user's link raises LookupError (ownership verified via get_link)."""
+    link = get_link(link_id, owner_id)
     if link is None:
         raise LookupError(f"linked account {link_id} not found")
     prov = PROVIDERS.get(link["provider"])
@@ -741,8 +790,9 @@ def sync_account(link_id: int) -> dict[str, Any]:
     conn = acquire()
     try:
         inserted, skipped = _insert_synced(conn, link_id, link["provider"],
-                                           res["transactions"])
-        reconciled = _reconcile_positions(conn, link_id, res.get("positions") or [])
+                                           res["transactions"], owner_id)
+        reconciled = _reconcile_positions(conn, link_id, res.get("positions") or [],
+                                          owner_id)
         fields = {"status": "active", "display_name": res.get("display_name"),
                   "last_synced_at": datetime.now(UTC),
                   "cursor": date.today().isoformat(), "last_error": None}
@@ -766,8 +816,10 @@ def complete_oauth(state: str, code: str) -> int:
     conn = acquire()
     try:
         with conn.cursor() as cur:
+            # owner_id is selected last so the callback (which has no user context)
+            # can recover the owner connect() stashed on the pending row, if any.
             cur.execute(
-                f"SELECT {_PUBLIC_COLS}, secret_enc FROM linked_accounts "
+                f"SELECT {_PUBLIC_COLS}, secret_enc, owner_id FROM linked_accounts "
                 f"WHERE provider = 'snaptrade' ORDER BY id DESC"
             )
             rows = cur.fetchall()
@@ -783,16 +835,22 @@ def complete_oauth(state: str, code: str) -> int:
         except Exception:  # noqa: BLE001 - skip undecryptable rows
             continue
         if secrets.compare_digest(str(sec.get("state", "")), state):
-            match = (int(r[0]), sec)
+            # Recover the owner stashed by connect() (None for legacy/default rows).
+            owner_id = r[11]
+            match = (int(r[0]), sec, owner_id)
             break
     if match is None:
         raise LookupError("no pending SnapTrade link matches this OAuth state")
 
-    link_id, sec = match
+    link_id, sec, owner_id = match
     res = prov.complete_link(sec, code)  # exchanges the code; may raise on bad code
     secret_enc = encrypt_secret(json.dumps(res["secret"]))
     conn = acquire()
     try:
+        # The row was located by its (unforgeable) PKCE state and is keyed by its
+        # unique id, so the recovered owner_id needs no further scoping here; it is
+        # available for callers/Phase 3 that thread ownership through the callback.
+        _ = owner_id
         _mark(conn, link_id, external_id=res.get("external_id"),
               display_name=res.get("display_name"), secret_enc=secret_enc,
               status="active", last_error=None)

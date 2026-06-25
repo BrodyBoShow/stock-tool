@@ -83,7 +83,7 @@ def search_securities(q: str, limit: int = 12) -> list[dict[str, Any]]:
     return [dict(zip(cols, r, strict=True)) for r in rows]
 
 
-def top_quote_tickers(limit: int = 300) -> list[str]:
+def top_quote_tickers(limit: int = 300, owner_id: str | None = None) -> list[str]:
     """Top-N active tickers by latest composite, PLUS anything currently held
     in the portfolio ledger — the bounded set for the live overlay. Fetching
     live quotes for the whole ~5.5k universe is slow (yfinance) and rate-limit-
@@ -94,7 +94,13 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
     The held-shares check is raw buy-sell sums (no split adjustment) — a name
     whose post-split sell zeroes the position could linger in the set, which
     only costs one extra quote fetch.
+
+    owner_id (default None) preserves current behavior — the held-tickers
+    subquery spans the whole portfolio_transactions ledger. When set, the
+    held-shares check is scoped to that owner's transactions only.
     """
+    held_owner_clause = " AND t.owner_id = %s" if owner_id is not None else ""
+    held_params = (owner_id,) if owner_id is not None else ()
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -115,15 +121,16 @@ def top_quote_tickers(limit: int = 300) -> list[str]:
             )
             rows = [r[0] for r in cur.fetchall()]
             cur.execute(
-                """
+                f"""
                 SELECT s.ticker
                 FROM portfolio_transactions t
                 JOIN securities s ON s.security_id = t.security_id
-                WHERE t.txn_type IN ('buy', 'sell')
+                WHERE t.txn_type IN ('buy', 'sell'){held_owner_clause}
                 GROUP BY s.ticker
                 HAVING SUM(CASE WHEN t.txn_type = 'buy' THEN t.shares
                                 ELSE -t.shares END) > 0
-                """
+                """,
+                held_params,
             )
             held = [r[0] for r in cur.fetchall()]
             seen = set(rows)
@@ -552,13 +559,23 @@ def macro_series_rows(series_id: str) -> list[dict[str, Any]]:
     return [{"date": r[0], "value": _f(r[1])} for r in rows]
 
 
-def watchlist_rows() -> list[dict[str, Any]]:
-    """Watchlist rows joined with securities + latest factor scores."""
+def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
+    """Watchlist rows joined with securities + latest factor scores.
+
+    owner_id (default None) preserves current behavior — returns every
+    watchlist row. When set, the watchlist is scoped to that owner's rows.
+    """
+    owner_clause = " WHERE w.owner_id = %s" if owner_id is not None else ""
+    params = (
+        (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, owner_id)
+        if owner_id is not None
+        else (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION)
+    )
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT s.ticker, s.name, s.sector, w.added_at,
                        fs.composite, fs.growth_pctl, fs.value_pctl,
                        fs.quality_pctl, fs.momentum_pctl,
@@ -575,10 +592,10 @@ def watchlist_rows() -> list[dict[str, Any]]:
                     SELECT close FROM prices_daily p
                     WHERE p.security_id = s.security_id
                     ORDER BY p.date DESC LIMIT 1
-                ) lp ON true
+                ) lp ON true{owner_clause}
                 ORDER BY w.added_at DESC
                 """,
-                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
+                params,
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -598,14 +615,21 @@ def watchlist_rows() -> list[dict[str, Any]]:
     return result
 
 
-def watchlist_tickers() -> frozenset[str]:
-    """Frozenset of tickers currently in the watchlist."""
+def watchlist_tickers(owner_id: str | None = None) -> frozenset[str]:
+    """Frozenset of tickers currently in the watchlist.
+
+    owner_id (default None) preserves current behavior — every watchlist
+    ticker. When set, scopes to that owner's watchlist.
+    """
+    owner_clause = " WHERE w.owner_id = %s" if owner_id is not None else ""
+    params = (owner_id,) if owner_id is not None else ()
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT s.ticker FROM watchlist w "
-                "JOIN securities s ON s.security_id = w.security_id"
+                "JOIN securities s ON s.security_id = w.security_id" + owner_clause,
+                params,
             )
             rows = cur.fetchall()
     finally:
@@ -613,7 +637,9 @@ def watchlist_tickers() -> frozenset[str]:
     return frozenset(r[0] for r in rows)
 
 
-def watchlist_change_core(baseline_days: int = 25) -> list[dict[str, Any]]:
+def watchlist_change_core(
+    baseline_days: int = 25, owner_id: str | None = None
+) -> list[dict[str, Any]]:
     """Per-watchlist-name nightly rank/composite move + thesis review date.
 
     Ranks ONLY the latest snapshot and the most recent one at least
@@ -621,12 +647,23 @@ def watchlist_change_core(baseline_days: int = 25) -> list[dict[str, Any]]:
     screener), so this is two RANK() passes — not the whole history. comp_base/
     rank_base are NULL when no snapshot that old exists yet (young history).
     The 8-K / insider / live-price parts are layered on in the API router.
+
+    owner_id (default None) preserves current behavior — every watchlist name
+    with its (single-user) active thesis. When set, both the watchlist and the
+    joined theses are scoped to that owner.
     """
+    thesis_owner_clause = " AND t.owner_id = %s" if owner_id is not None else ""
+    watchlist_owner_clause = " WHERE w.owner_id = %s" if owner_id is not None else ""
+    base_params = (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, str(baseline_days),
+                   ACTIVE_CONFIG_VERSION)
+    params = (
+        (*base_params, owner_id, owner_id) if owner_id is not None else base_params
+    )
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 WITH d AS (
                     SELECT max(score_date) AS latest
                     FROM factor_scores WHERE config_version = %s
@@ -663,11 +700,11 @@ def watchlist_change_core(baseline_days: int = 25) -> list[dict[str, Any]]:
                     ON bn.security_id = w.security_id
                     AND bn.score_date = (SELECT base FROM b)
                 LEFT JOIN theses t
-                    ON t.security_id = w.security_id AND t.status = 'active'
+                    ON t.security_id = w.security_id
+                    AND t.status = 'active'{thesis_owner_clause}{watchlist_owner_clause}
                 ORDER BY w.added_at DESC
                 """,
-                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, str(baseline_days),
-                 ACTIVE_CONFIG_VERSION),
+                params,
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -687,13 +724,23 @@ def watchlist_change_core(baseline_days: int = 25) -> list[dict[str, Any]]:
     return out
 
 
-def all_theses_rows() -> list[dict[str, Any]]:
-    """All active theses joined with securities + latest composite score."""
+def all_theses_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
+    """All active theses joined with securities + latest composite score.
+
+    owner_id (default None) preserves current behavior — every active thesis.
+    When set, scopes to that owner's theses.
+    """
+    owner_clause = " AND t.owner_id = %s" if owner_id is not None else ""
+    params = (
+        (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, owner_id)
+        if owner_id is not None
+        else (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION)
+    )
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT s.ticker, s.name, s.sector,
                        t.id AS thesis_id, t.security_id,
                        t.summary, t.invalidation_rules,
@@ -706,10 +753,10 @@ def all_theses_rows() -> list[dict[str, Any]]:
                     AND fs.config_version = %s
                     AND fs.score_date = (SELECT max(score_date) FROM factor_scores
                                          WHERE config_version = %s)
-                WHERE t.status = 'active'
+                WHERE t.status = 'active'{owner_clause}
                 ORDER BY t.review_date ASC NULLS LAST, t.updated_at DESC
                 """,
-                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
+                params,
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -726,13 +773,19 @@ def all_theses_rows() -> list[dict[str, Any]]:
 
 # ── write helpers (watchlist + theses only) ────────────────────────────────────
 
-def watchlist_add_by_ticker(ticker: str) -> tuple[str, int | None]:
+def watchlist_add_by_ticker(
+    ticker: str, owner_id: str | None = None
+) -> tuple[str, int | None]:
     """Idempotent watchlist add.
 
     Returns (status, security_id) where status is one of:
       "added"           — newly inserted
       "already_present" — ticker was already in the watchlist
       "not_found"       — ticker not in securities or inactive
+
+    owner_id (default None) preserves current behavior — the DB default fills
+    owner_id on insert. When set, the row is inserted for that owner. The
+    ON CONFLICT (security_id) target is unchanged (migration 0023 territory).
     """
     conn = acquire()
     try:
@@ -746,11 +799,18 @@ def watchlist_add_by_ticker(ticker: str) -> tuple[str, int | None]:
                 return "not_found", None
             security_id: int = row[0]
 
-            cur.execute(
-                "INSERT INTO watchlist (security_id) VALUES (%s) "
-                "ON CONFLICT (security_id) DO NOTHING",
-                (security_id,),
-            )
+            if owner_id is not None:
+                cur.execute(
+                    "INSERT INTO watchlist (security_id, owner_id) VALUES (%s, %s) "
+                    "ON CONFLICT (security_id) DO NOTHING",
+                    (security_id, owner_id),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO watchlist (security_id) VALUES (%s) "
+                    "ON CONFLICT (security_id) DO NOTHING",
+                    (security_id,),
+                )
             added = cur.rowcount > 0
         conn.commit()
     finally:
@@ -759,14 +819,20 @@ def watchlist_add_by_ticker(ticker: str) -> tuple[str, int | None]:
     return ("added" if added else "already_present"), security_id
 
 
-def watchlist_remove_by_ticker(ticker: str) -> tuple[bool, str]:
+def watchlist_remove_by_ticker(
+    ticker: str, owner_id: str | None = None
+) -> tuple[bool, str]:
     """Remove a ticker from the watchlist.
 
     Returns (removed, status) where status is one of:
       "removed"          — row was deleted
       "not_in_watchlist" — ticker found but not in watchlist
       "not_found"        — ticker not in securities or inactive
+
+    owner_id (default None) preserves current behavior — deletes by
+    security_id alone. When set, the delete is scoped to that owner's row.
     """
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -779,7 +845,13 @@ def watchlist_remove_by_ticker(ticker: str) -> tuple[bool, str]:
                 return False, "not_found"
             security_id: int = row[0]
 
-            cur.execute("DELETE FROM watchlist WHERE security_id = %s", (security_id,))
+            del_params = (
+                (security_id, owner_id) if owner_id is not None else (security_id,)
+            )
+            cur.execute(
+                "DELETE FROM watchlist WHERE security_id = %s" + owner_clause,
+                del_params,
+            )
             deleted = cur.rowcount > 0
         conn.commit()
     finally:
@@ -793,6 +865,7 @@ def thesis_upsert_by_ticker(
     summary: str,
     invalidation_rules: str | None,
     review_date: date | None,
+    owner_id: str | None = None,
 ) -> tuple[str, int | None]:
     """Create or update the active thesis for a ticker.
 
@@ -800,7 +873,14 @@ def thesis_upsert_by_ticker(
       "created"   — new thesis row inserted
       "updated"   — existing thesis row updated
       "not_found" — ticker not in securities or inactive
+
+    owner_id (default None) preserves current behavior — the existing-thesis
+    lookup and update aren't owner-filtered and the insert relies on the DB
+    default. When set, the lookup/update are scoped to that owner and the
+    insert writes owner_id explicitly.
     """
+    existing_owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    update_owner_clause = " AND owner_id = %s" if owner_id is not None else ""
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -813,31 +893,54 @@ def thesis_upsert_by_ticker(
                 return "not_found", None
             security_id: int = row[0]
 
+            existing_params = (
+                (security_id, owner_id) if owner_id is not None else (security_id,)
+            )
             cur.execute(
-                "SELECT id FROM theses WHERE security_id = %s AND status = 'active' LIMIT 1",
-                (security_id,),
+                "SELECT id FROM theses WHERE security_id = %s AND status = 'active'"
+                + existing_owner_clause
+                + " LIMIT 1",
+                existing_params,
             )
             existing = cur.fetchone()
 
             if existing:
+                update_params = (
+                    (summary, invalidation_rules or None, review_date,
+                     existing[0], owner_id)
+                    if owner_id is not None
+                    else (summary, invalidation_rules or None, review_date, existing[0])
+                )
                 cur.execute(
-                    """
+                    f"""
                     UPDATE theses
                     SET summary = %s, invalidation_rules = %s,
                         review_date = %s, updated_at = NOW()
-                    WHERE id = %s
+                    WHERE id = %s{update_owner_clause}
                     """,
-                    (summary, invalidation_rules or None, review_date, existing[0]),
+                    update_params,
                 )
                 status = "updated"
             else:
-                cur.execute(
-                    """
-                    INSERT INTO theses (security_id, summary, invalidation_rules, review_date)
-                    VALUES (%s, %s, %s, %s)
-                    """,
-                    (security_id, summary, invalidation_rules or None, review_date),
-                )
+                if owner_id is not None:
+                    cur.execute(
+                        """
+                        INSERT INTO theses
+                          (security_id, summary, invalidation_rules, review_date, owner_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (security_id, summary, invalidation_rules or None,
+                         review_date, owner_id),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO theses
+                          (security_id, summary, invalidation_rules, review_date)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (security_id, summary, invalidation_rules or None, review_date),
+                    )
                 status = "created"
         conn.commit()
     finally:
@@ -846,14 +949,20 @@ def thesis_upsert_by_ticker(
     return status, security_id
 
 
-def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
+def thesis_delete_by_ticker(
+    ticker: str, owner_id: str | None = None
+) -> tuple[bool, str]:
     """Delete the active thesis for a ticker.
 
     Returns (deleted, status) where status is one of:
       "deleted"           — thesis row removed
       "not_found_thesis"  — ticker found but no active thesis
       "not_found_ticker"  — ticker not in securities or inactive
+
+    owner_id (default None) preserves current behavior — deletes the active
+    thesis by security_id alone. When set, the delete is scoped to that owner.
     """
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -866,9 +975,13 @@ def thesis_delete_by_ticker(ticker: str) -> tuple[bool, str]:
                 return False, "not_found_ticker"
             security_id: int = row[0]
 
+            del_params = (
+                (security_id, owner_id) if owner_id is not None else (security_id,)
+            )
             cur.execute(
-                "DELETE FROM theses WHERE security_id = %s AND status = 'active'",
-                (security_id,),
+                "DELETE FROM theses WHERE security_id = %s AND status = 'active'"
+                + owner_clause,
+                del_params,
             )
             deleted = cur.rowcount > 0
         conn.commit()
@@ -953,19 +1066,26 @@ def funds_list() -> list[dict[str, Any]]:
 
 # ── alert rules (Wave 5 — user-configured, single-user) ─────────────────────────
 
-def alert_rules() -> list[dict[str, Any]]:
-    """All alert rules, joined with the ticker for scope='ticker' rules."""
+def alert_rules(owner_id: str | None = None) -> list[dict[str, Any]]:
+    """All alert rules, joined with the ticker for scope='ticker' rules.
+
+    owner_id (default None) preserves current behavior — every rule. When set,
+    scopes to that owner's rules.
+    """
+    owner_clause = " WHERE ar.owner_id = %s" if owner_id is not None else ""
+    params = (owner_id,) if owner_id is not None else ()
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT ar.id, ar.scope, ar.security_id, s.ticker, s.name,
                        ar.rule_type, ar.threshold, ar.enabled, ar.created_at
                 FROM alert_rules ar
-                LEFT JOIN securities s ON s.security_id = ar.security_id
+                LEFT JOIN securities s ON s.security_id = ar.security_id{owner_clause}
                 ORDER BY ar.created_at
-                """
+                """,
+                params,
             )
             rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -981,19 +1101,37 @@ def alert_rules() -> list[dict[str, Any]]:
 
 
 def alert_rule_add(
-    scope: str, security_id: int | None, rule_type: str, threshold: float | None
+    scope: str,
+    security_id: int | None,
+    rule_type: str,
+    threshold: float | None,
+    owner_id: str | None = None,
 ) -> int:
-    """Insert an alert rule; returns the new rule id."""
+    """Insert an alert rule; returns the new rule id.
+
+    owner_id (default None) preserves current behavior — the DB default fills
+    owner_id. When set, the rule is inserted for that owner.
+    """
     conn = acquire()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO alert_rules (scope, security_id, rule_type, threshold)
-                VALUES (%s, %s, %s, %s) RETURNING id
-                """,
-                (scope, security_id, rule_type, threshold),
-            )
+            if owner_id is not None:
+                cur.execute(
+                    """
+                    INSERT INTO alert_rules
+                      (scope, security_id, rule_type, threshold, owner_id)
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id
+                    """,
+                    (scope, security_id, rule_type, threshold, owner_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO alert_rules (scope, security_id, rule_type, threshold)
+                    VALUES (%s, %s, %s, %s) RETURNING id
+                    """,
+                    (scope, security_id, rule_type, threshold),
+                )
             new_id = int(cur.fetchone()[0])
         conn.commit()
     finally:
@@ -1001,14 +1139,25 @@ def alert_rule_add(
     return new_id
 
 
-def alert_rule_set_enabled(rule_id: int, enabled: bool) -> bool:
-    """Toggle a rule on/off. Returns True if a row was updated."""
+def alert_rule_set_enabled(
+    rule_id: int, enabled: bool, owner_id: str | None = None
+) -> bool:
+    """Toggle a rule on/off. Returns True if a row was updated.
+
+    owner_id (default None) preserves current behavior — toggles by id alone.
+    When set, the update is scoped to that owner (closing the IDOR so one user
+    can't flip another's rule).
+    """
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (
+        (enabled, rule_id, owner_id) if owner_id is not None else (enabled, rule_id)
+    )
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "UPDATE alert_rules SET enabled = %s WHERE id = %s",
-                (enabled, rule_id),
+                "UPDATE alert_rules SET enabled = %s WHERE id = %s" + owner_clause,
+                params,
             )
             updated = cur.rowcount > 0
         conn.commit()
@@ -1017,12 +1166,22 @@ def alert_rule_set_enabled(rule_id: int, enabled: bool) -> bool:
     return updated
 
 
-def alert_rule_delete(rule_id: int) -> bool:
-    """Delete a rule. Returns True if a row was removed."""
+def alert_rule_delete(rule_id: int, owner_id: str | None = None) -> bool:
+    """Delete a rule. Returns True if a row was removed.
+
+    owner_id (default None) preserves current behavior — deletes by id alone.
+    When set, the delete is scoped to that owner (closing the IDOR so one user
+    can't delete another's rule).
+    """
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (rule_id, owner_id) if owner_id is not None else (rule_id,)
     conn = acquire()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM alert_rules WHERE id = %s", (rule_id,))
+            cur.execute(
+                "DELETE FROM alert_rules WHERE id = %s" + owner_clause,
+                params,
+            )
             deleted = cur.rowcount > 0
         conn.commit()
     finally:

@@ -102,6 +102,7 @@ def project_portfolio(
     n_sims: int = 1000,
     lookback_days: int = 1095,
     stress: bool = False,
+    owner_id: str | None = None,
 ) -> dict[str, Any]:
     """Correlated Monte Carlo projection of the current holdings (monthly steps).
 
@@ -111,7 +112,7 @@ def project_portfolio(
     """
     years = max(1, min(int(years), 40))
     n_sims = max(200, min(int(n_sims), 5000))
-    port = compute_portfolio()
+    port = compute_portfolio(owner_id=owner_id)
     if not port.get("has_transactions") or not port.get("holdings"):
         return {"has_portfolio": False}
 

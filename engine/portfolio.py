@@ -56,19 +56,23 @@ ALL_TYPES = ("buy", "sell", "dividend") + CASH_TYPES
 
 # ── ledger reads/writes ───────────────────────────────────────────────────────
 
-def get_transactions() -> list[dict[str, Any]]:
+def get_transactions(owner_id: str | None = None) -> list[dict[str, Any]]:
     """Full ledger, newest first, joined with ticker/name for display."""
+    owner_clause = " WHERE t.owner_id = %s" if owner_id is not None else ""
+    params = (owner_id,) if owner_id is not None else ()
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT t.id, t.txn_type, t.trade_date, s.ticker, s.name,
                        t.shares, t.price, t.amount, t.note
                 FROM portfolio_transactions t
                 LEFT JOIN securities s ON s.security_id = t.security_id
+                {owner_clause}
                 ORDER BY t.trade_date DESC, t.id DESC
-                """
+                """,
+                params,
             )
             rows = cur.fetchall()
     finally:
@@ -107,7 +111,9 @@ def _resolve_tickers(conn, tickers: set[str]) -> dict[str, int]:
         return {t: int(sid) for t, sid in cur.fetchall()}
 
 
-def add_transactions(items: list[dict[str, Any]]) -> tuple[int, list[str]]:
+def add_transactions(
+    items: list[dict[str, Any]], owner_id: str | None = None
+) -> tuple[int, list[str]]:
     """Validate + insert a batch (single add and CSV import use the same path).
 
     All-or-nothing: returns (inserted_count, errors). If errors is non-empty,
@@ -157,33 +163,45 @@ def add_transactions(items: list[dict[str, Any]]) -> tuple[int, list[str]]:
             if not it.get("trade_date"):
                 errors.append(f"{label}: missing date")
                 continue
-            rows.append((sid, txn, it["trade_date"], shares, price, amount,
-                         it.get("note") or None))
+            row = (sid, txn, it["trade_date"], shares, price, amount,
+                   it.get("note") or None)
+            rows.append(row + (owner_id,) if owner_id is not None else row)
 
         if errors or not rows:
             return 0, errors
 
-        with conn.cursor() as cur:
-            cur.executemany(
+        if owner_id is not None:
+            insert_sql = """
+                INSERT INTO portfolio_transactions
+                    (security_id, txn_type, trade_date, shares, price, amount,
+                     note, owner_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """
+        else:
+            insert_sql = """
                 INSERT INTO portfolio_transactions
                     (security_id, txn_type, trade_date, shares, price, amount, note)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                rows,
-            )
+                """
+        with conn.cursor() as cur:
+            cur.executemany(insert_sql, rows)
         conn.commit()
         return len(rows), []
     finally:
         release(conn)
 
 
-def delete_transaction(txn_id: int) -> bool:
+def delete_transaction(txn_id: int, owner_id: str | None = None) -> bool:
     """Remove one ledger row. True if it existed."""
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (txn_id, owner_id) if owner_id is not None else (txn_id,)
     conn = acquire()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM portfolio_transactions WHERE id = %s", (txn_id,))
+            cur.execute(
+                f"DELETE FROM portfolio_transactions WHERE id = %s{owner_clause}",
+                params,
+            )
             deleted = cur.rowcount > 0
         conn.commit()
         return deleted
@@ -342,17 +360,21 @@ def _fifo_sell(q: list[list[float]], to_sell: float) -> float:
     return cost_out
 
 
-def compute_portfolio() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
+def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     """The entire Portfolio tab payload in one pass over the ledger."""
+    owner_clause = " WHERE owner_id = %s" if owner_id is not None else ""
+    params = (owner_id,) if owner_id is not None else ()
     conn = acquire()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT id, security_id, txn_type, trade_date, shares, price, amount
                 FROM portfolio_transactions
+                {owner_clause}
                 ORDER BY trade_date, id
-                """
+                """,
+                params,
             )
             ledger = [
                 {
