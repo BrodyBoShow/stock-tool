@@ -225,6 +225,18 @@ class ScoreRead(BaseModel):
     blind_spot: str       # the biggest real-world driver the score can't see
 
 
+class PriceMoveSource(BaseModel):
+    title: str
+    url: str
+
+
+class PriceMoveContext(BaseModel):
+    """Web-searched explanation of a notable recent price move (drops), attached
+    to the brief only when the move is large enough to warrant it."""
+    summary: str
+    sources: list[PriceMoveSource] = []
+
+
 class DecisionBriefContent(BaseModel):
     one_liner: str
     score_read: ScoreRead
@@ -234,6 +246,7 @@ class DecisionBriefContent(BaseModel):
     main_risk: str
     data_confidence: DataConfidence
     next_questions: list[str]
+    price_move_context: PriceMoveContext | None = None  # web-searched "why it moved"
 
 
 class DecisionBrief(BaseModel):

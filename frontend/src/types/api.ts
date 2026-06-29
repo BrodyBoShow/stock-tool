@@ -131,6 +131,16 @@ export interface ScoreRead {
   blind_spot: string
 }
 
+export interface PriceMoveSource {
+  title: string
+  url: string
+}
+
+export interface PriceMoveContext {
+  summary: string
+  sources: PriceMoveSource[]
+}
+
 export interface DecisionBriefContent {
   one_liner: string
   score_read: ScoreRead
@@ -140,6 +150,7 @@ export interface DecisionBriefContent {
   main_risk: string
   data_confidence: DataConfidence
   next_questions: string[]
+  price_move_context?: PriceMoveContext | null
 }
 
 export interface DecisionBrief {

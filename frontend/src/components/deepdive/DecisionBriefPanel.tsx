@@ -9,6 +9,7 @@ import type {
   DataConfidence,
   DecisionBrief,
   FactorTrendPoint,
+  PriceMoveContext,
 } from '@/types/api'
 
 
@@ -118,6 +119,49 @@ function CaseList({ items, tone }: { items: string[]; tone: 'bull' | 'bear' }) {
   )
 }
 
+/** Hostname (sans www.) for a compact source chip. */
+function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+/** "What's behind the move" — a web-searched explanation of a notable price
+ * drop, attached to the brief only when the move was large. */
+function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
+  return (
+    <div className="rounded-xl border border-amber-200 bg-[#fffdf5] p-3.5">
+      <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-amber-700">
+        What’s behind the move
+      </div>
+      <p className="mt-1.5 text-[0.85rem] leading-relaxed text-slate-800">
+        {ctx.summary}
+      </p>
+      {ctx.sources.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          {ctx.sources.map((s) => (
+            <a
+              key={s.url}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={s.title}
+              className="text-[0.72rem] font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+            >
+              ↗ {sourceHost(s.url)}
+            </a>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-[0.65rem] text-gray-400">
+        Summarized from public news via web search — not investment advice.
+      </p>
+    </div>
+  )
+}
+
 function BriefBody({ cached }: { cached: DecisionBrief }) {
   const b = cached.brief
   return (
@@ -125,6 +169,8 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
       <p className="text-[0.95rem] font-medium leading-relaxed text-gray-900">
         {b.one_liner}
       </p>
+
+      {b.price_move_context && <MoveContext ctx={b.price_move_context} />}
 
       {b.score_read && (
         <div className="rounded-xl border border-indigo-100 bg-[#f5f7ff] p-3.5">
