@@ -40,14 +40,14 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # Haiku by default per the cost posture.
 MODEL = LLM_MODEL
 PROMPT_VERSION = "v4"  # v2: insider; v3: 8-K events; v4: score_read meta-layer
-SCHEMA_VERSION = "v3"  # v2: score_read; v3: optional web-search price_move_context
+SCHEMA_VERSION = "v4"  # v3: web-search price_move_context; v4: trigger on up+down moves
 
 # Gated web-search "what's behind the move" (see _notable_move). The basic
 # web_search variant — claude-haiku-4-5 predates the _20260209 dynamic-filtering
 # tool. max_uses caps searches per brief to bound cost. This runs as its OWN
 # call, never alongside the structured brief: web search returns citations, and
 # citations + output_config.format together are a 400.
-WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_uses": 2}
+WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_uses": 1}
 
 ANTHROPIC_KEY_AVAILABLE: bool = bool(os.getenv("ANTHROPIC_API_KEY"))
 
@@ -190,24 +190,34 @@ def _trend_lines(history: list[dict[str, Any]]) -> list[str]:
 
 
 def _detect_move(closes: list[float], price_pos: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Flag a notable recent price DROP worth explaining with web research.
-
-    Uses only the adjusted closes already loaded. Triggers on a sharp ~1-month
-    drop, or a deep drawdown from the 52-week high while sitting near the lows
-    (the distressed-name case). Returns None when there isn't enough history.
+    """Flag a notable recent price move (UP or DOWN) worth explaining with web
+    research. Uses only the adjusted closes already loaded. Triggers on a sharp
+    ~1-month move either way, or a stock sitting at a 52-week extreme after a big
+    swing. Flat/quiet names return notable=False (nothing to explain). None when
+    there isn't enough history.
     """
     if len(closes) < 22:
         return None
-    last, hi = closes[-1], max(closes)
+    last, hi, lo = closes[-1], max(closes), min(closes)
     ret_21d = closes[-1] / closes[-22] - 1 if closes[-22] else None
-    drawdown = (last - hi) / hi if hi else None
+    drawdown = (last - hi) / hi if hi else None    # <= 0, distance below 52w high
+    runup = (last - lo) / lo if lo else None        # >= 0, distance above 52w low
     por = price_pos.get("pct_of_range") if price_pos else None
-    notable = bool(
-        (ret_21d is not None and ret_21d <= -0.20)
-        or (drawdown is not None and drawdown <= -0.40 and (por is None or por <= 0.20))
-    )
-    return {"ret_21d": ret_21d, "drawdown_from_high": drawdown,
-            "pct_of_range": por, "notable": notable}
+
+    sharp = ret_21d is not None and abs(ret_21d) >= 0.20
+    deep_drop = drawdown is not None and drawdown <= -0.40 and (por is None or por <= 0.20)
+    big_runup = runup is not None and runup >= 0.50 and (por is None or por >= 0.85)
+    notable = bool(sharp or deep_drop or big_runup)
+
+    if ret_21d is not None and abs(ret_21d) >= 0.10:
+        direction = "up" if ret_21d > 0 else "down"
+    elif big_runup and not deep_drop:
+        direction = "up"
+    else:
+        direction = "down"
+
+    return {"ret_21d": ret_21d, "drawdown_from_high": drawdown, "runup_from_low": runup,
+            "pct_of_range": por, "direction": direction, "notable": notable}
 
 
 def build_context(ticker: str) -> dict[str, Any] | None:
@@ -418,16 +428,25 @@ def _notable_move(ctx: dict[str, Any]) -> bool:
 
 
 def _describe_move(move: dict[str, Any]) -> str:
-    """A plain phrase describing the drop, for the web-search prompt."""
+    """A plain phrase describing the move (up or down), for the web-search prompt."""
     bits: list[str] = []
-    r, dd, por = move.get("ret_21d"), move.get("drawdown_from_high"), move.get("pct_of_range")
-    if r is not None and r <= -0.15:
-        bits.append(f"down about {abs(r) * 100:.0f}% over the past month")
-    if dd is not None and dd <= -0.25:
-        bits.append(f"down about {abs(dd) * 100:.0f}% from its 52-week high")
-    if por is not None and por <= 0.20:
-        bits.append("trading near its 52-week low")
-    return " and ".join(bits) if bits else "under notable price pressure"
+    r = move.get("ret_21d")
+    dd = move.get("drawdown_from_high")
+    ru = move.get("runup_from_low")
+    por = move.get("pct_of_range")
+    if r is not None and abs(r) >= 0.15:
+        bits.append(f"{'up' if r > 0 else 'down'} about {abs(r) * 100:.0f}% over the past month")
+    if move.get("direction") == "up":
+        if ru is not None and ru >= 0.40:
+            bits.append(f"up about {ru * 100:.0f}% from its 52-week low")
+        if por is not None and por >= 0.85:
+            bits.append("trading near its 52-week high")
+    else:
+        if dd is not None and dd <= -0.25:
+            bits.append(f"down about {abs(dd) * 100:.0f}% from its 52-week high")
+        if por is not None and por <= 0.20:
+            bits.append("trading near its 52-week low")
+    return " and ".join(bits) if bits else "making a notable price move"
 
 
 def _extract_research(resp: Any) -> tuple[str, list[dict[str, str]]]:
@@ -465,7 +484,7 @@ def _extract_research(resp: Any) -> tuple[str, list[dict[str, str]]]:
 
 
 def _research_move(ctx: dict[str, Any]) -> dict[str, Any] | None:
-    """Gated web search explaining a notable price drop. Returns
+    """Gated web search explaining a notable price move. Returns
     {summary, sources, in_tok, out_tok} or None on ANY failure — research is
     best-effort and must never block (or fail) the brief itself.
     """
@@ -483,8 +502,10 @@ def _research_move(ctx: dict[str, Any]) -> dict[str, Any] | None:
         f"{name} ({h['ticker']}) stock is {_describe_move(ctx['move'])}. Using "
         "web search, find the most likely reason(s) and explain the cause in 2-3 "
         "plain sentences a retail investor can understand — focus on concrete "
-        "events (earnings/guidance, dilution or share offerings, lawsuits, "
-        "downgrades, sector moves, delisting or going-concern risk). If you "
+        "events (earnings or guidance, M&A or partnerships, contract or product "
+        "news, analyst upgrades or downgrades, dilution or share offerings, "
+        "lawsuits or regulatory actions, sector or macro moves, index inclusion, "
+        "or delisting/going-concern risk). If you "
         "cannot find a clear cause, say so in one sentence. Cite your sources. "
         "Respond with ONLY the explanation — no preamble such as 'I'll search' "
         "or 'Based on the search results'."
