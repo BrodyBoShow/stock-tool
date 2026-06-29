@@ -1,0 +1,73 @@
+# Intraday EDGAR refresh — keeps the Market tab current DURING the trading day
+# instead of only after the 23:30 UTC nightly. Refreshes the three SEC EDGAR
+# context feeds the Market tab surfaces:
+#   - 8-K material events  (scripts/ingest_events.py)
+#   - filing catalog       (scripts/ingest_filings_catalog.py)
+#   - insider Form 4 buys   (scripts/ingest_insiders.py)
+#
+# All free SEC reads — no market-data cost. The Market overview cache
+# (engine/market.py) has a ~10-minute soft TTL and re-reads filings/insiders/
+# events live on each recompute, so newly-ingested rows surface on the next
+# Market-tab open with NO backend change.
+#
+# Schedule: 15:00 + 21:00 UTC on weekdays (~late-morning + just-after-close ET),
+# deliberately clear of the EOD-price (22:00) and nightly (23:30) windows. Every
+# script is incremental/idempotent (by accession), so an accidental overlap is
+# harmless. Public repo => Actions minutes are free.
+#
+# These run FULL active-universe passes (one cheap submissions read per company)
+# so coverage is same-day market-wide, not the nightly's capped alphabetical
+# cycle. A future optimization is to switch discovery to the SEC daily-index
+# (a few requests instead of ~5k); for now this reuses the proven scripts.
+
+name: Intraday EDGAR refresh
+
+on:
+  schedule:
+    - cron: "0 15,21 * * 1-5"
+  workflow_dispatch:  # manual "refresh now" from the Actions tab
+
+concurrency:
+  group: intraday-edgar
+  cancel-in-progress: false
+
+jobs:
+  edgar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 8-K material events — one submissions read per company; full active pass.
+      - name: Refresh material events (8-K)
+        continue-on-error: true
+        run: python scripts/ingest_events.py --max-fetches 6000
+
+      # Filing catalog (all research-relevant forms) — full active pass.
+      - name: Refresh filing catalog (all form types)
+        continue-on-error: true
+        run: python scripts/ingest_filings_catalog.py --max-fetches 6000
+
+      # Insider transactions (Form 4) — the "buys". Supervised so a Supabase
+      # pooler drop mid-write restarts instead of hanging; incremental, so the
+      # restart resumes where it left off.
+      - name: Refresh insider transactions (Form 4)
+        continue-on-error: true
+        run: >
+          python scripts/supervise_backfill.py --label intraday-insiders --stall 900 --
+          python -u scripts/ingest_insiders.py --max-fetches 20000
