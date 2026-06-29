@@ -21,8 +21,10 @@ from typing import Annotated, NamedTuple
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 
-_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-_SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+# Env is read at REQUEST time (inside the verify helpers below), not at import:
+# api.main imports this module before .env is loaded (load_dotenv only runs when
+# engine.db is first imported, which is after this import). Reading at module
+# level would cache an empty SUPABASE_URL when running locally from a .env file.
 _AUDIENCE = "authenticated"
 
 _jwks_client: jwt.PyJWKClient | None = None
@@ -37,12 +39,13 @@ def _jwks() -> jwt.PyJWKClient:
     """Lazily-built JWKS client (cached) for asymmetric token verification."""
     global _jwks_client
     if _jwks_client is None:
-        if not _SUPABASE_URL:
+        url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        if not url:
             raise HTTPException(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "SUPABASE_URL not configured (needed to verify asymmetric tokens)",
             )
-        _jwks_client = jwt.PyJWKClient(f"{_SUPABASE_URL}/auth/v1/.well-known/jwks.json")
+        _jwks_client = jwt.PyJWKClient(f"{url}/auth/v1/.well-known/jwks.json")
     return _jwks_client
 
 
@@ -53,12 +56,13 @@ def _decode(token: str) -> dict:
     """
     alg = jwt.get_unverified_header(token).get("alg", "HS256")
     if alg == "HS256":
-        if not _JWT_SECRET:
+        secret = os.getenv("SUPABASE_JWT_SECRET", "")
+        if not secret:
             raise HTTPException(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "SUPABASE_JWT_SECRET not configured",
             )
-        return jwt.decode(token, _JWT_SECRET, algorithms=["HS256"], audience=_AUDIENCE)
+        return jwt.decode(token, secret, algorithms=["HS256"], audience=_AUDIENCE)
     key = _jwks().get_signing_key_from_jwt(token).key
     return jwt.decode(token, key, algorithms=["ES256", "RS256"], audience=_AUDIENCE)
 
