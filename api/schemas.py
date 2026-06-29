@@ -318,6 +318,52 @@ class EventsResponse(BaseModel):
     events: list[MaterialEvent]       # newest first
 
 
+# ── intrinsic valuation panel (deep-dive; client-side math, server ships inputs) ─
+# The server ships only provenance-tagged raw inputs + assumption seeds; ALL the
+# DCF / reverse-DCF / multiples math runs in the browser. `source`/`quality`/
+# `applicability` etc. carry per-input provenance whose exact keys vary by input
+# type, so they stay open dicts rather than over-constrained models.
+
+class ValuationInput(BaseModel):
+    key: str
+    label: str
+    value: float | None               # None => the panel renders it as "missing"
+    unit: str
+    source: dict[str, Any]            # {type, table?, metric?/concept?, components?, ...}
+    as_of_date: str | None           # ISO date the value was filed FOR
+    quality: dict[str, Any]          # {status: ok|proxied|stale|missing, flags: [...]}
+    editable: bool
+
+
+class ValuationAssumption(BaseModel):
+    key: str
+    label: str
+    seed: float                       # data-seeded default (marked in the UI)
+    seed_source: str                  # plain-English provenance of the seed
+    min: float
+    max: float
+    step: float
+    unit: str
+
+
+class ValuationResponse(BaseModel):
+    ticker: str
+    name: str | None
+    sector: str | None
+    industry: str | None
+    currency: str
+    current_price: float | None
+    as_of: dict[str, Any]            # {price_date, fundamentals_period}
+    applicability: dict[str, Any]    # {path, active_models, suppressed_models, reasons}
+    inputs: list[ValuationInput]
+    assumptions: list[ValuationAssumption]
+    scenario_bands: dict[str, Any]   # {bear, base, bull} -> {g_start, discount_rate, terminal_g}
+    peer_context: dict[str, Any]     # {sector, n, medians}
+    data_quality: dict[str, Any]     # {degraded, notes}
+    schema_version: str
+    disclaimer: str
+
+
 # ── filing diligence Q&A (Phase 14 — context only) ────────────────────────────
 
 class FilingTopicAnswer(BaseModel):

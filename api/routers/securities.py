@@ -27,11 +27,12 @@ from api.schemas import (
     SecurityHeader,
     SecurityResponse,
     SummaryStatusResponse,
+    ValuationResponse,
 )
 from engine import brief as brief_engine
 from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
-from engine import live_factors, queries, summarize
+from engine import live_factors, queries, summarize, valuation
 from engine import quotes as quotes_engine
 from engine.filing_taxonomy import analysis_profile, form_category, form_label
 
@@ -217,6 +218,23 @@ def get_events(ticker: str) -> EventsResponse:
         for r in rows
     ]
     return EventsResponse(ticker=ticker, events=events)
+
+
+@router.get("/{ticker}/valuation", response_model=ValuationResponse)
+def get_valuation(ticker: str) -> ValuationResponse:
+    """Provenance-tagged intrinsic-value INPUTS for the deep-dive valuation panel.
+
+    A pure read — no AI, no cost. Ships raw SEC-sourced inputs (each carrying its
+    source table/concept + the date it was filed FOR), assumption seeds, and the
+    applicability routing that decides which models fit this company. The browser
+    runs all DCF / reverse-DCF / multiples / sensitivity math, so every number the
+    panel shows is reproducible from this payload. 404 only if the ticker is
+    unknown."""
+    ticker, _ = _require_security(ticker)
+    data = valuation.valuation_inputs(ticker)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found")
+    return ValuationResponse(**data)
 
 
 def _to_filing_qa(cached: dict) -> FilingAnswers:

@@ -288,6 +288,78 @@ export interface EventsResponse {
   events: MaterialEvent[] // newest first
 }
 
+// ── intrinsic valuation panel ──────────────────────────────────────────────
+export interface ValuationInputSource {
+  type: string // stored_metric | xbrl_fact | price | derived | assumption
+  table?: string
+  metric?: string
+  metric_version?: string
+  concept?: string
+  formula?: string
+  components?: string[]
+  basis?: string // shares: point_in_time | weighted_average
+}
+
+export interface ValuationInputQuality {
+  status: 'ok' | 'proxied' | 'stale' | 'missing'
+  flags: string[]
+}
+
+export interface ValuationInput {
+  key: string
+  label: string
+  value: number | null
+  unit: string
+  source: ValuationInputSource
+  as_of_date: string | null
+  quality: ValuationInputQuality
+  editable: boolean
+}
+
+export interface ValuationAssumption {
+  key: string
+  label: string
+  seed: number
+  seed_source: string
+  min: number
+  max: number
+  step: number
+  unit: string
+}
+
+export interface ScenarioBand {
+  g_start: number
+  discount_rate: number
+  terminal_growth: number
+}
+
+export interface ValuationResponse {
+  ticker: string
+  name: string | null
+  sector: string | null
+  industry: string | null
+  currency: string
+  current_price: number | null
+  as_of: { price_date: string | null; fundamentals_period: string | null }
+  applicability: {
+    path: string
+    active_models: string[]
+    suppressed_models: string[]
+    reasons: string[]
+  }
+  inputs: ValuationInput[]
+  assumptions: ValuationAssumption[]
+  scenario_bands: { bear: ScenarioBand; base: ScenarioBand; bull: ScenarioBand }
+  peer_context: {
+    sector: string | null
+    n: number
+    medians: Record<string, number | null>
+  }
+  data_quality: { degraded: boolean; notes: string[] }
+  schema_version: string
+  disclaimer: string
+}
+
 export interface WatchlistRow {
   ticker: string
   name: string | null

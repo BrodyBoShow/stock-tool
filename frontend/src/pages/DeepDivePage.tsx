@@ -11,6 +11,7 @@ import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
+import { IntrinsicValuePanel } from '@/components/deepdive/IntrinsicValuePanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
 import { ScoreWaterfall } from '@/components/deepdive/ScoreWaterfall'
@@ -25,6 +26,7 @@ const NAV_SECTIONS = [
   { id: 'chart', label: 'Chart' },
   { id: 'score', label: 'Score' },
   { id: 'factors', label: 'Factors' },
+  { id: 'value', label: 'Value' },
   { id: 'financials', label: 'Financials' },
   { id: 'filings', label: 'Filings' },
   { id: 'insiders', label: 'Insiders' },
@@ -175,6 +177,10 @@ export function DeepDivePage() {
           top), as of {header.score_date ?? 'n/a'} (nightly)
           {weightStr ? ` · Weights: ${weightStr}` : ''}.
         </p>
+      </div>
+
+      <div id="value">
+        <IntrinsicValuePanel ticker={header.ticker} />
       </div>
 
       <ThesisPanel ticker={header.ticker} />

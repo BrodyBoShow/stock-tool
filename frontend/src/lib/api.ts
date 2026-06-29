@@ -7,6 +7,7 @@ import type {
   BriefStatusResponse,
   DecisionBrief,
   EventsResponse,
+  ValuationResponse,
   FilingAnswers,
   FilingQaStatusResponse,
   FilingSummary,
@@ -248,6 +249,12 @@ export function getInsiders(ticker: string): Promise<InsiderResponse> {
 export function getEvents(ticker: string): Promise<EventsResponse> {
   return getJson<EventsResponse>(
     `/securities/${encodeURIComponent(ticker)}/events`,
+  )
+}
+
+export function getValuation(ticker: string): Promise<ValuationResponse> {
+  return getJson<ValuationResponse>(
+    `/securities/${encodeURIComponent(ticker)}/valuation`,
   )
 }
 
