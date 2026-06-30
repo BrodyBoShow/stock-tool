@@ -158,10 +158,23 @@ FACTOR_DEFS_V3_PRUNED = {
     "momentum": FACTOR_DEFS_V2["momentum"],
 }
 
+# v4_lean: v3_pruned, plus drop the two sub-metrics the Phase-0 backtest scored as
+# PURE NOISE — `pe` (IC t=+0.1, sign even flips across split-halves) from Value and
+# `r3m` (IC t=+0.1) from Momentum. Value keeps ps + ev_ebitda + fcf_yield (still 3,
+# so coverage isn't thinned); Momentum keeps r6m + r12_1m. Subtraction candidate —
+# ship only if it's no worse than v3_pruned on the §6 gate. Reuses v2 weights.
+FACTOR_DEFS_V4_LEAN = {
+    "growth": FACTOR_DEFS_V3_PRUNED["growth"],
+    "value": [("ps", "lower"), ("ev_ebitda", "lower"), ("fcf_yield", "higher")],
+    "quality": FACTOR_DEFS_V3_PRUNED["quality"],
+    "momentum": [("r6m", "higher"), ("r12_1m", "higher")],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
     "v3_pruned": FACTOR_DEFS_V3_PRUNED,
+    "v4_lean": FACTOR_DEFS_V4_LEAN,
 }
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
@@ -176,12 +189,16 @@ INPUTS_BY_VERSION = {
     "v2_linear": _BASE_INPUTS + ["r12_1m", "accruals", "share_count_trend",
                                  "insider_net_buy"],
     "v3_pruned": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
+    # v4 keeps pe/r3m's raw values in details.inputs as deep-dive context even
+    # though they're no longer ranked (absent from sub_pctls).
+    "v4_lean": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
     "v1_linear": "cross_sectional_raw_returns_no_spy",
     "v2_linear": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
     "v3_pruned": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
+    "v4_lean": "12_minus_1_momentum_plus_6m_raw_no_spy",
 }
 
 # Discretionary insider net-buy signal window (trailing months).
