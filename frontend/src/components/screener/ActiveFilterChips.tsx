@@ -28,11 +28,12 @@ export function ActiveFilterChips({
       label: `“${filters.search.trim()}”`,
       clear: () => onChange({ ...filters, search: '' }),
     })
-  if (filters.sector !== 'All')
+  for (const s of filters.sectors)
     chips.push({
-      key: 'sector',
-      label: filters.sector,
-      clear: () => onChange({ ...filters, sector: 'All' }),
+      key: `sector-${s}`,
+      label: s,
+      clear: () =>
+        onChange({ ...filters, sectors: filters.sectors.filter((x) => x !== s) }),
     })
   if (filters.minMarketCap > 0) {
     const o = MARKET_CAP_OPTIONS.find((o) => o.value === filters.minMarketCap)
@@ -42,6 +43,12 @@ export function ActiveFilterChips({
       clear: () => onChange({ ...filters, minMarketCap: 0 }),
     })
   }
+  if (filters.excludePenny)
+    chips.push({
+      key: 'penny',
+      label: 'No penny stocks',
+      clear: () => onChange({ ...filters, excludePenny: false }),
+    })
   if (!filters.completeOnly)
     chips.push({
       key: 'partial',

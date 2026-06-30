@@ -120,8 +120,8 @@ export function ScreenerPage() {
       return `Nothing clears all your filters — try lowering ${FACTOR_LABEL[top]} ≥ ${filters.mins[top]}, or remove a chip above.`
     if (filters.minMarketCap > 0)
       return 'Nothing clears the size floor — try a smaller market-cap minimum.'
-    if (filters.sector !== 'All')
-      return `No ${filters.sector} names match the rest of your filters.`
+    if (filters.sectors.length > 0)
+      return `No ${filters.sectors.join(' / ')} names match the rest of your filters.`
     if (filters.search.trim())
       return `No ticker or company matches “${filters.search.trim()}”.`
     return undefined

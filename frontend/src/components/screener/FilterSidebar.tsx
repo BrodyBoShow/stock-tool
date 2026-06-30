@@ -1,11 +1,13 @@
+import { useState } from 'react'
+
 import { Slider } from '@/components/ui/slider'
+import { FACTOR_TABLE, sectorPillColors, type FactorKey } from '@/lib/constants'
 import {
-  FACTOR_ORDER,
-  FACTOR_TABLE,
-  sectorPillColors,
-  type FactorKey,
-} from '@/lib/constants'
-import { activeFilterCount, DEFAULT_FILTERS, MARKET_CAP_OPTIONS, type Filters } from '@/lib/filters'
+  activeFilterCount,
+  DEFAULT_FILTERS,
+  MARKET_CAP_OPTIONS,
+  type Filters,
+} from '@/lib/filters'
 
 const FACTOR_LABEL: Record<FactorKey, string> = {
   composite: 'Composite',
@@ -15,37 +17,103 @@ const FACTOR_LABEL: Record<FactorKey, string> = {
   momentum: 'Momentum',
 }
 
-const SECTION =
-  'text-[0.67rem] font-bold uppercase tracking-[0.07em] text-gray-500'
+/** Per-factor minimums shown in the Advanced step (composite gets its own
+ *  prominent slider in Step 3). */
+const ADVANCED_FACTORS: FactorKey[] = ['growth', 'value', 'quality', 'momentum']
 
 interface Preset {
   label: string
   emoji: string
-  apply: Partial<Filters>
+  meta: string
+  mins: Record<FactorKey, number>
 }
 
 const PRESETS: Preset[] = [
-  {
-    label: 'Quality Growth',
-    emoji: '🏆',
-    apply: { mins: { composite: 0, growth: 70, value: 0, quality: 70, momentum: 0 } },
-  },
-  {
-    label: 'Deep Value',
-    emoji: '💎',
-    apply: { mins: { composite: 0, growth: 0, value: 80, quality: 50, momentum: 0 } },
-  },
-  {
-    label: 'Momentum',
-    emoji: '🚀',
-    apply: { mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 80 } },
-  },
-  {
-    label: 'All Stars',
-    emoji: '⭐',
-    apply: { mins: { composite: 80, growth: 0, value: 0, quality: 0, momentum: 0 } },
-  },
+  { label: 'Quality Growth', emoji: '🏆', meta: 'Growth + Quality ≥ 70',
+    mins: { composite: 0, growth: 70, value: 0, quality: 70, momentum: 0 } },
+  { label: 'Deep Value', emoji: '💎', meta: 'Value ≥ 80, Quality ≥ 50',
+    mins: { composite: 0, growth: 0, value: 80, quality: 50, momentum: 0 } },
+  { label: 'Momentum', emoji: '🚀', meta: 'Momentum ≥ 80',
+    mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 80 } },
+  { label: 'All Stars', emoji: '⭐', meta: 'Composite ≥ 80',
+    mins: { composite: 80, growth: 0, value: 0, quality: 0, momentum: 0 } },
 ]
+
+function StepHeader({
+  n,
+  title,
+  sub,
+  muted,
+}: {
+  n: number
+  title: string
+  sub?: string
+  muted?: boolean
+}) {
+  return (
+    <div className="mb-2.5 flex items-center gap-2">
+      <span
+        className={
+          'flex h-[18px] w-[18px] items-center justify-center rounded-full text-[0.62rem] font-extrabold ' +
+          (muted ? 'bg-slate-100 text-slate-400' : 'bg-indigo-600 text-white')
+        }
+      >
+        {n}
+      </span>
+      <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-slate-700">
+        {title}
+      </span>
+      {sub && (
+        <span className="ml-auto text-[0.64rem] font-medium normal-case text-slate-400">
+          {sub}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** iOS-style toggle — visually distinct from the multi-select chips. */
+function Toggle({
+  on,
+  onToggle,
+  label,
+  sub,
+}: {
+  on: boolean
+  onToggle: () => void
+  label: string
+  sub: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+      className="flex w-full items-center justify-between gap-3 py-1.5 text-left"
+    >
+      <span className="min-w-0">
+        <span className="block text-[0.78rem] font-semibold text-slate-700">{label}</span>
+        <span className="mt-0.5 block text-[0.66rem] leading-snug text-slate-400">{sub}</span>
+      </span>
+      <span
+        className={
+          'relative h-[18px] w-8 shrink-0 rounded-full transition-colors ' +
+          (on ? 'bg-indigo-600' : 'bg-slate-300')
+        }
+      >
+        <span
+          className={
+            'absolute top-0.5 h-[14px] w-[14px] rounded-full bg-white shadow transition-all ' +
+            (on ? 'left-[16px]' : 'left-0.5')
+          }
+        />
+      </span>
+    </button>
+  )
+}
+
+const STEP = 'border-b border-slate-100 py-4 first:pt-3.5 last:border-b-0'
 
 export function FilterSidebar({
   filters,
@@ -62,198 +130,264 @@ export function FilterSidebar({
   totalCount: number
   sectors: string[]
 }) {
+  const [advOpen, setAdvOpen] = useState(
+    () => ADVANCED_FACTORS.some((k) => filters.mins[k] > 0),
+  )
   const active = activeFilterCount(filters)
+  const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch })
+
+  const pristineExceptMins =
+    filters.sectors.length === 0 &&
+    filters.search === '' &&
+    filters.minMarketCap === 0 &&
+    !filters.excludePenny
+  const presetActive = (p: Preset) =>
+    pristineExceptMins && JSON.stringify(filters.mins) === JSON.stringify(p.mins)
+
+  const toggleSector = (s: string) =>
+    set({
+      sectors: filters.sectors.includes(s)
+        ? filters.sectors.filter((x) => x !== s)
+        : [...filters.sectors, s],
+    })
 
   return (
-    <aside className="w-full shrink-0 rounded-card border border-gray-200 bg-white p-4 shadow-card lg:w-[270px]">
+    <aside className="w-full shrink-0 rounded-card border border-gray-200 bg-white px-4 pb-4 shadow-card lg:w-[270px]">
       {/* header */}
-      <div className="border-b border-slate-100 pb-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-            Filters
-            {active > 0 && (
-              <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-800 text-[0.64rem] font-extrabold text-white">
-                {active}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={active === 0}
-            className="text-xs font-bold text-slate-500 hover:text-slate-800 disabled:cursor-default disabled:opacity-40"
-          >
-            Reset
-          </button>
+      <div className="flex items-center justify-between border-b border-slate-100 py-3.5">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+          Filters
+          {active > 0 && (
+            <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-slate-800 px-1 text-[0.62rem] font-extrabold text-white">
+              {active}
+            </span>
+          )}
         </div>
-        <div className="mt-1.5 text-[0.8rem] text-gray-500">
-          <span className="text-[0.9rem] font-extrabold text-slate-800">
-            {resultCount}
-          </span>{' '}
-          of {totalCount} companies
+        <div className="text-[0.74rem] text-slate-500">
+          <span className="numeric font-extrabold text-slate-800">{resultCount}</span> of{' '}
+          <span className="numeric">{totalCount}</span>
         </div>
       </div>
 
-      {/* preset buttons */}
-      <div className="mt-3.5">
-        <div className={SECTION}>Presets</div>
-        <div className="mt-2 grid grid-cols-2 gap-1.5">
+      {/* search (kept until ⌘K command palette lands) */}
+      <div className="pt-3">
+        <input
+          id="screener-search"
+          type="text"
+          value={filters.search}
+          onChange={(e) => set({ search: e.target.value })}
+          placeholder="Search ticker or company…  ( / )"
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[0.82rem] text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+        />
+      </div>
+
+      {/* ① START FROM */}
+      <div className={STEP}>
+        <StepHeader n={1} title="Start from" sub="optional" />
+        <div className="grid grid-cols-2 gap-1.5">
           {PRESETS.map((p) => {
-            const isActive =
-              JSON.stringify(p.apply.mins) === JSON.stringify(filters.mins) &&
-              filters.sector === 'All' && filters.search === '' && filters.minMarketCap === 0
+            const on = presetActive(p)
             return (
               <button
                 key={p.label}
                 type="button"
                 onClick={() =>
-                  onChange(isActive ? DEFAULT_FILTERS : { ...DEFAULT_FILTERS, ...p.apply })
+                  onChange(on ? DEFAULT_FILTERS : { ...DEFAULT_FILTERS, mins: p.mins })
                 }
-                className={`rounded-lg border px-2 py-1.5 text-left text-[0.72rem] font-semibold transition-all ${
-                  isActive
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                    : 'border-gray-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-[#f5f7ff]'
-                }`}
+                className={
+                  'flex flex-col gap-0.5 rounded-lg border px-2 py-1.5 text-left transition-all ' +
+                  (on
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/60')
+                }
               >
-                <span className="mr-1">{p.emoji}</span>
-                {p.label}
+                <span className="text-[0.82rem] leading-none">{p.emoji}</span>
+                <span className="text-[0.72rem] font-bold leading-tight">{p.label}</span>
+                <span
+                  className={
+                    'text-[0.6rem] leading-tight ' +
+                    (on ? 'text-indigo-100' : 'text-slate-400')
+                  }
+                >
+                  {p.meta}
+                </span>
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* complete-factors toggle — the most consequential setting, up top */}
-      <label className="mt-3.5 flex cursor-pointer items-start gap-2.5">
-        <input
-          type="checkbox"
-          checked={filters.completeOnly}
-          onChange={(e) => onChange({ ...filters, completeOnly: e.target.checked })}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-indigo-600"
-        />
-        <span>
-          <span className="block text-[0.8rem] font-semibold text-gray-700">
-            Complete factors only
-          </span>
-          <span className="mt-0.5 block text-[0.68rem] leading-snug text-gray-400">
-            Rank only names scored on all four factors (recommended). Off = include
-            partial names like momentum-only micro-caps.
-          </span>
-        </span>
-      </label>
+      {/* ② WHAT KIND OF STOCKS */}
+      <div className={STEP}>
+        <StepHeader n={2} title="What kind" />
 
-      {/* search */}
-      <div className="mt-4">
-        <div className={SECTION}>Search</div>
-        <input
-          id="screener-search"
-          type="text"
-          value={filters.search}
-          onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          placeholder="Ticker or company…  ( / )"
-          className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-slate-800 focus:outline-none"
-        />
-      </div>
-
-      {/* sector chips */}
-      <div className="mt-4">
-        <div className={SECTION}>Sector</div>
-        <div className="mt-2 flex flex-wrap gap-[5px]">
-          {['All', ...sectors].map((s) => {
-            const selected = filters.sector === s
-            const [bg, fg] =
-              s === 'All' ? ['#f1f5f9', '#475569'] : sectorPillColors(s)
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+            Sectors
+          </span>
+          <span className="text-[0.62rem] text-slate-400">empty = all</span>
+        </div>
+        <div className="flex flex-wrap gap-[5px]">
+          {sectors.map((s) => {
+            const on = filters.sectors.includes(s)
+            const [bg, fg] = sectorPillColors(s)
             return (
               <button
                 key={s}
                 type="button"
-                onClick={() => onChange({ ...filters, sector: s })}
-                className="rounded-full px-[11px] py-[3px] text-[0.72rem] font-semibold transition-shadow"
+                onClick={() => toggleSector(s)}
+                className="inline-flex items-center gap-1.5 rounded-full px-[10px] py-[3px] text-[0.7rem] font-semibold transition-shadow"
                 style={
-                  selected
+                  on
                     ? { background: bg, color: fg, boxShadow: `inset 0 0 0 1.5px ${fg}` }
-                    : {
-                        background: '#ffffff',
-                        color: '#64748b',
-                        boxShadow: 'inset 0 0 0 1px #e5e7eb',
-                      }
+                    : { background: '#fff', color: '#64748b', boxShadow: 'inset 0 0 0 1px #e5e7eb' }
                 }
               >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: on ? fg : sectorPillColors(s)[1] }}
+                />
                 {s}
               </button>
             )
           })}
         </div>
-      </div>
 
-      {/* market-cap floor */}
-      <div className="mt-4">
-        <div className={SECTION}>Market cap</div>
-        <select
-          value={filters.minMarketCap}
-          onChange={(e) =>
-            onChange({ ...filters, minMarketCap: Number(e.target.value) })
-          }
-          aria-label="Minimum market cap"
-          className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-slate-800 focus:outline-none"
-        >
-          {MARKET_CAP_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* factor minimums */}
-      <div className="mt-4">
-        <div className={SECTION}>Factor minimums</div>
-        <div className="mt-2 space-y-3">
-          {FACTOR_ORDER.map((key) => {
-            const v = filters.mins[key]
-            const accent = FACTOR_TABLE[key].bar
+        <div className="mb-1 mt-3.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+          Market cap
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          {MARKET_CAP_OPTIONS.map((o) => {
+            const on = filters.minMarketCap === o.value
             return (
-              <div key={key}>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center text-[0.78rem] font-semibold text-gray-700">
-                    <span
-                      className="mr-1.5 inline-block h-2 w-2 rounded-full"
-                      style={{ background: accent }}
-                    />
-                    {FACTOR_LABEL[key]}
-                  </span>
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[0.7rem] font-extrabold text-slate-800">
-                    {v === 0 ? 'Any' : `${v}+`}
-                  </span>
-                </div>
-                <Slider
-                  accent={accent}
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={[v]}
-                  onValueChange={([nv]) =>
-                    onChange({ ...filters, mins: { ...filters.mins, [key]: nv } })
-                  }
-                  aria-label={`${FACTOR_LABEL[key]} minimum`}
-                />
-              </div>
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => set({ minMarketCap: o.value })}
+                className={
+                  'rounded-md border px-1.5 py-1 text-center text-[0.62rem] font-semibold leading-tight transition-all ' +
+                  (on
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-slate-500 hover:border-indigo-300')
+                }
+              >
+                {o.label.replace(/ \(.*\)/, '').replace('Any size', 'Any')}
+              </button>
             )
           })}
         </div>
       </div>
 
-      {/* active banner */}
-      {active > 0 && (
-        <div className="mt-4 rounded-[10px] bg-slate-800 px-3 py-2.5 text-white">
-          <strong className="text-[0.8rem] font-bold">
-            {active} filter{active === 1 ? '' : 's'} active
-          </strong>
-          <div className="mt-0.5 text-[0.69rem] text-slate-400">
-            {resultCount} of {totalCount} companies match
+      {/* ③ HOW GOOD */}
+      <div className={STEP}>
+        <StepHeader n={3} title="How good" />
+        <div className="mb-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[0.78rem] font-semibold text-slate-700">
+              Min composite score
+            </span>
+            <span className="numeric text-[0.95rem] font-extrabold text-indigo-600">
+              {filters.mins.composite === 0 ? 'Any' : filters.mins.composite}
+            </span>
+          </div>
+          <Slider
+            accent={FACTOR_TABLE.composite.bar}
+            min={0}
+            max={100}
+            step={5}
+            value={[filters.mins.composite]}
+            onValueChange={([v]) => set({ mins: { ...filters.mins, composite: v } })}
+            aria-label="Minimum composite score"
+          />
+          <div className="mt-0.5 flex justify-between text-[0.6rem] text-slate-400">
+            <span>0 (all)</span>
+            <span>100 (best)</span>
           </div>
         </div>
-      )}
+        <Toggle
+          on={filters.completeOnly}
+          onToggle={() => set({ completeOnly: !filters.completeOnly })}
+          label="Require complete factor data"
+          sub="Hide names missing any of the 4 sub-scores (recommended)"
+        />
+        <Toggle
+          on={filters.excludePenny}
+          onToggle={() => set({ excludePenny: !filters.excludePenny })}
+          label="Exclude penny stocks"
+          sub="Hide names priced under $1"
+        />
+      </div>
+
+      {/* ④ ADVANCED */}
+      <div className={STEP}>
+        <button
+          type="button"
+          onClick={() => setAdvOpen((o) => !o)}
+          className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-[0.7rem] font-bold text-slate-500 transition hover:bg-slate-100"
+        >
+          <span className="flex items-center gap-2">
+            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-100 text-[0.62rem] font-extrabold text-slate-400">
+              4
+            </span>
+            Advanced — per-factor minimums
+          </span>
+          <span>{advOpen ? '▴' : '▾'}</span>
+        </button>
+        {advOpen && (
+          <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
+            {ADVANCED_FACTORS.map((key) => {
+              const v = filters.mins[key]
+              const accent = FACTOR_TABLE[key].bar
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center text-[0.7rem] font-semibold text-slate-600">
+                      <span
+                        className="mr-1 inline-block h-[7px] w-[7px] rounded-full"
+                        style={{ background: accent }}
+                      />
+                      {FACTOR_LABEL[key]}
+                    </span>
+                    <span className="numeric text-[0.66rem] font-extrabold text-slate-700">
+                      {v === 0 ? '—' : v}
+                    </span>
+                  </div>
+                  <Slider
+                    accent={accent}
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={[v]}
+                    onValueChange={([nv]) => set({ mins: { ...filters.mins, [key]: nv } })}
+                    aria-label={`${FACTOR_LABEL[key]} minimum`}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* footer */}
+      <div className="flex items-center justify-between pt-3.5">
+        <span className="text-[0.72rem] text-slate-500">
+          {active > 0 ? (
+            <>
+              <span className="numeric font-bold text-indigo-600">{active}</span> active
+            </>
+          ) : (
+            'No filters'
+          )}
+        </span>
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={active === 0}
+          className="text-[0.72rem] font-semibold text-slate-400 transition hover:text-red-500 disabled:cursor-default disabled:opacity-40"
+        >
+          Reset all
+        </button>
+      </div>
     </aside>
   )
 }

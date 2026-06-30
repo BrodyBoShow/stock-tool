@@ -3,18 +3,20 @@ import type { ScreenerRow } from '@/types/api'
 
 export interface Filters {
   search: string
-  sector: string // "All" = no sector filter
+  sectors: string[] // empty = all sectors (multi-select)
   mins: Record<FactorKey, number> // 0 = "Any"
   minMarketCap: number // dollars; 0 = "Any"
   completeOnly: boolean // only rank names with all 4 component factors (server-side)
+  excludePenny: boolean // drop names priced under $1 (client-side)
 }
 
 export const DEFAULT_FILTERS: Filters = {
   search: '',
-  sector: 'All',
+  sectors: [],
   mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 0 },
   minMarketCap: 0,
   completeOnly: true,
+  excludePenny: false,
 }
 
 /** Market-cap floor presets (label, dollars). */
@@ -46,12 +48,16 @@ export function applyFilters(rows: ScreenerRow[], f: Filters): ScreenerRow[] {
       const nameHit = (r.name ?? '').toLowerCase().includes(q)
       if (!tickerHit && !nameHit) return false
     }
-    if (f.sector !== 'All' && r.sector !== f.sector) return false
+    if (f.sectors.length > 0 && (r.sector == null || !f.sectors.includes(r.sector)))
+      return false
     // Size floor is a hard gate: unknown market cap is excluded when active
     // (unlike score minimums — a size filter exists to drop unsized names).
     if (f.minMarketCap > 0) {
       if (r.market_cap == null || r.market_cap < f.minMarketCap) return false
     }
+    // Penny-stock exclude: drop known sub-$1 names (null price is kept — missing
+    // ≠ penny). Frontend-only; the backend already floors scoring at $1.
+    if (f.excludePenny && r.last_price != null && r.last_price < 1) return false
     for (const key of Object.keys(f.mins) as FactorKey[]) {
       const min = f.mins[key]
       if (min > 0) {
@@ -66,8 +72,9 @@ export function applyFilters(rows: ScreenerRow[], f: Filters): ScreenerRow[] {
 export function activeFilterCount(f: Filters): number {
   let n = 0
   if (f.search.trim()) n += 1
-  if (f.sector !== 'All') n += 1
+  if (f.sectors.length > 0) n += 1
   if (f.minMarketCap > 0) n += 1
+  if (f.excludePenny) n += 1
   for (const key of Object.keys(f.mins) as FactorKey[]) {
     if (f.mins[key] > 0) n += 1
   }
@@ -106,9 +113,10 @@ const SORT_KEYS = new Set<string>([
 export function filtersToParams(f: Filters, sort: ScreenerSort): URLSearchParams {
   const sp = new URLSearchParams()
   if (f.search.trim()) sp.set('q', f.search.trim())
-  if (f.sector !== 'All') sp.set('sector', f.sector)
+  if (f.sectors.length > 0) sp.set('sector', f.sectors.join(','))
   if (f.minMarketCap > 0) sp.set('mcap', String(f.minMarketCap))
   if (!f.completeOnly) sp.set('partial', '1')
+  if (f.excludePenny) sp.set('penny', '1')
   for (const key of Object.keys(f.mins) as FactorKey[]) {
     if (f.mins[key] > 0) sp.set(key, String(f.mins[key]))
   }
@@ -132,9 +140,10 @@ export function filtersFromParams(sp: URLSearchParams): {
   const mcap = Number(sp.get('mcap'))
   const filters: Filters = {
     search: sp.get('q') ?? '',
-    sector: sp.get('sector') ?? 'All',
+    sectors: (sp.get('sector') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     minMarketCap: Number.isFinite(mcap) && mcap > 0 ? mcap : 0,
     completeOnly: sp.get('partial') !== '1',
+    excludePenny: sp.get('penny') === '1',
     mins,
   }
   const sk = sp.get('sort')
