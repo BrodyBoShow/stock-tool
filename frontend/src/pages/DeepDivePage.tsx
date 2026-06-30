@@ -39,6 +39,7 @@ const NAV_SECTIONS = [
 
 function SectionNav({ ticker }: { ticker: string }) {
   const [active, setActive] = useState('brief')
+  const [progress, setProgress] = useState(0)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
@@ -60,29 +61,67 @@ function SectionNav({ ticker }: { ticker: string }) {
     return () => observerRef.current?.disconnect()
   }, [ticker])
 
+  // page scroll progress (thin bar under the nav)
+  useEffect(() => {
+    const onScroll = () => {
+      const h = document.documentElement
+      const max = h.scrollHeight - h.clientHeight
+      setProgress(max > 0 ? Math.min(100, (h.scrollTop / max) * 100) : 0)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // ←/→ jump between sections (unless typing)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      const i = NAV_SECTIONS.findIndex((s) => s.id === active)
+      const next = e.key === 'ArrowRight' ? i + 1 : i - 1
+      if (next >= 0 && next < NAV_SECTIONS.length) {
+        e.preventDefault()
+        scrollTo(NAV_SECTIONS[next].id)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active])
+
   return (
-    <nav className="sticky top-0 z-30 -mx-4 flex items-center gap-1 border-b border-gray-200 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_1px_6px_rgba(15,23,42,0.04)]">
-      <span className="mr-2 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-300">
-        {ticker}
-      </span>
-      {NAV_SECTIONS.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          onClick={() => scrollTo(s.id)}
-          className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold transition-all ${
-            active === s.id
-              ? 'bg-slate-800 text-white'
-              : 'text-gray-500 hover:bg-slate-100 hover:text-slate-800'
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
+    <nav className="sticky top-0 z-30 -mx-4 border-b border-gray-200 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_1px_6px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-1 overflow-x-auto">
+        <span className="mr-2 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-300">
+          {ticker}
+        </span>
+        {NAV_SECTIONS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => scrollTo(s.id)}
+            className={`flex-none rounded-full px-3 py-1 text-[0.72rem] font-semibold transition-all ${
+              active === s.id
+                ? 'bg-slate-800 text-white'
+                : 'text-gray-500 hover:bg-slate-100 hover:text-slate-800'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+        <span className="ml-auto hidden flex-none pl-3 text-[0.62rem] text-slate-300 sm:inline">
+          ← → to move
+        </span>
+      </div>
+      <span
+        className="absolute bottom-0 left-0 h-[2px] bg-indigo-500 transition-[width] duration-150"
+        style={{ width: `${progress}%` }}
+      />
     </nav>
   )
 }
