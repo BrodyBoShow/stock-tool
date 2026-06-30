@@ -13,6 +13,7 @@ export function Sparkline({
   height = 16,
   color,
   title,
+  fluid = false,
 }: {
   data: number[] | null
   width?: number
@@ -21,6 +22,10 @@ export function Sparkline({
   color?: string
   /** Override the default hover title. */
   title?: string
+  /** Fill the container width (svg width=100%) instead of a fixed px width — for
+   *  cards/tiles that can be narrower than `width` on small viewports. `width`
+   *  still defines the internal coordinate space; the stroke stays crisp. */
+  fluid?: boolean
 }) {
   const ref = useRef<HTMLSpanElement>(null)
   const [seen, setSeen] = useState(false)
@@ -43,7 +48,14 @@ export function Sparkline({
 
   // Nothing to draw (no history yet) or not yet visible → reserve the space.
   if (!data || data.length < 2 || !seen) {
-    return <span ref={ref} aria-hidden className="mt-1 block" style={{ width, height }} />
+    return (
+      <span
+        ref={ref}
+        aria-hidden
+        className="mt-1 block"
+        style={{ width: fluid ? '100%' : width, height }}
+      />
+    )
   }
 
   const min = Math.min(...data)
@@ -63,9 +75,16 @@ export function Sparkline({
     <span
       ref={ref}
       className="mt-1 block"
+      style={fluid ? { width: '100%' } : undefined}
       title={title ?? `Composite trend over the last ${n} scoring runs`}
     >
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
+      <svg
+        width={fluid ? '100%' : width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio={fluid ? 'none' : undefined}
+        className="block"
+      >
         <polygon points={`1,${height - 1} ${line} ${width - 1},${height - 1}`} fill={stroke} opacity={0.1} />
         <polyline
           points={line}
@@ -74,6 +93,7 @@ export function Sparkline({
           strokeWidth={1}
           strokeLinejoin="round"
           strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
         />
       </svg>
     </span>

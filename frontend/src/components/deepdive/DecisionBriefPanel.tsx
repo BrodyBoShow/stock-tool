@@ -21,9 +21,12 @@ interface QuantPick {
   roicIsProxy: boolean
 }
 
-/** The 3 strongest (bull) or weakest (bear) sub-metrics by their own universe
+/** The strongest (bull) or weakest (bear) sub-metrics by their own universe
  *  percentile — pure factual context from the served snapshot's details, never
- *  parsed out of the AI text. Value comes from inputs, rank from sub_pctls. */
+ *  parsed out of the AI text. Value comes from inputs, rank from sub_pctls.
+ *  The two sides are split into DISJOINT halves (top ⌈n/2⌉ vs bottom ⌊n/2⌋,
+ *  capped at 3 each) so a name with few scored metrics can never show the same
+ *  metric as both a strength and a weakness. */
 function topMetrics(header: SecurityHeader, tone: 'bull' | 'bear'): QuantPick[] {
   const inputs = header.details?.inputs ?? {}
   const sub = header.details?.sub_pctls ?? {}
@@ -33,7 +36,9 @@ function topMetrics(header: SecurityHeader, tone: 'bull' | 'bear'): QuantPick[] 
     .map(([key]) => ({ key, value: inputs[key] ?? null, pctl: sub[key], roicIsProxy }))
     .filter((r): r is QuantPick => r.pctl != null && Number.isFinite(r.pctl))
   rows.sort((a, b) => b.pctl - a.pctl)
-  return tone === 'bull' ? rows.slice(0, 3) : rows.slice(-3).reverse()
+  const n = rows.length
+  if (tone === 'bull') return rows.slice(0, Math.min(3, Math.ceil(n / 2)))
+  return rows.slice(n - Math.min(3, Math.floor(n / 2))).reverse()
 }
 
 /** Factual rank chips under a bull/bear case — strongest or weakest sub-metrics. */

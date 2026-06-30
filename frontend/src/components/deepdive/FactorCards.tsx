@@ -12,7 +12,9 @@ import {
 import { DASH } from '@/lib/format'
 import type { FactorSet, PricePoint, SecurityHeader } from '@/types/api'
 
-/** Local clock for an epoch-seconds timestamp (the live quote's as-of time). */
+/** Local clock for the quote FETCH time (when StockBud pulled the ~15-min-
+ *  delayed price) — labeled "checked", never "as of", so it doesn't imply the
+ *  price itself is current to the minute. */
 function fmtClock(epoch: number | null | undefined): string | null {
   if (epoch == null) return null
   return new Date(epoch * 1000).toLocaleTimeString('en-US', {
@@ -169,7 +171,12 @@ export function FactorCards({
             </span>
           )}
           {clock && (
-            <span className="text-[0.72rem] text-slate-400">as of {clock}</span>
+            <span
+              className="text-[0.72rem] text-slate-400"
+              title="When StockBud last fetched the quote — the price itself is ~15-min delayed."
+            >
+              checked {clock}
+            </span>
           )}
           {recentPx.length >= 2 && (
             <span

@@ -68,12 +68,14 @@ function MacroTile({
       )}
       {spark && spark.length >= 2 && (
         <div className="mt-1.5">
-          {/* Neutral slate — macro is direction-only context, never good/bad. */}
+          {/* Neutral slate — macro is direction-only context, never good/bad.
+              Fluid so it fits the narrow 2-col mobile tile without overflow. */}
           <Sparkline
             data={spark}
             color="#94a3b8"
             width={132}
             height={22}
+            fluid
             title={`${label} — last 3 years`}
           />
         </div>
