@@ -15,6 +15,7 @@ import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
 import { IntrinsicValuePanel } from '@/components/deepdive/IntrinsicValuePanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
+import { ScoreStoryPanel } from '@/components/deepdive/ScoreStoryPanel'
 import { ScoreWaterfall } from '@/components/deepdive/ScoreWaterfall'
 import { ThesisPanel } from '@/components/deepdive/ThesisPanel'
 import { ErrorCard } from '@/components/ErrorCard'
@@ -24,6 +25,7 @@ import { getSecurity } from '@/lib/api'
 
 const NAV_SECTIONS = [
   { id: 'brief', label: 'Brief' },
+  { id: 'story', label: 'Story' },
   { id: 'chart', label: 'Chart' },
   { id: 'score', label: 'Score' },
   { id: 'factors', label: 'Factors' },
@@ -159,6 +161,10 @@ export function DeepDivePage() {
 
       <div id="brief">
         <DecisionBriefPanel ticker={header.ticker} />
+      </div>
+
+      <div id="story">
+        <ScoreStoryPanel ticker={header.ticker} />
       </div>
 
       <div id="chart">
