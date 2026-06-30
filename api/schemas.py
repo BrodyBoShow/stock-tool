@@ -99,8 +99,13 @@ class BacktestRunResponse(BaseModel):
     end_date: str | None = None
     params: dict | None = None
     results: dict | None = None
+    # Per-sub-metric IC attribution (Phase 0): which ranked sub-signals actually
+    # predict, with coverage floor + verdict. None on runs predating the feature.
+    submetrics: dict | None = None
     benchmarks: dict | None = None
     significance: dict | None = None
+    # config_versions that have a stored backtest (for the Lab's A/B selector).
+    available_configs: list[str] | None = None
 
 
 class ProjectionResponse(BaseModel):

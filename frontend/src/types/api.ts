@@ -963,6 +963,27 @@ export interface BacktestSignificance {
   seed: number
 }
 
+export type SubmetricVerdict =
+  | 'predictive'
+  | 'no_significant_ic'
+  | 'predictive_wrong_sign'
+  | 'insufficient_data'
+
+export interface BacktestCoverage {
+  median_valid_names: number
+  n_periods: number
+  evaluable: boolean
+  t_bar: number
+  verdict: SubmetricVerdict
+}
+
+export interface BacktestMonotonicity {
+  rank_corr_meanret: number | null
+  top_gt_bottom: boolean | null
+  periods_with_buckets: number
+  low_evidence: boolean
+}
+
 export interface BacktestKeyResult {
   buckets: Record<string, BacktestBucketStats> // "1".."5"
   long_short: BacktestCurveStats
@@ -974,6 +995,8 @@ export interface BacktestKeyResult {
   bucket_cagrs: Record<string, number | null>
   ic?: BacktestICBlock | null
   bootstrap?: BacktestBootstrap | null
+  coverage?: BacktestCoverage // present on sub-metric attribution entries
+  monotonicity?: BacktestMonotonicity
 }
 
 export interface BacktestBenchmarks {
@@ -1028,6 +1051,8 @@ export interface BacktestRunResponse {
   end_date: string | null
   params: { n_buckets: number; cost_bps: number; rebalances: number } | null
   results: Record<string, BacktestKeyResult> | null
+  submetrics?: Record<string, BacktestKeyResult> | null // per-sub-metric IC (Phase 0)
   benchmarks: BacktestBenchmarks | null
   significance?: BacktestSignificance | null
+  available_configs?: string[] | null // config_versions with a stored run (A/B selector)
 }

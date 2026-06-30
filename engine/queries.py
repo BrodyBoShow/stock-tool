@@ -185,6 +185,29 @@ def latest_backtest(config_version: str = ACTIVE_CONFIG_VERSION) -> dict[str, An
     }
 
 
+def backtest_configs() -> list[str]:
+    """config_versions that have at least one stored backtest, newest run first —
+    the options for the Lab's A/B config selector (active config surfaces first)."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT config_version
+                FROM backtest_results
+                GROUP BY config_version
+                ORDER BY max(generated_at) DESC
+                """
+            )
+            rows = [r[0] for r in cur.fetchall()]
+    finally:
+        release(conn)
+    # Keep the active config at the front so the Lab defaults to what users see.
+    return ([ACTIVE_CONFIG_VERSION] if ACTIVE_CONFIG_VERSION in rows else []) + [
+        c for c in rows if c != ACTIVE_CONFIG_VERSION
+    ]
+
+
 def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], date | None]:
     """Active securities at the latest score_date with last two prices.
 
