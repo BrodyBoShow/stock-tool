@@ -201,7 +201,7 @@ export function DeepDivePage() {
       <SectionNav ticker={header.ticker} />
 
       <div id="brief">
-        <DecisionBriefPanel ticker={header.ticker} />
+        <DecisionBriefPanel ticker={header.ticker} header={header} />
       </div>
 
       <div id="story" className="space-y-5">
@@ -224,7 +224,7 @@ export function DeepDivePage() {
       </div>
 
       <div id="factors">
-        <FactorCards header={header} ticker={header.ticker} />
+        <FactorCards header={header} ticker={header.ticker} prices={prices} />
         <p className="mt-2 text-[0.72rem] text-gray-400">
           Cross-sectional percentile ranks within the US-listed universe (100 =
           top), as of {header.score_date ?? 'n/a'} (nightly)

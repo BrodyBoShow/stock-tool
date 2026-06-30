@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { Sparkline } from '@/components/screener/Sparkline'
 import { getLiveFactors } from '@/lib/api'
 import { FACTOR_TABLE, isCommoditySensitive, type FactorKey } from '@/lib/constants'
 import {
@@ -9,7 +10,16 @@ import {
   type FactorPctls,
 } from '@/lib/factorReading'
 import { DASH } from '@/lib/format'
-import type { FactorSet, SecurityHeader } from '@/types/api'
+import type { FactorSet, PricePoint, SecurityHeader } from '@/types/api'
+
+/** Local clock for an epoch-seconds timestamp (the live quote's as-of time). */
+function fmtClock(epoch: number | null | undefined): string | null {
+  if (epoch == null) return null
+  return new Date(epoch * 1000).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
 
 const ORDER: Array<{ key: FactorKey; label: string }> = [
   { key: 'composite', label: 'Composite' },
@@ -46,9 +56,11 @@ function liveOf(set: FactorSet | null, key: FactorKey): number | null {
 export function FactorCards({
   header,
   ticker,
+  prices,
 }: {
   header: SecurityHeader
   ticker: string
+  prices?: PricePoint[]
 }) {
   const { data } = useQuery({
     queryKey: ['live-factors', ticker],
@@ -61,6 +73,12 @@ export function FactorCards({
   })
 
   const isLive = Boolean(data?.live && !data?.stale && data?.has_scores)
+  const clock = fmtClock(data?.as_of_epoch)
+  // Recent price action that drives the live momentum adjustment (context only).
+  const recentPx = (prices ?? [])
+    .slice(-20)
+    .map((p) => p.adj_close ?? p.close)
+    .filter((x): x is number => x != null)
   const changePct =
     data?.price != null && header.last_price != null && header.last_price > 0
       ? (data.price / header.last_price - 1) * 100
@@ -148,6 +166,18 @@ export function FactorCards({
                 </span>
               )}{' '}
               · ~15-min delayed · Growth & Quality stay nightly
+            </span>
+          )}
+          {clock && (
+            <span className="text-[0.72rem] text-slate-400">as of {clock}</span>
+          )}
+          {recentPx.length >= 2 && (
+            <span
+              className="inline-flex items-center gap-1 text-[0.66rem] text-slate-400"
+              title="Adjusted close over the last 20 sessions — the price trend behind the live Momentum adjustment, not the momentum percentile itself."
+            >
+              <Sparkline data={recentPx} width={60} height={16} />
+              price · 20d
             </span>
           )}
         </div>
