@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { ActiveFilterChips } from '@/components/screener/ActiveFilterChips'
+import { CommandPalette } from '@/components/screener/CommandPalette'
 import { FilterSidebar } from '@/components/screener/FilterSidebar'
 import { ScreenerDrawer } from '@/components/screener/ScreenerDrawer'
 import { ScreenerHeader } from '@/components/ScreenerHeader'
@@ -187,6 +188,12 @@ export function ScreenerPage() {
       {drawerRow && (
         <ScreenerDrawer row={drawerRow} onClose={() => setDrawerRow(null)} />
       )}
+      <CommandPalette
+        rows={rows}
+        sectors={sectors}
+        onApplyQuery={(q) => setSearchParams(new URLSearchParams(q), { replace: true })}
+        onApplySector={(s) => setFilters({ ...filters, sectors: [s] })}
+      />
     </div>
   )
 }
