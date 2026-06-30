@@ -20,6 +20,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# The report uses ->, minus and x glyphs; Windows consoles default to cp1252 and
+# would crash on them. Force UTF-8 stdout where the runtime supports it.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+
 from engine.queries import latest_backtest  # noqa: E402
 
 
