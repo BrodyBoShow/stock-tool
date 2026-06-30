@@ -482,6 +482,7 @@ export function PriceChart({
                   />
                 )}
                 <Tooltip
+                  cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }}
                   content={
                     <PriceTooltip
                       overlayMeta={overlayOn ? overlayMeta : null}

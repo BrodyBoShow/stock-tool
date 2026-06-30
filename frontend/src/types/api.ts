@@ -124,6 +124,7 @@ export interface FactorTrendPoint {
   quality_pctl: number | null
   momentum_pctl: number | null
   rank: number | null // 1 = best composite in the universe
+  sub_pctls: Record<string, number | null> | null
 }
 
 export interface DataConfidence {
@@ -205,6 +206,24 @@ export interface InsiderResponse {
   ticker: string
   windows: InsiderWindow[] // [3m, 12m]
   transactions: InsiderTransaction[] // newest first
+}
+
+export interface PeerRow {
+  ticker: string
+  name: string | null
+  is_focal: boolean
+  composite: number | null
+  pe: number | null
+  ev_ebitda: number | null
+  fcf_yield: number | null
+  market_cap: number | null
+}
+
+export interface PeerStripResponse {
+  sector: string
+  sector_pctl: number | null
+  sector_count: number
+  peers: PeerRow[] // focal first, then 5 nearest by market cap
 }
 
 export interface QuoteRow {

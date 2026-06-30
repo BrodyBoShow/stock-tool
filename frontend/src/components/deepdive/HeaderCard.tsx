@@ -1,4 +1,9 @@
+import { useQuery } from '@tanstack/react-query'
+
 import { SectorPill } from '@/components/screener/SectorPill'
+import { Delta } from '@/components/ui/Delta'
+import { getBriefStatus } from '@/lib/api'
+import { scoreHeat } from '@/lib/colors'
 import { topDriver, type FactorPctls } from '@/lib/factorReading'
 import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
@@ -7,6 +12,37 @@ const STAT_LABEL = 'text-[0.75rem] text-gray-500'
 const STAT_VALUE = 'text-[1.35rem] font-extrabold text-gray-900'
 const STAT_SUB = 'text-[0.72rem] text-gray-400'
 
+/** Circular 0–100 gauge, heat-colored, with the score in the center. */
+function ScoreGauge({ value }: { value: number }) {
+  const r = 30
+  const c = 2 * Math.PI * r
+  const frac = Math.max(0, Math.min(100, value)) / 100
+  const { bar } = scoreHeat(value)
+  return (
+    <svg viewBox="0 0 72 72" width="64" height="64" className="flex-none">
+      <circle cx="36" cy="36" r={r} fill="none" stroke="#eef2f7" strokeWidth="7" />
+      <circle
+        cx="36"
+        cy="36"
+        r={r}
+        fill="none"
+        stroke={bar}
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - frac)}
+        transform="rotate(-90 36 36)"
+      />
+      <text x="36" y="34" textAnchor="middle" className="numeric" fontSize="18" fontWeight="800" fill="#0f172a">
+        {value.toFixed(0)}
+      </text>
+      <text x="36" y="47" textAnchor="middle" fontSize="8.5" fill="#94a3b8">
+        / 100
+      </text>
+    </svg>
+  )
+}
+
 export function HeaderCard({
   header,
   action,
@@ -14,9 +50,23 @@ export function HeaderCard({
   header: SecurityHeader
   action?: React.ReactNode
 }) {
-  // "Why ranked here" one-liner (Phase 1, 1f) — built client-side from the
-  // percentiles already on the header. Names the factor pulling the composite up
-  // most (only when its lead is clear), plus how many sub-metrics were scored.
+  // Reuse the cached brief query (DecisionBriefPanel + ScoreStoryPanel share it)
+  // for the hero one-liner, the week-over-week composite delta, and rank.
+  const { data: brief } = useQuery({
+    queryKey: ['brief', header.ticker],
+    queryFn: () => getBriefStatus(header.ticker),
+    staleTime: 5 * 60 * 1000,
+  })
+  const trend = brief?.trend ?? []
+  const last = trend[trend.length - 1]
+  const prior = trend[trend.length - 2]
+  const compDelta =
+    last?.composite != null && prior?.composite != null
+      ? last.composite - prior.composite
+      : null
+  const rank = last?.rank ?? null
+  const oneLiner = brief?.brief?.brief?.one_liner ?? null
+
   const pctls: FactorPctls = {
     composite: header.composite,
     growth: header.growth_pctl,
@@ -35,67 +85,87 @@ export function HeaderCard({
         `${nSub != null ? ` · ${nSub} sub-metrics scored` : ''}`
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-[18px] rounded-card border border-gray-200 bg-white px-[22px] py-5 shadow-card">
-      <div className="flex items-center gap-3.5">
-        <div
-          className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[13px] text-[1.15rem] font-extrabold text-white"
-          style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
-        >
-          {header.ticker.slice(0, 2)}
-        </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[1.45rem] font-extrabold text-gray-900">
-              {header.ticker}
-            </span>
-            {header.exchange && (
-              <span className="rounded-full bg-gray-100 px-2.5 py-[3px] text-[0.72rem] font-semibold text-gray-700">
-                {header.exchange}
+    <div className="rounded-card border border-gray-200 bg-white px-[22px] py-5 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-[18px]">
+        <div className="flex items-center gap-3.5">
+          <div
+            className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[13px] text-[1.15rem] font-extrabold text-white"
+            style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+          >
+            {header.ticker.slice(0, 2)}
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[1.45rem] font-extrabold text-gray-900">
+                {header.ticker}
               </span>
-            )}
-            <SectorPill sector={header.sector} />
-          </div>
-          <div className="mt-px text-[0.95rem] text-gray-700">
-            {header.name ?? DASH}
-          </div>
-          {header.industry && (
-            <div className="mt-0.5 text-[0.78rem] text-gray-400">
-              {header.industry}
+              {header.exchange && (
+                <span className="rounded-full bg-gray-100 px-2.5 py-[3px] text-[0.72rem] font-semibold text-gray-700">
+                  {header.exchange}
+                </span>
+              )}
+              <SectorPill sector={header.sector} />
             </div>
-          )}
+            <div className="mt-px text-[0.95rem] text-gray-700">{header.name ?? DASH}</div>
+            {header.industry && (
+              <div className="mt-0.5 text-[0.78rem] text-gray-400">{header.industry}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2.5">
+          {action}
+          <div className="flex items-center gap-[30px]">
+            <div>
+              <div className={STAT_LABEL}>Last close</div>
+              <div className={STAT_VALUE}>{fmtPrice(header.last_price)}</div>
+              <div className={STAT_SUB}>{fmtDate(header.price_date)}</div>
+            </div>
+            {/* Composite gauge — the page's anchor number */}
+            <div className="flex items-center gap-2.5">
+              {header.composite != null ? (
+                <ScoreGauge value={header.composite} />
+              ) : (
+                <div className={STAT_VALUE}>{DASH}</div>
+              )}
+              <div>
+                <div className={STAT_LABEL}>Composite</div>
+                {compDelta != null && (
+                  <div className="numeric text-[0.82rem] font-bold">
+                    <Delta value={compDelta} /> <span className="font-normal text-gray-400">wk</span>
+                  </div>
+                )}
+                <div className={STAT_SUB}>
+                  {rank != null ? (
+                    <>
+                      rank <span className="numeric font-semibold text-slate-600">#{rank}</span>
+                    </>
+                  ) : (
+                    'percentile · 100 = top'
+                  )}
+                </div>
+                <div className={STAT_SUB}>as of {fmtDate(header.score_date)}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col items-end gap-3">
-        {action}
-        <div className="flex gap-[34px]">
-          <div>
-            <div className={STAT_LABEL}>Last close</div>
-          <div className={STAT_VALUE}>{fmtPrice(header.last_price)}</div>
-          <div className={STAT_SUB}>{fmtDate(header.price_date)}</div>
+      {/* Hero thesis one-liner (AI) — falls back to the factor-driver readout */}
+      {(oneLiner || whyRanked) && (
+        <div className="mt-3.5 border-t border-gray-100 pt-3">
+          {oneLiner ? (
+            <p className="text-[0.92rem] leading-snug text-slate-700">{oneLiner}</p>
+          ) : (
+            <p
+              className="text-[0.78rem] text-gray-400"
+              title="The factor pulling this composite up the most. Descriptive — not advice."
+            >
+              {whyRanked}
+            </p>
+          )}
         </div>
-        <div>
-          <div className={STAT_LABEL}>Composite</div>
-          <div className={STAT_VALUE}>
-            {header.composite === null ? DASH : header.composite.toFixed(1)}
-          </div>
-          <div className={STAT_SUB}>percentile rank · 100 = top</div>
-        </div>
-        <div>
-          <div className={STAT_LABEL}>Scores</div>
-          <div className={STAT_VALUE}>{fmtDate(header.score_date)}</div>
-          <div className={STAT_SUB}>nightly batch</div>
-        </div>
-        </div>
-        {whyRanked && (
-          <div
-            className="text-[0.72rem] text-gray-400"
-            title="The factor pulling this composite up the most, relative to the others. Descriptive — not advice."
-          >
-            {whyRanked}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }

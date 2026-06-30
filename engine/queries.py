@@ -10,6 +10,7 @@ never touched here.
 from __future__ import annotations
 
 import json
+import math
 import threading
 import time
 from datetime import date, timedelta
@@ -1719,7 +1720,8 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
                       AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
                 )
                 SELECT fs.score_date, fs.composite, fs.growth_pctl, fs.value_pctl,
-                       fs.quality_pctl, fs.momentum_pctl, cr.univ_rank
+                       fs.quality_pctl, fs.momentum_pctl, cr.univ_rank,
+                       fs.details -> 'sub_pctls' AS sub_pctls
                 FROM factor_scores fs
                 JOIN securities s ON s.security_id = fs.security_id
                 LEFT JOIN complete_ranked cr
@@ -1745,6 +1747,80 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
         del d["univ_rank"]
         out.append(d)
     return out
+
+
+def peer_strip(ticker: str) -> dict[str, Any] | None:
+    """The focal name + its 5 nearest same-sector peers by market cap, with the
+    valuation metrics needed for a comparison strip, plus the focal's sector
+    percentile. All read from factor_scores.details->inputs at the latest
+    score_date (mktcap/pe/ev_ebitda/fcf_yield are already stored there), so no
+    price/shares joins. Returns None when sector or focal is unknown.
+    """
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT max(score_date) FROM factor_scores WHERE config_version = %s",
+                (ACTIVE_CONFIG_VERSION,),
+            )
+            score_date = cur.fetchone()[0]
+            cur.execute(
+                "SELECT sector FROM securities WHERE upper(ticker) = upper(%s)", (ticker,)
+            )
+            srow = cur.fetchone()
+            if not srow or not srow[0] or score_date is None:
+                return None
+            sector = srow[0]
+            cur.execute(
+                """
+                SELECT s.ticker, s.name, fs.composite,
+                       (fs.details->'inputs'->>'pe')::float8        AS pe,
+                       (fs.details->'inputs'->>'ev_ebitda')::float8 AS ev_ebitda,
+                       (fs.details->'inputs'->>'fcf_yield')::float8 AS fcf_yield,
+                       (fs.details->'inputs'->>'mktcap')::float8    AS market_cap
+                FROM factor_scores fs
+                JOIN securities s ON s.security_id = fs.security_id
+                WHERE fs.config_version = %s AND fs.score_date = %s
+                  AND s.is_active AND s.sector = %s
+                """,
+                (ACTIVE_CONFIG_VERSION, score_date, sector),
+            )
+            cols = [d[0] for d in cur.description]
+            names = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+    finally:
+        release(conn)
+
+    focal = next((n for n in names if n["ticker"].upper() == ticker.upper()), None)
+    if focal is None:
+        return None
+
+    comps = [float(n["composite"]) for n in names if n["composite"] is not None]
+    fc = focal["composite"]
+    sector_pctl = (
+        round(100 * sum(1 for c in comps if c <= float(fc)) / len(comps))
+        if comps and fc is not None else None
+    )
+
+    fm = focal.get("market_cap")
+    peers = [
+        n for n in names
+        if n["ticker"].upper() != ticker.upper() and n.get("market_cap") and fm
+    ]
+    peers.sort(key=lambda n: abs(math.log(float(n["market_cap"])) - math.log(float(fm))))
+
+    def fmt(n: dict[str, Any], is_focal: bool) -> dict[str, Any]:
+        return {
+            "ticker": n["ticker"], "name": n.get("name"), "is_focal": is_focal,
+            **{k: _f(n.get(k)) for k in
+               ("composite", "pe", "ev_ebitda", "fcf_yield", "market_cap")},
+        }
+
+    return {
+        "sector": sector,
+        "sector_pctl": sector_pctl,
+        "sector_count": len(names),
+        "peers": [fmt(focal, True)] + [fmt(p, False) for p in peers[:5]],
+    }
 
 
 def sector_metric_medians(sector: str) -> dict[str, Any]:

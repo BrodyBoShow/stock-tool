@@ -78,6 +78,42 @@ function WindowChip({ w }: { w: InsiderWindow }) {
   )
 }
 
+/** One-line read on the 12-month open-market pattern (P/S only, the signal
+ *  trades). Plan-heavy selling is softened to amber, not red. */
+function InsiderVerdict({ w }: { w: InsiderWindow }) {
+  const net = (w.buy_value ?? 0) - (w.sell_value ?? 0)
+  const planPct = w.sell_count > 0 ? (100 * w.sells_under_plan) / w.sell_count : 0
+  let label: string
+  let cls: string
+  if (w.buy_count === 0 && w.sell_count === 0) {
+    label = 'No open-market buys or sells in 12 months'
+    cls = 'bg-slate-100 text-slate-500'
+  } else if (w.buy_count > w.sell_count && net > 0) {
+    label = 'Net accumulating — insiders bought on the open market'
+    cls = 'bg-emerald-50 text-emerald-700'
+  } else if (w.sell_count > w.buy_count && net < 0) {
+    label =
+      planPct >= 60
+        ? 'Net selling, but mostly pre-scheduled plan sales (weak signal)'
+        : 'Net distributing — open-market selling, no offsetting buys'
+    cls = planPct >= 60 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
+  } else {
+    label = 'Mixed — buys and sells roughly offsetting'
+    cls = 'bg-slate-100 text-slate-600'
+  }
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-[0.8rem]">
+      <span className={`rounded px-2 py-0.5 text-[0.72rem] font-bold ${cls}`}>12-month signal</span>
+      <span className="text-slate-600">{label}.</span>
+      <span className="numeric text-[0.74rem] text-slate-400">
+        {w.buy_count} buys / {w.sell_count} sells · net{' '}
+        {net >= 0 ? '+' : '−'}
+        {fmtUsd(Math.abs(net))}
+      </span>
+    </div>
+  )
+}
+
 function role(t: InsiderTransaction): string {
   if (t.owner_title) return t.owner_title
   if (t.is_director && t.is_officer) return 'Director & Officer'
@@ -141,6 +177,10 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
           )}
         </div>
       </div>
+
+      {data && txns.length > 0 && data.windows[1] && (
+        <InsiderVerdict w={data.windows[1]} />
+      )}
 
       <div className="mt-3">
         {isPending ? (

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { Sparkline } from '@/components/screener/Sparkline'
 import { heatBg } from '@/lib/colors'
 import {
   FINANCIAL_NULL_METRICS,
@@ -106,14 +107,36 @@ export function FundamentalsTable({
                   {fmtDate(d)}
                 </th>
               ))}
+              <th className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500">
+                Trend
+              </th>
             </tr>
           </thead>
           <tbody>
             {METRIC_DISPLAY_ORDER.filter((metric) => byMetric.has(metric)).map(
-              (metric) => (
+              (metric) => {
+                // Oldest → newest run of this metric, for the trend sparkline.
+                const series = [...dates]
+                  .reverse()
+                  .map((d) => byMetric.get(metric)?.get(d) ?? null)
+                  .filter((x): x is number => x !== null)
+                const higher = HIGHER_IS_BETTER[metric] ?? true
+                let sparkColor: string | undefined
+                if (series.length >= 2) {
+                  const first = series[0]
+                  const last = series[series.length - 1]
+                  sparkColor =
+                    last === first
+                      ? '#94a3b8'
+                      : last > first === higher
+                        ? '#16a34a'
+                        : '#dc2626'
+                }
+                const label = METRIC_LABELS[metric] ?? metric
+                return (
                 <tr key={metric} className="border-b border-gray-100">
                   <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-gray-700">
-                    {METRIC_LABELS[metric] ?? metric}
+                    {label}
                   </td>
                   {dates.map((d) => {
                     const v = byMetric.get(metric)?.get(d) ?? null
@@ -144,8 +167,20 @@ export function FundamentalsTable({
                       </td>
                     )
                   })}
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end">
+                      <Sparkline
+                        data={series.length >= 2 ? series : null}
+                        color={sparkColor}
+                        width={64}
+                        height={18}
+                        title={`${label}: oldest → newest filing`}
+                      />
+                    </div>
+                  </td>
                 </tr>
-              ),
+                )
+              },
             )}
           </tbody>
         </table>
@@ -163,7 +198,9 @@ export function FundamentalsTable({
         <span className="text-gray-400">
           — each cell shaded against that metric’s own range over these periods
           (green = the better direction for the metric); a quick read of each
-          metric’s trajectory, not a cross-company score.
+          metric’s trajectory, not a cross-company score. The <b>Trend</b>{' '}
+          sparkline reads oldest → newest and is colored green when the metric is
+          improving, red when deteriorating.
         </span>
       </div>
 
