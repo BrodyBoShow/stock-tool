@@ -68,11 +68,12 @@ JOB_NAME = "factor_scoring"
 JOB_VERSION = "v1"
 
 # Which config the nightly/weekly default run writes, and which the read layer
-# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v3_pruned' at the
-# 2026-06-30 cutover (drops the wrong-signed accruals + unmeasurable
-# insider_net_buy from Quality, evidence in the Phase-0 backtest). v1/v2 rows
-# coexist for rollback (flip both constants back).
-DEFAULT_CONFIG_VERSION = "v3_pruned"
+# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v4_lean' at the
+# 2026-06-30 cutover — v4_lean dropped accruals + insider_net_buy (v3) AND the
+# two pure-noise metrics pe + r3m, and cleanly beat both v2 and v3 on the backtest
+# gate in both split-halves. Prior configs' rows coexist for rollback (flip both
+# constants back to 'v3_pruned' / 'v2_linear').
+DEFAULT_CONFIG_VERSION = "v4_lean"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the

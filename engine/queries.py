@@ -21,11 +21,11 @@ MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
 
 # Which scoring config the app serves. factor_scores can hold several config
 # versions per score_date side by side; every read below pins to this one so the
-# screener/deep-dive never double-count. Flipped to 'v3_pruned' at the 2026-06-30
-# cutover (drops the wrong-signed accruals + unmeasurable insider_net_buy from
-# Quality, evidence in the Phase-0 backtest). Rollback = set back to 'v2_linear'
-# (its rows still coexist).
-ACTIVE_CONFIG_VERSION = "v3_pruned"
+# screener/deep-dive never double-count. Flipped to 'v4_lean' at the 2026-06-30
+# cutover (drops accruals + insider_net_buy AND the pure-noise pe + r3m; cleanly
+# beat v2/v3 on the backtest gate, both split-halves). Rollback = set back to
+# 'v3_pruned' or 'v2_linear' (their rows still coexist).
+ACTIVE_CONFIG_VERSION = "v4_lean"
 
 
 def _f(v) -> float | None:
