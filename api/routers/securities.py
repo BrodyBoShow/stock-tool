@@ -23,6 +23,7 @@ from api.schemas import (
     InsiderWindow,
     LiveFactorsResponse,
     MaterialEvent,
+    PeerStripResponse,
     PricePoint,
     SecurityHeader,
     SecurityResponse,
@@ -235,6 +236,17 @@ def get_valuation(ticker: str) -> ValuationResponse:
     if data is None:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found")
     return ValuationResponse(**data)
+
+
+@router.get("/{ticker}/peers", response_model=PeerStripResponse | None)
+def get_peers(ticker: str) -> PeerStripResponse | None:
+    """Focal name + its 5 nearest same-sector peers by market cap, with the
+    valuation metrics for a comparison strip, plus the focal's sector percentile.
+    Pure read off factor_scores.details — no AI, no cost. null when the ticker
+    has no sector (so the strip simply doesn't render)."""
+    ticker, _ = _require_security(ticker)
+    data = queries.peer_strip(ticker)
+    return PeerStripResponse(**data) if data is not None else None
 
 
 def _to_filing_qa(cached: dict) -> FilingAnswers:

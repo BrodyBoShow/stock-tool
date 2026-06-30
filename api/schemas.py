@@ -311,6 +311,26 @@ class InsiderResponse(BaseModel):
     transactions: list[InsiderTransaction]  # newest first
 
 
+# ── peer comparison strip (deep-dive) ─────────────────────────────────────────
+
+class PeerRow(BaseModel):
+    ticker: str
+    name: str | None
+    is_focal: bool
+    composite: float | None
+    pe: float | None
+    ev_ebitda: float | None
+    fcf_yield: float | None
+    market_cap: float | None
+
+
+class PeerStripResponse(BaseModel):
+    sector: str
+    sector_pctl: int | None   # focal composite percentile within its sector
+    sector_count: int
+    peers: list[PeerRow]      # focal first, then 5 nearest by market cap
+
+
 # ── material events (Phase 13 — 8-K, context only) ────────────────────────────
 
 class MaterialEvent(BaseModel):

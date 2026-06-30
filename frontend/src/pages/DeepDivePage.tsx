@@ -14,6 +14,7 @@ import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
 import { IntrinsicValuePanel } from '@/components/deepdive/IntrinsicValuePanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
+import { PeerStrip } from '@/components/deepdive/PeerStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
 import { ScoreForensicsPanel } from '@/components/deepdive/ScoreForensicsPanel'
 import { ScoreStoryPanel } from '@/components/deepdive/ScoreStoryPanel'
@@ -191,6 +192,8 @@ export function DeepDivePage() {
           {weightStr ? ` · Weights: ${weightStr}` : ''}.
         </p>
       </div>
+
+      <PeerStrip ticker={header.ticker} composite={header.composite} />
 
       <div id="value">
         <IntrinsicValuePanel ticker={header.ticker} />

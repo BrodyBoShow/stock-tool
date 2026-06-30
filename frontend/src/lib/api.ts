@@ -20,6 +20,7 @@ import type {
   MacroSeriesResponse,
   MarketBriefResponse,
   MarketOverviewResponse,
+  PeerStripResponse,
   PortfolioMutationResponse,
   PortfolioResponse,
   ProjectionResponse,
@@ -256,6 +257,12 @@ export function getEvents(ticker: string): Promise<EventsResponse> {
 export function getValuation(ticker: string): Promise<ValuationResponse> {
   return getJson<ValuationResponse>(
     `/securities/${encodeURIComponent(ticker)}/valuation`,
+  )
+}
+
+export function getPeers(ticker: string): Promise<PeerStripResponse | null> {
+  return getJson<PeerStripResponse | null>(
+    `/securities/${encodeURIComponent(ticker)}/peers`,
   )
 }
 

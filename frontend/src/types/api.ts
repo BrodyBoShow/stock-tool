@@ -208,6 +208,24 @@ export interface InsiderResponse {
   transactions: InsiderTransaction[] // newest first
 }
 
+export interface PeerRow {
+  ticker: string
+  name: string | null
+  is_focal: boolean
+  composite: number | null
+  pe: number | null
+  ev_ebitda: number | null
+  fcf_yield: number | null
+  market_cap: number | null
+}
+
+export interface PeerStripResponse {
+  sector: string
+  sector_pctl: number | null
+  sector_count: number
+  peers: PeerRow[] // focal first, then 5 nearest by market cap
+}
+
 export interface QuoteRow {
   price: number | null
   prev_close: number | null
