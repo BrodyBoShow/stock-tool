@@ -68,9 +68,11 @@ JOB_NAME = "factor_scoring"
 JOB_VERSION = "v1"
 
 # Which config the nightly/weekly default run writes, and which the read layer
-# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v2_linear' at
-# cutover; until then the package ships dormant and the app keeps serving v1.
-DEFAULT_CONFIG_VERSION = "v2_linear"
+# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v3_pruned' at the
+# 2026-06-30 cutover (drops the wrong-signed accruals + unmeasurable
+# insider_net_buy from Quality, evidence in the Phase-0 backtest). v1/v2 rows
+# coexist for rollback (flip both constants back).
+DEFAULT_CONFIG_VERSION = "v3_pruned"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the
@@ -133,13 +135,37 @@ FACTOR_DEFS_V2 = {
     "momentum": [("r3m", "higher"), ("r6m", "higher"), ("r12_1m", "higher")],
 }
 
+# v3_pruned: drop the two Quality sub-signals the Phase-0 per-sub-metric IC
+# backtest disqualified — `accruals` (PREDICTIVE BUT WRONG-SIGNED: IC t=-4.1,
+# consistently negative in BOTH halves of 2022-26, so the Sloan low-accruals
+# premium is inverted in this survivor universe and was dragging Quality) and
+# `insider_net_buy` (INSUFFICIENT DATA: median 0 valid names/month — too sparse
+# to rank). Both stay computed in fundamental_metrics and shown on the deep-dive;
+# they're only removed from the ranked Quality mean. Everything else is identical
+# to v2_linear, so v3_pruned shares its 4 factor weights — seeded as its own
+# score_config row in migration 0024 (factor_scores' config_version FK needs one).
+FACTOR_DEFS_V3_PRUNED = {
+    "growth": FACTOR_DEFS_V2["growth"],
+    "value": FACTOR_DEFS_V2["value"],
+    "quality": [
+        ("gross_margin", "higher"),
+        ("operating_margin", "higher"),
+        ("roic", "higher"),
+        ("debt_to_equity", "lower"),
+        ("net_debt_ebitda", "lower"),
+        ("share_count_trend", "lower"),
+    ],
+    "momentum": FACTOR_DEFS_V2["momentum"],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
+    "v3_pruned": FACTOR_DEFS_V3_PRUNED,
 }
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
-# sub-signals it actually ranks on).
+# sub-signals it actually ranks on; v3_pruned drops the two it disqualified).
 _BASE_INPUTS = [
     "revenue_cagr", "eps_growth", "pe", "ps", "ev_ebitda", "fcf_yield",
     "gross_margin", "operating_margin", "roic", "debt_to_equity",
@@ -149,11 +175,13 @@ INPUTS_BY_VERSION = {
     "v1_linear": _BASE_INPUTS,
     "v2_linear": _BASE_INPUTS + ["r12_1m", "accruals", "share_count_trend",
                                  "insider_net_buy"],
+    "v3_pruned": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
     "v1_linear": "cross_sectional_raw_returns_no_spy",
     "v2_linear": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
+    "v3_pruned": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
 }
 
 # Discretionary insider net-buy signal window (trailing months).
