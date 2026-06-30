@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { Sparkline } from '@/components/screener/Sparkline'
 import { MACRO_DISPLAY } from '@/lib/constants'
-import { getMacroLatest } from '@/lib/api'
+import { getMacroLatest, getMacroSeries } from '@/lib/api'
 import { fmtShortDate } from '@/lib/format'
 import type { MacroObservation } from '@/types/api'
 
@@ -10,16 +11,29 @@ function fmtVal(v: number | null, unit: string, dec: number): string {
   return `${v.toFixed(dec)}${unit}`
 }
 
+// Trailing window of a full FRED series, oldest→newest, for the trend sparkline.
+// Date strings are 'YYYY-MM-DD', so a string cutoff is a correct date compare.
+function recentValues(obs: MacroObservation[], years = 3): number[] {
+  if (obs.length === 0) return []
+  const latestDate = obs[obs.length - 1].date
+  const cutoff = String(Number(latestDate.slice(0, 4)) - years) + latestDate.slice(4)
+  return obs
+    .filter((o) => o.date >= cutoff && o.value != null)
+    .map((o) => o.value as number)
+}
+
 function MacroTile({
   label,
   unit,
   dec,
   obs,
+  spark,
 }: {
   label: string
   unit: string
   dec: number
   obs: MacroObservation[]
+  spark?: number[]
 }) {
   const latest = obs[0] ?? null
   const prior = obs[1] ?? null
@@ -52,6 +66,20 @@ function MacroTile({
       ) : (
         <div className="mt-0.5 text-[0.72rem] text-gray-400">no prior reading</div>
       )}
+      {spark && spark.length >= 2 && (
+        <div className="mt-1.5">
+          {/* Neutral slate — macro is direction-only context, never good/bad.
+              Fluid so it fits the narrow 2-col mobile tile without overflow. */}
+          <Sparkline
+            data={spark}
+            color="#94a3b8"
+            width={132}
+            height={22}
+            fluid
+            title={`${label} — last 3 years`}
+          />
+        </div>
+      )}
       {latest && (
         <div className="mt-1 text-[0.63rem] text-slate-300">as of {fmtShortDate(latest.date)}</div>
       )}
@@ -71,6 +99,23 @@ export function MacroStrip() {
     queryKey: ['macro', 'latest'],
     queryFn: getMacroLatest,
     staleTime: 6 * 60 * 60 * 1000, // nightly data
+  })
+
+  // Full history per series → trailing-3y sparkline points. One extra fan-out,
+  // cached 6h; individual series failures degrade to "no sparkline" silently.
+  const { data: sparks } = useQuery({
+    queryKey: ['macro', 'series', 'sparks'],
+    queryFn: async () => {
+      const results = await Promise.all(
+        MACRO_DISPLAY.map((m) => getMacroSeries(m.id).catch(() => null)),
+      )
+      const map: Record<string, number[]> = {}
+      for (const r of results) {
+        if (r) map[r.series_id] = recentValues(r.observations)
+      }
+      return map
+    },
+    staleTime: 6 * 60 * 60 * 1000,
   })
 
   // ambient context — if it fails, stay quiet rather than break the deep dive
@@ -103,6 +148,7 @@ export function MacroStrip() {
                 unit={m.unit}
                 dec={m.dec}
                 obs={bySeries.get(m.id) ?? []}
+                spark={sparks?.[m.id]}
               />
             ))}
       </div>

@@ -3,14 +3,75 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Delta } from '@/components/ui/Delta'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateBrief, getBriefStatus } from '@/lib/api'
-import { PANEL_LABEL as LABEL } from '@/lib/constants'
-import { fmtDate } from '@/lib/format'
+import { rankColor } from '@/lib/colors'
+import { FACTOR_DEFS, INPUT_LABELS, PANEL_LABEL as LABEL } from '@/lib/constants'
+import { fmtDate, fmtInput } from '@/lib/format'
 import type {
   DataConfidence,
   DecisionBrief,
   FactorTrendPoint,
   PriceMoveContext,
+  SecurityHeader,
 } from '@/types/api'
+
+interface QuantPick {
+  key: string
+  value: number | null
+  pctl: number
+  roicIsProxy: boolean
+}
+
+/** The strongest (bull) or weakest (bear) sub-metrics by their own universe
+ *  percentile — pure factual context from the served snapshot's details, never
+ *  parsed out of the AI text. Value comes from inputs, rank from sub_pctls.
+ *  The two sides are split into DISJOINT halves (top ⌈n/2⌉ vs bottom ⌊n/2⌋,
+ *  capped at 3 each) so a name with few scored metrics can never show the same
+ *  metric as both a strength and a weakness. */
+function topMetrics(header: SecurityHeader, tone: 'bull' | 'bear'): QuantPick[] {
+  const inputs = header.details?.inputs ?? {}
+  const sub = header.details?.sub_pctls ?? {}
+  const roicIsProxy = header.details?.flags?.roic_pool === 'roa_proxy'
+  const rows = Object.values(FACTOR_DEFS)
+    .flat()
+    .map(([key]) => ({ key, value: inputs[key] ?? null, pctl: sub[key], roicIsProxy }))
+    .filter((r): r is QuantPick => r.pctl != null && Number.isFinite(r.pctl))
+  rows.sort((a, b) => b.pctl - a.pctl)
+  const n = rows.length
+  if (tone === 'bull') return rows.slice(0, Math.min(3, Math.ceil(n / 2)))
+  return rows.slice(n - Math.min(3, Math.floor(n / 2))).reverse()
+}
+
+/** Factual rank chips under a bull/bear case — strongest or weakest sub-metrics. */
+function QuantChips({ header, tone }: { header: SecurityHeader; tone: 'bull' | 'bear' }) {
+  const picks = topMetrics(header, tone)
+  if (picks.length === 0) return null
+  return (
+    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-black/[0.06] pt-2.5">
+      <span className="text-[0.56rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+        {tone === 'bull' ? 'Strongest ranks' : 'Weakest ranks'}
+      </span>
+      {picks.map((m) => {
+        const { bg, fg } = rankColor(m.pctl)
+        return (
+          <span
+            key={m.key}
+            className="inline-flex items-baseline gap-1 rounded-md px-1.5 py-0.5 text-[0.68rem] font-semibold"
+            style={{ background: bg, color: fg }}
+            title={`${INPUT_LABELS[m.key] ?? m.key}: ${Math.round(m.pctl)}th percentile in the universe`}
+          >
+            {INPUT_LABELS[m.key] ?? m.key}
+            {m.value != null && (
+              <span className="font-extrabold">
+                {fmtInput(m.key, m.value, m.key === 'roic' && m.roicIsProxy)}
+              </span>
+            )}
+            <span className="opacity-60">· {Math.round(m.pctl)}</span>
+          </span>
+        )
+      })}
+    </div>
+  )
+}
 
 
 const DAY_MS = 86_400_000
@@ -162,7 +223,7 @@ function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
   )
 }
 
-function BriefBody({ cached }: { cached: DecisionBrief }) {
+function BriefBody({ cached, header }: { cached: DecisionBrief; header: SecurityHeader }) {
   const b = cached.brief
   return (
     <div className="space-y-4">
@@ -198,12 +259,14 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
             Bull case
           </div>
           <CaseList items={b.bull_case} tone="bull" />
+          <QuantChips header={header} tone="bull" />
         </div>
         <div className="rounded-xl border border-red-100 bg-[#fffafa] p-3.5">
           <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-red-700">
             Bear case
           </div>
           <CaseList items={b.bear_case} tone="bear" />
+          <QuantChips header={header} tone="bear" />
         </div>
       </div>
 
@@ -249,7 +312,13 @@ function BriefBody({ cached }: { cached: DecisionBrief }) {
  * bull/bear/catalyst/risk brief grounded strictly in StockBud's own data.
  * Auto-generates once per scoring snapshot on first open; cached after.
  */
-export function DecisionBriefPanel({ ticker }: { ticker: string }) {
+export function DecisionBriefPanel({
+  ticker,
+  header,
+}: {
+  ticker: string
+  header: SecurityHeader
+}) {
   const qc = useQueryClient()
   const toast = useToast()
 
@@ -313,7 +382,7 @@ export function DecisionBriefPanel({ ticker }: { ticker: string }) {
           <>
             <TrendChips trend={data.trend} />
             {data.brief ? (
-              <BriefBody cached={data.brief} />
+              <BriefBody cached={data.brief} header={header} />
             ) : gen.isError ? (
               <div className="rounded-xl border border-dashed border-red-200 bg-[#fff7f7] p-5 text-center">
                 <p className="text-[0.85rem] font-semibold text-red-700">
