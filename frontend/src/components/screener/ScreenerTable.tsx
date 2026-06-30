@@ -89,7 +89,7 @@ function PriceCell({ row }: { row: ScreenerRow }) {
   }
   return (
     <div className="flex h-full flex-col items-end justify-center px-3 py-2">
-      <span className="text-[0.85rem] font-semibold text-gray-900">
+      <span className="numeric text-[0.85rem] font-semibold text-gray-900">
         {fmtPrice(last)}
       </span>
       {delta}
@@ -358,7 +358,7 @@ export function ScreenerTable({
                   onClick={handleRowClick}
                 >
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
-                    <span className="text-[0.74rem] font-semibold tabular-nums text-slate-600">
+                    <span className="numeric text-[0.74rem] font-semibold text-slate-600">
                       {r.rank}
                     </span>
                     {r.rank_delta != null && r.rank_delta !== 0 && (
@@ -429,7 +429,7 @@ export function ScreenerTable({
                     value={r.momentum_pctl}
                     live={liveByTicker?.[r.ticker]?.momentum_live}
                   />
-                  <div className="flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold tabular-nums text-slate-600">
+                  <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-slate-600">
                     {fmtMoney(r.market_cap)}
                   </div>
                   <PriceCell row={r} />

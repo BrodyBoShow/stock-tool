@@ -1,4 +1,5 @@
-import { FACTOR_TABLE, LOW_SCORE_TINT, type FactorKey } from '@/lib/constants'
+import { scoreHeat } from '@/lib/colors'
+import { type FactorKey } from '@/lib/constants'
 import { DASH } from '@/lib/format'
 
 /** Factor score cell: numeric value + colored percentile bar, tinted bg.
@@ -16,17 +17,20 @@ export function ScoreCell({
   value: number | null
   live?: number | null
 }) {
-  const { bar, tint } = FACTOR_TABLE[factor]
   const moved =
     live != null && value != null && Math.abs(live - value) >= 0.1
   const shown = moved ? (live as number) : value
 
-  let bg: string | undefined
-  if (shown !== null && shown >= 75) bg = tint
-  else if (shown !== null && shown < 25) bg = LOW_SCORE_TINT
+  // Heatmap: green (strong) → amber → red (weak) by percentile rank, with a
+  // faint same-hue cell wash so winners/losers are scannable at a glance. The
+  // live-adjusted overlay (sky-blue) still wins when it differs from nightly.
+  const heat = scoreHeat(shown)
+  const bg = moved ? undefined : heat.tint
+  const barColor = moved ? '#0ea5e9' : heat.bar
 
   return (
     <div
+      data-factor={factor}
       className="flex h-full flex-col items-center justify-center px-3 py-2"
       style={bg ? { background: bg } : undefined}
       title={
@@ -42,7 +46,7 @@ export function ScoreCell({
         <>
           <span
             className={
-              'text-[0.82rem] font-bold ' +
+              'numeric text-[0.82rem] font-bold ' +
               (moved ? 'text-sky-700' : 'text-gray-900')
             }
           >
@@ -54,7 +58,7 @@ export function ScoreCell({
               className="block h-full rounded-full"
               style={{
                 width: `${Math.max(0, Math.min(100, shown))}%`,
-                background: moved ? '#0ea5e9' : bar,
+                background: barColor,
               }}
             />
             {/* 50th-percentile (median) reference line */}

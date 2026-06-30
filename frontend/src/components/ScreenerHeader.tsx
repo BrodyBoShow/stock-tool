@@ -153,7 +153,34 @@ export function ScreenerHeader({
     }
     return { adv: a, dec: d }
   }, [rows])
-  const ratio = dec > 0 ? (adv / dec).toFixed(2) : '—'
+  const ratioNum = dec > 0 ? adv / dec : null
+  const ratio = ratioNum != null ? ratioNum.toFixed(2) : '—'
+
+  // Market Pulse — a single contextual read replacing five equal-weight KPIs.
+  // Breadth (our own nightly close-vs-prior) + VIX regime → one direction word.
+  // Thresholds are conventional market heuristics, not a tuned signal; the raw
+  // numbers stay visible beside it so the interpretation is never a black box.
+  const pulse: { label: string; cls: string; dot: string; why: string } =
+    ratioNum != null && ratioNum > 1.5 && vixLatest != null && vixLatest < 18
+      ? {
+          label: 'Bullish',
+          cls: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          dot: 'bg-emerald-500',
+          why: 'Broad advance (Adv/Dec > 1.5) with calm volatility (VIX < 18).',
+        }
+      : (ratioNum != null && ratioNum < 0.7) || (vixLatest != null && vixLatest > 25)
+        ? {
+            label: 'Bearish',
+            cls: 'border-red-200 bg-red-50 text-red-700',
+            dot: 'bg-red-500',
+            why: 'Broad decline (Adv/Dec < 0.7) or elevated fear (VIX > 25).',
+          }
+        : {
+            label: 'Neutral',
+            cls: 'border-amber-200 bg-amber-50 text-amber-700',
+            dot: 'bg-amber-500',
+            why: 'Mixed breadth and moderate volatility — no clear regime.',
+          }
 
   return (
     <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
@@ -226,13 +253,28 @@ export function ScreenerHeader({
         {/* divider */}
         <div className="my-4 h-px bg-[#eef1f6]" />
 
-        {/* market breadth — nightly, presented as dashboard KPIs */}
-        <div className="flex flex-wrap items-center gap-x-10 gap-y-3">
+        {/* market pulse — one contextual read, with the raw breadth beside it */}
+        <div className="flex flex-wrap items-center gap-x-9 gap-y-3">
+          <div
+            className={
+              'inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 ' +
+              pulse.cls
+            }
+            title={pulse.why}
+          >
+            <span
+              className={'h-2 w-2 rounded-full ' + pulse.dot}
+              style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
+            />
+            <span className="text-[0.66rem] font-bold uppercase tracking-[0.12em] opacity-70">
+              Market Pulse
+            </span>
+            <span className="text-[1.02rem] font-extrabold leading-none">{pulse.label}</span>
+          </div>
           <Stat label="Advancing" value={adv} accent="#059669" hint="vs prior close" />
           <Stat label="Declining" value={dec} accent="#dc2626" hint="vs prior close" />
           <Stat label="Adv / Dec" value={ratio} hint="breadth ratio" />
           <Stat label="Volatility · VIX" value={vixValue} hint={vixHint} />
-          <Stat label="Universe" value="NYSE + Nasdaq" hint="US-listed equities" />
         </div>
       </div>
     </header>
