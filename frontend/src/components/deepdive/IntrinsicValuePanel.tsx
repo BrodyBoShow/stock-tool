@@ -1,8 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
+import { useToast } from '@/components/ui/Toast'
 import { getValuation } from '@/lib/api'
 import { fmtDate, fmtMoney, fmtPct, fmtPrice } from '@/lib/format'
+import {
+  deleteScenario,
+  getScenarios,
+  ovFromString,
+  ovToString,
+  saveScenario,
+  type Scenario,
+} from '@/lib/scenarios'
 import {
   forwardDcf,
   grahamNumber,
@@ -11,6 +21,28 @@ import {
   multiplesFairValue,
 } from '@/lib/valuation'
 import type { ValuationInput, ValuationResponse } from '@/types/api'
+
+// Effective assumption value: user override → data seed → 0.
+function effOf(ov: Record<string, number>, seeds: Record<string, number>, k: string): number {
+  return ov[k] ?? seeds[k] ?? 0
+}
+
+/** Base value/share for an arbitrary override set (used by the compare grid). */
+function scenarioPerShare(
+  ov: Record<string, number>,
+  seeds: Record<string, number>,
+  fcf0: number | null,
+  netDebt: number,
+  shares: number,
+): number | null {
+  if (fcf0 == null) return null
+  return forwardDcf(fcf0, netDebt, shares, {
+    gStart: effOf(ov, seeds, 'g_start'),
+    r: effOf(ov, seeds, 'discount_rate'),
+    gInf: effOf(ov, seeds, 'terminal_growth'),
+    horizon: Math.round(effOf(ov, seeds, 'horizon')),
+  }).perShare
+}
 
 // Bear/Bull derive from the live "Base" sliders by fixed pessimism/optimism
 // deltas (mirrors the backend scenario_bands), so dragging shifts the whole band.
@@ -120,6 +152,88 @@ function Slider({
   )
 }
 
+const CMP_DRIVERS: Array<{ key: string; label: string }> = [
+  { key: 'g_start', label: 'Growth' },
+  { key: 'discount_rate', label: 'Discount' },
+  { key: 'terminal_growth', label: 'Terminal' },
+  { key: 'horizon', label: 'Horizon' },
+]
+
+/** Side-by-side base value/share for the live edit + selected saved scenarios. */
+function ComparisonGrid({
+  rows,
+  seeds,
+  fcf0,
+  netDebt,
+  shares,
+  price,
+}: {
+  rows: Array<{ id: string; name: string; ov: Record<string, number>; focal?: boolean }>
+  seeds: Record<string, number>
+  fcf0: number | null
+  netDebt: number
+  shares: number
+  price: number | null
+}) {
+  return (
+    <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+      <table className="w-full text-[0.7rem]">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-400">
+            <th className="px-2.5 py-1.5 font-semibold">Scenario</th>
+            {CMP_DRIVERS.map((d) => (
+              <th key={d.key} className="px-2 py-1.5 text-right font-semibold">
+                {d.label}
+              </th>
+            ))}
+            <th className="px-2.5 py-1.5 text-right font-semibold">Value/sh</th>
+            <th className="px-2.5 py-1.5 text-right font-semibold">vs price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const ps = scenarioPerShare(row.ov, seeds, fcf0, netDebt, shares)
+            const mos = ps != null ? marginOfSafety(ps, price) : null
+            return (
+              <tr
+                key={row.id}
+                className={
+                  'border-b border-gray-100 last:border-0 ' +
+                  (row.focal ? 'bg-indigo-50/50' : '')
+                }
+              >
+                <td className="px-2.5 py-1.5 font-semibold text-slate-700">{row.name}</td>
+                {CMP_DRIVERS.map((d) => {
+                  const v = effOf(row.ov, seeds, d.key)
+                  return (
+                    <td
+                      key={d.key}
+                      className="px-2 py-1.5 text-right tabular-nums text-slate-600"
+                    >
+                      {d.key === 'horizon' ? `${Math.round(v)}y` : fmtPct(v)}
+                    </td>
+                  )
+                })}
+                <td className="px-2.5 py-1.5 text-right font-bold tabular-nums text-gray-900">
+                  {fmtPrice(ps)}
+                </td>
+                <td
+                  className={
+                    'px-2.5 py-1.5 text-right tabular-nums ' +
+                    (mos != null && mos >= 0 ? 'text-emerald-600' : 'text-rose-600')
+                  }
+                >
+                  {mos != null ? fmtPct(mos) : '—'}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['valuation', ticker],
@@ -127,14 +241,73 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
     staleTime: 5 * 60_000,
   })
 
-  const [ov, setOv] = useState<Record<string, number>>({})
+  const [searchParams, setSearchParams] = useSearchParams()
+  const toast = useToast()
+  // Seed overrides from a shared ?iv=... link on first mount (one-time).
+  const [ov, setOv] = useState<Record<string, number>>(() =>
+    ovFromString(searchParams.get('iv')),
+  )
   const [showWork, setShowWork] = useState(false)
+  const [saved, setSaved] = useState<Scenario[]>(() => getScenarios(ticker))
+  const [compareIds, setCompareIds] = useState<string[]>([])
+
+  // Reset overrides + comparison + saved list when the ticker changes (the page
+  // does not remount on a param change). Render-phase reset — React's sanctioned
+  // "adjust state when a prop changes" pattern, not an effect.
+  const [prevTicker, setPrevTicker] = useState(ticker)
+  if (prevTicker !== ticker) {
+    setPrevTicker(ticker)
+    setOv(ovFromString(searchParams.get('iv')))
+    setCompareIds([])
+    setSaved(getScenarios(ticker))
+  }
 
   const seeds = useMemo(
     () => Object.fromEntries((data?.assumptions ?? []).map((a) => [a.key, a.seed])),
     [data],
   )
   const eff = (k: string) => ov[k] ?? seeds[k] ?? 0
+
+  const doSave = () => {
+    if (Object.keys(ov).length === 0) {
+      toast('error', 'Move a slider first — nothing to save yet')
+      return
+    }
+    const name = window.prompt('Name this scenario (e.g. "Conservative")')
+    if (name == null || !name.trim()) return
+    setSaved(saveScenario(ticker, name, ov))
+    toast('success', `Saved "${name.trim().slice(0, 40)}"`)
+  }
+
+  const doShare = async () => {
+    const qs = ovToString(ov)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (qs) next.set('iv', qs)
+        else next.delete('iv')
+        return next
+      },
+      { replace: true },
+    )
+    const url = `${window.location.origin}${window.location.pathname}${qs ? `?iv=${encodeURIComponent(qs)}` : ''}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast('success', 'Share link copied')
+    } catch {
+      toast('error', 'Link is in the address bar — copy failed')
+    }
+  }
+
+  const toggleCompare = (id: string) =>
+    setCompareIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : ids.length >= 3 ? ids : [...ids, id],
+    )
+
+  const removeSaved = (id: string) => {
+    setSaved(deleteScenario(ticker, id))
+    setCompareIds((ids) => ids.filter((x) => x !== id))
+  }
 
   const computed = useMemo(() => {
     if (!data) return null
@@ -221,6 +394,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
     return {
       base, bear, bull, implied, mult, graham, earnYield, fcfYield,
       histFcf, revCagr, epsG, price, netDebt, horizon, sensitivity,
+      fcf0, shares,
     }
   }, [data, ov]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -390,6 +564,99 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         >
           ↺ Reset all to data-seeded
         </button>
+      )}
+
+      {/* ── Scenarios: save / compare (≤3) / share the current assumptions ── */}
+      {active.has('forward_dcf') && (
+        <div className="mt-3 rounded-lg border border-gray-100 bg-white p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[0.62rem] font-semibold uppercase tracking-wide text-gray-500">
+              Scenarios
+            </span>
+            <button
+              type="button"
+              onClick={doSave}
+              className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              ＋ Save current
+            </button>
+            <button
+              type="button"
+              onClick={doShare}
+              className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              🔗 Share link
+            </button>
+            <span className="text-[0.6rem] text-gray-400">
+              saved on this device · share encodes your sliders in the URL
+            </span>
+          </div>
+
+          {saved.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {saved.map((s) => {
+                const ps = scenarioPerShare(s.ov, seeds, c.fcf0, c.netDebt, c.shares)
+                const on = compareIds.includes(s.id)
+                return (
+                  <span
+                    key={s.id}
+                    className={
+                      'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.68rem] ' +
+                      (on
+                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 bg-white text-slate-600')
+                    }
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOv(s.ov)}
+                      className="font-semibold hover:underline"
+                      title="Load these sliders"
+                    >
+                      {s.name}
+                    </button>
+                    <span className="tabular-nums text-gray-400">{fmtPrice(ps)}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleCompare(s.id)}
+                      className={
+                        'rounded px-1 text-[0.56rem] font-bold uppercase tracking-wide ' +
+                        (on ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500')
+                      }
+                      title="Add to the comparison table (up to 3)"
+                    >
+                      {on ? '✓ cmp' : 'cmp'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSaved(s.id)}
+                      className="text-slate-300 hover:text-rose-500"
+                      title="Delete scenario"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          )}
+
+          {compareIds.length > 0 && (
+            <ComparisonGrid
+              rows={[
+                { id: '__live__', name: 'Live edit', ov, focal: true },
+                ...saved
+                  .filter((s) => compareIds.includes(s.id))
+                  .map((s) => ({ id: s.id, name: s.name, ov: s.ov })),
+              ]}
+              seeds={seeds}
+              fcf0={c.fcf0}
+              netDebt={c.netDebt}
+              shares={c.shares}
+              price={price}
+            />
+          )}
+        </div>
       )}
 
       {/* ── Sensitivity: which lever moves fair value most ── */}
