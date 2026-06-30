@@ -32,6 +32,7 @@ class ScreenerRow(BaseModel):
     composite_delta: float | None = None     # composite - composite_prev (delta chip)
     composite_delta_7d: float | None = None  # composite vs ~1 week ago (signal dot)
     sub_pctls: dict[str, float | None] | None = None  # per-sub-metric percentiles
+    composite_history: list[float] | None = None  # composite series (~45d) for sparkline
     security_id: int
 
 

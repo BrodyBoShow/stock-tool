@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { Sparkline } from '@/components/screener/Sparkline'
 import { Delta } from '@/components/ui/Delta'
 import { scoreHeat } from '@/lib/colors'
 import { FACTOR_DEFS, INPUT_LABELS, type FactorKey } from '@/lib/constants'
@@ -114,21 +115,27 @@ export function ScoreCell({
   live,
   delta,
   subPctls,
+  sparkline,
 }: {
   factor: FactorKey
   value: number | null
   live?: number | null
   delta?: number | null
   subPctls?: Record<string, number | null> | null
+  /** Composite history (composite only): drawn in place of the bar when present. */
+  sparkline?: number[] | null
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null)
 
   const moved = live != null && value != null && Math.abs(live - value) >= 0.1
   const shown = moved ? (live as number) : value
 
+  // Heat is applied to EVERY column's bar + tint (consistent scannability); the
+  // live-adjusted signal is carried by the blue value text + ● marker, not by
+  // recoloring the bar — so the heatmap stays uniform across all five columns.
   const heat = scoreHeat(shown)
-  const bg = moved ? undefined : heat.tint
-  const barColor = moved ? '#0ea5e9' : heat.bar
+  const bg = heat.tint
+  const barColor = heat.bar
 
   // Tooltip only for the four factor cells that have sub-metric data.
   const canTip =
@@ -176,20 +183,24 @@ export function ScoreCell({
               </span>
             )}
           </span>
-          <span className="relative mt-1 block h-1 w-12 overflow-hidden rounded-full bg-gray-200">
-            <span
-              className="block h-full rounded-full"
-              style={{
-                width: `${Math.max(0, Math.min(100, shown))}%`,
-                background: barColor,
-              }}
-            />
-            {/* 50th-percentile (median) reference line */}
-            <span
-              aria-hidden="true"
-              className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-500/45"
-            />
-          </span>
+          {sparkline && sparkline.length >= 2 ? (
+            <Sparkline data={sparkline} />
+          ) : (
+            <span className="relative mt-1 block h-1 w-12 overflow-hidden rounded-full bg-gray-200">
+              <span
+                className="block h-full rounded-full"
+                style={{
+                  width: `${Math.max(0, Math.min(100, shown))}%`,
+                  background: barColor,
+                }}
+              />
+              {/* 50th-percentile (median) reference line */}
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-500/45"
+              />
+            </span>
+          )}
         </>
       )}
       {canTip && rect && shown !== null && (

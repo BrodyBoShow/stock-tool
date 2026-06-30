@@ -160,6 +160,10 @@ export function ScreenerPage() {
           resultCount={filtered.length}
           totalCount={rows.length}
           sectors={sectors}
+          currentQuery={filtersToParams(filters, sort).toString()}
+          onApplyQuery={(q) =>
+            setSearchParams(new URLSearchParams(q), { replace: true })
+          }
         />
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <ActiveFilterChips filters={filters} onChange={setFilters} onReset={resetAll} />

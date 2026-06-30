@@ -8,6 +8,7 @@ import {
   MARKET_CAP_OPTIONS,
   type Filters,
 } from '@/lib/filters'
+import { deleteView, getSavedViews, saveView } from '@/lib/savedViews'
 
 const FACTOR_LABEL: Record<FactorKey, string> = {
   composite: 'Composite',
@@ -122,6 +123,8 @@ export function FilterSidebar({
   resultCount,
   totalCount,
   sectors,
+  currentQuery,
+  onApplyQuery,
 }: {
   filters: Filters
   onChange: (next: Filters) => void
@@ -129,12 +132,27 @@ export function FilterSidebar({
   resultCount: number
   totalCount: number
   sectors: string[]
+  /** Current filters+sort serialized as a URL query (for Save view). */
+  currentQuery: string
+  /** Apply a saved view's stored query string. */
+  onApplyQuery: (query: string) => void
 }) {
   const [advOpen, setAdvOpen] = useState(
     () => ADVANCED_FACTORS.some((k) => filters.mins[k] > 0),
   )
+  const [views, setViews] = useState(getSavedViews)
+  const [naming, setNaming] = useState(false)
+  const [viewName, setViewName] = useState('')
   const active = activeFilterCount(filters)
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch })
+
+  const commitSave = () => {
+    const n = viewName.trim()
+    if (!n) return
+    setViews(saveView(n, currentQuery))
+    setViewName('')
+    setNaming(false)
+  }
 
   const pristineExceptMins =
     filters.sectors.length === 0 &&
@@ -368,25 +386,90 @@ export function FilterSidebar({
         )}
       </div>
 
+      {/* saved views */}
+      {views.length > 0 && (
+        <div className="border-t border-slate-100 pt-3">
+          <div className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+            Saved views
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {views.map((v) => (
+              <span
+                key={v.name}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pl-2.5 pr-1.5 text-[0.7rem] font-semibold text-slate-700"
+              >
+                <button
+                  type="button"
+                  onClick={() => onApplyQuery(v.query)}
+                  className="hover:text-indigo-600"
+                >
+                  {v.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViews(deleteView(v.name))}
+                  className="leading-none text-slate-400 hover:text-red-500"
+                  aria-label={`Delete saved view ${v.name}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* footer */}
-      <div className="flex items-center justify-between pt-3.5">
-        <span className="text-[0.72rem] text-slate-500">
-          {active > 0 ? (
-            <>
-              <span className="numeric font-bold text-indigo-600">{active}</span> active
-            </>
-          ) : (
-            'No filters'
-          )}
-        </span>
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={active === 0}
-          className="text-[0.72rem] font-semibold text-slate-400 transition hover:text-red-500 disabled:cursor-default disabled:opacity-40"
-        >
-          Reset all
-        </button>
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        {naming ? (
+          <div className="flex gap-1.5">
+            <input
+              autoFocus
+              value={viewName}
+              onChange={(e) => setViewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitSave()
+                if (e.key === 'Escape') setNaming(false)
+              }}
+              placeholder="Name this view…"
+              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.78rem] focus:border-indigo-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={commitSave}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white hover:bg-indigo-700"
+            >
+              Save
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNaming(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[0.76rem] font-semibold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50/60"
+          >
+            💾 Save as view
+          </button>
+        )}
+        <div className="mt-2.5 flex items-center justify-between">
+          <span className="text-[0.72rem] text-slate-500">
+            {active > 0 ? (
+              <>
+                <span className="numeric font-bold text-indigo-600">{active}</span> active
+              </>
+            ) : (
+              'No filters'
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={active === 0}
+            className="text-[0.72rem] font-semibold text-slate-400 transition hover:text-red-500 disabled:cursor-default disabled:opacity-40"
+          >
+            Reset all
+          </button>
+        </div>
       </div>
     </aside>
   )

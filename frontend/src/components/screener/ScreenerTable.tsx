@@ -479,6 +479,7 @@ export function ScreenerTable({
                     value={r.composite}
                     live={liveByTicker?.[r.ticker]?.composite_live}
                     delta={r.composite_delta}
+                    sparkline={r.composite_history}
                   />
                   <ScoreCell factor="growth" value={r.growth_pctl} subPctls={r.sub_pctls} />
                   <ScoreCell
@@ -510,18 +511,23 @@ export function ScreenerTable({
         )}
       </div>
 
-      {/* expand toggle */}
-      {rows.length > PREVIEW_N && (
-        <div className="border-t border-gray-100 bg-gray-50 px-4 py-2.5 text-center">
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="text-[0.78rem] font-bold text-slate-800 hover:underline"
-          >
-            {expanded
-              ? `Show top ${PREVIEW_N}`
-              : `Show all ${rows.length} companies`}
-          </button>
+      {/* count indicator + expand toggle */}
+      {visible.length > 0 && (
+        <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-2.5">
+          <span className="text-[0.72rem] text-slate-500">
+            Showing{' '}
+            <span className="numeric font-semibold text-slate-700">1–{visible.length}</span> of{' '}
+            <span className="numeric font-semibold text-slate-700">{rows.length}</span>
+          </span>
+          {rows.length > PREVIEW_N && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="text-[0.76rem] font-bold text-indigo-600 hover:underline"
+            >
+              {expanded ? `Show top ${PREVIEW_N}` : `Show all ${rows.length}`}
+            </button>
+          )}
         </div>
       )}
     </section>

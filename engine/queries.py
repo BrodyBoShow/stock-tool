@@ -256,6 +256,16 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                     WHERE fs2.config_version = %s
                       AND fs2.score_date = (SELECT d FROM base)
                       AND s2.is_active{complete_clause2}
+                ),
+                hist AS (
+                    -- composite series over the last ~45d (the COMP sparkline)
+                    SELECT security_id,
+                           array_agg(composite ORDER BY score_date) AS composite_history
+                    FROM factor_scores
+                    WHERE config_version = %s
+                      AND score_date > %s - INTERVAL '45 days'
+                      AND composite IS NOT NULL
+                    GROUP BY security_id
                 )
                 SELECT s.ticker, s.name, s.sector, s.exchange,
                        fs.composite,
@@ -267,12 +277,14 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                        fsp.composite AS composite_prev,
                        fs7.composite AS composite_7d_ago,
                        fs.details -> 'sub_pctls' AS sub_pctls,
+                       h.composite_history,
                        s.security_id
                 FROM securities s
                 JOIN factor_scores fs
                     ON fs.security_id = s.security_id AND fs.score_date = %s
                     AND fs.config_version = %s
                 LEFT JOIN prev_rank pr ON pr.security_id = s.security_id
+                LEFT JOIN hist h ON h.security_id = s.security_id
                 LEFT JOIN factor_scores fsp
                     ON fsp.security_id = s.security_id AND fsp.config_version = %s
                     AND fsp.score_date = (SELECT d FROM prev1)
@@ -299,8 +311,9 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
                 (ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION, score_date,
-                 ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION,
-                 ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
+                 ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, score_date,
+                 score_date, ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION,
+                 ACTIVE_CONFIG_VERSION),
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -331,6 +344,8 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
             round(comp - ago, 2) if comp is not None and ago is not None else None
         )
         del row["composite_7d_ago"]  # only the delta is surfaced
+        ch = row.get("composite_history")
+        row["composite_history"] = [float(x) for x in ch] if ch else None
         rows.append(row)
     return rows, score_date
 

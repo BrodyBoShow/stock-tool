@@ -29,24 +29,21 @@ function hexA(hex: string, alpha: number): string {
 }
 
 /**
- * Percentile-rank (0–100) → a green→lime→amber→red heat color for a score cell.
- * Returns the solid bar color plus a faint cell-background tint of the same hue,
- * so a high-scoring cell glows green and a weak one glows red — the "wall of
- * blue → instantly scannable" transform.
+ * Percentile-rank (0–100) → a 5-tier heat color for a score cell. Returns the
+ * solid bar color plus a faint cell-background tint of the same hue, so a high-
+ * scoring cell glows green and a weak one glows red — the "wall of blue →
+ * instantly scannable" transform, applied identically to every factor column.
  *
- * The 8 bands are pure LEGIBILITY buckets (evenly spaced over the 0–100 rank),
- * NOT tuned against returns — consistent with the no-false-precision rule in
+ * The 5 bands are pure LEGIBILITY buckets (quintiles of the 0–100 rank), NOT
+ * tuned against returns — consistent with the no-false-precision rule in
  * factorReading.ts. `bar` is the gauge fill; `tint` is the ~9%-opacity wash.
  */
 const HEAT_RAMP: readonly [number, string][] = [
-  [85, '#16a34a'], // deep green
-  [75, '#22c55e'],
-  [65, '#84cc16'],
-  [55, '#a3e635'], // lime
-  [45, '#fbbf24'], // amber
-  [35, '#f59e0b'],
-  [25, '#f87171'], // light red
-  [0, '#dc2626'], // deep red
+  [80, '#16a34a'], // deep green   — top quintile
+  [60, '#84cc16'], // light green
+  [40, '#f59e0b'], // amber        — middle
+  [20, '#f87171'], // light red
+  [0, '#dc2626'], // deep red     — bottom quintile
 ]
 
 export function scoreHeat(value: number | null): { bar: string; tint: string } {
