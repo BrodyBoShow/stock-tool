@@ -1,6 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Tabular monospace for dense numeric data (scores, prices, caps) — the single
+ * change that makes the screener "feel like a pro data tool". Digits are fixed-
+ * width so columns align; falls back to the system mono stack if the web font
+ * fails to load. font-mono is the JetBrains Mono stack from tailwind.config. */
+.numeric {
+  font-family:
+    'JetBrains Mono', ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.01em;
+}
 
 body {
   min-height: 100vh;

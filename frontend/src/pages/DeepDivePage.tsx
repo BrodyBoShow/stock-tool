@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { pushRecent } from '@/lib/recentlyViewed'
 import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
@@ -100,6 +101,10 @@ function DeepDiveSkeleton() {
 export function DeepDivePage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
   const [days, setDays] = useState(365)
+
+  useEffect(() => {
+    if (ticker) pushRecent(ticker)
+  }, [ticker])
 
   const { data, isPending, isFetching, error, refetch } = useQuery({
     queryKey: ['security', ticker.toUpperCase(), days],

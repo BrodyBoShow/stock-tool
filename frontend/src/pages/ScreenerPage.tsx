@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+
+import { getRecent } from '@/lib/recentlyViewed'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { ActiveFilterChips } from '@/components/screener/ActiveFilterChips'
+import { CommandPalette } from '@/components/screener/CommandPalette'
 import { FilterSidebar } from '@/components/screener/FilterSidebar'
 import { ScreenerDrawer } from '@/components/screener/ScreenerDrawer'
 import { ScreenerHeader } from '@/components/ScreenerHeader'
@@ -120,8 +123,8 @@ export function ScreenerPage() {
       return `Nothing clears all your filters — try lowering ${FACTOR_LABEL[top]} ≥ ${filters.mins[top]}, or remove a chip above.`
     if (filters.minMarketCap > 0)
       return 'Nothing clears the size floor — try a smaller market-cap minimum.'
-    if (filters.sector !== 'All')
-      return `No ${filters.sector} names match the rest of your filters.`
+    if (filters.sectors.length > 0)
+      return `No ${filters.sectors.join(' / ')} names match the rest of your filters.`
     if (filters.search.trim())
       return `No ticker or company matches “${filters.search.trim()}”.`
     return undefined
@@ -152,6 +155,24 @@ export function ScreenerPage() {
         rows={rows}
         quotesAsOfEpoch={quotes && !quotes.stale ? quotes.as_of_epoch : null}
       />
+      {(() => {
+        const recent = getRecent()
+        if (recent.length === 0) return null
+        return (
+          <div className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[0.74rem] text-slate-400">
+            <span className="font-semibold uppercase tracking-[0.06em]">Recently viewed</span>
+            {recent.map((t) => (
+              <Link
+                key={t}
+                to={`/securities/${t}`}
+                className="numeric rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                {t}
+              </Link>
+            ))}
+          </div>
+        )
+      })()}
       <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start">
         <FilterSidebar
           filters={filters}
@@ -160,6 +181,10 @@ export function ScreenerPage() {
           resultCount={filtered.length}
           totalCount={rows.length}
           sectors={sectors}
+          currentQuery={filtersToParams(filters, sort).toString()}
+          onApplyQuery={(q) =>
+            setSearchParams(new URLSearchParams(q), { replace: true })
+          }
         />
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <ActiveFilterChips filters={filters} onChange={setFilters} onReset={resetAll} />
@@ -183,6 +208,12 @@ export function ScreenerPage() {
       {drawerRow && (
         <ScreenerDrawer row={drawerRow} onClose={() => setDrawerRow(null)} />
       )}
+      <CommandPalette
+        rows={rows}
+        sectors={sectors}
+        onApplyQuery={(q) => setSearchParams(new URLSearchParams(q), { replace: true })}
+        onApplySector={(s) => setFilters({ ...filters, sectors: [s] })}
+      />
     </div>
   )
 }

@@ -22,6 +22,36 @@ export function rankColor(rank: number | null): Tint {
   return { bg: 'rgba(239,68,68,0.11)', fg: '#b91c1c' } // weak
 }
 
+/** Hex (#rrggbb) → rgba() string at the given alpha. */
+function hexA(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+}
+
+/**
+ * Percentile-rank (0–100) → a 5-tier heat color for a score cell. Returns the
+ * solid bar color plus a faint cell-background tint of the same hue, so a high-
+ * scoring cell glows green and a weak one glows red — the "wall of blue →
+ * instantly scannable" transform, applied identically to every factor column.
+ *
+ * The 5 bands are pure LEGIBILITY buckets (quintiles of the 0–100 rank), NOT
+ * tuned against returns — consistent with the no-false-precision rule in
+ * factorReading.ts. `bar` is the gauge fill; `tint` is the ~9%-opacity wash.
+ */
+const HEAT_RAMP: readonly [number, string][] = [
+  [80, '#16a34a'], // deep green   — top quintile
+  [60, '#84cc16'], // light green
+  [40, '#f59e0b'], // amber        — middle
+  [20, '#f87171'], // light red
+  [0, '#dc2626'], // deep red     — bottom quintile
+]
+
+export function scoreHeat(value: number | null): { bar: string; tint: string } {
+  if (value === null || Number.isNaN(value)) return { bar: '#cbd5e1', tint: 'transparent' }
+  const hex = HEAT_RAMP.find(([t]) => value >= t)?.[1] ?? '#dc2626'
+  return { bar: hex, tint: hexA(hex, 0.09) }
+}
+
 /**
  * Heatmap tint for a value within a metric's own min..max range. `higherIsBetter`
  * flips the scale so green is always the stronger end. Returns "transparent" when

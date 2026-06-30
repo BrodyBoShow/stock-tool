@@ -6,11 +6,11 @@ import type { MouseEvent } from 'react'
 import { ScoreCell } from '@/components/screener/ScoreCell'
 import { SectorPill } from '@/components/screener/SectorPill'
 import { InfoTip } from '@/components/ui/InfoTip'
+import { scoreHeat } from '@/lib/colors'
 import {
   FACTOR_ORDER,
   FACTOR_TABLE,
   PREVIEW_N,
-  SCREENER_GRID,
   type FactorKey,
 } from '@/lib/constants'
 import { isValueTrap } from '@/lib/factorReading'
@@ -49,6 +49,17 @@ const FACTOR_TIP: Record<FactorKey, string> = {
 }
 
 const ROW_H = 44
+
+/** Columns the user can hide via the ⚙ menu (#14). Rank/Company/Composite/Price
+ *  are always shown. */
+const OPTIONAL_COLS: { key: string; label: string }[] = [
+  { key: 'sector', label: 'Sector' },
+  { key: 'growth', label: 'Growth' },
+  { key: 'value', label: 'Value' },
+  { key: 'quality', label: 'Quality' },
+  { key: 'momentum', label: 'Momentum' },
+  { key: 'market_cap', label: 'Market cap' },
+]
 
 const TH =
   'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
@@ -89,7 +100,7 @@ function PriceCell({ row }: { row: ScreenerRow }) {
   }
   return (
     <div className="flex h-full flex-col items-end justify-center px-3 py-2">
-      <span className="text-[0.85rem] font-semibold text-gray-900">
+      <span className="numeric text-[0.85rem] font-semibold text-gray-900">
         {fmtPrice(last)}
       </span>
       {delta}
@@ -124,6 +135,34 @@ function ValueTrapMark({ row }: { row: ScreenerRow }) {
   )
 }
 
+/** 7-day composite move → left-edge signal color (null = no meaningful move). */
+function signalColor(d: number | null): string | null {
+  if (d == null) return null
+  if (d >= 3) return '#22c55e'
+  if (d >= 1) return '#86efac'
+  if (d <= -3) return '#ef4444'
+  if (d <= -1) return '#fca5a5'
+  return null
+}
+
+/** Inline "what changed" badge — only for names that moved ≥3 pts in ~a week. */
+function WhatChanged({ d }: { d: number | null }) {
+  if (d == null || Math.abs(d) < 3) return null
+  const up = d > 0
+  return (
+    <span
+      className={
+        'numeric inline-flex flex-none items-center rounded px-1 py-px text-[0.56rem] font-bold leading-none ' +
+        (up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')
+      }
+      title={`Composite ${up ? '+' : ''}${d.toFixed(1)} over ~7 days`}
+    >
+      {up ? '▲' : '▼'}
+      {Math.abs(d).toFixed(1)}
+    </span>
+  )
+}
+
 export function ScreenerTable({
   rows,
   scoreDate,
@@ -154,10 +193,64 @@ export function ScreenerTable({
     onSortChange ? onSortChange(s) : setInternalSort(s)
   const [expanded, setExpanded] = useState(false)
 
-  const sorted = useMemo(
-    () => [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.dir)),
-    [rows, sort],
-  )
+  // #14 column customization — hide/show the optional data columns (persisted).
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('stockbud.hiddenCols') ?? '[]') as string[])
+    } catch {
+      return new Set()
+    }
+  })
+  const [colMenu, setColMenu] = useState(false)
+  const show = (k: string) => !hidden.has(k)
+  const toggleCol = (k: string) =>
+    setHidden((h) => {
+      const n = new Set(h)
+      if (n.has(k)) n.delete(k)
+      else n.add(k)
+      localStorage.setItem('stockbud.hiddenCols', JSON.stringify([...n]))
+      return n
+    })
+
+  // #15 comparison mode — pick up to 4, compare side by side.
+  const [compareMode, setCompareMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showCompare, setShowCompare] = useState(false)
+  const toggleSelect = (t: string) =>
+    setSelected((s) => {
+      const n = new Set(s)
+      if (n.has(t)) n.delete(t)
+      else if (n.size < 4) n.add(t)
+      return n
+    })
+
+  // Live-adjusted composite (price-driven value/momentum move intraday); falls
+  // back to the nightly composite when no live quote exists. When the user sorts
+  // by COMP we rank on THIS, so the blue live numbers actually run in order —
+  // the board re-ranks live while the market breathes. Sorting any other column
+  // keeps the nightly basis. Cheap: a client-side sort of already-computed
+  // numbers, not a server re-score.
+  const hasLive = liveByTicker
+    ? Object.values(liveByTicker).some((q) => q.composite_live != null)
+    : false
+  const liveComposite = (r: ScreenerRow): number | null =>
+    liveByTicker?.[r.ticker]?.composite_live ?? r.composite
+  const liveRanked = sort.key === 'composite' && hasLive
+
+  const sorted = useMemo(() => {
+    if (sort.key === 'composite') {
+      return [...rows].sort((a, b) => {
+        const av = liveComposite(a)
+        const bv = liveComposite(b)
+        if (av === null && bv === null) return 0
+        if (av === null) return 1
+        if (bv === null) return -1
+        return (av - bv) * sort.dir
+      })
+    }
+    return [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.dir))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sort, liveByTicker])
   const visible = expanded ? sorted : sorted.slice(0, PREVIEW_N)
 
   // Export the FULL filtered + sorted set (not just the visible page).
@@ -209,13 +302,25 @@ export function ScreenerTable({
   const arrow = (key: ScreenerSortKey) =>
     sort.key === key ? (sort.dir === -1 ? ' ▼' : ' ▲') : ''
 
-  // append a 44px control column when an accessory is provided
-  const gridCols = rowAccessory ? `${SCREENER_GRID} 44px` : SCREENER_GRID
-  const minW = rowAccessory ? 'min-w-[946px]' : 'min-w-[902px]'
+  // dynamic grid: optional columns can be hidden (#14), a checkbox column
+  // prepends in compare mode (#15), the accessory column appends when provided.
+  const SUB = ['growth', 'value', 'quality', 'momentum'] as const
+  const tracks: string[] = []
+  if (compareMode) tracks.push('34px')
+  tracks.push('38px', 'minmax(150px,1.6fr)')
+  if (show('sector')) tracks.push('minmax(130px,1.3fr)')
+  tracks.push('minmax(78px,1fr)') // composite — always shown
+  for (const f of SUB) if (show(f)) tracks.push('minmax(78px,1fr)')
+  if (show('market_cap')) tracks.push('minmax(82px,0.8fr)')
+  tracks.push('minmax(90px,0.9fr)') // price — always shown
+  if (rowAccessory) tracks.push('44px')
+  const gridCols = tracks.join(' ')
+  let mw = (compareMode ? 34 : 0) + 38 + 150 + 78 + 90 + (rowAccessory ? 44 : 0)
+  if (show('sector')) mw += 130
+  for (const f of SUB) if (show(f)) mw += 78
+  if (show('market_cap')) mw += 82
 
-  const hasLive = liveByTicker
-    ? Object.values(liveByTicker).some((q) => q.composite_live != null)
-    : false
+  const compareRowsData = rows.filter((r) => selected.has(r.ticker))
 
   return (
     <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
@@ -229,17 +334,66 @@ export function ScreenerTable({
           </div>
         </div>
         {rows.length > 0 && (
-          <button
-            type="button"
-            onClick={exportCsv}
-            title="Download the current filtered + sorted list as CSV"
-            className="inline-flex flex-none items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
-            Export CSV
-          </button>
+          <div className="flex flex-none items-center gap-2">
+            {/* #14 column customization */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setColMenu((o) => !o)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                ⚙ Columns
+              </button>
+              {colMenu && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setColMenu(false)} />
+                  <div className="absolute right-0 z-30 mt-1 w-44 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                    {OPTIONAL_COLS.map((c) => (
+                      <label
+                        key={c.key}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[0.8rem] hover:bg-slate-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={show(c.key)}
+                          onChange={() => toggleCol(c.key)}
+                          className="h-3.5 w-3.5 accent-indigo-600"
+                        />
+                        {c.label}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            {/* #15 comparison mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setCompareMode((m) => !m)
+                setSelected(new Set())
+              }}
+              className={
+                'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.74rem] font-semibold transition ' +
+                (compareMode
+                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50')
+              }
+            >
+              ⊟ Compare
+            </button>
+            <button
+              type="button"
+              onClick={exportCsv}
+              title="Download the current filtered + sorted list as CSV"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              Export CSV
+            </button>
+          </div>
         )}
       </div>
 
@@ -278,7 +432,8 @@ export function ScreenerTable({
         <span className="whitespace-nowrap text-[0.7rem] italic text-gray-400">
           {hasLive && (
             <span className="not-italic text-sky-700">
-              <span className="align-super text-[0.7em] text-sky-400">●</span> live-adjusted ·{' '}
+              <span className="align-super text-[0.7em] text-sky-400">●</span>{' '}
+              {liveRanked ? 'ranked on live-adjusted composite' : 'live-adjusted'} ·{' '}
             </span>
           )}
           Bars are percentile ranks (0–100, line = median) · click row = preview · click ticker = deep dive
@@ -288,19 +443,22 @@ export function ScreenerTable({
       {/* virtualized grid */}
       <div ref={parentRef} className="overflow-auto" style={{ maxHeight: 640 }}>
         <div
-          className={`sticky top-0 z-10 grid ${minW} border-b border-gray-200 bg-gray-50`}
-          style={{ gridTemplateColumns: gridCols }}
+          className="sticky top-0 z-10 grid border-b border-gray-200 bg-gray-50"
+          style={{ gridTemplateColumns: gridCols, minWidth: mw }}
         >
+          {compareMode && <div className={TH} aria-hidden="true" />}
           <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-gray-500`}>
             #{arrow('rank')}
           </button>
           <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
             Company{arrow('ticker')}
           </button>
-          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-gray-500`}>
-            Sector{arrow('sector')}
-          </button>
-          {FACTOR_ORDER.map((k) => (
+          {show('sector') && (
+            <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-gray-500`}>
+              Sector{arrow('sector')}
+            </button>
+          )}
+          {FACTOR_ORDER.filter((k) => k === 'composite' || show(k)).map((k) => (
             <button
               key={k}
               type="button"
@@ -312,9 +470,11 @@ export function ScreenerTable({
               {arrow(FACTOR_SORT[k])}
             </button>
           ))}
-          <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-gray-500`}>
-            Mkt cap{arrow('market_cap')}
-          </button>
+          {show('market_cap') && (
+            <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-gray-500`}>
+              Mkt cap{arrow('market_cap')}
+            </button>
+          )}
           <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-gray-500`}>
             Price{arrow('last_price')}
           </button>
@@ -332,11 +492,12 @@ export function ScreenerTable({
           </div>
         ) : (
           <div
-            className={`relative ${minW}`}
-            style={{ height: virtualizer.getTotalSize() }}
+            className="relative"
+            style={{ height: virtualizer.getTotalSize(), minWidth: mw }}
           >
             {virtualizer.getVirtualItems().map((vi) => {
               const r = visible[vi.index]
+              const sig = signalColor(r.composite_delta_7d)
               const handleRowClick = onRowClick
                 ? (e: MouseEvent) => {
                     // don't intercept clicks on the ticker Link or accessory
@@ -357,9 +518,35 @@ export function ScreenerTable({
                   }}
                   onClick={handleRowClick}
                 >
+                  {sig && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-0 z-10 h-full w-1"
+                      style={{ background: sig }}
+                      title={`Composite ${r.composite_delta_7d! > 0 ? '+' : ''}${r.composite_delta_7d!.toFixed(1)} over ~7 days`}
+                    />
+                  )}
+                  {compareMode && (
+                    <div
+                      className="flex h-full items-center justify-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(r.ticker)}
+                        onChange={() => toggleSelect(r.ticker)}
+                        disabled={!selected.has(r.ticker) && selected.size >= 4}
+                        className="h-3.5 w-3.5 accent-indigo-600"
+                        aria-label={`Select ${r.ticker} to compare`}
+                      />
+                    </div>
+                  )}
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
-                    <span className="text-[0.74rem] font-semibold tabular-nums text-slate-600">
-                      {r.rank}
+                    <span
+                      className="numeric text-[0.74rem] font-semibold text-slate-600"
+                      title={liveRanked ? 'Live-adjusted rank · nightly #' + r.rank : undefined}
+                    >
+                      {liveRanked ? vi.index + 1 : r.rank}
                     </span>
                     {r.rank_delta != null && r.rank_delta !== 0 && (
                       <span
@@ -387,6 +574,7 @@ export function ScreenerTable({
                             {r.ticker}
                           </Link>
                           <ValueTrapMark row={r} />
+                          <WhatChanged d={r.composite_delta_7d} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
@@ -402,6 +590,7 @@ export function ScreenerTable({
                             {r.ticker}
                           </span>
                           <ValueTrapMark row={r} />
+                          <WhatChanged d={r.composite_delta_7d} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
@@ -409,29 +598,45 @@ export function ScreenerTable({
                       </Link>
                     )}
                   </div>
-                  <div className="flex h-full min-w-0 items-center px-3 py-1.5">
-                    <SectorPill sector={r.sector} />
-                  </div>
+                  {show('sector') && (
+                    <div className="flex h-full min-w-0 items-center px-3 py-1.5">
+                      <SectorPill sector={r.sector} />
+                    </div>
+                  )}
                   <ScoreCell
                     factor="composite"
                     value={r.composite}
                     live={liveByTicker?.[r.ticker]?.composite_live}
+                    delta={r.composite_delta}
+                    sparkline={r.composite_history}
                   />
-                  <ScoreCell factor="growth" value={r.growth_pctl} />
-                  <ScoreCell
-                    factor="value"
-                    value={r.value_pctl}
-                    live={liveByTicker?.[r.ticker]?.value_live}
-                  />
-                  <ScoreCell factor="quality" value={r.quality_pctl} />
-                  <ScoreCell
-                    factor="momentum"
-                    value={r.momentum_pctl}
-                    live={liveByTicker?.[r.ticker]?.momentum_live}
-                  />
-                  <div className="flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold tabular-nums text-slate-600">
-                    {fmtMoney(r.market_cap)}
-                  </div>
+                  {show('growth') && (
+                    <ScoreCell factor="growth" value={r.growth_pctl} subPctls={r.sub_pctls} />
+                  )}
+                  {show('value') && (
+                    <ScoreCell
+                      factor="value"
+                      value={r.value_pctl}
+                      live={liveByTicker?.[r.ticker]?.value_live}
+                      subPctls={r.sub_pctls}
+                    />
+                  )}
+                  {show('quality') && (
+                    <ScoreCell factor="quality" value={r.quality_pctl} subPctls={r.sub_pctls} />
+                  )}
+                  {show('momentum') && (
+                    <ScoreCell
+                      factor="momentum"
+                      value={r.momentum_pctl}
+                      live={liveByTicker?.[r.ticker]?.momentum_live}
+                      subPctls={r.sub_pctls}
+                    />
+                  )}
+                  {show('market_cap') && (
+                    <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-slate-600">
+                      {fmtMoney(r.market_cap)}
+                    </div>
+                  )}
                   <PriceCell row={r} />
                   {rowAccessory && (
                     <div className="flex h-full items-center justify-center">
@@ -445,18 +650,140 @@ export function ScreenerTable({
         )}
       </div>
 
-      {/* expand toggle */}
-      {rows.length > PREVIEW_N && (
-        <div className="border-t border-gray-100 bg-gray-50 px-4 py-2.5 text-center">
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="text-[0.78rem] font-bold text-slate-800 hover:underline"
-          >
-            {expanded
-              ? `Show top ${PREVIEW_N}`
-              : `Show all ${rows.length} companies`}
-          </button>
+      {/* count indicator + expand toggle */}
+      {visible.length > 0 && (
+        <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-2.5">
+          <span className="text-[0.72rem] text-slate-500">
+            Showing{' '}
+            <span className="numeric font-semibold text-slate-700">1–{visible.length}</span> of{' '}
+            <span className="numeric font-semibold text-slate-700">{rows.length}</span>
+          </span>
+          {rows.length > PREVIEW_N && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="text-[0.76rem] font-bold text-indigo-600 hover:underline"
+            >
+              {expanded ? `Show top ${PREVIEW_N}` : `Show all ${rows.length}`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* #15 compare floating bar */}
+      {compareMode && selected.size > 0 && (
+        <div className="sticky bottom-0 z-20 flex items-center justify-between border-t border-gray-200 bg-white/95 px-4 py-2 backdrop-blur">
+          <span className="text-[0.78rem] text-slate-600">
+            <span className="numeric font-bold text-indigo-600">{selected.size}</span> selected
+            {selected.size >= 4 ? ' (max 4)' : ''}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="rounded-lg px-3 py-1.5 text-[0.74rem] font-semibold text-slate-500 hover:text-slate-800"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCompare(true)}
+              disabled={selected.size < 2}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40"
+            >
+              Compare ({selected.size})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* #15 comparison modal */}
+      {showCompare && compareRowsData.length >= 2 && (
+        <div
+          className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCompare(false)
+          }}
+        >
+          <div className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+              <span className="text-base font-bold text-slate-900">
+                Compare {compareRowsData.length} stocks
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCompare(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-x-auto p-5">
+              <table className="w-full text-[0.82rem]">
+                <thead>
+                  <tr>
+                    <th className="px-2 py-1.5 text-left text-[0.64rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+                      Metric
+                    </th>
+                    {compareRowsData.map((r) => (
+                      <th key={r.ticker} className="px-2 py-1.5 text-center">
+                        <Link
+                          to={`/securities/${r.ticker}`}
+                          className="font-bold text-slate-900 hover:text-indigo-600"
+                        >
+                          {r.ticker}
+                        </Link>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(
+                    [
+                      ['composite', 'Composite'],
+                      ['growth_pctl', 'Growth'],
+                      ['value_pctl', 'Value'],
+                      ['quality_pctl', 'Quality'],
+                      ['momentum_pctl', 'Momentum'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <tr key={key} className="border-t border-slate-100">
+                      <td className="px-2 py-2 font-semibold text-slate-500">{label}</td>
+                      {compareRowsData.map((r) => {
+                        const v = r[key] as number | null
+                        return (
+                          <td key={r.ticker} className="px-2 py-2 text-center">
+                            <span
+                              className="numeric inline-block min-w-[42px] rounded px-2 py-0.5 font-bold"
+                              style={{ background: scoreHeat(v).tint }}
+                            >
+                              {v == null ? DASH : v.toFixed(1)}
+                            </span>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                  <tr className="border-t border-slate-100">
+                    <td className="px-2 py-2 font-semibold text-slate-500">Price</td>
+                    {compareRowsData.map((r) => (
+                      <td key={r.ticker} className="numeric px-2 py-2 text-center font-semibold text-slate-700">
+                        {fmtPrice(r.last_price)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-t border-slate-100">
+                    <td className="px-2 py-2 font-semibold text-slate-500">Mkt cap</td>
+                    {compareRowsData.map((r) => (
+                      <td key={r.ticker} className="numeric px-2 py-2 text-center font-semibold text-slate-700">
+                        {fmtMoney(r.market_cap)}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     </section>
