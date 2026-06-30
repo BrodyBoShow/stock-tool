@@ -11,11 +11,16 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/backtest", response_model=BacktestRunResponse)
-def get_backtest() -> BacktestRunResponse:
+def get_backtest(config: str | None = None) -> BacktestRunResponse:
     """Latest stored backtest run (computed by the monthly workflow with
     --store; never on a request path — a full run takes ~45 minutes).
-    has_results=False until the first stored run exists."""
-    row = queries.latest_backtest()
+    has_results=False until the first stored run exists.
+
+    config (optional) selects which config_version's run to return, for the Lab's
+    A/B selector; defaults to the active config. available_configs lists every
+    config_version that has a stored run so the UI can populate the selector."""
+    configs = queries.backtest_configs()
+    row = queries.latest_backtest(config) if config else queries.latest_backtest()
     if row is None:
-        return BacktestRunResponse(has_results=False)
-    return BacktestRunResponse(has_results=True, **row)
+        return BacktestRunResponse(has_results=False, available_configs=configs)
+    return BacktestRunResponse(has_results=True, available_configs=configs, **row)

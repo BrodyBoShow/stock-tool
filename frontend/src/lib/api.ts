@@ -131,8 +131,9 @@ export function getScreener(completeOnly = true): Promise<ScreenerResponse> {
   return getJson<ScreenerResponse>(`/screener?complete_only=${completeOnly}`)
 }
 
-export function getBacktest(): Promise<BacktestRunResponse> {
-  return getJson<BacktestRunResponse>('/lab/backtest')
+export function getBacktest(config?: string): Promise<BacktestRunResponse> {
+  const qs = config ? `?config=${encodeURIComponent(config)}` : ''
+  return getJson<BacktestRunResponse>(`/lab/backtest${qs}`)
 }
 
 export function getSecurity(ticker: string, days?: number): Promise<SecurityResponse> {

@@ -68,9 +68,12 @@ JOB_NAME = "factor_scoring"
 JOB_VERSION = "v1"
 
 # Which config the nightly/weekly default run writes, and which the read layer
-# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v2_linear' at
-# cutover; until then the package ships dormant and the app keeps serving v1.
-DEFAULT_CONFIG_VERSION = "v2_linear"
+# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v4_lean' at the
+# 2026-06-30 cutover — v4_lean dropped accruals + insider_net_buy (v3) AND the
+# two pure-noise metrics pe + r3m, and cleanly beat both v2 and v3 on the backtest
+# gate in both split-halves. Prior configs' rows coexist for rollback (flip both
+# constants back to 'v3_pruned' / 'v2_linear').
+DEFAULT_CONFIG_VERSION = "v4_lean"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the
@@ -133,13 +136,50 @@ FACTOR_DEFS_V2 = {
     "momentum": [("r3m", "higher"), ("r6m", "higher"), ("r12_1m", "higher")],
 }
 
+# v3_pruned: drop the two Quality sub-signals the Phase-0 per-sub-metric IC
+# backtest disqualified — `accruals` (PREDICTIVE BUT WRONG-SIGNED: IC t=-4.1,
+# consistently negative in BOTH halves of 2022-26, so the Sloan low-accruals
+# premium is inverted in this survivor universe and was dragging Quality) and
+# `insider_net_buy` (INSUFFICIENT DATA: median 0 valid names/month — too sparse
+# to rank). Both stay computed in fundamental_metrics and shown on the deep-dive;
+# they're only removed from the ranked Quality mean. Everything else is identical
+# to v2_linear, so v3_pruned shares its 4 factor weights — seeded as its own
+# score_config row in migration 0024 (factor_scores' config_version FK needs one).
+FACTOR_DEFS_V3_PRUNED = {
+    "growth": FACTOR_DEFS_V2["growth"],
+    "value": FACTOR_DEFS_V2["value"],
+    "quality": [
+        ("gross_margin", "higher"),
+        ("operating_margin", "higher"),
+        ("roic", "higher"),
+        ("debt_to_equity", "lower"),
+        ("net_debt_ebitda", "lower"),
+        ("share_count_trend", "lower"),
+    ],
+    "momentum": FACTOR_DEFS_V2["momentum"],
+}
+
+# v4_lean: v3_pruned, plus drop the two sub-metrics the Phase-0 backtest scored as
+# PURE NOISE — `pe` (IC t=+0.1, sign even flips across split-halves) from Value and
+# `r3m` (IC t=+0.1) from Momentum. Value keeps ps + ev_ebitda + fcf_yield (still 3,
+# so coverage isn't thinned); Momentum keeps r6m + r12_1m. Subtraction candidate —
+# ship only if it's no worse than v3_pruned on the §6 gate. Reuses v2 weights.
+FACTOR_DEFS_V4_LEAN = {
+    "growth": FACTOR_DEFS_V3_PRUNED["growth"],
+    "value": [("ps", "lower"), ("ev_ebitda", "lower"), ("fcf_yield", "higher")],
+    "quality": FACTOR_DEFS_V3_PRUNED["quality"],
+    "momentum": [("r6m", "higher"), ("r12_1m", "higher")],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
+    "v3_pruned": FACTOR_DEFS_V3_PRUNED,
+    "v4_lean": FACTOR_DEFS_V4_LEAN,
 }
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
-# sub-signals it actually ranks on).
+# sub-signals it actually ranks on; v3_pruned drops the two it disqualified).
 _BASE_INPUTS = [
     "revenue_cagr", "eps_growth", "pe", "ps", "ev_ebitda", "fcf_yield",
     "gross_margin", "operating_margin", "roic", "debt_to_equity",
@@ -149,11 +189,17 @@ INPUTS_BY_VERSION = {
     "v1_linear": _BASE_INPUTS,
     "v2_linear": _BASE_INPUTS + ["r12_1m", "accruals", "share_count_trend",
                                  "insider_net_buy"],
+    "v3_pruned": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
+    # v4 keeps pe/r3m's raw values in details.inputs as deep-dive context even
+    # though they're no longer ranked (absent from sub_pctls).
+    "v4_lean": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
     "v1_linear": "cross_sectional_raw_returns_no_spy",
     "v2_linear": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
+    "v3_pruned": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
+    "v4_lean": "12_minus_1_momentum_plus_6m_raw_no_spy",
 }
 
 # Discretionary insider net-buy signal window (trailing months).
@@ -619,6 +665,14 @@ def run(
         for f in factor_defs:
             report[f] = factor_pctls[f]
         report["composite"] = composite
+        # Phase 0 (per-sub-metric IC attribution): attach each ranked sub-metric's
+        # direction-adjusted percentile as a report column, keyed by the same sid
+        # index. REPORT-ONLY — the written rows + details.sub_pctls JSON above
+        # (the frozen v1/v2 deep-dive contract) are untouched. Sub-metric names
+        # never collide with the factor-name columns or 'ticker'/'composite', so
+        # the backtest can bucket on any of them exactly like a factor.
+        for sub_col, sub_series in sub_pctls.items():
+            report[sub_col] = sub_series
         # rows-as-written, keyed by sid, so a dry run can be diffed vs the DB
         report_rows = {r[0]: r for r in rows}
 

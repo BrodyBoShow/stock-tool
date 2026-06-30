@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
@@ -24,8 +24,79 @@ import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getBacktest } from '@/lib/api'
-import { TABLE_HEAD_ROW } from '@/lib/constants'
+import { INPUT_LABELS, TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate } from '@/lib/format'
+import type { BacktestKeyResult, SubmetricVerdict } from '@/types/api'
+
+/** Verdict badge for the per-sub-metric IC panel. */
+const VERDICT_META: Record<SubmetricVerdict, { label: string; bg: string; fg: string }> = {
+  predictive: { label: 'predictive', bg: '#dcfce7', fg: '#15803d' },
+  no_significant_ic: { label: 'no signal', bg: '#f1f5f9', fg: '#64748b' },
+  predictive_wrong_sign: { label: 'wrong-signed', bg: '#fee2e2', fg: '#b91c1c' },
+  insufficient_data: { label: 'insufficient data', bg: '#fef3c7', fg: '#b45309' },
+}
+
+/** Per-sub-metric IC attribution table — the Phase-0 evidence made legible. */
+function SubmetricPanel({ submetrics }: { submetrics: Record<string, BacktestKeyResult> }) {
+  const rows = Object.entries(submetrics)
+    .map(([key, blk]) => ({ key, ic: blk.ic ?? null, cov: blk.coverage, mono: blk.monotonicity }))
+    .sort((a, b) => (b.ic?.t_stat ?? -99) - (a.ic?.t_stat ?? -99))
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[0.84rem]">
+        <thead>
+          <tr className={TABLE_HEAD_ROW}>
+            <th className="py-2 pr-4">Sub-metric</th>
+            <th className="py-2 pr-4 text-right">IC mean</th>
+            <th className="py-2 pr-4 text-right">t-stat</th>
+            <th className="py-2 pr-4 text-right">Months</th>
+            <th className="py-2 pr-4 text-right">~Names/mo</th>
+            <th className="py-2">Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ key, ic, cov }) => {
+            const v = cov?.verdict
+            const meta = v ? VERDICT_META[v] : null
+            const t = ic?.t_stat
+            return (
+              <tr key={key} className="border-b border-slate-50">
+                <td className="py-2.5 pr-4 font-semibold text-slate-800">
+                  {INPUT_LABELS[key] ?? key}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular-nums">
+                  {ic?.mean != null ? (ic.mean >= 0 ? '+' : '') + ic.mean.toFixed(3) : '—'}
+                </td>
+                <td
+                  className="py-2.5 pr-4 text-right font-semibold tabular-nums"
+                  style={{ color: t != null && Math.abs(t) > 2.7 ? (t > 0 ? '#15803d' : '#b91c1c') : '#64748b' }}
+                >
+                  {t != null ? (t >= 0 ? '+' : '') + t.toFixed(2) : '—'}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-slate-500">
+                  {cov?.n_periods ?? '—'}
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-slate-500">
+                  {cov?.median_valid_names ?? '—'}
+                </td>
+                <td className="py-2.5">
+                  {meta && (
+                    <span
+                      className="inline-block rounded-md px-2 py-0.5 text-[0.7rem] font-bold"
+                      style={{ background: meta.bg, color: meta.fg }}
+                    >
+                      {meta.label}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 /** Dense KPI tile (~35% shorter than before) — traffic-light value + tooltip. */
 function Stat({ label, value, sub, tone = 'neutral', tip }: {
@@ -80,10 +151,12 @@ function Segmented<T extends string>({ options, value, onChange }: {
 }
 
 export function LabPage() {
+  const [config, setConfig] = useState<string | undefined>(undefined)
   const { data, isPending, error, refetch } = useQuery({
-    queryKey: ['lab', 'backtest'],
-    queryFn: getBacktest,
+    queryKey: ['lab', 'backtest', config ?? 'active'],
+    queryFn: () => getBacktest(config),
     staleTime: 60 * 60 * 1000, // refreshed monthly by the workflow
+    placeholderData: keepPreviousData, // keep the prior config on screen while switching
   })
   const [factorKey, setFactorKey] = useState('composite')
   const [showLongShort, setShowLongShort] = useState(false)
@@ -175,9 +248,26 @@ export function LabPage() {
         </div>
       </header>
 
-      {/* factor selector — drives the verdict and every chart below */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
+      {/* config A/B selector + factor selector — drive the verdict and charts below */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
+        {data.available_configs && data.available_configs.length > 1 && (
+          <label className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
+            Config
+            <select
+              value={data.config_version ?? ''}
+              onChange={(e) => setConfig(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[0.78rem] font-semibold normal-case tracking-normal text-slate-800"
+            >
+              {data.available_configs.map((c, i) => (
+                <option key={c} value={c}>
+                  {c}
+                  {i === 0 ? ' · live' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <span className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
           Ranking
         </span>
         {FactorPills}
@@ -439,6 +529,30 @@ export function LabPage() {
             </tbody>
           </table>
         </div>
+      </SectionCard>
+
+      {/* sub-metric IC attribution — the Phase-0 evidence that drove the pruning */}
+      <SectionCard
+        title="Which sub-signals actually predict?"
+        hint="Per-sub-metric Information Coefficient for this config — the average month's rank correlation between each ranked sub-metric and next-month return. This is the evidence behind the v2→v3→v4 pruning."
+        tip="A sub-metric is called 'predictive' only if its IC t-stat clears a multiple-testing bar (|t| > 2.7, Bonferroni for ~14 simultaneous tests). 'Insufficient data' = too few names/month to evaluate — never labelled 'noise'. 'Wrong-signed' = significant but predicts the OPPOSITE of its assumed direction. Conditional on the complete-factor universe and survivorship-inflated: judge sign and magnitude, not the absolute level."
+      >
+        {data.submetrics && Object.keys(data.submetrics).length > 0 ? (
+          <>
+            <SubmetricPanel submetrics={data.submetrics} />
+            <p className="mt-3 text-[0.72rem] leading-relaxed text-slate-400">
+              Verdict bar is <strong>|t| &gt; 2.7</strong> (Bonferroni for ~14 tests), stricter than the
+              usual 2.0. Each IC is measured on the complete-4-factor universe and is
+              survivorship-inflated — read sign and magnitude, not the level. Dropping a wrong-signed or
+              insufficient-data sub-metric is exactly how <code>v4_lean</code> was reached.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Sub-metric IC populates on the next backtest run for this config (this stored run predates
+            the feature).
+          </p>
+        )}
       </SectionCard>
 
       {/* honesty footer — accurate, no contradictory claims */}

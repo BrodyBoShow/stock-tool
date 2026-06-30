@@ -2,6 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 
 import { getLiveFactors } from '@/lib/api'
 import { FACTOR_TABLE, isCommoditySensitive, type FactorKey } from '@/lib/constants'
+import {
+  compositeContributions,
+  factorAgreement,
+  isValueTrap,
+  type FactorPctls,
+} from '@/lib/factorReading'
 import { DASH } from '@/lib/format'
 import type { FactorSet, SecurityHeader } from '@/types/api'
 
@@ -61,6 +67,19 @@ export function FactorCards({
       : null
   const commodity = isCommoditySensitive(header.sector)
 
+  // Transparency readout (Phase 1) — computed from the nightly score the user
+  // sees. Descriptive only; nothing here re-ranks the stock.
+  const pctls: FactorPctls = {
+    composite: header.composite,
+    growth: header.growth_pctl,
+    value: header.value_pctl,
+    quality: header.quality_pctl,
+    momentum: header.momentum_pctl,
+  }
+  const trap = isValueTrap(pctls)
+  const agree = factorAgreement(pctls)
+  const contrib = compositeContributions(pctls, header.details?.weights)
+
   return (
     <div>
       {commodity && (
@@ -77,6 +96,24 @@ export function FactorCards({
             <span className="font-semibold">Commodity-sensitive score.</span> This{' '}
             {header.sector} name&rsquo;s factors ride commodity prices. Read the
             catalyst (oil, filings, events), not just the rank.
+          </span>
+        </div>
+      )}
+      {trap && (
+        <div
+          className="mb-2.5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-800"
+          title={
+            `Value ${header.value_pctl?.toFixed(0)} · Quality ${header.quality_pctl?.toFixed(0)} · ` +
+            `Momentum ${header.momentum_pctl?.toFixed(0)}. A cheap valuation paired with weak quality ` +
+            `and weak price trend is the classic "value trap" — the market may be pricing in real ` +
+            `deterioration. This is a caveat to investigate, not a sell signal.`
+          }
+        >
+          <span className="mt-px flex-none">⚠</span>
+          <span>
+            <span className="font-semibold">Cheap, but weak on quality and momentum.</span> Worth
+            checking <em>why</em> it&rsquo;s cheap before treating the Value rank as a bargain —
+            value (≥{75}) with weak quality &amp; momentum (≤{33}) is often cheap for a reason.
           </span>
         </div>
       )}
@@ -225,6 +262,62 @@ export function FactorCards({
           )
         })}
       </div>
+
+      {header.composite != null && contrib.parts.length > 0 && (
+        <div className="mt-3 rounded-card border border-gray-200 bg-white p-3.5 shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-gray-500">
+              What drives the composite
+            </span>
+            <span
+              className="text-[0.7rem] text-gray-400"
+              title={
+                `${agree.strong} of ${agree.total} scored factors sit at or above the ` +
+                `${agree.threshold}th percentile. Descriptive only — broad agreement is not a ` +
+                `backtested edge, and a single strong factor (often Value) can outrank it. ` +
+                `${agree.threshold} is a presentation cutoff, not tuned on returns.`
+              }
+            >
+              {agree.strong}/{agree.total} factors ≥ {agree.threshold}
+              {agree.strongNames.length > 0 ? ` · ${agree.strongNames.join(' + ')}` : ''}
+            </span>
+          </div>
+          <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-gray-100">
+            {contrib.parts.map((p) => (
+              <div
+                key={p.key}
+                style={{ width: `${p.share * 100}%`, background: FACTOR_TABLE[p.key].bar }}
+                title={
+                  `${p.label}: ${(p.share * 100).toFixed(0)}% of the weight × ${p.pctl.toFixed(0)} ` +
+                  `pctl = ${p.points.toFixed(1)} pts of the composite`
+                }
+              />
+            ))}
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            {contrib.parts.map((p) => (
+              <span key={p.key} className="flex items-center text-[0.68rem] text-gray-500">
+                <span
+                  className="mr-1 inline-block h-2 w-2 rounded-sm"
+                  style={{ background: FACTOR_TABLE[p.key].bar }}
+                />
+                {p.label} {(p.share * 100).toFixed(0)}%{' '}
+                <span className="ml-0.5 text-gray-400">({p.pctl.toFixed(0)})</span>
+              </span>
+            ))}
+          </div>
+          {contrib.absent.length > 0 && (
+            <div className="mt-1.5 text-[0.68rem] text-gray-400">
+              {contrib.absent.map((a) => a.label).join(', ')} absent — its weight was
+              redistributed across the scored factors.
+            </div>
+          )}
+          <div className="mt-1 text-[0.66rem] text-gray-400">
+            Weighted blend of the percentile ranks — segments are each factor&rsquo;s share of the
+            renormalized weight; the number in parentheses is its percentile.
+          </div>
+        </div>
+      )}
     </div>
   )
 }
