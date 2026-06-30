@@ -177,6 +177,7 @@ def latest_backtest(config_version: str = ACTIVE_CONFIG_VERSION) -> dict[str, An
         "end_date": str(ed),
         "params": params,
         "results": results.get("results", {}),
+        "submetrics": results.get("submetrics"),
         "benchmarks": results.get("benchmarks"),
         "significance": results.get("significance"),
     }

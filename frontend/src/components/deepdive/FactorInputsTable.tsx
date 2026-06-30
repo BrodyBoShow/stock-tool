@@ -7,8 +7,41 @@ import {
   METRIC_NA_REASON_FALLBACK,
   type FactorKey,
 } from '@/lib/constants'
+import { coreCoverage } from '@/lib/factorReading'
 import { DASH, fmtInput } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
+
+/**
+ * One-line "what moved this factor relative to its own metrics" caption (Phase 1,
+ * 1a). A factor percentile is the skipna mean of its present sub-metric
+ * percentiles, so each sub-metric's deviation from that mean is exact arithmetic.
+ * We only name drivers when at least one deviation is ≥3 — otherwise the metrics
+ * are too tightly clustered to single any out. This describes the SCORE, not the
+ * price, and changes no ranking.
+ */
+function driverCaption(
+  shown: Array<[string, 'higher' | 'lower']>,
+  subPctls: Record<string, number | null | undefined>,
+  factorV: number,
+): string | null {
+  const devs = shown
+    .map(([k]) => ({ k, v: subPctls[k] }))
+    .filter((x) => x.v != null && Number.isFinite(x.v))
+    .map((x) => ({ k: x.k, dev: (x.v as number) - factorV }))
+  if (devs.length < 2 || !devs.some((d) => Math.abs(d.dev) >= 3)) return null
+  const sorted = [...devs].sort((a, b) => b.dev - a.dev)
+  const label = (k: string) => INPUT_LABELS[k] ?? k
+  const highs = sorted.filter((d) => d.dev > 0).slice(0, 2).map((d) => label(d.k))
+  const lows = sorted
+    .filter((d) => d.dev < 0)
+    .slice(-2)
+    .reverse()
+    .map((d) => label(d.k))
+  const parts: string[] = []
+  if (highs.length) parts.push(`${highs.join(' & ')} ${highs.length > 1 ? 'sit' : 'sits'} highest`)
+  if (lows.length) parts.push(`${lows.join(' & ')} lowest`)
+  return parts.length ? parts.join('; ') : null
+}
 
 function RankPill({ rank }: { rank: number | null | undefined }) {
   const r = rank == null || Number.isNaN(rank) ? null : rank
@@ -136,12 +169,39 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
               const shown = FACTOR_DEFS[factor].filter(
                 ([metricKey]) => metricKey in subPctls,
               )
+              const cov = coreCoverage(details, factor, FACTOR_DEFS[factor])
+              const caption = driverCaption(shown, subPctls, factorV)
+              const factorMeta = (
+                <div className="space-y-1">
+                  {dot}
+                  {cov.present <= 1 && (
+                    <div
+                      className="text-[0.64rem] font-semibold uppercase tracking-wide text-amber-600"
+                      title={
+                        `This factor rests on ${cov.present} core sub-metric` +
+                        `${cov.present === 1 ? '' : 's'} in this snapshot — read the rank as ` +
+                        `indicative, not precise.`
+                      }
+                    >
+                      limited inputs
+                    </div>
+                  )}
+                  {caption && (
+                    <div
+                      className="text-[0.66rem] font-normal leading-snug text-gray-400"
+                      title="Relative to this factor's other metrics — what moved the score, not the price."
+                    >
+                      {caption}
+                    </div>
+                  )}
+                </div>
+              )
               return shown.map(([metricKey, direction], i) => {
                 const raw = inputs[metricKey]
                 const missing = raw === null || raw === undefined
                 return (
                   <tr key={`${factor}-${metricKey}`} className="border-b border-gray-100">
-                    <td className={TD}>{i === 0 ? dot : null}</td>
+                    <td className={`${TD} align-top`}>{i === 0 ? factorMeta : null}</td>
                     <td className={`${TD} text-gray-700`}>
                       {INPUT_LABELS[metricKey] ?? metricKey}
                     </td>
