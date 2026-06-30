@@ -87,6 +87,62 @@ CANDIDATE_HINTS = {
 
 MAX_STORED_WARNINGS = 200
 
+# Forms that carry XBRL fundamentals (companyfacts). The nightly uses these to
+# find which companies filed something new since their facts were last ingested,
+# so it re-fetches only those instead of re-pulling all ~5,600 companyfacts every
+# night. The weekly's full resume=False sweep is the backstop for the long tail.
+FUNDAMENTALS_FORMS = (
+    "10-K", "10-Q", "20-F", "40-F", "10-K/A", "10-Q/A", "20-F/A", "40-F/A",
+)
+INCREMENTAL_LOOKBACK_DAYS = 30
+
+
+def companies_needing_refresh(days: int = INCREMENTAL_LOOKBACK_DAYS) -> list[str]:
+    """Active tickers whose latest fundamentals filing is newer than their newest
+    stored XBRL fact — i.e. they filed a 10-Q/10-K/20-F/40-F we haven't ingested.
+
+    The nightly passes this to ``run(tickers=...)`` so it re-fetches only the
+    handful of companies that actually reported (typically <1% of the universe)
+    instead of re-pulling every company's companyfacts. Bounded to the last
+    ``days`` so a name whose facts never materialize (a filing with no XBRL, or a
+    normalization gap) isn't re-fetched forever; run_weekly's full
+    ``fundamentals.run(resume=False)`` is the backstop that catches the long tail.
+
+    Filings attach to the LOWEST security_id of a CIK (dual-class convention) and
+    facts are written there too, so the per-security comparison is apples-to-apples
+    and the returned (lowest-sid) ticker re-fetches the whole CIK.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH recent AS (
+                    SELECT f.security_id, max(f.filed_date) AS last_filing
+                    FROM filings f
+                    WHERE f.form = ANY(%s)
+                      AND f.filed_date >= CURRENT_DATE - make_interval(days => %s)
+                    GROUP BY f.security_id
+                ),
+                facts AS (
+                    SELECT x.security_id, max(x.filed_date) AS last_fact
+                    FROM xbrl_facts x
+                    WHERE x.security_id IN (SELECT security_id FROM recent)
+                    GROUP BY x.security_id
+                )
+                SELECT s.ticker
+                FROM recent r
+                JOIN securities s ON s.security_id = r.security_id AND s.is_active
+                LEFT JOIN facts fa ON fa.security_id = r.security_id
+                WHERE r.last_filing > COALESCE(fa.last_fact, DATE '1900-01-01')
+                ORDER BY s.ticker
+                """,
+                (list(FUNDAMENTALS_FORMS), days),
+            )
+            return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
 
 def load_concept_map() -> tuple[str, dict[str, str]]:
     """Return (map_version, {raw_tag: normalized_concept}) from config."""
