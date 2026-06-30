@@ -182,10 +182,33 @@ export function ScreenerTable({
     onSortChange ? onSortChange(s) : setInternalSort(s)
   const [expanded, setExpanded] = useState(false)
 
-  const sorted = useMemo(
-    () => [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.dir)),
-    [rows, sort],
-  )
+  // Live-adjusted composite (price-driven value/momentum move intraday); falls
+  // back to the nightly composite when no live quote exists. When the user sorts
+  // by COMP we rank on THIS, so the blue live numbers actually run in order —
+  // the board re-ranks live while the market breathes. Sorting any other column
+  // keeps the nightly basis. Cheap: a client-side sort of already-computed
+  // numbers, not a server re-score.
+  const hasLive = liveByTicker
+    ? Object.values(liveByTicker).some((q) => q.composite_live != null)
+    : false
+  const liveComposite = (r: ScreenerRow): number | null =>
+    liveByTicker?.[r.ticker]?.composite_live ?? r.composite
+  const liveRanked = sort.key === 'composite' && hasLive
+
+  const sorted = useMemo(() => {
+    if (sort.key === 'composite') {
+      return [...rows].sort((a, b) => {
+        const av = liveComposite(a)
+        const bv = liveComposite(b)
+        if (av === null && bv === null) return 0
+        if (av === null) return 1
+        if (bv === null) return -1
+        return (av - bv) * sort.dir
+      })
+    }
+    return [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.dir))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sort, liveByTicker])
   const visible = expanded ? sorted : sorted.slice(0, PREVIEW_N)
 
   // Export the FULL filtered + sorted set (not just the visible page).
@@ -240,10 +263,6 @@ export function ScreenerTable({
   // append a 44px control column when an accessory is provided
   const gridCols = rowAccessory ? `${SCREENER_GRID} 44px` : SCREENER_GRID
   const minW = rowAccessory ? 'min-w-[946px]' : 'min-w-[902px]'
-
-  const hasLive = liveByTicker
-    ? Object.values(liveByTicker).some((q) => q.composite_live != null)
-    : false
 
   return (
     <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
@@ -306,7 +325,8 @@ export function ScreenerTable({
         <span className="whitespace-nowrap text-[0.7rem] italic text-gray-400">
           {hasLive && (
             <span className="not-italic text-sky-700">
-              <span className="align-super text-[0.7em] text-sky-400">●</span> live-adjusted ·{' '}
+              <span className="align-super text-[0.7em] text-sky-400">●</span>{' '}
+              {liveRanked ? 'ranked on live-adjusted composite' : 'live-adjusted'} ·{' '}
             </span>
           )}
           Bars are percentile ranks (0–100, line = median) · click row = preview · click ticker = deep dive
@@ -395,8 +415,11 @@ export function ScreenerTable({
                     />
                   )}
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
-                    <span className="numeric text-[0.74rem] font-semibold text-slate-600">
-                      {r.rank}
+                    <span
+                      className="numeric text-[0.74rem] font-semibold text-slate-600"
+                      title={liveRanked ? 'Live-adjusted rank · nightly #' + r.rank : undefined}
+                    >
+                      {liveRanked ? vi.index + 1 : r.rank}
                     </span>
                     {r.rank_delta != null && r.rank_delta !== 0 && (
                       <span
