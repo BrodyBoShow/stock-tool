@@ -242,6 +242,12 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                     WHERE config_version = %s
                       AND score_date <= %s - INTERVAL '7 days'
                 ),
+                prev1 AS (
+                    -- the immediately-prior nightly score_date (for the COMP delta chip)
+                    SELECT max(score_date) AS d FROM factor_scores
+                    WHERE config_version = %s
+                      AND score_date < %s
+                ),
                 prev_rank AS (
                     SELECT fs2.security_id,
                            RANK() OVER (ORDER BY fs2.composite DESC NULLS LAST) AS rk
@@ -258,12 +264,21 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                        lp2.close AS prev_close,
                        lp.close * sh.value AS market_cap,
                        pr.rk AS rank_prev,
+                       fsp.composite AS composite_prev,
+                       fs7.composite AS composite_7d_ago,
+                       fs.details -> 'sub_pctls' AS sub_pctls,
                        s.security_id
                 FROM securities s
                 JOIN factor_scores fs
                     ON fs.security_id = s.security_id AND fs.score_date = %s
                     AND fs.config_version = %s
                 LEFT JOIN prev_rank pr ON pr.security_id = s.security_id
+                LEFT JOIN factor_scores fsp
+                    ON fsp.security_id = s.security_id AND fsp.config_version = %s
+                    AND fsp.score_date = (SELECT d FROM prev1)
+                LEFT JOIN factor_scores fs7
+                    ON fs7.security_id = s.security_id AND fs7.config_version = %s
+                    AND fs7.score_date = (SELECT d FROM base)
                 LEFT JOIN LATERAL (
                     SELECT close FROM prices_daily p
                     WHERE p.security_id = s.security_id
@@ -283,8 +298,9 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                 WHERE s.is_active{complete_clause}
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
-                (ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION,
-                 score_date, ACTIVE_CONFIG_VERSION),
+                (ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION, score_date,
+                 ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION,
+                 ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION),
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
@@ -293,7 +309,7 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
 
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl",
-        "last_price", "prev_close", "market_cap",
+        "last_price", "prev_close", "market_cap", "composite_prev", "composite_7d_ago",
     }
     rows: list[dict[str, Any]] = []
     for rank, raw in enumerate(db_rows, start=1):
@@ -305,6 +321,16 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
         row["rank"] = rank
         # positive delta = climbed the ranking since ~a week ago (lower # = better)
         row["rank_delta"] = (row["rank_prev"] - rank) if row["rank_prev"] is not None else None
+        # composite movement: vs the previous nightly run (delta chip) and vs ~a
+        # week ago (signal dot / what-changed badge). None when no baseline exists.
+        comp, prev, ago = row["composite"], row["composite_prev"], row["composite_7d_ago"]
+        row["composite_delta"] = (
+            round(comp - prev, 2) if comp is not None and prev is not None else None
+        )
+        row["composite_delta_7d"] = (
+            round(comp - ago, 2) if comp is not None and ago is not None else None
+        )
+        del row["composite_7d_ago"]  # only the delta is surfaced
         rows.append(row)
     return rows, score_date
 

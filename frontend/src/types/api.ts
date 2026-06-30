@@ -16,6 +16,10 @@ export interface ScreenerRow {
   market_cap: number | null
   rank_prev: number | null
   rank_delta: number | null
+  composite_prev: number | null
+  composite_delta: number | null
+  composite_delta_7d: number | null
+  sub_pctls: Record<string, number | null> | null
   security_id: number
 }
 

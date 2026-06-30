@@ -28,6 +28,10 @@ class ScreenerRow(BaseModel):
     market_cap: float | None = None
     rank_prev: int | None = None   # rank ~1 week ago (None if no baseline / new name)
     rank_delta: int | None = None  # rank_prev - rank; + = climbed since last week
+    composite_prev: float | None = None      # composite at the prior nightly run
+    composite_delta: float | None = None     # composite - composite_prev (delta chip)
+    composite_delta_7d: float | None = None  # composite vs ~1 week ago (signal dot)
+    sub_pctls: dict[str, float | None] | None = None  # per-sub-metric percentiles
     security_id: int
 
 

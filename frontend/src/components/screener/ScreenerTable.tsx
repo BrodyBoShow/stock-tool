@@ -124,6 +124,34 @@ function ValueTrapMark({ row }: { row: ScreenerRow }) {
   )
 }
 
+/** 7-day composite move → left-edge signal color (null = no meaningful move). */
+function signalColor(d: number | null): string | null {
+  if (d == null) return null
+  if (d >= 3) return '#22c55e'
+  if (d >= 1) return '#86efac'
+  if (d <= -3) return '#ef4444'
+  if (d <= -1) return '#fca5a5'
+  return null
+}
+
+/** Inline "what changed" badge — only for names that moved ≥3 pts in ~a week. */
+function WhatChanged({ d }: { d: number | null }) {
+  if (d == null || Math.abs(d) < 3) return null
+  const up = d > 0
+  return (
+    <span
+      className={
+        'numeric inline-flex flex-none items-center rounded px-1 py-px text-[0.56rem] font-bold leading-none ' +
+        (up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')
+      }
+      title={`Composite ${up ? '+' : ''}${d.toFixed(1)} over ~7 days`}
+    >
+      {up ? '▲' : '▼'}
+      {Math.abs(d).toFixed(1)}
+    </span>
+  )
+}
+
 export function ScreenerTable({
   rows,
   scoreDate,
@@ -337,6 +365,7 @@ export function ScreenerTable({
           >
             {virtualizer.getVirtualItems().map((vi) => {
               const r = visible[vi.index]
+              const sig = signalColor(r.composite_delta_7d)
               const handleRowClick = onRowClick
                 ? (e: MouseEvent) => {
                     // don't intercept clicks on the ticker Link or accessory
@@ -357,6 +386,14 @@ export function ScreenerTable({
                   }}
                   onClick={handleRowClick}
                 >
+                  {sig && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-0 z-10 h-full w-1"
+                      style={{ background: sig }}
+                      title={`Composite ${r.composite_delta_7d! > 0 ? '+' : ''}${r.composite_delta_7d!.toFixed(1)} over ~7 days`}
+                    />
+                  )}
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
                     <span className="numeric text-[0.74rem] font-semibold text-slate-600">
                       {r.rank}
@@ -387,6 +424,7 @@ export function ScreenerTable({
                             {r.ticker}
                           </Link>
                           <ValueTrapMark row={r} />
+                          <WhatChanged d={r.composite_delta_7d} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
@@ -402,6 +440,7 @@ export function ScreenerTable({
                             {r.ticker}
                           </span>
                           <ValueTrapMark row={r} />
+                          <WhatChanged d={r.composite_delta_7d} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
@@ -416,18 +455,21 @@ export function ScreenerTable({
                     factor="composite"
                     value={r.composite}
                     live={liveByTicker?.[r.ticker]?.composite_live}
+                    delta={r.composite_delta}
                   />
-                  <ScoreCell factor="growth" value={r.growth_pctl} />
+                  <ScoreCell factor="growth" value={r.growth_pctl} subPctls={r.sub_pctls} />
                   <ScoreCell
                     factor="value"
                     value={r.value_pctl}
                     live={liveByTicker?.[r.ticker]?.value_live}
+                    subPctls={r.sub_pctls}
                   />
-                  <ScoreCell factor="quality" value={r.quality_pctl} />
+                  <ScoreCell factor="quality" value={r.quality_pctl} subPctls={r.sub_pctls} />
                   <ScoreCell
                     factor="momentum"
                     value={r.momentum_pctl}
                     live={liveByTicker?.[r.ticker]?.momentum_live}
+                    subPctls={r.sub_pctls}
                   />
                   <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-slate-600">
                     {fmtMoney(r.market_cap)}
