@@ -69,11 +69,13 @@ JOB_VERSION = "v1"
 
 # Which config the nightly/weekly default run writes, and which the read layer
 # (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v4_lean' at the
-# 2026-06-30 cutover — v4_lean dropped accruals + insider_net_buy (v3) AND the
-# two pure-noise metrics pe + r3m, and cleanly beat both v2 and v3 on the backtest
-# gate in both split-halves. Prior configs' rows coexist for rollback (flip both
-# constants back to 'v3_pruned' / 'v2_linear').
-DEFAULT_CONFIG_VERSION = "v4_lean"
+# 2026-06-30 cutover — v5_qmean carries the pruning into the Quality MEAN, dropping
+# the three measured-noise members (gross_margin/debt_to_equity/net_debt_ebitda) the
+# equal-weight average still diluted Quality with. Cleanly beat v4_lean on the §6
+# gate (IC +0.067->+0.072, t 5.47->5.73, Sharpe 1.04->1.06, turnover flat) AND in
+# both split-halves. Prior configs' rows coexist for rollback (flip both constants
+# back to 'v4_lean' / 'v3_pruned' / 'v2_linear').
+DEFAULT_CONFIG_VERSION = "v5_qmean"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the
@@ -171,11 +173,35 @@ FACTOR_DEFS_V4_LEAN = {
     "momentum": [("r6m", "higher"), ("r12_1m", "higher")],
 }
 
+# v5_qmean: carry the Phase-0 pruning INTO the Quality factor mean. v4_lean still
+# averages three measured-noise members into Quality — `gross_margin` (IC t=-0.5),
+# `debt_to_equity` (t=-1.7) and `net_debt_ebitda` (t=0.6) — diluting the three that
+# actually predict: operating_margin (t=3.8), roic (t=5.3), share_count_trend
+# (t=6.5, our strongest signal). Dropping the noise from the *average* (not just
+# from the ranked list, as v4 did for pe/r3m) is the safest, survivorship-FAVOURABLE
+# subtraction: it removes the leverage/distress metrics whose academic edge lives in
+# the delisted losers this universe censors. Zero new parameters (the keep/drop uses
+# pre-measured ICs, not an in-sample fit), so the bar is parity-or-better, with the
+# subtraction tie-break. Growth/Value/Momentum unchanged from v4_lean. Dropped
+# metrics stay in details.inputs as deep-dive context. Dormant until it clears the
+# §6 gate vs v4_lean; reuses v2/v4 factor weights (migration 0026).
+FACTOR_DEFS_V5_QMEAN = {
+    "growth": FACTOR_DEFS_V4_LEAN["growth"],
+    "value": FACTOR_DEFS_V4_LEAN["value"],
+    "quality": [
+        ("operating_margin", "higher"),
+        ("roic", "higher"),
+        ("share_count_trend", "lower"),
+    ],
+    "momentum": FACTOR_DEFS_V4_LEAN["momentum"],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
     "v3_pruned": FACTOR_DEFS_V3_PRUNED,
     "v4_lean": FACTOR_DEFS_V4_LEAN,
+    "v5_qmean": FACTOR_DEFS_V5_QMEAN,
 }
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
@@ -193,6 +219,10 @@ INPUTS_BY_VERSION = {
     # v4 keeps pe/r3m's raw values in details.inputs as deep-dive context even
     # though they're no longer ranked (absent from sub_pctls).
     "v4_lean": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
+    # v5 keeps the same input list as v4 — the three metrics it drops from the
+    # Quality mean (gross_margin/debt_to_equity/net_debt_ebitda) are already in
+    # _BASE_INPUTS, so they remain visible on the deep-dive as raw context.
+    "v5_qmean": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
@@ -200,6 +230,7 @@ MOMENTUM_BASIS_BY_VERSION = {
     "v2_linear": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
     "v3_pruned": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
     "v4_lean": "12_minus_1_momentum_plus_6m_raw_no_spy",
+    "v5_qmean": "12_minus_1_momentum_plus_6m_raw_no_spy",
 }
 
 # Discretionary insider net-buy signal window (trailing months).
