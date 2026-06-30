@@ -46,6 +46,12 @@ function sourceText(i: ValuationInput): string {
   return s.type
 }
 
+// Friendly label for "one slider step" — "+1y" for the horizon, "+0.25pt" for rates.
+function fmtStep(step: number, unit: string): string {
+  if (unit === 'years') return '+1y'
+  return `+${parseFloat((step * 100).toFixed(2))}pt`
+}
+
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-lg bg-slate-50 px-3 py-2">
@@ -179,6 +185,28 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         ? impliedGrowth(fcf0, netDebt, shares, price, { r, gInf, horizon })
         : null
 
+    // Per-driver sensitivity: bump each DCF lever by one slider step, holding the
+    // rest at their current values, and measure the $/share swing off the base.
+    const baseShare = base?.perShare ?? null
+    const DCF_KEYS = new Set(['g_start', 'discount_rate', 'terminal_growth', 'horizon'])
+    const sensitivity =
+      fcf0 != null && active.has('forward_dcf') && baseShare != null
+        ? (data.assumptions ?? [])
+            .filter((a) => DCF_KEYS.has(a.key))
+            .map((a) => {
+              const p = { gStart, r, gInf, horizon }
+              if (a.key === 'g_start') p.gStart = gStart + a.step
+              else if (a.key === 'discount_rate') p.r = r + a.step
+              else if (a.key === 'terminal_growth') p.gInf = gInf + a.step
+              else if (a.key === 'horizon') p.horizon = horizon + Math.round(a.step || 1)
+              const res = forwardDcf(fcf0, netDebt, shares, p)
+              const delta = res.perShare != null ? res.perShare - baseShare : null
+              return { key: a.key, label: a.label, step: a.step, unit: a.unit, delta }
+            })
+            .filter((s): s is typeof s & { delta: number } => s.delta != null && isFinite(s.delta))
+            .sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta))
+        : []
+
     const mult = multiplesFairValue(
       { eps, revPerShare, ebitda, fcf0, netDebt, shares },
       data.peer_context.medians,
@@ -192,7 +220,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
 
     return {
       base, bear, bull, implied, mult, graham, earnYield, fcfYield,
-      histFcf, revCagr, epsG, price, netDebt, horizon,
+      histFcf, revCagr, epsG, price, netDebt, horizon, sensitivity,
     }
   }, [data, ov]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -362,6 +390,48 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         >
           ↺ Reset all to data-seeded
         </button>
+      )}
+
+      {/* ── Sensitivity: which lever moves fair value most ── */}
+      {c.sensitivity.length > 0 && c.base?.perShare != null && (
+        <div className="mt-4 rounded-lg border border-gray-100 bg-slate-50/70 p-3">
+          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-gray-500">
+            Sensitivity — one step off base {fmtPrice(c.base.perShare)}/sh
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {c.sensitivity.map((s) => {
+              const pct = c.base?.perShare ? s.delta / c.base.perShare : null
+              const up = s.delta >= 0
+              return (
+                <div
+                  key={s.key}
+                  className="flex items-baseline justify-between gap-2 rounded-md bg-white px-2.5 py-1.5"
+                >
+                  <span className="text-[0.7rem] text-gray-600">
+                    {s.label}{' '}
+                    <span className="text-[0.62rem] text-gray-400">{fmtStep(s.step, s.unit)}</span>
+                  </span>
+                  <span
+                    className={`text-[0.72rem] font-semibold tabular-nums ${up ? 'text-emerald-600' : 'text-rose-600'}`}
+                  >
+                    {up ? '+' : '−'}
+                    {fmtPrice(Math.abs(s.delta))}
+                    {pct != null && (
+                      <span className="ml-1 text-[0.6rem] font-normal text-gray-400">
+                        ({up ? '+' : '−'}
+                        {fmtPct(Math.abs(pct))})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="mt-1.5 text-[0.6rem] text-gray-400">
+            Each row holds the other levers fixed and nudges one by a single slider step — biggest
+            mover first. A local read, not a full re-solve.
+          </p>
+        </div>
       )}
 
       {/* ── suppression reasons ── */}
