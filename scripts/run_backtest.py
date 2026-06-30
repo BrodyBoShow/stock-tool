@@ -62,6 +62,31 @@ def build_text(out: dict) -> str:
         turn = res["avg_turnover"]
         lines.append(f"  avg turnover/mo (top bucket): "
                      f"{'—' if turn is None else f'{turn * 100:.0f}%'}")
+
+    # Phase 0 — per-sub-metric IC attribution. The whole point of the run: which
+    # of the ranked sub-signals actually predict forward returns, with the
+    # coverage floor distinguishing a true zero-IC from mere sparsity.
+    subs = out.get("submetrics") or {}
+    if subs:
+        lines.append("\n=== SUB-METRIC IC ATTRIBUTION (does each sub-signal predict?) ===")
+        lines.append(f"  {'sub-metric':>18}  {'IC':>7}  {'t-stat':>7}  {'n':>3}  "
+                     f"{'names':>5}  verdict")
+        # sort by t-stat desc so the strongest predictors are on top
+        def _t(item):
+            ic = item[1].get("ic") or {}
+            return ic.get("t_stat") if ic.get("t_stat") is not None else -1e9
+        for name, blk in sorted(subs.items(), key=_t, reverse=True):
+            ic = blk.get("ic") or {}
+            cov = blk.get("coverage") or {}
+            t = ic.get("t_stat")
+            mean = ic.get("mean")
+            lines.append(
+                f"  {name:>18}  {('—' if mean is None else f'{mean:+.3f}'):>7}  "
+                f"{('—' if t is None else f'{t:+.2f}'):>7}  {cov.get('n_periods', 0):>3}  "
+                f"{cov.get('median_valid_names', 0):>5}  {cov.get('verdict', '?')}"
+            )
+        lines.append("  verdicts: predictive (|t|>2.7), no_significant_ic, "
+                     "predictive_wrong_sign, insufficient_data (sparse — NOT noise)")
     lines += [
         "\n" + "-" * 72,
         "CAVEATS: survivor-only universe (no delisted names) -> absolute returns",
