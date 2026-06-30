@@ -68,9 +68,11 @@ JOB_NAME = "factor_scoring"
 JOB_VERSION = "v1"
 
 # Which config the nightly/weekly default run writes, and which the read layer
-# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v2_linear' at
-# cutover; until then the package ships dormant and the app keeps serving v1.
-DEFAULT_CONFIG_VERSION = "v2_linear"
+# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v3_pruned' at the
+# 2026-06-30 cutover (drops the wrong-signed accruals + unmeasurable
+# insider_net_buy from Quality, evidence in the Phase-0 backtest). v1/v2 rows
+# coexist for rollback (flip both constants back).
+DEFAULT_CONFIG_VERSION = "v3_pruned"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the
@@ -140,8 +142,8 @@ FACTOR_DEFS_V2 = {
 # `insider_net_buy` (INSUFFICIENT DATA: median 0 valid names/month — too sparse
 # to rank). Both stay computed in fundamental_metrics and shown on the deep-dive;
 # they're only removed from the ranked Quality mean. Everything else is identical
-# to v2_linear, so the factor weights are reused from it (WEIGHTS_SOURCE) and no
-# score_config migration is needed to build, backtest, or cut this over.
+# to v2_linear, so v3_pruned shares its 4 factor weights — seeded as its own
+# score_config row in migration 0024 (factor_scores' config_version FK needs one).
 FACTOR_DEFS_V3_PRUNED = {
     "growth": FACTOR_DEFS_V2["growth"],
     "value": FACTOR_DEFS_V2["value"],
@@ -161,12 +163,6 @@ FACTOR_DEFS_BY_VERSION = {
     "v2_linear": FACTOR_DEFS_V2,
     "v3_pruned": FACTOR_DEFS_V3_PRUNED,
 }
-
-# Config versions that change only the sub-metric COMPOSITION (not the factor
-# weights) reuse an existing config's score_config row, so a dormant variant can
-# be built, backtested, and cut over WITHOUT a new migration. v3_pruned shares
-# v2_linear's 4 factor weights.
-WEIGHTS_SOURCE = {"v3_pruned": "v2_linear"}
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
 # sub-signals it actually ranks on; v3_pruned drops the two it disqualified).
@@ -204,15 +200,12 @@ SCORE_TIME_CONCEPTS = (
 
 
 def _load_weights(cur, config_version: str) -> dict[str, float]:
-    source = WEIGHTS_SOURCE.get(config_version, config_version)
     cur.execute(
-        "SELECT weights FROM score_config WHERE config_version = %s", (source,)
+        "SELECT weights FROM score_config WHERE config_version = %s", (config_version,)
     )
     row = cur.fetchone()
     if row is None or not row[0]:
-        raise RuntimeError(
-            f"score_config '{source}' (for '{config_version}') missing or has no weights"
-        )
+        raise RuntimeError(f"score_config '{config_version}' missing or has no weights")
     return {k: float(v) for k, v in row[0].items()}
 
 

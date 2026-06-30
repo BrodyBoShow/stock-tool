@@ -20,10 +20,12 @@ from engine.db import acquire, release
 MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
 
 # Which scoring config the app serves. factor_scores can hold several config
-# versions per score_date (e.g. v1_linear and v2_linear side by side); every
-# read below pins to this one so the screener/deep-dive never double-count.
-# Flip to 'v2_linear' at cutover (after the v2 universe re-score lands).
-ACTIVE_CONFIG_VERSION = "v2_linear"
+# versions per score_date side by side; every read below pins to this one so the
+# screener/deep-dive never double-count. Flipped to 'v3_pruned' at the 2026-06-30
+# cutover (drops the wrong-signed accruals + unmeasurable insider_net_buy from
+# Quality, evidence in the Phase-0 backtest). Rollback = set back to 'v2_linear'
+# (its rows still coexist).
+ACTIVE_CONFIG_VERSION = "v3_pruned"
 
 
 def _f(v) -> float | None:
