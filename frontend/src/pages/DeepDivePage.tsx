@@ -15,6 +15,7 @@ import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
 import { IntrinsicValuePanel } from '@/components/deepdive/IntrinsicValuePanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
+import { ScoreForensicsPanel } from '@/components/deepdive/ScoreForensicsPanel'
 import { ScoreStoryPanel } from '@/components/deepdive/ScoreStoryPanel'
 import { ScoreWaterfall } from '@/components/deepdive/ScoreWaterfall'
 import { ThesisPanel } from '@/components/deepdive/ThesisPanel'
@@ -163,8 +164,9 @@ export function DeepDivePage() {
         <DecisionBriefPanel ticker={header.ticker} />
       </div>
 
-      <div id="story">
+      <div id="story" className="space-y-5">
         <ScoreStoryPanel ticker={header.ticker} />
+        <ScoreForensicsPanel ticker={header.ticker} />
       </div>
 
       <div id="chart">

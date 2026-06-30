@@ -1719,7 +1719,8 @@ def factor_history(ticker: str, limit: int = 95) -> list[dict[str, Any]]:
                       AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
                 )
                 SELECT fs.score_date, fs.composite, fs.growth_pctl, fs.value_pctl,
-                       fs.quality_pctl, fs.momentum_pctl, cr.univ_rank
+                       fs.quality_pctl, fs.momentum_pctl, cr.univ_rank,
+                       fs.details -> 'sub_pctls' AS sub_pctls
                 FROM factor_scores fs
                 JOIN securities s ON s.security_id = fs.security_id
                 LEFT JOIN complete_ranked cr

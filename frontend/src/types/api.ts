@@ -124,6 +124,7 @@ export interface FactorTrendPoint {
   quality_pctl: number | null
   momentum_pctl: number | null
   rank: number | null // 1 = best composite in the universe
+  sub_pctls: Record<string, number | null> | null
 }
 
 export interface DataConfidence {

@@ -223,6 +223,7 @@ class FactorTrendPoint(BaseModel):
     quality_pctl: float | None
     momentum_pctl: float | None
     rank: int | None                  # 1 = best composite in the universe
+    sub_pctls: dict[str, float | None] | None = None  # per-sub-metric percentiles
 
 
 class DataConfidence(BaseModel):
