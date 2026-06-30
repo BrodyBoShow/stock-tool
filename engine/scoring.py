@@ -133,13 +133,43 @@ FACTOR_DEFS_V2 = {
     "momentum": [("r3m", "higher"), ("r6m", "higher"), ("r12_1m", "higher")],
 }
 
+# v3_pruned: drop the two Quality sub-signals the Phase-0 per-sub-metric IC
+# backtest disqualified — `accruals` (PREDICTIVE BUT WRONG-SIGNED: IC t=-4.1,
+# consistently negative in BOTH halves of 2022-26, so the Sloan low-accruals
+# premium is inverted in this survivor universe and was dragging Quality) and
+# `insider_net_buy` (INSUFFICIENT DATA: median 0 valid names/month — too sparse
+# to rank). Both stay computed in fundamental_metrics and shown on the deep-dive;
+# they're only removed from the ranked Quality mean. Everything else is identical
+# to v2_linear, so the factor weights are reused from it (WEIGHTS_SOURCE) and no
+# score_config migration is needed to build, backtest, or cut this over.
+FACTOR_DEFS_V3_PRUNED = {
+    "growth": FACTOR_DEFS_V2["growth"],
+    "value": FACTOR_DEFS_V2["value"],
+    "quality": [
+        ("gross_margin", "higher"),
+        ("operating_margin", "higher"),
+        ("roic", "higher"),
+        ("debt_to_equity", "lower"),
+        ("net_debt_ebitda", "lower"),
+        ("share_count_trend", "lower"),
+    ],
+    "momentum": FACTOR_DEFS_V2["momentum"],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
+    "v3_pruned": FACTOR_DEFS_V3_PRUNED,
 }
 
+# Config versions that change only the sub-metric COMPOSITION (not the factor
+# weights) reuse an existing config's score_config row, so a dormant variant can
+# be built, backtested, and cut over WITHOUT a new migration. v3_pruned shares
+# v2_linear's 4 factor weights.
+WEIGHTS_SOURCE = {"v3_pruned": "v2_linear"}
+
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
-# sub-signals it actually ranks on).
+# sub-signals it actually ranks on; v3_pruned drops the two it disqualified).
 _BASE_INPUTS = [
     "revenue_cagr", "eps_growth", "pe", "ps", "ev_ebitda", "fcf_yield",
     "gross_margin", "operating_margin", "roic", "debt_to_equity",
@@ -149,11 +179,13 @@ INPUTS_BY_VERSION = {
     "v1_linear": _BASE_INPUTS,
     "v2_linear": _BASE_INPUTS + ["r12_1m", "accruals", "share_count_trend",
                                  "insider_net_buy"],
+    "v3_pruned": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
     "v1_linear": "cross_sectional_raw_returns_no_spy",
     "v2_linear": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
+    "v3_pruned": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
 }
 
 # Discretionary insider net-buy signal window (trailing months).
@@ -172,12 +204,15 @@ SCORE_TIME_CONCEPTS = (
 
 
 def _load_weights(cur, config_version: str) -> dict[str, float]:
+    source = WEIGHTS_SOURCE.get(config_version, config_version)
     cur.execute(
-        "SELECT weights FROM score_config WHERE config_version = %s", (config_version,)
+        "SELECT weights FROM score_config WHERE config_version = %s", (source,)
     )
     row = cur.fetchone()
     if row is None or not row[0]:
-        raise RuntimeError(f"score_config '{config_version}' missing or has no weights")
+        raise RuntimeError(
+            f"score_config '{source}' (for '{config_version}') missing or has no weights"
+        )
     return {k: float(v) for k, v in row[0].items()}
 
 
