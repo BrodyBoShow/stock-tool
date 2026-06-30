@@ -140,7 +140,14 @@ export interface RangeQuality {
 // recently formed range. (Approach adapted from GoldenPanda's range detector.)
 const RANGE_WINDOWS = [40, 60, 80, 100, 130]
 const MIN_RANGE_LEN = 20
-const BOUNDARY_FLAT_TOL = 0.25 // a wall may drift <=25% of channel height across thirds
+// A wall may drift up to this share of the channel height across the window's
+// thirds and still count as "flat". Recalibrated 0.25 → 0.40: at 0.25 only ~10%
+// of stocks ever registered a range (measured over an 80-name sample), so the
+// schematic read as permanently empty ("no trading range" on essentially every
+// stock). 0.40 admits ~38% — a realistic range-vs-trend split — while the
+// crossings + containment gates below still reject genuine trends and diagonal
+// staircases (those fail on too-few midline crossings, not on wall flatness).
+const BOUNDARY_FLAT_TOL = 0.4
 const MIN_CROSSINGS = 3 // midline crossings → real oscillation, not drift
 const MIN_CONTAINMENT = 0.8 // share of closes inside the channel
 
