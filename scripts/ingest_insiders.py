@@ -30,11 +30,23 @@ def main() -> int:
                         help=f"lookback window (default {insiders.WINDOW_DAYS})")
     parser.add_argument("--max-fetches", type=int, default=None,
                         help="SEC fetch budget for this run (CI self-bounding)")
+    parser.add_argument("--incremental", action="store_true",
+                        help="only fetch companies with a new Form 4 in the filings "
+                             "catalog since their last stored transaction — the cheap "
+                             "nightly delta (the intraday + weekly full sweeps backstop it)")
     args = parser.parse_args()
+
+    tickers = args.tickers
+    if args.incremental and not tickers:
+        tickers = insiders.companies_with_new_form4()
+        if not tickers:
+            print("Incremental: no company has a new Form 4 since its last refresh — skipping.")
+            return 0
+        print(f"Incremental: {len(tickers)} name(s) with new Form 4s since last refresh.")
 
     result = insiders.run(
         limit=args.limit,
-        tickers=args.tickers,
+        tickers=tickers,
         window_days=args.window_days,
         max_fetches=args.max_fetches,
     )
