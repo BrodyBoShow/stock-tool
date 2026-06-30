@@ -11,10 +11,16 @@ export function Sparkline({
   data,
   width = 56,
   height = 16,
+  color,
+  title,
 }: {
   data: number[] | null
   width?: number
   height?: number
+  /** Override the auto green-up / red-down stroke (e.g. better-direction color). */
+  color?: string
+  /** Override the default hover title. */
+  title?: string
 }) {
   const ref = useRef<HTMLSpanElement>(null)
   const [seen, setSeen] = useState(false)
@@ -51,20 +57,20 @@ export function Sparkline({
   })
   const line = pts.join(' ')
   const up = data[n - 1] >= data[0]
-  const color = up ? '#16a34a' : '#dc2626'
+  const stroke = color ?? (up ? '#16a34a' : '#dc2626')
 
   return (
     <span
       ref={ref}
       className="mt-1 block"
-      title={`Composite trend over the last ${n} scoring runs`}
+      title={title ?? `Composite trend over the last ${n} scoring runs`}
     >
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
-        <polygon points={`1,${height - 1} ${line} ${width - 1},${height - 1}`} fill={color} opacity={0.1} />
+        <polygon points={`1,${height - 1} ${line} ${width - 1},${height - 1}`} fill={stroke} opacity={0.1} />
         <polyline
           points={line}
           fill="none"
-          stroke={color}
+          stroke={stroke}
           strokeWidth={1}
           strokeLinejoin="round"
           strokeLinecap="round"
