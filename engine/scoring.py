@@ -69,11 +69,13 @@ JOB_VERSION = "v1"
 
 # Which config the nightly/weekly default run writes, and which the read layer
 # (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v4_lean' at the
-# 2026-06-30 cutover — v4_lean dropped accruals + insider_net_buy (v3) AND the
-# two pure-noise metrics pe + r3m, and cleanly beat both v2 and v3 on the backtest
-# gate in both split-halves. Prior configs' rows coexist for rollback (flip both
-# constants back to 'v3_pruned' / 'v2_linear').
-DEFAULT_CONFIG_VERSION = "v4_lean"
+# 2026-06-30 cutover — v5_qmean carries the pruning into the Quality MEAN, dropping
+# the three measured-noise members (gross_margin/debt_to_equity/net_debt_ebitda) the
+# equal-weight average still diluted Quality with. Cleanly beat v4_lean on the §6
+# gate (IC +0.067->+0.072, t 5.47->5.73, Sharpe 1.04->1.06, turnover flat) AND in
+# both split-halves. Prior configs' rows coexist for rollback (flip both constants
+# back to 'v4_lean' / 'v3_pruned' / 'v2_linear').
+DEFAULT_CONFIG_VERSION = "v5_qmean"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the
