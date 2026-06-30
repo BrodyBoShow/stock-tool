@@ -619,6 +619,14 @@ def run(
         for f in factor_defs:
             report[f] = factor_pctls[f]
         report["composite"] = composite
+        # Phase 0 (per-sub-metric IC attribution): attach each ranked sub-metric's
+        # direction-adjusted percentile as a report column, keyed by the same sid
+        # index. REPORT-ONLY — the written rows + details.sub_pctls JSON above
+        # (the frozen v1/v2 deep-dive contract) are untouched. Sub-metric names
+        # never collide with the factor-name columns or 'ticker'/'composite', so
+        # the backtest can bucket on any of them exactly like a factor.
+        for sub_col, sub_series in sub_pctls.items():
+            report[sub_col] = sub_series
         # rows-as-written, keyed by sid, so a dry run can be diffed vs the DB
         report_rows = {r[0]: r for r in rows}
 

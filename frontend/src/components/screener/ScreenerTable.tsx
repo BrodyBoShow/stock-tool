@@ -13,6 +13,7 @@ import {
   SCREENER_GRID,
   type FactorKey,
 } from '@/lib/constants'
+import { isValueTrap } from '@/lib/factorReading'
 import {
   DEFAULT_SORT,
   type ScreenerSort,
@@ -93,6 +94,33 @@ function PriceCell({ row }: { row: ScreenerRow }) {
       </span>
       {delta}
     </div>
+  )
+}
+
+/** Value-trap caveat marker (Phase 1, 1e): cheap on Value but weak on Quality
+ *  AND Momentum — surfaced inline so triage doesn't reward "cheap for a reason".
+ *  Descriptive, suppressed when Quality/Momentum are absent. */
+function ValueTrapMark({ row }: { row: ScreenerRow }) {
+  const trap = isValueTrap({
+    composite: row.composite,
+    growth: row.growth_pctl,
+    value: row.value_pctl,
+    quality: row.quality_pctl,
+    momentum: row.momentum_pctl,
+  })
+  if (!trap) return null
+  return (
+    <span
+      className="flex-none cursor-help text-[0.62rem] leading-none text-amber-500"
+      title={
+        `Cheap (Value ${row.value_pctl?.toFixed(0)}) but weak on Quality ` +
+        `(${row.quality_pctl?.toFixed(0)}) and Momentum (${row.momentum_pctl?.toFixed(0)}) — ` +
+        `often cheap for a reason. A caveat to investigate, not a sell signal.`
+      }
+      aria-label="Value-trap caveat"
+    >
+      ⚠
+    </span>
   )
 }
 
@@ -350,13 +378,16 @@ export function ScreenerTable({
                   <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1.5">
                     {onRowClick ? (
                       <>
-                        <Link
-                          to={`/securities/${r.ticker}`}
-                          className="text-[0.88rem] font-bold leading-[1.15] text-gray-900 hover:text-indigo-600 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {r.ticker}
-                        </Link>
+                        <span className="flex items-center gap-1">
+                          <Link
+                            to={`/securities/${r.ticker}`}
+                            className="text-[0.88rem] font-bold leading-[1.15] text-gray-900 hover:text-indigo-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {r.ticker}
+                          </Link>
+                          <ValueTrapMark row={r} />
+                        </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}
                         </span>
@@ -366,8 +397,11 @@ export function ScreenerTable({
                         to={`/securities/${r.ticker}`}
                         className="contents text-inherit no-underline"
                       >
-                        <span className="text-[0.88rem] font-bold leading-[1.15] text-gray-900">
-                          {r.ticker}
+                        <span className="flex items-center gap-1">
+                          <span className="text-[0.88rem] font-bold leading-[1.15] text-gray-900">
+                            {r.ticker}
+                          </span>
+                          <ValueTrapMark row={r} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                           {r.name ?? DASH}

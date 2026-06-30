@@ -169,5 +169,86 @@ def test_dominant_currency_empty_defaults_usd():
     assert dominant_currency([]) == "USD"
 
 
+# --------------------------------------------------------------------------
+# Phase 0 — per-sub-metric IC attribution (backtest instrumentation)
+# Synthetic point-in-time replay: a "good" sub-metric whose high percentile
+# leads to high forward return, a "noise" one, and a "sparse" one present for
+# only a handful of names/period (below the coverage floor). Confirms the
+# coverage floor never mislabels sparsity as a zero-IC signal.
+# --------------------------------------------------------------------------
+
+def _synthetic_replay():
+    import numpy as np
+    import pandas as pd
+
+    from engine import backtest as bt
+
+    rng = np.random.default_rng(7)
+    n = 60
+    sids = list(range(1, n + 1))
+    rebal = [D(2024, m, 1) for m in range(1, 13)] + [D(2025, m, 1) for m in range(1, 5)]
+    scores: dict = {}
+    px: dict = {D(2024, 1, 1): {s: 50.0 + s for s in sids}}
+    for i in range(1, len(rebal)):
+        t_prev, t = rebal[i - 1], rebal[i]
+        good = pd.Series({s: rng.uniform(0, 100) for s in sids})
+        fwd = (good / 100.0 - 0.5) * 0.2 + rng.normal(0, 0.05, n)
+        prev = px[t_prev]
+        px[t] = {s: max(1.0, prev[s] * (1.0 + float(fwd[s]))) for s in sids}
+        scores[t_prev] = pd.DataFrame({
+            "ticker": {s: f"T{s}" for s in sids},
+            "composite": good,
+            "good_metric": good,
+            "noise_metric": pd.Series({s: rng.uniform(0, 100) for s in sids}),
+            "sparse_metric": pd.Series(
+                {s: (rng.uniform(0, 100) if s <= 5 else float("nan")) for s in sids}
+            ),
+        })
+    factor_defs = {
+        "value": [("good_metric", "higher"), ("noise_metric", "higher"),
+                  ("sparse_metric", "higher")],
+    }
+    return bt, rebal, scores, px, factor_defs
+
+
+def test_submetric_columns_dedupes_and_orders():
+    from engine import backtest as bt
+    cols = bt._submetric_columns({
+        "a": [("x", "higher"), ("y", "lower")],
+        "b": [("y", "higher"), ("z", "higher")],
+    })
+    assert cols == ["x", "y", "z"]
+
+
+def test_submetric_attribution_good_metric_predictive():
+    bt, rebal, scores, px, defs = _synthetic_replay()
+    attr = bt._submetric_attribution(rebal, scores, px, defs, n_buckets=5, cost_bps=10.0)
+    assert set(attr) == {"good_metric", "noise_metric", "sparse_metric"}
+    good = attr["good_metric"]["coverage"]
+    assert good["evaluable"] is True
+    assert good["verdict"] == "predictive"
+    # a planted signal must out-IC pure noise
+    assert attr["good_metric"]["ic"]["mean"] > attr["noise_metric"]["ic"]["mean"]
+
+
+def test_submetric_sparse_is_insufficient_not_noise():
+    bt, rebal, scores, px, defs = _synthetic_replay()
+    attr = bt._submetric_attribution(rebal, scores, px, defs, n_buckets=5, cost_bps=10.0)
+    cov = attr["sparse_metric"]["coverage"]
+    # the coverage floor must refuse to call sparsity a zero-IC signal
+    assert cov["verdict"] == "insufficient_data"
+    assert cov["median_valid_names"] < bt.SUBMETRIC_MIN_NAMES
+
+
+def test_monotonicity_keys_and_direction():
+    bt, rebal, scores, px, _defs = _synthetic_replay()
+    mono = bt._monotonicity(rebal, scores, px, "good_metric", n_buckets=5)
+    assert set(mono) == {
+        "rank_corr_meanret", "top_gt_bottom", "periods_with_buckets", "low_evidence"
+    }
+    assert mono["top_gt_bottom"] is True
+    assert mono["rank_corr_meanret"] is not None and mono["rank_corr_meanret"] > 0
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

@@ -1,4 +1,5 @@
 import { SectorPill } from '@/components/screener/SectorPill'
+import { topDriver, type FactorPctls } from '@/lib/factorReading'
 import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
 
@@ -13,6 +14,26 @@ export function HeaderCard({
   header: SecurityHeader
   action?: React.ReactNode
 }) {
+  // "Why ranked here" one-liner (Phase 1, 1f) — built client-side from the
+  // percentiles already on the header. Names the factor pulling the composite up
+  // most (only when its lead is clear), plus how many sub-metrics were scored.
+  const pctls: FactorPctls = {
+    composite: header.composite,
+    growth: header.growth_pctl,
+    value: header.value_pctl,
+    quality: header.quality_pctl,
+    momentum: header.momentum_pctl,
+  }
+  const driver = topDriver(pctls)
+  const nSub = header.details?.sub_pctls
+    ? Object.values(header.details.sub_pctls).filter((v) => v != null).length
+    : null
+  const whyRanked =
+    header.composite == null
+      ? null
+      : `${driver ? `Strongest factor: ${driver.label}` : 'Balanced across factors'}` +
+        `${nSub != null ? ` · ${nSub} sub-metrics scored` : ''}`
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-[18px] rounded-card border border-gray-200 bg-white px-[22px] py-5 shadow-card">
       <div className="flex items-center gap-3.5">
@@ -66,6 +87,14 @@ export function HeaderCard({
           <div className={STAT_SUB}>nightly batch</div>
         </div>
         </div>
+        {whyRanked && (
+          <div
+            className="text-[0.72rem] text-gray-400"
+            title="The factor pulling this composite up the most, relative to the others. Descriptive — not advice."
+          >
+            {whyRanked}
+          </div>
+        )}
       </div>
     </div>
   )

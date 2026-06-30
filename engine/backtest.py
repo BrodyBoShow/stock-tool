@@ -357,6 +357,122 @@ def _backtest_key(
     }
 
 
+# ── Phase 0: per-sub-metric IC attribution ───────────────────────────────────
+# The composite + 4 factors already get an IC block; the ~14 ranked sub-metrics
+# underneath did not, so we never knew which actually predict forward returns and
+# which are dead weight (or predict with the WRONG sign). This measures each one
+# with the SAME bucket/IC machinery as a factor, then attaches honesty guards so
+# the numbers can't be read carelessly:
+#   - a coverage floor: a SPARSE signal (few names per period — e.g. insider buys,
+#     accruals) is reported "insufficient_data", never "no signal";
+#   - a multiple-testing bar (|t| must clear T_BAR, not 2.0) before any sub-metric
+#     is labelled predictive — testing 14 signals at once otherwise manufactures a
+#     false winner.
+# This is REPORT-ONLY measurement: it re-buckets scores already cached per
+# rebalance, adds no scoring passes, and changes no ranking.
+SUBMETRIC_MIN_PERIODS = 12   # below this many scored periods: not evaluable
+SUBMETRIC_MIN_NAMES = 20     # median valid names/period floor to be evaluable
+SUBMETRIC_T_BAR = 2.7        # ~Bonferroni bar for ~14 simultaneous IC tests
+
+
+def _submetric_columns(factor_defs: dict) -> list[str]:
+    """Distinct ranked sub-metric columns across all factors, order-preserving."""
+    seen: list[str] = []
+    for defs in factor_defs.values():
+        for col, _direction in defs:
+            if col not in seen:
+                seen.append(col)
+    return seen
+
+
+def _submetric_attribution(
+    rebal: list[date], scores: dict[date, pd.DataFrame],
+    px: dict[date, dict[int, float]], factor_defs: dict,
+    n_buckets: int, cost_bps: float,
+) -> dict:
+    """Per-sub-metric bucket/IC backtest + coverage diagnostics + a verdict.
+
+    Reuses _backtest_key (so IC/spread/bootstrap match the factor blocks exactly),
+    then adds median per-period valid-name count and a coverage/significance
+    verdict. The IC is CONDITIONAL on the complete-factor universe and
+    survivorship-inflated like every number here — judge on sign and magnitude."""
+    out: dict[str, dict] = {}
+    for col in _submetric_columns(factor_defs):
+        key = _backtest_key(rebal, scores, px, col, n_buckets, cost_bps)
+        # Median valid names/period: names with a non-null sub-metric AND a forward
+        # return. Distinguishes a true zero-IC from mere sparsity.
+        per_period_names: list[int] = []
+        for t, t_next in zip(rebal[:-1], rebal[1:], strict=False):
+            rep = scores.get(t)
+            if rep is None or col not in rep.columns:
+                continue
+            ranks = rep[col].dropna()
+            fwd = _fwd_returns(ranks.index, px[t], px[t_next])
+            per_period_names.append(int(len(ranks.index.intersection(fwd.index))))
+        median_names = int(np.median(per_period_names)) if per_period_names else 0
+        ic = key.get("ic")
+        n_periods = int(ic["n"]) if ic else 0
+        t_stat = ic["t_stat"] if ic else None
+        evaluable = n_periods >= SUBMETRIC_MIN_PERIODS and median_names >= SUBMETRIC_MIN_NAMES
+        if not evaluable:
+            verdict = "insufficient_data"
+        elif t_stat is not None and abs(t_stat) > SUBMETRIC_T_BAR:
+            verdict = "predictive" if t_stat > 0 else "predictive_wrong_sign"
+        else:
+            verdict = "no_significant_ic"
+        key["coverage"] = {
+            "median_valid_names": median_names,
+            "n_periods": n_periods,
+            "evaluable": evaluable,
+            "t_bar": SUBMETRIC_T_BAR,
+            "verdict": verdict,
+        }
+        out[col] = key
+    return out
+
+
+def _monotonicity(
+    rebal: list[date], scores: dict[date, pd.DataFrame],
+    px: dict[date, dict[int, float]], col: str, n_buckets: int = 10,
+) -> dict:
+    """Advisory decile monotonicity for one ranking column.
+
+    rank_corr_meanret = Spearman of bucket index (1..n) vs the bucket's MEAN
+    per-period forward return — i.e. selection skill, NOT chained lifetime CAGR
+    (which carries a volatility-drag artifact). This is a TIE-BREAKER secondary to
+    IC, never an independent gate; it ships without a null of its own and must not
+    be promoted to a gate without one. low_evidence flags too few decile periods."""
+    bucket_means: dict[int, list[float]] = {b: [] for b in range(1, n_buckets + 1)}
+    periods = 0
+    for t, t_next in zip(rebal[:-1], rebal[1:], strict=False):
+        rep = scores.get(t)
+        if rep is None or col not in rep.columns:
+            continue
+        ranks = rep[col].dropna()
+        fwd = _fwd_returns(ranks.index, px[t], px[t_next])
+        common = ranks.index.intersection(fwd.index)
+        means, _ = _bucket_returns(ranks.loc[common], fwd.loc[common], n_buckets)
+        if len(means) == n_buckets:
+            periods += 1
+            for b, v in means.items():
+                bucket_means[b].append(v)
+    avg = [float(np.mean(bucket_means[b])) for b in range(1, n_buckets + 1)
+           if bucket_means[b]]
+    if len(avg) < n_buckets or periods < 6:
+        return {"rank_corr_meanret": None, "top_gt_bottom": None,
+                "periods_with_buckets": periods, "low_evidence": True}
+    # Spearman via ranks (no scipy dependency), mirroring _safe_spearman.
+    idx = pd.Series(range(1, n_buckets + 1), dtype=float)
+    av = pd.Series(avg, dtype=float)
+    rank_corr = idx.rank().corr(av.rank())
+    return {
+        "rank_corr_meanret": float(rank_corr) if pd.notna(rank_corr) else None,
+        "top_gt_bottom": bool(avg[-1] > avg[0]),
+        "periods_with_buckets": periods,
+        "low_evidence": periods < SUBMETRIC_MIN_PERIODS,
+    }
+
+
 def _benchmark_curves(conn, rebal: list[date], px: dict[date, dict[int, float]],
                       scores: dict[date, pd.DataFrame]) -> dict:
     """Growth-of-$1 curves for SPY and the equal-weight scored universe."""
@@ -417,6 +533,7 @@ def store_results(out: dict, conn=None) -> int:
                                 "cost_bps": out["cost_bps"],
                                 "rebalances": out["rebalances"]}),
                     json.dumps({"results": out["results"],
+                                "submetrics": out.get("submetrics"),
                                 "benchmarks": out.get("benchmarks"),
                                 "significance": out.get("significance")}),
                 ),
@@ -490,6 +607,18 @@ def run_backtest(
         keys = {"composite": _backtest_key(rebal, scores, px, "composite", n_buckets, cost_bps)}
         for f in factor_cols:
             keys[f] = _backtest_key(rebal, scores, px, f, n_buckets, cost_bps)
+        # Phase 0: per-sub-metric IC attribution (which sub-signals actually
+        # predict) + advisory decile monotonicity on the composite, factors AND
+        # sub-metrics. Pure measurement over the already-cached scores — no extra
+        # scoring passes, no ranking change. The factor/composite IC blocks in
+        # `keys` are untouched (only a `monotonicity` sub-key is appended), so an
+        # A/B against a prior run still diffs the IC blocks byte-for-byte.
+        submetrics = _submetric_attribution(
+            rebal, scores, px, FACTOR_DEFS_BY_VERSION[config_version],
+            n_buckets, cost_bps,
+        )
+        for col, key in {**keys, **submetrics}.items():
+            key["monotonicity"] = _monotonicity(rebal, scores, px, col)
         benchmarks = _benchmark_curves(conn, rebal, px, scores)
 
         print("[backtest] running random-portfolio null (composite)…", flush=True)
@@ -506,6 +635,7 @@ def run_backtest(
             "n_buckets": n_buckets,
             "cost_bps": cost_bps,
             "results": keys,
+            "submetrics": submetrics,
             "benchmarks": benchmarks,
             "significance": significance,
         }
