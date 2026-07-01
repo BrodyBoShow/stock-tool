@@ -1,27 +1,52 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import {
+  EnhancedFilings,
+  EnhancedHeadlines,
+  EnhancedInsider,
+  EnhancedMovers,
+} from '@/components/market/enhanced'
+import { MarketSubHeader } from '@/components/market/MarketSubHeader'
 import {
   AiBrief,
   FactorOfDay,
   FreshnessRow,
   MacroCardBox,
-  MoverList,
   RegimeHero,
   RegimeStrip,
-  SectorTable,
   SessionSnapshot,
 } from '@/components/market/sections'
+import { SectorTreemap } from '@/components/market/SectorTreemap'
 import { BreadthBar, FilingFreshness, Provenance } from '@/components/market/shared'
-import { G, marketStatus, maxIsoDate, timeAgo } from '@/components/market/utils'
+import { G, marketStatus, maxIsoDate } from '@/components/market/utils'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useWatchlistSet } from '@/hooks/useWatchlist'
 import { generateMarketBrief, getMarketOverview, getQuotes } from '@/lib/api'
-import { fmtDate, fmtMoney, fmtShortDate, fmtSignedPct } from '@/lib/format'
+import { fmtDate, fmtSignedPct } from '@/lib/format'
 import type { MarketOverviewResponse } from '@/types/api'
+
+/** Small uppercase eyebrow that introduces each information tier. */
+function TierLabel({ n, title }: { n: 1 | 2 | 3; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-500">
+        <span className="text-indigo-600">Tier {n}</span>
+        <span className="text-slate-300" aria-hidden>·</span>
+        {title}
+      </span>
+      <span className="h-px flex-1 bg-slate-100" />
+    </div>
+  )
+}
+
+/** Smooth-scroll to an element id, accounting for the sticky sub-header. */
+function scrollToTier(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 export function MarketPage() {
   const qc = useQueryClient()
@@ -29,6 +54,7 @@ export function MarketPage() {
     queryKey: ['market', 'overview'], queryFn: getMarketOverview, staleTime: 5 * 60 * 1000, retry: 1,
   })
   const { data: quotesData } = useQuery({ queryKey: ['quotes'], queryFn: getQuotes, staleTime: 5 * 60 * 1000 })
+  const { tickers: watchlist } = useWatchlistSet()
 
   const briefMut = useMutation({
     mutationFn: generateMarketBrief,
@@ -39,6 +65,36 @@ export function MarketPage() {
   useEffect(() => {
     if (data && !aiBrief && !attempted.current) { attempted.current = true; briefMut.mutate() }
   }, [data, aiBrief, briefMut])
+
+  // Tickers already on the page — the safe universe for headline ticker-tagging
+  // (avoids matching arbitrary uppercase words). Recomputed only when data changes.
+  const knownTickers = useMemo(() => {
+    const set = new Set<string>()
+    if (!data) return set
+    for (const m of [...data.movers.gainers, ...data.movers.losers]) if (m.ticker) set.add(m.ticker.toUpperCase())
+    for (const f of data.filings) if (f.ticker) set.add(f.ticker.toUpperCase())
+    for (const i of data.insider_buys) if (i.ticker) set.add(i.ticker.toUpperCase())
+    for (const t of watchlist) set.add(t.toUpperCase())
+    return set
+  }, [data, watchlist])
+
+  // Keyboard shortcuts: 1/2/3 jump to a tier, r refetches. Guarded against form
+  // fields and modifier chords. The effect only wires the listener — the handler
+  // does the scroll/refetch, so no setState runs in the effect body.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const el = e.target as HTMLElement | null
+      const tag = el?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return
+      if (e.key === '1') scrollToTier('tier-1')
+      else if (e.key === '2') scrollToTier('tier-2')
+      else if (e.key === '3') scrollToTier('tier-3')
+      else if (e.key === 'r' || e.key === 'R') void refetch()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [refetch])
 
   if (isPending) {
     return (
@@ -68,6 +124,11 @@ export function MarketPage() {
 
   return (
     <div className="space-y-5">
+      <MarketSubHeader d={d} onRefresh={() => void refetch()} />
+
+      {/* ── TIER 1 · THE 2-SECOND READ ─────────────────────────────────────── */}
+      <TierLabel n={1} title="The 2-second read" />
+      <div id="tier-1" className="scroll-mt-16 space-y-5">
       <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
         <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
         <div className="px-7 pb-5 pt-6">
@@ -117,7 +178,11 @@ export function MarketPage() {
           <AiBrief brief={aiBrief} computed={d.brief} generating={briefMut.isPending} asOf={d.as_of} stale={stale} />
         </div>
       </SectionCard>
+      </div>
 
+      {/* ── TIER 2 · THE 20-SECOND SCAN ────────────────────────────────────── */}
+      <TierLabel n={2} title="The 20-second scan" />
+      <div id="tier-2" className="scroll-mt-16 space-y-5">
       <SectionCard
         title="Sector performance"
         tip={G.equalWeight}
@@ -134,7 +199,7 @@ export function MarketPage() {
             <InfoTip text={G.rotation} />
           </div>
         )}
-        <SectorTable sectors={d.sectors} />
+        <SectorTreemap sectors={d.sectors} />
       </SectionCard>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -210,26 +275,21 @@ export function MarketPage() {
         </SectionCard>
       </div>
 
-      {/* what worked today (factors) + movers */}
-      <div className="grid gap-5 lg:grid-cols-5">
-        {d.factor_day && d.factor_day.length > 0 && (
-          <div className="lg:col-span-2">
-            <SectionCard title="What worked today — by factor" tip={G.factorDay}
-              hint="Which style the market rewarded, from the factor scores that drive the screener.">
-              <FactorOfDay factors={d.factor_day} />
-            </SectionCard>
-          </div>
-        )}
-        <div className={d.factor_day && d.factor_day.length > 0 ? 'lg:col-span-3' : 'lg:col-span-5'}>
-          <SectionCard title={`Biggest movers — ${fmtDate(d.as_of)} session`}
-            hint="Names above $250M market cap only (micro-cap noise excluded). Click through for the full deep-dive.">
-            <div className="grid gap-6 md:grid-cols-2">
-              <MoverList movers={d.movers.gainers} title="Gainers" />
-              <MoverList movers={d.movers.losers} title="Losers" />
-            </div>
-          </SectionCard>
-        </div>
+      {d.factor_day && d.factor_day.length > 0 && (
+        <SectionCard title="What worked today — by factor" tip={G.factorDay}
+          hint="Which style the market rewarded, from the factor scores that drive the screener.">
+          <FactorOfDay factors={d.factor_day} />
+        </SectionCard>
+      )}
       </div>
+
+      {/* ── TIER 3 · THE 5-MINUTE DRILL-DOWN ───────────────────────────────── */}
+      <TierLabel n={3} title="The 5-minute drill-down" />
+      <div id="tier-3" className="scroll-mt-16 space-y-5">
+      <SectionCard title={`Biggest movers — ${fmtDate(d.as_of)} session`}
+        hint="Names above $250M market cap only (micro-cap noise excluded). Click through for the full deep-dive.">
+        <EnhancedMovers gainers={d.movers.gainers} losers={d.movers.losers} />
+      </SectionCard>
 
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
         <div className="md:col-span-2 lg:col-span-3">
@@ -238,71 +298,22 @@ export function MarketPage() {
             hint="Material-event filings across all ~5,500 companies in the last few days: M&A, executive changes, results, delistings."
             right={<FilingFreshness date={maxIsoDate(d.filings.map((f) => f.filed_date))} />}
           >
-            <div className="max-h-[460px] space-y-3 overflow-auto pr-1">
-              {d.filings.length === 0 && <p className="text-sm text-gray-400">No high-signal filings in the window.</p>}
-              {d.filings.map((f) => (
-                <div key={f.accession_no + f.security_id} className="flex items-start gap-3">
-                  <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-slate-400">
-                    {fmtShortDate(f.filed_date)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2">
-                      {f.ticker && (
-                        <Link to={`/securities/${f.ticker}`} className="font-bold text-slate-800 hover:text-indigo-600">{f.ticker}</Link>
-                      )}
-                      <span className="truncate text-[0.76rem] text-slate-400">
-                        {f.name} {f.market_cap ? `· ${fmtMoney(f.market_cap)}` : ''}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {f.labels.slice(0, 3).map((l) => (
-                        <span key={l} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[0.68rem] font-semibold text-indigo-600">{l}</span>
-                      ))}
-                      {f.primary_doc_url && (
-                        <a href={f.primary_doc_url} target="_blank" rel="noreferrer"
-                          className="rounded-full bg-slate-50 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-400 hover:text-indigo-600">SEC filing ↗</a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <EnhancedFilings filings={d.filings} watchlist={watchlist} />
           </SectionCard>
         </div>
         <div className="md:col-span-2 lg:col-span-2">
           <SectionCard title="Insider buying pulse"
             hint="Largest open-market insider purchases filed in the last 7 days (Form 4, code P). Context only."
             right={<FilingFreshness date={maxIsoDate(d.insider_buys.map((i) => i.last_filed))} />}>
-            <div className="space-y-2.5">
-              {d.insider_buys.length === 0 && <p className="text-sm text-gray-400">No open-market buys filed this week.</p>}
-              {d.insider_buys.map((i) => (
-                <div key={i.security_id} className="flex items-center gap-2.5 text-[0.84rem]">
-                  <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-slate-800 hover:text-indigo-600">{i.ticker}</Link>
-                  <span className="min-w-0 flex-1 truncate text-[0.76rem] text-slate-400">
-                    {i.buyers} buyer{i.buyers !== 1 ? 's' : ''} · filed {fmtShortDate(i.last_filed)}
-                  </span>
-                  <span className="shrink-0 font-bold tabular-nums text-emerald-600">{fmtMoney(i.total_value)}</span>
-                </div>
-              ))}
-            </div>
+            <EnhancedInsider buys={d.insider_buys} />
           </SectionCard>
         </div>
       </div>
 
       <SectionCard title="Headlines" hint="Top stories from public feeds (CNBC, MarketWatch, Yahoo Finance) — refreshed ~15 min.">
-        <div className="space-y-2.5">
-          {d.headlines.length === 0 && (
-            <p className="text-sm text-gray-400">Feeds unreachable right now — the rest of the page is unaffected.</p>
-          )}
-          {d.headlines.map((h) => (
-            <a key={h.url} href={h.url} target="_blank" rel="noreferrer" className="group flex items-baseline gap-3 no-underline">
-              <span className="w-24 shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">{h.source}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.88rem] font-medium text-slate-700 group-hover:text-indigo-600">{h.title}</span>
-              <span className="shrink-0 text-[0.7rem] text-slate-400">{timeAgo(h.published_epoch)}</span>
-            </a>
-          ))}
-        </div>
+        <EnhancedHeadlines headlines={d.headlines} knownTickers={knownTickers} watchlist={watchlist} />
       </SectionCard>
+      </div>
 
       <p className="pb-2 text-center text-xs text-gray-400">
         Whole-market context from nightly data, SEC filings and public feeds — not investment advice.
