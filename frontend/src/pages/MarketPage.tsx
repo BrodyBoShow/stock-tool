@@ -128,7 +128,7 @@ export function MarketPage() {
 
       {/* ── TIER 1 · THE 2-SECOND READ ─────────────────────────────────────── */}
       <TierLabel n={1} title="The 2-second read" />
-      <div id="tier-1" className="scroll-mt-16 space-y-5">
+      <div id="tier-1" className="scroll-mt-24 space-y-5">
       <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
         <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
         <div className="px-7 pb-5 pt-6">
@@ -182,7 +182,7 @@ export function MarketPage() {
 
       {/* ── TIER 2 · THE 20-SECOND SCAN ────────────────────────────────────── */}
       <TierLabel n={2} title="The 20-second scan" />
-      <div id="tier-2" className="scroll-mt-16 space-y-5">
+      <div id="tier-2" className="scroll-mt-24 space-y-5">
       <SectionCard
         title="Sector performance"
         tip={G.equalWeight}
@@ -285,7 +285,7 @@ export function MarketPage() {
 
       {/* ── TIER 3 · THE 5-MINUTE DRILL-DOWN ───────────────────────────────── */}
       <TierLabel n={3} title="The 5-minute drill-down" />
-      <div id="tier-3" className="scroll-mt-16 space-y-5">
+      <div id="tier-3" className="scroll-mt-24 space-y-5">
       <SectionCard title={`Biggest movers — ${fmtDate(d.as_of)} session`}
         hint="Names above $250M market cap only (micro-cap noise excluded). Click through for the full deep-dive.">
         <EnhancedMovers gainers={d.movers.gainers} losers={d.movers.losers} />

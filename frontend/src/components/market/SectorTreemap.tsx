@@ -68,7 +68,12 @@ function SectorTiles({ sectors }: { sectors: MarketSectorRow[] }) {
           style={{ flexGrow: rowWeights[ri] / totalWeight, flexBasis: 0 }}
         >
           {row.map((t) => {
-            const style = heat(t.s.r1d, 0.025)
+            // Null 1-day return → a hatched neutral tile that reads as "no data",
+            // not a flat 0% move (the color legend only speaks for real returns).
+            const noData = t.s.r1d == null
+            const style = noData
+              ? { background: 'repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 6px,#e2e8f0 6px,#e2e8f0 12px)' }
+              : heat(t.s.r1d, 0.025)
             return (
               <Link
                 key={t.s.sector}
@@ -81,9 +86,9 @@ function SectorTiles({ sectors }: { sectors: MarketSectorRow[] }) {
                   {t.s.sector}
                 </span>
                 <span className="text-[0.82rem] font-extrabold tabular-nums text-slate-900">
-                  {fmtSignedPct(t.s.r1d)}
+                  {noData ? 'no data' : fmtSignedPct(t.s.r1d)}
                 </span>
-                {t.s.adv_pct != null && (
+                {!noData && t.s.adv_pct != null && (
                   <span className="text-[0.62rem] font-semibold tabular-nums text-slate-700/80">
                     {(t.s.adv_pct * 100).toFixed(0)}% up
                   </span>

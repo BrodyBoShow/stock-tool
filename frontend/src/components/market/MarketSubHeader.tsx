@@ -31,8 +31,11 @@ export function MarketSubHeader({ d, onRefresh }: { d: MarketOverviewResponse; o
   const freshChip = FRESH_TIER[tier]
   const spy1d = d.market.spy_r1d
 
+  // Sits BELOW the global TopNav (sticky top-0 z-30, ~56px). Offset a touch less
+  // than the nav height with a lower z-index so it tucks under the nav with no
+  // gap regardless of the nav's exact height, and never covers it.
   return (
-    <div className="sticky top-0 z-40 -mx-4 border-b border-slate-200 bg-white/85 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/70 sm:-mx-6 sm:px-6">
+    <div className="sticky top-12 z-20 -mx-4 border-b border-slate-200 bg-white/90 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/75 sm:-mx-6 sm:px-6">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.72rem]">
         <span className="font-bold uppercase tracking-[0.1em] text-indigo-600">Market</span>
 

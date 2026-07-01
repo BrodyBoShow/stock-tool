@@ -269,23 +269,27 @@ const HEADLINE_OPTIONS: { key: HeadlineFilter; label: string }[] = [
   { key: 'earnings', label: 'Earnings' },
 ]
 
-// Ticker symbols that are also common English words — matching these in a
-// headline is almost always the word, not the company (C3.ai=AI, Gartner=IT,
-// Allstate=ALL, Ford=F). Skip them so a "AI rally" headline never tags $AI.
+// Uppercase abbreviations that are ALSO ticker symbols — even written in caps
+// these almost always mean the concept, not the company (AI = artificial
+// intelligence not C3.ai, IT = information tech not Gartner, CEO/ETF/GDP…).
 const TICKER_STOPWORDS = new Set([
-  'A', 'I', 'AI', 'IT', 'ON', 'OR', 'BE', 'BY', 'GO', 'SO', 'UP', 'US', 'AN', 'AT', 'AS', 'IS', 'IN', 'OF', 'TO', 'DO', 'WE', 'HE', 'ME', 'MY', 'NO', 'IF',
-  'ALL', 'ARE', 'FOR', 'ONE', 'NEW', 'NOW', 'OUT', 'OWN', 'BIG', 'CEO', 'ETF', 'GDP', 'CPI', 'USA', 'AND', 'THE', 'ANY', 'CAN', 'HAS', 'HAD', 'WAS', 'ITS', 'BUY', 'PAY', 'TWO', 'TEN', 'SEE', 'GET', 'WHO', 'HOW', 'WHY', 'YOU', 'NET', 'KEY', 'RUN', 'TOP', 'LOW', 'HIT', 'CUT', 'WIN', 'END',
+  'AI', 'IT', 'US', 'UK', 'EU', 'CEO', 'CFO', 'ETF', 'GDP', 'CPI', 'PPI', 'IPO', 'SEC', 'FED', 'ESG', 'USA', 'ALL', 'ONE', 'NEW', 'Q1', 'Q2', 'Q3', 'Q4',
 ])
 
-/** Whole-word ticker match against a known-on-page set (no arbitrary uppercase
- *  regex, and skipping symbols that are common English words). */
+/** Ticker mentions in a headline, matched against the known-on-page set. Only an
+ *  already-ALL-CAPS token counts as a symbol ("OPEN"/"$OPEN"), never the ordinary
+ *  lowercase word ("open"), so English words are never mislabeled as companies.
+ *  All-caps headlines can't be disambiguated, so they're skipped entirely. */
 function tickersInTitle(title: string, known: Set<string>): string[] {
   if (known.size === 0) return []
+  if (title === title.toUpperCase()) return [] // shouted headline — no signal
   const words = title.split(/[^A-Za-z0-9.]+/)
   const hits = new Set<string>()
   for (const w of words) {
-    const up = w.toUpperCase()
-    if (known.has(up) && !TICKER_STOPWORDS.has(up)) hits.add(up)
+    // Require the SOURCE token to be all-caps with a letter — a real symbol,
+    // not a Title-cased or lowercase English word.
+    if (!/[A-Z]/.test(w) || w !== w.toUpperCase()) continue
+    if (known.has(w) && !TICKER_STOPWORDS.has(w)) hits.add(w)
   }
   return [...hits]
 }
