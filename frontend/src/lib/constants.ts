@@ -263,4 +263,6 @@ export const MACRO_DISPLAY: Array<{
   { id: 'FEDFUNDS', label: 'Fed Funds', unit: '%', dec: 2 },
   { id: 'CPIAUCSL', label: 'CPI', unit: '', dec: 1 },
   { id: 'VIXCLS', label: 'VIX', unit: '', dec: 2 },
+  { id: 'DTWEXBGS', label: 'US Dollar', unit: '', dec: 1 },
+  { id: 'BAMLH0A0HYM2', label: 'HY Spread', unit: '%', dec: 2 },
 ]
