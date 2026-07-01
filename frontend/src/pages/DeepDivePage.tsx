@@ -216,6 +216,7 @@ export function DeepDivePage() {
           onDaysChange={setDays}
           isFetching={isFetching}
           ticker={header.ticker}
+          filings={data.filings}
         />
       </div>
 

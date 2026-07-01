@@ -19,7 +19,7 @@ import { getEvents, getInsiders, getMacroSeries } from '@/lib/api'
 import { MACRO_DISPLAY } from '@/lib/constants'
 import { tickLabel } from '@/lib/format'
 import { analyzeWyckoff } from '@/lib/wyckoff'
-import type { PricePoint } from '@/types/api'
+import type { FilingRow, PricePoint } from '@/types/api'
 
 import { OverlayToggle, PriceTooltip, VolumeTooltip } from './priceChartParts'
 import {
@@ -33,18 +33,40 @@ import {
 } from './priceChartUtils'
 import { WyckoffReadPanel } from './WyckoffReadPanel'
 
+// Marker categories the chart can overlay. Each pulls from one source, snaps to
+// the nearest price bar, and draws a labeled reference line. Filings (top) and
+// insider trades (bottom) sit on opposite sides so they don't collide.
+type MarkerCat = 'earnings' | 'k8_high' | 'k8_routine' | 'other_filing' | 'buy' | 'sell'
+
+const MARKER_META: Record<
+  MarkerCat,
+  { label: string; color: string; glyph: string; pos: 'top' | 'bottom' }
+> = {
+  earnings: { label: '10-K / 10-Q', color: '#2563eb', glyph: '▾', pos: 'top' },
+  k8_high: { label: '8-K · high-signal', color: '#f59e0b', glyph: '▾', pos: 'top' },
+  k8_routine: { label: '8-K · routine', color: '#fcd34d', glyph: '▾', pos: 'top' },
+  other_filing: { label: 'Other filings', color: '#64748b', glyph: '▾', pos: 'top' },
+  buy: { label: 'Insider buy', color: '#22c55e', glyph: '▴', pos: 'bottom' },
+  sell: { label: 'Insider sell', color: '#ef4444', glyph: '▾', pos: 'bottom' },
+}
+// Draw order left→right in the filter row.
+const MARKER_ORDER: MarkerCat[] = ['earnings', 'k8_high', 'k8_routine', 'other_filing', 'buy', 'sell']
+const MARKER_CAP = 60 // per category, most-recent kept — keeps a wide window legible
+
 export function PriceChart({
   prices,
   days,
   onDaysChange,
   isFetching,
   ticker,
+  filings = [],
 }: {
   prices: PricePoint[]
   days: number
   onDaysChange: (d: number) => void
   isFetching: boolean
   ticker: string
+  filings?: FilingRow[]
 }) {
   const [mode, setMode] = useState<'price' | 'wyckoff'>('price')
   const [showSignals, setShowSignals] = useState(true)
@@ -55,7 +77,12 @@ export function PriceChart({
   const [showMA50, setShowMA50] = useState(false)
   const [showMA200, setShowMA200] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
-  const [showEvents, setShowEvents] = useState(false)
+  const [showMarkers, setShowMarkers] = useState(false)
+  // Defaults preserve the prior behavior — high-signal 8-Ks + insider buys — and
+  // leave the noisier categories opt-in so a multi-year window stays legible.
+  const [cats, setCats] = useState<Record<MarkerCat, boolean>>({
+    earnings: false, k8_high: true, k8_routine: false, other_filing: false, buy: true, sell: false,
+  })
   const ranges = useMemo(() => buildRanges(), [])
 
   const wyckoff = useMemo(() => analyzeWyckoff(prices), [prices])
@@ -93,14 +120,14 @@ export function PriceChart({
   const { data: eventsData } = useQuery({
     queryKey: ['events', ticker],
     queryFn: () => getEvents(ticker),
-    enabled: showEvents,
+    enabled: showMarkers,
     staleTime: 10 * 60 * 1000,
   })
 
   const { data: insidersData } = useQuery({
     queryKey: ['insiders', ticker],
     queryFn: () => getInsiders(ticker),
-    enabled: showEvents,
+    enabled: showMarkers,
     staleTime: 10 * 60 * 1000,
   })
 
@@ -135,24 +162,50 @@ export function PriceChart({
     }
   }, [priceRows])
 
-  const visibleEvents = useMemo(() => {
-    if (!showEvents || !eventsData || !dateRange) return []
-    return eventsData.events.filter((e) => {
+  // All filing/event markers, bucketed by category, filtered to the visible
+  // range, capped per category (most-recent kept) so a wide window stays legible.
+  const markers = useMemo(() => {
+    const counts = { earnings: 0, k8_high: 0, k8_routine: 0, other_filing: 0, buy: 0, sell: 0 } as Record<MarkerCat, number>
+    if (!showMarkers || !dateRange) return { list: [] as { key: string; date: string; cat: MarkerCat; title: string }[], counts, capped: [] as MarkerCat[] }
+    const inRange = (d: string | null | undefined): d is string =>
+      !!d && d >= dateRange.start && d <= dateRange.end
+    const buckets: Record<MarkerCat, { date: string; title: string }[]> = {
+      earnings: [], k8_high: [], k8_routine: [], other_filing: [], buy: [], sell: [],
+    }
+    // 8-K material events — richer plain-English labels than the raw filing row.
+    for (const e of eventsData?.events ?? []) {
       const d = e.event_date || e.filed_date
-      return e.high_signal && d >= dateRange.start && d <= dateRange.end
-    })
-  }, [showEvents, eventsData, dateRange])
-
-  const visibleBuys = useMemo(() => {
-    if (!showEvents || !insidersData || !dateRange) return []
-    return insidersData.transactions.filter(
-      (t) =>
-        t.transaction_code === 'P' &&
-        t.transaction_date &&
-        t.transaction_date >= dateRange.start &&
-        t.transaction_date <= dateRange.end,
-    )
-  }, [showEvents, insidersData, dateRange])
+      if (!inRange(d)) continue
+      const cat: MarkerCat = e.high_signal ? 'k8_high' : 'k8_routine'
+      buckets[cat].push({ date: d, title: `${e.labels[0] ?? '8-K'} · ${d}` })
+    }
+    // SEC filings — 10-K/10-Q and everything else. 8-K comes from events above;
+    // Form 3/4/5 are insider filings, shown via the buy/sell categories.
+    for (const f of filings) {
+      if (!inRange(f.filed_date)) continue
+      const form = f.form.toUpperCase()
+      if (form.startsWith('8-K') || /^[345](\/A)?$/.test(form)) continue
+      const cat: MarkerCat = form.startsWith('10-K') || form.startsWith('10-Q') ? 'earnings' : 'other_filing'
+      buckets[cat].push({ date: f.filed_date, title: `${f.label ?? f.form} · ${f.filed_date}` })
+    }
+    // Form 4 open-market trades.
+    for (const t of insidersData?.transactions ?? []) {
+      if (!inRange(t.transaction_date)) continue
+      if (t.transaction_code === 'P') buckets.buy.push({ date: t.transaction_date, title: `${t.owner_name} bought · ${t.transaction_date}` })
+      else if (t.transaction_code === 'S') buckets.sell.push({ date: t.transaction_date, title: `${t.owner_name} sold · ${t.transaction_date}` })
+    }
+    const list: { key: string; date: string; cat: MarkerCat; title: string }[] = []
+    const capped: MarkerCat[] = []
+    for (const cat of MARKER_ORDER) {
+      const items = buckets[cat]
+      counts[cat] = items.length
+      if (!cats[cat]) continue
+      const kept = items.length > MARKER_CAP ? items.slice(-MARKER_CAP) : items
+      if (items.length > MARKER_CAP) capped.push(cat)
+      kept.forEach((it, i) => list.push({ key: `${cat}-${i}-${it.date}`, date: it.date, cat, title: it.title }))
+    }
+    return { list, counts, capped }
+  }, [showMarkers, cats, eventsData, insidersData, filings, dateRange])
 
   const overlayMeta = MACRO_DISPLAY.find((m) => m.id === seriesId) ?? null
 
@@ -243,9 +296,9 @@ export function PriceChart({
           />
         )}
         <OverlayToggle
-          on={showEvents}
-          onToggle={() => setShowEvents((x) => !x)}
-          label="Events"
+          on={showMarkers}
+          onToggle={() => setShowMarkers((x) => !x)}
+          label="Events & filings"
           color="#f59e0b"
           bgOn="bg-amber-50"
           textOn="text-amber-700"
@@ -281,6 +334,38 @@ export function PriceChart({
           </>
         )}
       </div>
+      )}
+
+      {/* Marker category filters — each chip shows its count and toggles on/off */}
+      {mode === 'price' && showMarkers && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Show</span>
+          {MARKER_ORDER.map((cat) => {
+            const meta = MARKER_META[cat]
+            const on = cats[cat]
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCats((c) => ({ ...c, [cat]: !c[cat] }))}
+                aria-pressed={on}
+                title={`${meta.label} — ${markers.counts[cat]} in this range`}
+                className={
+                  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.7rem] font-semibold transition-colors ' +
+                  (on
+                    ? 'border-slate-300 bg-white text-slate-700'
+                    : 'border-gray-200 bg-slate-50 text-slate-400 hover:text-slate-600')
+                }
+              >
+                <span aria-hidden style={{ color: on ? meta.color : '#cbd5e1' }}>
+                  {meta.glyph}
+                </span>
+                {meta.label}
+                <span className="tabular-nums text-slate-400">{markers.counts[cat]}</span>
+              </button>
+            )
+          })}
+        </div>
       )}
 
       {/* VSA legend — Wyckoff mode */}
@@ -387,7 +472,7 @@ export function PriceChart({
       )}
 
       {/* Legend for active overlays */}
-      {mode === 'price' && (showMA50 || showMA200 || showEvents) && (
+      {mode === 'price' && (showMA50 || showMA200 || (showMarkers && markers.capped.length > 0)) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.7rem]">
           {showMA50 && (
             <span className="flex items-center gap-1" style={{ color: MA50_COLOR }}>
@@ -401,26 +486,12 @@ export function PriceChart({
               200-day MA
             </span>
           )}
-          {/* When Events is on, always report the status of BOTH marker types
-              so an empty result reads as "no data", not a broken toggle. */}
-          {showEvents &&
-            (visibleEvents.length > 0 ? (
-              <span className="flex items-center gap-1 text-amber-700">
-                <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#f59e0b' }} />
-                8-K filing ({visibleEvents.length})
-              </span>
-            ) : (
-              <span className="text-gray-400">No high-signal 8-Ks in this range</span>
-            ))}
-          {showEvents &&
-            (visibleBuys.length > 0 ? (
-              <span className="flex items-center gap-1 text-green-700">
-                <span className="inline-block h-3 w-0.5 rounded" style={{ background: '#22c55e' }} />
-                Insider buy ({visibleBuys.length})
-              </span>
-            ) : (
-              <span className="text-gray-400">No insider buys in this range</span>
-            ))}
+          {showMarkers && markers.capped.length > 0 && (
+            <span className="text-gray-400">
+              Showing the most recent {MARKER_CAP} per type —{' '}
+              {markers.capped.map((c) => MARKER_META[c].label).join(', ')} capped in this range.
+            </span>
+          )}
         </div>
       )}
 
@@ -491,29 +562,27 @@ export function PriceChart({
                   }
                 />
 
-                {/* Event reference lines — x snapped to the nearest price bar */}
-                {visibleEvents.map((e) => (
-                  <ReferenceLine
-                    key={e.accession_no}
-                    yAxisId="price"
-                    x={snapToBar(e.event_date || e.filed_date) ?? undefined}
-                    stroke="#f59e0b"
-                    strokeWidth={1.5}
-                    strokeDasharray="3 2"
-                    label={{ value: '▾', position: 'top', fontSize: 10, fill: '#f59e0b' }}
-                  />
-                ))}
-                {visibleBuys.map((t, i) => (
-                  <ReferenceLine
-                    key={`buy-${i}`}
-                    yAxisId="price"
-                    x={snapToBar(t.transaction_date!) ?? undefined}
-                    stroke="#22c55e"
-                    strokeWidth={1.5}
-                    strokeDasharray="3 2"
-                    label={{ value: '▴', position: 'top', fontSize: 10, fill: '#22c55e' }}
-                  />
-                ))}
+                {/* Filing/event markers — x snapped to the nearest price bar.
+                    Filings sit on top, insider trades on the bottom axis. */}
+                {markers.list.map((m) => {
+                  const meta = MARKER_META[m.cat]
+                  return (
+                    <ReferenceLine
+                      key={m.key}
+                      yAxisId="price"
+                      x={snapToBar(m.date) ?? undefined}
+                      stroke={meta.color}
+                      strokeWidth={1.25}
+                      strokeDasharray="3 2"
+                      label={{
+                        value: meta.glyph,
+                        position: meta.pos === 'top' ? 'top' : 'insideBottom',
+                        fontSize: 10,
+                        fill: meta.color,
+                      }}
+                    />
+                  )
+                })}
 
                 <Area
                   yAxisId="price"
