@@ -200,7 +200,12 @@ export function PriceChart({
       const items = buckets[cat]
       counts[cat] = items.length
       if (!cats[cat]) continue
-      const kept = items.length > MARKER_CAP ? items.slice(-MARKER_CAP) : items
+      // Keep the most-recent MARKER_CAP. Sort desc by date first — the source
+      // arrays are newest-first, so a bare slice(-CAP) would keep the OLDEST.
+      const kept =
+        items.length > MARKER_CAP
+          ? [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, MARKER_CAP)
+          : items
       if (items.length > MARKER_CAP) capped.push(cat)
       kept.forEach((it, i) => list.push({ key: `${cat}-${i}-${it.date}`, date: it.date, cat, title: it.title }))
     }
