@@ -922,6 +922,12 @@ def market_pulse(owner_id: str) -> dict[str, Any]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT max(date) FROM prices_daily")
+            row = cur.fetchone()
+            # Only count a name's move as "last session" if it actually traded in
+            # the last ~9 days — mirrors the movers path so a delisted/halted
+            # watchlist name's months-old close isn't mislabeled as this session.
+            cutoff = (row[0] - timedelta(days=9)) if row and row[0] else date(1970, 1, 1)
             cur.execute(
                 """
                 WITH wl AS (
@@ -935,7 +941,7 @@ def market_pulse(owner_id: str) -> dict[str, Any]:
                          row_number() OVER (PARTITION BY p.security_id ORDER BY p.date DESC) AS rn
                   FROM prices_daily p
                   JOIN wl ON wl.security_id = p.security_id
-                  WHERE p.close IS NOT NULL
+                  WHERE p.close IS NOT NULL AND p.date >= %s
                 )
                 SELECT wl.ticker, wl.name,
                        max(r.close) FILTER (WHERE r.rn = 1) AS last,
@@ -943,7 +949,7 @@ def market_pulse(owner_id: str) -> dict[str, Any]:
                 FROM wl LEFT JOIN recent r ON r.security_id = wl.security_id AND r.rn <= 2
                 GROUP BY wl.ticker, wl.name
                 """,
-                (owner_id,),
+                (owner_id, cutoff),
             )
             names = []
             for tk, nm, last, prev in cur.fetchall():

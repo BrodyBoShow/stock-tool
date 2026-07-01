@@ -217,9 +217,7 @@ export function MarketPage() {
           <div className="space-y-4">
             <BreadthBar label="Advancers (last session)"
               pct={b.advancers / Math.max(b.advancers + b.decliners, 1)}
-              detail={`${b.advancers.toLocaleString()} up · ${b.decliners.toLocaleString()} down${
-                b.adv_pct_pctl != null ? ` · ${b.adv_pct_pctl}th pctl of 90d` : ''
-              }`} />
+              detail={`${b.advancers.toLocaleString()} up · ${b.decliners.toLocaleString()} down`} />
             <BreadthBar label="Above 50-day average" pct={b.pct_above_ma50} tip={G.ma50} />
             <BreadthBar label="Above 200-day average" pct={b.pct_above_ma200} tip={G.ma200} />
             <div className="flex gap-6 border-t border-slate-100 pt-3 text-[0.84rem]">
