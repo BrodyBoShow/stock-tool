@@ -108,6 +108,15 @@ jobs:
           python scripts/supervise_backfill.py --label nightly-funds --stall 900 --
           python -u scripts/refresh_fund_prices.py
 
+      # Fund/ETF metadata — the Funds tab's AUM / average volume / NAV / issuer /
+      # category + top-10 equity holdings, sourced FREE from yfinance. CONTEXT
+      # ONLY (writes etf_metadata / etf_holdings, never scoring tables). Slow-
+      # moving, idempotent, throttled; best-effort so a yfinance hiccup can't
+      # fail the night.
+      - name: Refresh fund/ETF metadata + holdings (yfinance)
+        continue-on-error: true
+        run: python -u scripts/ingest_etf_meta.py
+
       # AI warm: pre-generate Decision Briefs for the WATCHLIST only
       # (--top-n 0 --briefs-only) so the stocks you track open instantly instead
       # of showing "Synthesizing…" on first open. Briefs cache per scoring
