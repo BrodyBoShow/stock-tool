@@ -640,6 +640,24 @@ export interface MarketFactorDay {
   top_r1d: number
   bottom_r1d: number
   spread: number
+  spread_1w?: number | null // top-minus-bottom over ~1 week (rotation compass)
+  spread_1m?: number | null // …and over ~1 month
+}
+
+/** Factor percentiles attached to a mover for its mini heatmap. */
+export interface MarketMoverFactors {
+  growth: number | null
+  value: number | null
+  quality: number | null
+  momentum: number | null
+}
+
+/** An auto-detected unusual market pattern (context, never advice). */
+export interface MarketAnomaly {
+  type: string
+  title: string
+  detail: string
+  tickers: string[]
 }
 
 export interface MarketRead {
@@ -656,6 +674,9 @@ export interface MarketMover {
   market_cap: number | null
   r1d: number
   close: number
+  zscore?: number | null // today's move in σ of the name's own 90-day daily range
+  has_8k?: boolean // an 8-K posted in the current filings window
+  factors?: MarketMoverFactors | null // factor percentiles (null if unscored)
 }
 
 export interface MarketMacroCard {
@@ -748,6 +769,7 @@ export interface MarketOverviewResponse {
   rotation?: MarketRotation | null
   factor_day?: MarketFactorDay[]
   read?: MarketRead | null
+  anomalies?: MarketAnomaly[]
 }
 
 // ── Portfolio tracker (derived from the user ledger) ─────────────────────────

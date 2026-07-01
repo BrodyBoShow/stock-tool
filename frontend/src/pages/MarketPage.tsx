@@ -2,12 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { AnomaliesFeed } from '@/components/market/AnomaliesFeed'
 import {
   EnhancedFilings,
   EnhancedHeadlines,
   EnhancedInsider,
   EnhancedMovers,
 } from '@/components/market/enhanced'
+import { FactorCompass } from '@/components/market/FactorCompass'
 import { MarketSubHeader } from '@/components/market/MarketSubHeader'
 import {
   AiBrief,
@@ -279,6 +281,9 @@ export function MarketPage() {
         <SectionCard title="What worked today — by factor" tip={G.factorDay}
           hint="Which style the market rewarded, from the factor scores that drive the screener.">
           <FactorOfDay factors={d.factor_day} />
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <FactorCompass factors={d.factor_day} />
+          </div>
         </SectionCard>
       )}
       </div>
@@ -286,6 +291,11 @@ export function MarketPage() {
       {/* ── TIER 3 · THE 5-MINUTE DRILL-DOWN ───────────────────────────────── */}
       <TierLabel n={3} title="The 5-minute drill-down" />
       <div id="tier-3" className="scroll-mt-24 space-y-5">
+      <SectionCard title="Market anomalies"
+        hint="Auto-detected unusual patterns in this session's data — the high-signal exceptions worth a look. Context, not advice.">
+        <AnomaliesFeed anomalies={d.anomalies ?? []} />
+      </SectionCard>
+
       <SectionCard title={`Biggest movers — ${fmtDate(d.as_of)} session`}
         hint="Names above $250M market cap only (micro-cap noise excluded). Click through for the full deep-dive.">
         <EnhancedMovers gainers={d.movers.gainers} losers={d.movers.losers} />

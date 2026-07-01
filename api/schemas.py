@@ -751,8 +751,9 @@ class MarketOverviewResponse(BaseModel):
     freshness: dict | None = None     # session-staleness vs the real latest US session
     coverage: dict | None = None      # priced / priced_prev / active name counts
     rotation: dict | None = None      # cyclical-vs-defensive leadership
-    factor_day: list[dict] = []       # factor-of-the-day top-minus-bottom 1d spreads
+    factor_day: list[dict] = []       # factor-of-the-day top-minus-bottom 1d/1w/1m spreads
     read: dict | None = None          # deterministic "what this means" verdict
+    anomalies: list[dict] = []        # auto-detected unusual patterns (context, not advice)
 
 
 class MarketBriefResponse(BaseModel):
