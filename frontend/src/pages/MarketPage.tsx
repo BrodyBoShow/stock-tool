@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { AnomaliesFeed } from '@/components/market/AnomaliesFeed'
+import { BreadthCalendar } from '@/components/market/BreadthCalendar'
+import { PersonalPulse } from '@/components/market/PersonalPulse'
 import {
   EnhancedFilings,
   EnhancedHeadlines,
@@ -163,6 +165,8 @@ export function MarketPage() {
         </div>
       </header>
 
+      <PersonalPulse />
+
       <SectionCard
         title={mkt.title}
         hint={aiBrief
@@ -246,6 +250,11 @@ export function MarketPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {b.calendar && b.calendar.length > 0 && (
+              <div className="border-t border-slate-100 pt-3">
+                <BreadthCalendar calendar={b.calendar} pctl={b.adv_pct_pctl} />
               </div>
             )}
           </div>

@@ -612,6 +612,8 @@ export interface MarketBreadth {
   new_lows: number
   divergence?: { state: 'narrow' | 'resilient' | 'aligned'; detail: string } | null
   drawdown?: { near_high_pct: number; correction_pct: number; bear_pct: number } | null
+  calendar?: { date: string; adv_pct: number }[] // ~90-day advancer% history (regime heatmap)
+  adv_pct_pctl?: number // percentile of today's advancer% within that 90-day history
 }
 
 export interface MarketFreshness {
@@ -740,6 +742,22 @@ export interface MarketAiBrief {
 
 export interface MarketBriefResponse {
   ai_brief: MarketAiBrief | null
+}
+
+export interface MarketPulseName {
+  ticker: string
+  name: string | null
+  r1d: number | null
+}
+
+/** The signed-in user's watchlist at last close vs SPY (owner-scoped). */
+export interface MarketPulseResponse {
+  count: number // watchlist size
+  scored: number // how many had a computable 1-day return
+  avg_r1d: number | null
+  spy_r1d: number | null
+  top: MarketPulseName | null
+  drag: MarketPulseName | null
 }
 
 export interface MarketOverviewResponse {
