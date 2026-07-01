@@ -159,6 +159,39 @@ def _latest_and_prev_closes(cur, max_date: date) -> dict[int, tuple[float, float
     return out
 
 
+def _mover_zscores(sids: list[int], max_date: date) -> dict[int, float]:
+    """Stdev of daily close-to-close returns over ~90 sessions, per security — the
+    denominator for a mover's Z-score. Bounded to the ~16 mover tickers, so this
+    is one short indexed query, never a universe scan (MICRO-tier safe)."""
+    ids = list({int(s) for s in sids})
+    if not ids:
+        return {}
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT security_id, close FROM prices_daily
+                WHERE security_id = ANY(%s) AND close IS NOT NULL AND date >= %s
+                ORDER BY security_id, date
+                """,
+                (ids, max_date - timedelta(days=135)),
+            )
+            hist: dict[int, list[float]] = defaultdict(list)
+            for sid, close in cur.fetchall():
+                hist[int(sid)].append(float(close))
+    finally:
+        conn.close()
+    out: dict[int, float] = {}
+    for sid, closes in hist.items():
+        rs = [closes[i] / closes[i - 1] - 1.0 for i in range(1, len(closes)) if closes[i - 1]]
+        rs = [r for r in rs[-90:] if abs(r) <= 0.6]  # same bad-print guard as r1d
+        if len(rs) >= 20:
+            mu = sum(rs) / len(rs)
+            out[sid] = (sum((r - mu) ** 2 for r in rs) / (len(rs) - 1)) ** 0.5
+    return out
+
+
 def _closes_asof(cur, anchor: date) -> dict[int, float]:
     """sid -> last close on/before `anchor` (10-day lookback window)."""
     cur.execute(
@@ -490,6 +523,83 @@ def _build_brief(payload: dict[str, Any], max_date: date) -> list[str]:
     return out
 
 
+def _mkt_money(v: float | None) -> str:
+    if v is None:
+        return "—"
+    a = abs(v)
+    if a >= 1e9:
+        return f"${v / 1e9:.1f}B"
+    if a >= 1e6:
+        return f"${v / 1e6:.0f}M"
+    return f"${v:,.0f}"
+
+
+def _anomalies(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Auto-detected unusual patterns, computed entirely from the payload already
+    assembled — no extra data. Each is a plain-English what/why with the affected
+    tickers. Context, never advice; empty when nothing stands out."""
+    out: list[dict[str, Any]] = []
+    b = payload["breadth"]
+    fd = payload.get("factor_day") or []
+
+    # 1) Breadth divergence — index and the typical stock disagree.
+    div = b.get("divergence")
+    if div and div.get("state") in ("narrow", "resilient"):
+        out.append({
+            "type": "breadth_divergence",
+            "title": "Narrow tape" if div["state"] == "narrow" else "Resilient breadth",
+            "detail": div["detail"],
+            "tickers": [],
+        })
+
+    # 2) Factor reversal — today's 1D leader is the ~1-month laggard (or vice versa).
+    d1 = sorted((f for f in fd if f.get("spread") is not None), key=lambda x: -x["spread"])
+    m1 = sorted((f for f in fd if f.get("spread_1m") is not None), key=lambda x: -x["spread_1m"])
+    if len(d1) >= 2 and len(m1) >= 2 and d1[0]["factor"] == m1[-1]["factor"]:
+        lead = d1[0]["factor"].title()
+        out.append({
+            "type": "factor_reversal",
+            "title": f"Factor reversal — {lead} leads",
+            "detail": f"{lead} is today's strongest factor but the weakest over "
+                      "~1 month — a possible style rotation.",
+            "tickers": [],
+        })
+
+    # 3) Volatility spike/crush — VIX 1-day move beyond 2σ of its own 90-day range.
+    vix = next((c for c in payload["macro"]["cards"] if c.get("id") == "VIXCLS"), None)
+    vals = (vix or {}).get("spark_values") or []
+    if vix and vix.get("delta") is not None and len(vals) > 20:
+        chg = [vals[i] - vals[i - 1] for i in range(1, len(vals))]
+        mu = sum(chg) / len(chg)
+        sd = (sum((c - mu) ** 2 for c in chg) / (len(chg) - 1)) ** 0.5
+        if sd > 0 and abs(vix["delta"]) >= 2 * sd:
+            up = vix["delta"] > 0
+            out.append({
+                "type": "vol_spike",
+                "title": "Volatility spike" if up else "Volatility crush",
+                "detail": f"VIX moved {vix['delta']:+.1f} last session — beyond 2σ "
+                          "of its 90-day daily range.",
+                "tickers": [],
+            })
+
+    # 4) Insider clusters — 3+ distinct insiders buying one name this week. Capped
+    # to the two largest by $ so they don't crowd out the rarer market-wide signals.
+    clusters = sorted(
+        (i for i in payload.get("insider_buys", []) if (i.get("buyers") or 0) >= 3),
+        key=lambda i: -(i.get("total_value") or 0),
+    )[:2]
+    for i in clusters:
+        out.append({
+            "type": "insider_cluster",
+            "title": f"Insider cluster — {i['ticker']}",
+            "detail": f"{i['buyers']} insiders bought {i['ticker']} on the open "
+                      f"market this week ({_mkt_money(i.get('total_value'))}).",
+            "tickers": [i["ticker"]],
+        })
+
+    return out[:6]
+
+
 def _compute() -> dict[str, Any]:
     conn = get_connection()
     try:
@@ -641,10 +751,21 @@ def _compute() -> dict[str, Any]:
         {"security_id": s, **{k: meta[s][k] for k in ("ticker", "name", "sector", "market_cap")},
          "r1d": rets[s]["r1d"], "close": lp[s][0]}
         for s, _ in r1ds
-        if (meta[s]["market_cap"] or 0) >= MIN_MOVER_CAP
+        if (meta[s]["market_cap"] or 0) >= MIN_MOVER_CAP and rets[s]["r1d"] is not None
     ]
-    movers_pool = [m for m in movers_pool if m["r1d"] is not None]
     movers_pool.sort(key=lambda m: -m["r1d"])
+    top_movers = movers_pool[:8] + movers_pool[-8:]  # the 16 shown (may overlap if pool<16)
+    # Enrich only the shown movers: Z-score of the move vs the name's own 90-day
+    # daily-move distribution (a 40% pop on a quiet name is wilder than on a
+    # volatile one), whether an 8-K posted, and its factor percentiles.
+    filing_sids = {f["security_id"] for f in filings}
+    zstd = _mover_zscores([m["security_id"] for m in top_movers], max_date)
+    for m in top_movers:
+        sid = m["security_id"]
+        sd = zstd.get(sid)
+        m["zscore"] = round(m["r1d"] / sd, 2) if sd and sd > 1e-9 else None
+        m["has_8k"] = sid in filing_sids
+        m["factors"] = fscores.get(sid)  # {growth,value,quality,momentum} or None
     movers = {"gainers": movers_pool[:8], "losers": movers_pool[-8:][::-1]}
 
     # market line
@@ -691,18 +812,35 @@ def _compute() -> dict[str, Any]:
             "cyc_r1d": round(cyc_m, 5), "def_r1d": round(def_m, 5), "spread": round(spread, 5),
         }
 
-    # Factor of the day: equal-weight 1d return of each factor's top quintile
-    # (pctl>=80) minus its bottom quintile (pctl<=20), ranked by the spread.
-    scored = [(rets[s]["r1d"], fs) for s, fs in fscores.items()
-              if s in rets and rets[s]["r1d"] is not None]
+    # Factor of the day + rotation compass: equal-weight return of each factor's
+    # top quintile (pctl>=80) minus its bottom quintile (pctl<=20), at the 1D / 1W
+    # / 1M horizons. Same quintile membership at each horizon, so the multi-window
+    # spreads are FREE — they reuse the rets already computed, no extra query. The
+    # 1D spread still ranks the list; 1W/1M reveal whether today's leader is also
+    # leading over the week/month (rotation) or reversing.
     factor_day = []
     for fac in ("growth", "value", "quality", "momentum"):
-        tops = [r for r, fs in scored if fs.get(fac) is not None and fs[fac] >= 80]
-        bots = [r for r, fs in scored if fs.get(fac) is not None and fs[fac] <= 20]
-        if len(tops) >= 10 and len(bots) >= 10:
-            tm, bm = _mean(tops), _mean(bots)
-            factor_day.append({"factor": fac, "top_r1d": round(tm, 5),
-                               "bottom_r1d": round(bm, 5), "spread": round(tm - bm, 5)})
+        tops = [s for s, fs in fscores.items()
+                if s in rets and fs.get(fac) is not None and fs[fac] >= 80]
+        bots = [s for s, fs in fscores.items()
+                if s in rets and fs.get(fac) is not None and fs[fac] <= 20]
+        if len(tops) < 10 or len(bots) < 10:
+            continue
+        t1 = [rets[s]["r1d"] for s in tops if rets[s]["r1d"] is not None]
+        b1 = [rets[s]["r1d"] for s in bots if rets[s]["r1d"] is not None]
+        if not t1 or not b1:
+            continue  # keep the original contract: 1D spread is always present
+        entry: dict[str, Any] = {
+            "factor": fac,
+            "top_r1d": round(_mean(t1), 5),
+            "bottom_r1d": round(_mean(b1), 5),
+            "spread": round(_mean(t1) - _mean(b1), 5),
+        }
+        for wkey, out_key in (("r1w", "spread_1w"), ("r1m", "spread_1m")):
+            tv = [rets[s][wkey] for s in tops if rets[s][wkey] is not None]
+            bv = [rets[s][wkey] for s in bots if rets[s][wkey] is not None]
+            entry[out_key] = round(_mean(tv) - _mean(bv), 5) if tv and bv else None
+        factor_day.append(entry)
     factor_day.sort(key=lambda x: -x["spread"])
 
     coverage = {"priced": priced_today, "priced_prev": priced_prev, "active": active_total}
@@ -722,6 +860,7 @@ def _compute() -> dict[str, Any]:
         "read": _market_read(market, breadth),
     }
     payload["brief"] = _build_brief(payload, max_date)
+    payload["anomalies"] = _anomalies(payload)
     return payload
 
 
