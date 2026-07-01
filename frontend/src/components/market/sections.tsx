@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts'
 
 import { InfoTip } from '@/components/ui/InfoTip'
-import { plColor } from '@/lib/colors'
+import { plColor, scoreHeat } from '@/lib/colors'
 import { TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtMoney, fmtSignedPct } from '@/lib/format'
 import type {
@@ -10,6 +10,7 @@ import type {
   MarketFactorDay,
   MarketMacroCard,
   MarketMover,
+  MarketMoverFactors,
   MarketOverviewResponse,
   MarketRead,
   MarketSectorRow,
@@ -107,18 +108,77 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
   )
 }
 
+// Order + short labels for the mover factor mini-heatmap dots.
+const MOVER_FACTOR_KEYS: { key: keyof MarketMoverFactors; label: string }[] = [
+  { key: 'growth', label: 'G' },
+  { key: 'value', label: 'V' },
+  { key: 'quality', label: 'Q' },
+  { key: 'momentum', label: 'M' },
+]
+
+/** Z-score pill for a mover — today's move in units of the name's own 90-day
+ *  daily-move stdev. |z| ≥ 3 is "extreme" (stronger styling + a tooltip on why a
+ *  big move on a quiet name is wilder than the same % on a jumpy one). */
+function ZScoreBadge({ z }: { z: number }) {
+  const extreme = Math.abs(z) >= 3
+  const title = extreme
+    ? `${z.toFixed(1)}σ move — extreme relative to this name's own 90-day volatility. A big jump on a normally-quiet stock is wilder than the same % on an already-volatile one.`
+    : `${z.toFixed(1)}σ — today's move in units of this name's own 90-day daily-move stdev.`
+  return (
+    <span
+      title={title}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold tabular-nums ${
+        extreme ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' : 'bg-slate-100 text-slate-500'
+      }`}
+    >
+      {Math.abs(z).toFixed(1)}σ
+    </span>
+  )
+}
+
+/** Four tiny G/V/Q/M dots colored by factor percentile — the mover's style
+ *  fingerprint. A single title tooltip lists the four values. */
+function FactorDots({ factors }: { factors: MarketMoverFactors }) {
+  const title = MOVER_FACTOR_KEYS
+    .map(({ key, label }) => `${label} ${factors[key] == null ? '—' : Math.round(factors[key] as number)}`)
+    .join(' · ')
+  return (
+    <span className="hidden shrink-0 items-center gap-0.5 sm:inline-flex" title={`Factor percentiles — ${title}`} aria-label={`Factor percentiles ${title}`}>
+      {MOVER_FACTOR_KEYS.map(({ key }) => (
+        <span key={key} className="h-1.5 w-1.5 rounded-full" style={{ background: scoreHeat(factors[key]).bar }} />
+      ))}
+    </span>
+  )
+}
+
+/** Tiny "8-K" chip — a material-event filing landed in the current window. */
+function EightKChip({ ticker }: { ticker: string }) {
+  return (
+    <Link
+      to={`/securities/${ticker}`}
+      title="Filed an 8-K in the current window"
+      className="shrink-0 rounded bg-indigo-50 px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-indigo-600 hover:bg-indigo-100"
+    >
+      8-K
+    </Link>
+  )
+}
+
 export function MoverList({ movers, title }: { movers: MarketMover[]; title: string }) {
   return (
     <div>
       <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">{title}</div>
       <div className="mt-2 space-y-1.5">
         {movers.map((m) => (
-          <div key={m.security_id} className="flex items-center gap-2.5 text-[0.82rem]">
+          <div key={m.security_id} className="flex items-center gap-2 text-[0.82rem]">
             <Link to={`/securities/${m.ticker}`} className="w-14 shrink-0 font-bold text-slate-800 hover:text-indigo-600">
               {m.ticker}
             </Link>
             <span className="min-w-0 flex-1 truncate text-slate-400">{m.name}</span>
-            <span className="shrink-0 tabular-nums text-slate-400">{fmtMoney(m.market_cap)}</span>
+            {m.factors && <FactorDots factors={m.factors} />}
+            {m.has_8k && <EightKChip ticker={m.ticker} />}
+            {m.zscore != null && <ZScoreBadge z={m.zscore} />}
+            <span className="hidden shrink-0 tabular-nums text-slate-400 md:inline">{fmtMoney(m.market_cap)}</span>
             <span className="w-16 shrink-0 text-right font-bold tabular-nums" style={{ color: plColor(m.r1d) }}>
               {fmtSignedPct(m.r1d)}
             </span>
