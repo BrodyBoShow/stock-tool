@@ -566,6 +566,43 @@ class FundsResponse(BaseModel):
     rows: list[FundRow]
 
 
+# Rich Funds-tab payloads (Phase 1). Loose dict/list fields — the frontend owns
+# display typing (same convention as MarketOverviewResponse). NO expense ratio /
+# tracking error / bid-ask spread anywhere: we do not have that data.
+
+class FundsOverviewResponse(BaseModel):
+    as_of: str                       # latest priced session (last-close, nightly)
+    cache_age_seconds: float = 0.0
+    categories: list[dict]           # 4-bucket mini-cards + heatmap aggregates
+    rotation: list[dict]             # per-bucket equal-weight returns by horizon
+    clusters: list[dict]            # same-underlying groups + best-access/liquid
+    funds: list[dict]                # per-fund enriched records
+
+
+class FundDetailResponse(BaseModel):
+    as_of: str
+    fund: dict                       # the enriched per-fund record
+    holdings: list[dict]             # [{symbol, name, weight}] (equity ETFs only)
+    cluster: dict | None = None      # {key, label, icon} if it belongs to one
+    peers: list[dict] = []           # up to 3 same-cluster funds w/ key stats
+
+
+class FundsBridgeResponse(BaseModel):
+    """OWNER-SCOPED: ETFs holding the user's watchlist names + overlap%."""
+    as_of: str | None = None
+    watchlist_size: int
+    etfs: list[dict]                 # [{ticker, name, category, held_tickers, overlap_pct}]
+
+
+class FundOverlapRequest(BaseModel):
+    tickers: list[str] = Field(..., max_length=25)
+
+
+class FundOverlapResponse(BaseModel):
+    tickers: list[str]
+    matrix: list[list[float]]        # N×N weighted-Jaccard (fractions; diagonal 1.0)
+
+
 # ── global search (typeahead) ─────────────────────────────────────────────────
 
 class SearchRow(BaseModel):

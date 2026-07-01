@@ -522,6 +522,116 @@ export interface FundsResponse {
   rows: FundRow[]
 }
 
+// Rich Funds-tab payloads (Phase 1). Loose-typed where the engine ships open
+// documents (same convention as MarketOverviewResponse). NO expense ratio /
+// tracking error / bid-ask spread — that data does not exist.
+
+export interface EnrichedFund {
+  security_id: number
+  ticker: string
+  name: string | null
+  exchange: string | null
+  category: string                 // Commodity | Crypto | Leveraged/Inverse | Other
+  category_name: string | null     // finer Morningstar label (e.g. "Large Blend")
+  issuer: string | null
+  last_close: number | null
+  price_date: string | null
+  aum: number | null
+  avg_volume: number | null
+  nav: number | null
+  premium_discount: number | null  // (last_close - nav)/nav, null when nav absent
+  spark: number[]                  // ~90 daily closes, oldest→newest
+  has_holdings: boolean
+  r1d: number | null
+  r1w: number | null
+  r1m: number | null
+  r3m: number | null
+  r90d: number | null
+  rytd: number | null
+  vol: number | null               // annualized stdev of daily returns (×√252)
+  mdd: number | null               // max drawdown (negative fraction)
+  sharpe: number | null            // mean/stdev ×√252, rf=0
+  beta: number | null              // vs SPY daily returns (metadata fallback)
+  ytd_rank: number | null          // rank of rytd within category (1 = best)
+  ytd_rank_n: number | null        // category size
+  best_access: boolean             // cluster winner: AUM + volume + tight prem/disc
+  most_liquid: boolean             // cluster winner: highest avg volume
+}
+
+export interface FundCategoryAgg {
+  key: string
+  label: string
+  count: number
+  aum: number | null
+  avg_r1d: number | null
+  avg_rytd: number | null
+  best: { ticker: string; r1d: number } | null
+  worst: { ticker: string; r1d: number } | null
+  spark: number[]                  // category-average normalized sparkline
+}
+
+export interface FundRotationRow {
+  category: string
+  r1d: number | null
+  r5d: number | null               // ≈1W (calendar-window approximation)
+  r20d: number | null              // ≈1M
+  r90d: number | null
+  rytd: number | null
+}
+
+export interface FundCluster {
+  key: string
+  label: string
+  icon: string                     // emoji
+  category: string
+  funds: string[]                  // member tickers, highest-AUM first
+  best_access_ticker: string | null
+  most_liquid_ticker: string | null
+}
+
+export interface FundsOverviewResponse {
+  as_of: string
+  cache_age_seconds: number
+  categories: FundCategoryAgg[]
+  rotation: FundRotationRow[]
+  clusters: FundCluster[]
+  funds: EnrichedFund[]
+}
+
+export interface FundHolding {
+  symbol: string
+  name: string | null
+  weight: number | null
+}
+
+export interface FundDetailResponse {
+  as_of: string
+  fund: EnrichedFund
+  holdings: FundHolding[]
+  cluster: { key: string; label: string; icon: string } | null
+  peers: Array<Record<string, unknown>>
+}
+
+export interface FundBridgeEtf {
+  ticker: string
+  name: string | null
+  category: string
+  held_tickers: string[]
+  held_count: number
+  overlap_pct: number
+}
+
+export interface FundsBridgeResponse {
+  as_of: string | null
+  watchlist_size: number
+  etfs: FundBridgeEtf[]
+}
+
+export interface FundOverlapResponse {
+  tickers: string[]
+  matrix: number[][]               // N×N weighted-Jaccard (diagonal 1.0)
+}
+
 export interface SearchRow {
   ticker: string
   name: string | null
