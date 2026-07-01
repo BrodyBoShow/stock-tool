@@ -18,7 +18,7 @@ from typing import Any
 
 from engine.db import acquire, release
 
-MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
+MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS", "BAMLH0A0HYM2"]
 
 # Which scoring config the app serves. factor_scores can hold several config
 # versions per score_date side by side; every read below pins to this one so the

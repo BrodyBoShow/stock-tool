@@ -66,6 +66,8 @@ MACRO_DISPLAY = [
     ("DGS2", "2Y Treasury", "%", 2),
     ("FEDFUNDS", "Fed funds", "%", 2),
     ("VIXCLS", "VIX", "", 1),
+    ("DTWEXBGS", "US Dollar", "", 1),      # nominal broad USD index
+    ("BAMLH0A0HYM2", "HY spread", "%", 2),  # high-yield credit stress
 ]
 
 _ET = ZoneInfo("America/New_York")

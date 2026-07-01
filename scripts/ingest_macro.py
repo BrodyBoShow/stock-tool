@@ -51,7 +51,9 @@ RETRY_BACKOFF = (3, 10, 30)     # seconds between attempts; len+1 total attempts
 #   FEDFUNDS effective federal funds rate (monthly, %)
 #   CPIAUCSL CPI-U, all items, seasonally adjusted (monthly, index)
 #   VIXCLS   CBOE volatility index (daily, level)
-SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS"]
+#   DTWEXBGS Nominal broad US dollar index (daily, index)
+#   BAMLH0A0HYM2 ICE BofA US high-yield option-adjusted spread (daily, %)
+SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS", "BAMLH0A0HYM2"]
 
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 
