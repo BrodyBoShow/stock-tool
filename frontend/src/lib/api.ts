@@ -4,6 +4,10 @@ import type {
   AlertsResponse,
   BacktestRunResponse,
   FundsResponse,
+  FundsOverviewResponse,
+  FundDetailResponse,
+  FundsBridgeResponse,
+  FundOverlapResponse,
   BriefStatusResponse,
   DecisionBrief,
   EventsResponse,
@@ -186,6 +190,22 @@ export function getAlerts(): Promise<AlertsResponse> {
 
 export function getFunds(): Promise<FundsResponse> {
   return getJson<FundsResponse>('/funds')
+}
+
+export function getFundsOverview(): Promise<FundsOverviewResponse> {
+  return getJson<FundsOverviewResponse>('/funds/overview')
+}
+
+export function getFundDetail(ticker: string): Promise<FundDetailResponse> {
+  return getJson<FundDetailResponse>(`/funds/${encodeURIComponent(ticker)}`)
+}
+
+export function getFundsBridge(): Promise<FundsBridgeResponse> {
+  return getJson<FundsBridgeResponse>('/funds/bridge')
+}
+
+export function getFundsOverlap(tickers: string[]): Promise<FundOverlapResponse> {
+  return sendJson<FundOverlapResponse>('POST', '/funds/overlap', { tickers })
 }
 
 export function searchSecurities(q: string): Promise<SearchResponse> {
