@@ -744,6 +744,22 @@ export interface MarketBriefResponse {
   ai_brief: MarketAiBrief | null
 }
 
+export interface MarketPulseName {
+  ticker: string
+  name: string | null
+  r1d: number | null
+}
+
+/** The signed-in user's watchlist at last close vs SPY (owner-scoped). */
+export interface MarketPulseResponse {
+  count: number // watchlist size
+  scored: number // how many had a computable 1-day return
+  avg_r1d: number | null
+  spy_r1d: number | null
+  top: MarketPulseName | null
+  drag: MarketPulseName | null
+}
+
 export interface MarketOverviewResponse {
   as_of: string
   cache_age_seconds: number

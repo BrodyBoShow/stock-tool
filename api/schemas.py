@@ -763,6 +763,23 @@ class MarketBriefResponse(BaseModel):
     ai_brief: dict | None = None
 
 
+class MarketPulseName(BaseModel):
+    ticker: str
+    name: str | None = None
+    r1d: float | None = None
+
+
+class MarketPulseResponse(BaseModel):
+    """The signed-in user's watchlist at last close vs SPY (owner-scoped). count
+    is the watchlist size; scored is how many had a computable 1-day return."""
+    count: int
+    scored: int
+    avg_r1d: float | None = None
+    spy_r1d: float | None = None
+    top: MarketPulseName | None = None
+    drag: MarketPulseName | None = None
+
+
 # ── macro (FRED context — never feeds factor scores) ──────────────────────────
 
 class MacroObservation(BaseModel):

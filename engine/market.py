@@ -915,6 +915,67 @@ def _compute() -> dict[str, Any]:
     return payload
 
 
+def market_pulse(owner_id: str) -> dict[str, Any]:
+    """The user's watchlist through the last-close lens: equal-weight 1-day return
+    vs SPY, the top contributor and the biggest drag. Owner-scoped and bounded to
+    the watchlist size — one short query, no cache (cheap + per-user)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH wl AS (
+                  SELECT s.security_id, s.ticker, s.name
+                  FROM watchlist w
+                  JOIN securities s ON s.security_id = w.security_id
+                  WHERE w.owner_id = %s
+                ),
+                recent AS (
+                  SELECT p.security_id, p.close,
+                         row_number() OVER (PARTITION BY p.security_id ORDER BY p.date DESC) AS rn
+                  FROM prices_daily p
+                  JOIN wl ON wl.security_id = p.security_id
+                  WHERE p.close IS NOT NULL
+                )
+                SELECT wl.ticker, wl.name,
+                       max(r.close) FILTER (WHERE r.rn = 1) AS last,
+                       max(r.close) FILTER (WHERE r.rn = 2) AS prev
+                FROM wl LEFT JOIN recent r ON r.security_id = wl.security_id AND r.rn <= 2
+                GROUP BY wl.ticker, wl.name
+                """,
+                (owner_id,),
+            )
+            names = []
+            for tk, nm, last, prev in cur.fetchall():
+                r1d = (
+                    _ret(float(last), float(prev))
+                    if last is not None and prev is not None
+                    else None
+                )
+                if r1d is not None and abs(r1d) > 0.6:  # bad-print guard, same as movers
+                    r1d = None
+                names.append({"ticker": tk, "name": nm, "r1d": r1d})
+            cur.execute(
+                """SELECT close FROM prices_daily
+                   WHERE security_id = (SELECT security_id FROM securities
+                                        WHERE ticker='SPY' LIMIT 1)
+                     AND close IS NOT NULL ORDER BY date DESC LIMIT 2"""
+            )
+            spy = [float(r[0]) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    scored = [n for n in names if n["r1d"] is not None]
+    spy_r1d = _ret(spy[0], spy[1]) if len(spy) == 2 else None
+    return {
+        "count": len(names),
+        "scored": len(scored),
+        "avg_r1d": round(_mean([n["r1d"] for n in scored]), 5) if scored else None,
+        "spy_r1d": round(spy_r1d, 5) if spy_r1d is not None else None,
+        "top": max(scored, key=lambda n: n["r1d"], default=None),
+        "drag": min(scored, key=lambda n: n["r1d"], default=None),
+    }
+
+
 def _data_date() -> str | None:
     """Latest priced session in the DB as 'YYYY-MM-DD' (matches payload['as_of']).
 

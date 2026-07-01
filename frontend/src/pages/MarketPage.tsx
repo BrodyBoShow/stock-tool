@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { ErrorCard } from '@/components/ErrorCard'
 import { AnomaliesFeed } from '@/components/market/AnomaliesFeed'
 import { BreadthCalendar } from '@/components/market/BreadthCalendar'
+import { PersonalPulse } from '@/components/market/PersonalPulse'
 import {
   EnhancedFilings,
   EnhancedHeadlines,
@@ -163,6 +164,8 @@ export function MarketPage() {
           <RegimeStrip d={d} />
         </div>
       </header>
+
+      <PersonalPulse />
 
       <SectionCard
         title={mkt.title}
