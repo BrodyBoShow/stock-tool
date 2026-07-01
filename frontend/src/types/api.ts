@@ -612,6 +612,8 @@ export interface MarketBreadth {
   new_lows: number
   divergence?: { state: 'narrow' | 'resilient' | 'aligned'; detail: string } | null
   drawdown?: { near_high_pct: number; correction_pct: number; bear_pct: number } | null
+  calendar?: { date: string; adv_pct: number }[] // ~90-day advancer% history (regime heatmap)
+  adv_pct_pctl?: number // percentile of today's advancer% within that 90-day history
 }
 
 export interface MarketFreshness {

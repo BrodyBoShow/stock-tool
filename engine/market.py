@@ -46,6 +46,9 @@ _lock = threading.Lock()              # guards _cache / _news_cache field access
 _refresh_lock = threading.Lock()      # single-flights the ~20s _compute()
 _cache: dict[str, Any] = {"t": 0.0, "payload": None, "refreshing": False}
 _news_cache: dict[str, Any] = {"t": 0.0, "items": []}
+# 90-day breadth calendar, keyed on the data date so the windowed scan runs once
+# per nightly cycle rather than on every 10-minute overview recompute.
+_calendar_cache: dict[str, Any] = {"date": None, "data": []}
 _prewarmer_started = False            # guards start_auto_refresh() idempotence
 
 # Public RSS feeds — headlines/links with attribution only (no article text).
@@ -272,6 +275,38 @@ def _ma_and_52w(cur, max_date: date) -> dict[int, dict[str, float]]:
         }
         for r in cur.fetchall()
     }
+
+
+def _breadth_calendar(cur, max_date: date, sessions: int = 90) -> list[dict[str, Any]]:
+    """Advancer % per trading day for the last ~`sessions` sessions — powers the
+    regime-heatmap calendar and the percentile of today's breadth. One windowed
+    scan (LAG for each name's prior close); smaller than the 365-day MA scan
+    already run every cycle. Cached per data date by the caller."""
+    cur.execute(
+        """
+        WITH ranked AS (
+          SELECT p.date, p.close,
+                 lag(p.close) OVER (PARTITION BY p.security_id ORDER BY p.date) AS prev
+          FROM prices_daily p
+          JOIN securities s ON s.security_id = p.security_id AND s.is_active
+          WHERE p.date >= %s AND p.close IS NOT NULL
+        )
+        SELECT date,
+               count(*) FILTER (WHERE prev IS NOT NULL) AS n,
+               count(*) FILTER (WHERE prev IS NOT NULL AND close > prev) AS adv
+        FROM ranked
+        GROUP BY date
+        ORDER BY date
+        """,
+        (max_date - timedelta(days=int(sessions * 1.5) + 15),),
+    )
+    out: list[dict[str, Any]] = []
+    for d, n, adv in cur.fetchall():
+        n = int(n or 0)
+        if n == 0:  # first in-window day has no prior close for anyone
+            continue
+        out.append({"date": str(d), "adv_pct": round(int(adv or 0) / n, 4)})
+    return out[-sessions:]
 
 
 def _recent_filings(cur, since: date) -> list[dict[str, Any]]:
@@ -617,6 +652,14 @@ def _compute() -> dict[str, Any]:
             asof = {k: _closes_asof(cur, d) for k, d in anchors.items()}
             meta = _meta(cur)
             tech = _ma_and_52w(cur, max_date)
+            # 90-day advancer% history — cached per data date (recompute only when
+            # a new session lands), so the windowed scan runs ~once a night.
+            if _calendar_cache.get("date") == str(max_date) and _calendar_cache.get("data"):
+                calendar = _calendar_cache["data"]
+            else:
+                calendar = _breadth_calendar(cur, max_date)
+                _calendar_cache["date"] = str(max_date)
+                _calendar_cache["data"] = calendar
             filings = _recent_filings(cur, max_date - timedelta(days=4))
             insiders = _insider_buys(cur, date.today() - timedelta(days=7))
             macro = _macro(cur)
@@ -745,6 +788,14 @@ def _compute() -> dict[str, Any]:
             "bear_pct": round(bear / dd_n, 4),
         } if dd_n else None),
     }
+    # 90-day advancer% history (regime calendar) + where today's breadth ranks
+    # within it (percentile — turns "53% up" into "unremarkable / extreme").
+    breadth["calendar"] = calendar
+    _cal_vals = [c["adv_pct"] for c in calendar]
+    if len(_cal_vals) >= 20:
+        _today = _cal_vals[-1]
+        _below = sum(1 for v in _cal_vals if v <= _today)
+        breadth["adv_pct_pctl"] = round(100 * _below / len(_cal_vals))
 
     # movers (>=$250M cap, last session)
     movers_pool = [
