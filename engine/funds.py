@@ -141,17 +141,28 @@ def _load_closes(cur, sids: list[int], since: date) -> dict[int, list[tuple[date
     return out
 
 
-def _daily_returns(closes: list[float]) -> list[float]:
-    return [closes[i] / closes[i - 1] - 1.0
-            for i in range(1, len(closes)) if closes[i - 1]]
+def _dated_returns(series: list[tuple[date, float]]) -> list[tuple[date, float]]:
+    """[(end-bar date, close-to-close return)], bad-print-guarded. Keeping the
+    date lets beta pair a fund and SPY on the SAME sessions instead of by list
+    position — an interior gap or a lagging fund would otherwise mis-align it."""
+    out: list[tuple[date, float]] = []
+    for i in range(1, len(series)):
+        prev = series[i - 1][1]
+        if prev:
+            r = series[i][1] / prev - 1.0
+            if abs(r) <= _BAD_PRINT:
+                out.append((series[i][0], r))
+    return out
 
 
-def _risk_stats(closes: list[float], spy_rets: list[float] | None,
+def _risk_stats(series: list[tuple[date, float]], spy_map: dict[date, float] | None,
                 fallback_beta: float | None) -> dict[str, float | None]:
-    """1Y risk stats from a fund's daily closes. beta is regressed on SPY's
-    aligned daily returns (last N pairs); falls back to metadata beta below
-    _MIN_BETA_SAMPLES paired samples. rf=0."""
-    rets = [r for r in _daily_returns(closes) if abs(r) <= _BAD_PRINT]
+    """1Y risk stats from a fund's daily (date, close) series. beta is regressed
+    on SPY's returns aligned by DATE (common sessions only); falls back to the
+    metadata beta below _MIN_BETA_SAMPLES common samples. rf=0."""
+    fret = _dated_returns(series)
+    rets = [r for _d, r in fret]
+    closes = [c for _d, c in series]
     vol = mdd = sharpe = None
     if len(rets) >= 20:
         mu = sum(rets) / len(rets)
@@ -172,12 +183,13 @@ def _risk_stats(closes: list[float], spy_rets: list[float] | None,
         mdd = round(worst, 4)
 
     beta = fallback_beta
-    if spy_rets is not None:
-        # align on the last min-length window (both series are contiguous daily)
-        n = min(len(rets), len(spy_rets))
+    if spy_map is not None:
+        # Pair fund and SPY returns on the SAME dates — never by tail index.
+        paired = [(r, spy_map[d]) for d, r in fret if d in spy_map]
+        n = len(paired)
         if n >= _MIN_BETA_SAMPLES:
-            fr = rets[-n:]
-            mr = spy_rets[-n:]
+            fr = [p[0] for p in paired]
+            mr = [p[1] for p in paired]
             mm = sum(mr) / n
             fm = sum(fr) / n
             mvar = sum((m - mm) ** 2 for m in mr) / (n - 1)
@@ -393,11 +405,11 @@ def _enrich(cur) -> tuple[str, list[dict[str, Any]], dict[int, list[dict[str, An
     meta = _load_metadata(cur, sids)
     holdings = _load_holdings(cur, sids)
 
-    # SPY daily returns for beta (None if SPY not found — handled gracefully)
-    spy_rets: list[float] | None = None
+    # SPY daily returns keyed by end-bar date, so each fund's beta pairs on the
+    # SAME sessions (None if SPY not found — handled gracefully).
+    spy_map: dict[date, float] | None = None
     if spy_sid and closes.get(spy_sid):
-        spy_rets = [r for r in _daily_returns([c for _d, c in closes[spy_sid]])
-                    if abs(r) <= _BAD_PRINT]
+        spy_map = dict(_dated_returns(closes[spy_sid]))
 
     anchors_days = {"r1w": 7, "r1m": 30, "r3m": 91, "r90d": 90}
     funds: list[dict[str, Any]] = []
@@ -420,7 +432,7 @@ def _enrich(cur) -> tuple[str, list[dict[str, Any]], dict[int, list[dict[str, An
                 rets[k] = f[k]
         rytd = f.get("rytd")
 
-        stats = _risk_stats(cl, spy_rets, m.get("beta"))
+        stats = _risk_stats(series, spy_map, m.get("beta"))
         funds.append({
             "security_id": sid,
             "ticker": f["ticker"],
