@@ -340,10 +340,10 @@ export function DeepDivePage() {
         aria-label="Deep-dive sections"
         className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-gray-200 bg-white/95 px-4 backdrop-blur-sm"
       >
-        <div className="flex items-end gap-5">
+        <div className="flex items-center gap-4">
           {PANE_GROUPS.map((g) => (
-            <div key={g.label} className="flex items-center gap-0.5">
-              <span className="mr-2 flex h-5 items-center border-r border-gray-200 pr-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-300">
+            <div key={g.label} className="flex items-center gap-1.5">
+              <span className="mr-1 flex h-5 items-center rounded bg-slate-100 px-1.5 text-[0.66rem] font-bold uppercase tracking-[0.08em] text-slate-500">
                 {g.label}
               </span>
               {g.panes.map((p) => (
