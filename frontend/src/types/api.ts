@@ -941,11 +941,25 @@ export interface PortfolioMutationResponse {
   errors: string[]
 }
 
+export interface PortfolioLot {
+  shares: number
+  cost: number
+  acquired: string // trade date of the lot (FIFO identity)
+}
+
+export interface PortfolioThesisLink {
+  id: number
+  summary: string | null
+  status: string | null
+  conviction: number | null // 1–5 int on the wire
+}
+
 export interface PortfolioHolding {
   security_id: number
   ticker: string | null
   name: string | null
   sector: string | null
+  industry: string | null
   shares: number
   avg_cost: number | null
   cost_basis: number
@@ -964,6 +978,12 @@ export interface PortfolioHolding {
   value_pctl: number | null
   quality_pctl: number | null
   momentum_pctl: number | null
+  lots: PortfolioLot[]
+  lt_unrealized: number | null // unrealized P/L in lots held ≥ 1y
+  st_unrealized: number | null // unrealized P/L in lots held < 1y
+  oldest_acquired: string | null
+  wash_sale_risk: boolean // at a loss + bought within the last 30 days
+  thesis: PortfolioThesisLink | null
 }
 
 export interface PortfolioSummary {
@@ -987,7 +1007,16 @@ export interface PortfolioSummary {
   max_drawdown: number | null
   beta: number | null
   mwr: number | null
-  spy_total: number | null
+  benchmark: string // the reference ticker the *_total/curve values track
+  spy_total: number | null // legacy name — holds the requested benchmark
+  bench_total: number | null
+}
+
+export interface PortfolioEvent {
+  date: string
+  type: string // buy | sell | dividend | deposit | withdrawal | fee
+  ticker: string | null
+  amount: number
 }
 
 export interface PortfolioPerformance {
@@ -995,7 +1024,9 @@ export interface PortfolioPerformance {
   value: number[]
   net_invested: number[]
   twr_curve: number[]
-  spy_curve: number[]
+  spy_curve: number[] // legacy name — holds the requested benchmark
+  bench_curve: number[]
+  events: PortfolioEvent[]
 }
 
 export interface PortfolioAllocation {
@@ -1012,17 +1043,54 @@ export interface PortfolioFactorTilt {
   momentum_pctl?: number
 }
 
+export interface IncomeMonth {
+  month: string // 'YYYY-MM'
+  total: number
+  tickers: string[]
+}
+
+export interface IncomeUpcoming {
+  ticker: string
+  projected_date: string // PROJECTED from the trailing year's ex-date cadence
+  per_share: number
+  shares: number
+  est_amount: number
+}
+
 export interface PortfolioIncome {
   ttm_received: number
   forward_12m: number
   yield_on_cost: number | null
   yield_on_value: number | null
+  calendar: IncomeMonth[] // 13 zero-filled months (current + 12 — both end partials), projected; sums to forward_12m
+  upcoming: IncomeUpcoming[] // next ~31 days, projected
+  bench_yield: number | null // benchmark TTM dividends / last close
+}
+
+export interface PortfolioFixSuggestion {
+  action: string
+  sell_ticker?: string
+  sell_shares?: number
+  sell_amount?: number
+  add_ticker?: string
+  add_amount?: number
+  target_weight?: number
+  tax_lt?: number
+  tax_st?: number
+  wash_sale_risk?: boolean
 }
 
 export interface PortfolioFlag {
   level: 'warn' | 'info'
   kind: string
   text: string
+  severity?: 'high' | 'med' | 'low'
+  ticker?: string
+  sector?: string
+  tickers?: string[]
+  weight?: number
+  threshold?: number
+  fix?: PortfolioFixSuggestion
 }
 
 export interface PortfolioResponse {
@@ -1198,6 +1266,14 @@ export interface ProjectionAssumption {
   ann_vol: number
 }
 
+export interface ProjectionBenchmark {
+  ticker: string
+  terminal: { p10: number; p50: number; p90: number }
+  cone_p50: number[]
+  assumptions: { ann_return: number; ann_vol: number }
+  prob_beat: number // fraction of sims where the portfolio beats this benchmark
+}
+
 export interface ProjectionResponse {
   has_portfolio: boolean
   insufficient_history?: boolean | null
@@ -1209,11 +1285,64 @@ export interface ProjectionResponse {
   cone?: ProjectionCone | null
   max_drawdown?: { p50: number; p10: number } | null
   prob_gain?: number | null
+  prob_goal?: number | null
+  goal?: number | null
+  benchmark?: ProjectionBenchmark | null
+  simulated_weights?: Record<string, number> | null
   portfolio_assumptions?: { ann_return: number; ann_vol: number; n_obs: number } | null
   holdings_assumptions?: ProjectionAssumption[] | null
   excluded?: string[] | null
   disclaimer?: string | null
   seed?: number | null
+}
+
+export interface ProjectionRunRequest {
+  years?: number
+  monthly?: number
+  annual_fee?: number
+  stress?: boolean
+  weights?: Record<string, number> | null // ticker → weight (what-if allocation)
+  goal?: number | null
+  compare_bench?: string | null
+}
+
+// ── Portfolio analytics (betas, correlations, stress tests, simulator data) ──
+
+export interface StressContributor {
+  ticker: string
+  ret: number
+  contrib_pp: number
+}
+
+export interface StressPreset {
+  key: string
+  label: string
+  sub: string
+  method: 'replay' | 'beta_mapped'
+  portfolio_dd: number
+  portfolio_ret?: number
+  bench_dd: number
+  contributors: StressContributor[]
+  coverage?: number
+  skipped?: string[]
+  note: string
+}
+
+export interface PortfolioAnalyticsResponse {
+  has_portfolio: boolean
+  error?: string | null
+  as_of?: string | null
+  benchmark?: string | null
+  tickers?: string[] | null
+  candidates?: string[] | null // benchmark/simulator buy candidates present in data
+  axis_dates?: string[] | null
+  returns?: Record<string, (number | null)[]> | null // aligned daily returns
+  betas?: Record<string, number | null> | null
+  corr?: (number | null)[][] | null // NxN over `tickers`
+  sparks?: Record<string, number[]> | null // last ~30 closes per ticker
+  expected?: Record<string, { exp_return: number | null; vol: number | null }> | null
+  last_close?: Record<string, number | null> | null
+  stress?: StressPreset[] | null
 }
 
 export interface BacktestRunResponse {
