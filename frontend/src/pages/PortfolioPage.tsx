@@ -19,7 +19,9 @@ import { fmtDate, fmtPrice, fmtRatio, fmtSignedMoney, fmtSignedPct } from '@/lib
 export function PortfolioPage() {
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ['portfolio'],
-    queryFn: getPortfolio,
+    // wrap: react-query passes its context as the first arg, which would land
+    // in getPortfolio's new `benchmark` parameter
+    queryFn: () => getPortfolio(),
     staleTime: 60 * 1000,
   })
   const { data: txnData } = useQuery({
