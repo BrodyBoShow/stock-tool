@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { Sparkline } from '@/components/screener/Sparkline'
+import { InfoTip } from '@/components/ui/InfoTip'
 import { heatBg } from '@/lib/colors'
 import {
   FINANCIAL_NULL_METRICS,
@@ -11,6 +12,17 @@ import {
 } from '@/lib/constants'
 import { DASH, fmtDate, fmtMetric } from '@/lib/format'
 import type { FundamentalPoint } from '@/types/api'
+
+/** Compact "Jun 2025" column header — the title attribute carries the full date. */
+function fmtMonthYear(iso: string): string {
+  const [y, m] = iso.split('-').map(Number)
+  if (!y || !m) return iso
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
 
 export function FundamentalsTable({
   fundamentals,
@@ -25,12 +37,12 @@ export function FundamentalsTable({
 }) {
   const isFinancial = sector !== null && FINANCIAL_SECTORS.has(sector)
 
-  // Pivot the flat rows: 8 most recent as_of_dates as columns (newest left).
+  // Pivot the flat rows: 8 most recent as_of_dates as columns, displayed
+  // oldest → newest left-to-right so reading direction matches the sparkline.
   const { dates, byMetric } = useMemo(() => {
     const allDates = [...new Set(fundamentals.map((f) => f.as_of_date))]
       .sort()
-      .reverse()
-      .slice(0, 8)
+      .slice(-8)
     const dateSet = new Set(allDates)
     const m = new Map<string, Map<string, number | null>>()
     for (const f of fundamentals) {
@@ -89,7 +101,7 @@ export function FundamentalsTable({
       <div className="mt-0.5 text-[0.78rem] text-gray-500">
         Values as known at each filing date (point-in-time correct — restatements
         apply forward only, never backward). TTM = trailing twelve months. Showing
-        the eight most recent filing dates.
+        the eight most recent filing dates, oldest → newest.
       </div>
 
       <div className="mt-3 overflow-x-auto">
@@ -102,12 +114,16 @@ export function FundamentalsTable({
               {dates.map((d) => (
                 <th
                   key={d}
+                  title={fmtDate(d)}
                   className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500"
                 >
-                  {fmtDate(d)}
+                  {fmtMonthYear(d)}
                 </th>
               ))}
-              <th className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500">
+              <th
+                title="Per-metric trend across the shown periods (oldest → newest)"
+                className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500"
+              >
                 Trend
               </th>
             </tr>
@@ -115,9 +131,9 @@ export function FundamentalsTable({
           <tbody>
             {METRIC_DISPLAY_ORDER.filter((metric) => byMetric.has(metric)).map(
               (metric) => {
-                // Oldest → newest run of this metric, for the trend sparkline.
-                const series = [...dates]
-                  .reverse()
+                // Oldest → newest run of this metric, for the trend sparkline
+                // (dates are already ascending — same order as the columns).
+                const series = dates
                   .map((d) => byMetric.get(metric)?.get(d) ?? null)
                   .filter((x): x is number => x !== null)
                 const higher = HIGHER_IS_BETTER[metric] ?? true
@@ -133,10 +149,17 @@ export function FundamentalsTable({
                         : '#dc2626'
                 }
                 const label = METRIC_LABELS[metric] ?? metric
+                const sparkTitle =
+                  series.length >= 2
+                    ? `${label}: ${fmtMetric(metric, series[0])} → ${fmtMetric(metric, series[series.length - 1])}`
+                    : `${label}: oldest → newest filing`
                 return (
                 <tr key={metric} className="border-b border-gray-100">
                   <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-gray-700">
                     {label}
+                    {metric === 'roic' && roicIsProxy && (
+                      <InfoTip text="For issuers without an operating structure (e.g. preferreds), ROIC is reported as ROA (net income ÷ total assets)." />
+                    )}
                   </td>
                   {dates.map((d) => {
                     const v = byMetric.get(metric)?.get(d) ?? null
@@ -150,7 +173,9 @@ export function FundamentalsTable({
                     } else if (v === null) {
                       cell = DASH
                     } else {
-                      cell = fmtMetric(metric, v, metric === 'roic' && roicIsProxy)
+                      // ROIC-as-ROA proxy is flagged via the label InfoTip, not
+                      // fmtMetric's asterisk suffix.
+                      cell = fmtMetric(metric, v)
                     }
                     const range = ranges.get(metric)
                     const tint =
@@ -174,7 +199,7 @@ export function FundamentalsTable({
                         color={sparkColor}
                         width={64}
                         height={18}
-                        title={`${label}: oldest → newest filing`}
+                        title={sparkTitle}
                       />
                     </div>
                   </td>
@@ -204,17 +229,14 @@ export function FundamentalsTable({
         </span>
       </div>
 
-      <div className="mt-3 space-y-1 text-[0.72rem] text-gray-400">
-        {showFinancialNa && (
+      {showFinancialNa && (
+        <div className="mt-3 space-y-1 text-[0.72rem] text-gray-400">
           <p>
             * Not meaningful for banks / insurers / REITs — these metrics assume a
             non-financial operating model.
           </p>
-        )}
-        {roicIsProxy && (
-          <p>* ROIC value is ROA (net income ÷ total assets); see scores note.</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
