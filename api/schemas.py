@@ -6,7 +6,7 @@ FastAPI's /docs exposes the live Swagger spec derived from them.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
@@ -143,7 +143,13 @@ class ProjectionRunRequest(BaseModel):
     monthly: float = Field(0.0, ge=0.0, le=1_000_000.0)
     annual_fee: float = Field(0.0, ge=0.0, le=0.1)
     stress: bool = False
-    weights: dict[str, float] | None = None   # ticker → weight (what-if allocation)
+    # ticker → weight (what-if allocation). Capped hard: an unbounded dict would
+    # let one request pull years of prices for thousands of sids and run an
+    # O(N³) Cholesky on a free-tier worker. inf/NaN rejected (they'd NaN the
+    # whole sim and 500 the response).
+    weights: dict[str, Annotated[float, Field(gt=0.0, le=1e9,
+                                              allow_inf_nan=False)]] | None = \
+        Field(None, max_length=50)
     goal: float | None = Field(None, ge=0.0, le=1e12)
     compare_bench: str | None = Field(None, max_length=10)
 

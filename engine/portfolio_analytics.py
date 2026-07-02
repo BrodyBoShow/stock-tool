@@ -181,7 +181,13 @@ def portfolio_analytics(owner_id: str | None = None,
     try:
         with conn.cursor() as cur:
             sid_by_ticker = _resolve_sids(cur, all_tickers)
-            bench_sid = sid_by_ticker.get(benchmark) or sid_by_ticker.get("SPY")
+            if benchmark not in sid_by_ticker:
+                # unknown ticker → fall back to SPY EVERYWHERE (axis, betas,
+                # stress, and the reported benchmark name), mirroring
+                # compute_portfolio — otherwise betas/stress silently go null
+                # while the payload still claims the requested benchmark
+                benchmark = "SPY"
+            bench_sid = sid_by_ticker.get(benchmark)
             if bench_sid is None:
                 return {"has_portfolio": True, "error": "no benchmark prices"}
 
@@ -259,6 +265,13 @@ def portfolio_analytics(owner_id: str | None = None,
                                     "prices over this window, at current weights.")
                 else:
                     shock = preset["shock"]
+                    # renormalize over beta-covered weight (same convention as
+                    # the replay path) — otherwise beta-less holdings act like
+                    # cash and understate the estimated drawdown
+                    covered_w = sum(weights[tk] for tk in tickers
+                                    if betas.get(tk) is not None)
+                    if covered_w <= 0:
+                        continue
                     contribs = []
                     port_est = 0.0
                     for tk in tickers:
@@ -266,17 +279,18 @@ def portfolio_analytics(owner_id: str | None = None,
                         if b is None:
                             continue
                         est = max(b * shock, -0.95)
-                        port_est += weights[tk] * est
+                        wn = weights[tk] / covered_w
+                        port_est += wn * est
                         contribs.append({"ticker": tk, "ret": round(est, 4),
-                                         "contrib_pp": round(
-                                             weights[tk] * est * 100, 2)})
-                    if not contribs:
-                        continue
+                                         "contrib_pp": round(wn * est * 100, 2)})
                     contribs.sort(key=lambda c: c["contrib_pp"])
                     item.update({
                         "portfolio_dd": round(port_est, 4),
                         "bench_dd": shock,
                         "contributors": contribs,
+                        "coverage": round(covered_w, 4),
+                        "skipped": sorted(tk for tk in tickers
+                                          if betas.get(tk) is None),
                         "note": ("β-mapped estimate: each holding's trailing-1Y "
                                  "beta × the episode's documented S&P 500 "
                                  "drawdown. Our price data starts 2021 — this is "

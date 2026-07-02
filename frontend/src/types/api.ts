@@ -951,7 +951,7 @@ export interface PortfolioThesisLink {
   id: number
   summary: string | null
   status: string | null
-  conviction: string | null
+  conviction: number | null // 1–5 int on the wire
 }
 
 export interface PortfolioHolding {
@@ -1062,7 +1062,7 @@ export interface PortfolioIncome {
   forward_12m: number
   yield_on_cost: number | null
   yield_on_value: number | null
-  calendar: IncomeMonth[] // 12 months forward, projected
+  calendar: IncomeMonth[] // 13 zero-filled months (current + 12 — both end partials), projected; sums to forward_12m
   upcoming: IncomeUpcoming[] // next ~31 days, projected
   bench_yield: number | null // benchmark TTM dividends / last close
 }

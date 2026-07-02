@@ -242,13 +242,19 @@ def _load_inputs(conn, sids: list[int], start: date,
             prices[int(sid)][d] = float(c)
         out["prices"] = prices
 
+        # Load a full trailing year of corporate actions even when the ledger is
+        # younger: the income projections (per-share TTM, forward calendar) need
+        # the complete dividend cadence or they'd understate income ~pro-rata.
+        # Safe for the simulation: the day loop only looks up ex-dates on
+        # timeline days (all ≥ first transaction), so earlier keys are inert.
+        ca_since = min(start, date.today() - timedelta(days=366))
         cur.execute(
             """
             SELECT security_id, ex_date, action_type, ratio, amount
             FROM corporate_actions
             WHERE security_id = ANY(%s) AND ex_date >= %s
             """,
-            (sids, start),
+            (sids, ca_since),
         )
         splits: dict[date, list[tuple[int, float]]] = defaultdict(list)
         divs: dict[date, list[tuple[int, float]]] = defaultdict(list)
@@ -387,6 +393,17 @@ def _daily_stats(rets: list[float], spy_rets: list[float | None],
         if sr.var() > 1e-12:
             out["beta"] = round(float(np.cov(pr, sr)[0][1] / sr.var()), 3)
     return out
+
+
+def _is_long_term(acquired: date, asof: date) -> bool:
+    """IRS long-term = held MORE than one year: LT strictly after the first
+    anniversary of the buy (Feb 29 anniversaries roll to Mar 1). A plain
+    `days >= 365` misclassifies the exact-anniversary sale and leap spans."""
+    try:
+        anniversary = acquired.replace(year=acquired.year + 1)
+    except ValueError:  # Feb 29 → Mar 1 of the next year
+        anniversary = date(acquired.year + 1, 3, 1)
+    return asof > anniversary
 
 
 def _fifo_sell(q: list[list[float]], to_sell: float) -> float:
@@ -700,7 +717,7 @@ def compute_portfolio(owner_id: str | None = None,
                 oldest = lot_acq
             if last_px is not None:
                 pl = lot_sh * last_px - lot_cost
-                if (last_day - lot_acq).days >= 365:
+                if _is_long_term(lot_acq, last_day):
                     lt_pl += pl
                 else:
                     st_pl += pl
@@ -865,10 +882,13 @@ def compute_portfolio(owner_id: str | None = None,
                                  "shares": sh,
                                  "est_amount": round(per_share * sh, 2)})
     upcoming.sort(key=lambda u: u["projected_date"])
-    # 12 consecutive months starting from the current one, zero-filled
+    # 13 consecutive zero-filled months starting from the current one: the
+    # projection window (last_day, last_day+365] spans a PARTIAL current month
+    # and a partial month current+12, so 12 buckets would silently drop the
+    # tail and sum(calendar) would no longer equal forward_12m.
     cal_out = []
     y, mth = last_day.year, last_day.month
-    for _ in range(12):
+    for _ in range(13):
         key = f"{y:04d}-{mth:02d}"
         cal_out.append({"month": key, "total": round(cal_totals.get(key, 0.0), 2),
                         "tickers": sorted(cal_tickers.get(key, ()))})
@@ -906,7 +926,7 @@ def compute_portfolio(owner_id: str | None = None,
             take = min(lot["shares"], remaining)
             pl = take * px - lot["cost"] * (take / lot["shares"])
             acq = date.fromisoformat(lot["acquired"])
-            if (last_day - acq).days >= 365:
+            if _is_long_term(acq, last_day):
                 lt += pl
             else:
                 st += pl
@@ -916,10 +936,16 @@ def compute_portfolio(owner_id: str | None = None,
     flags: list[dict[str, Any]] = []
     for h in holdings:
         if h["weight"] and h["weight"] > POSITION_WEIGHT_FLAG and h["last_price"]:
-            # sell x$ so that (P − x)/(V − x) = threshold
+            # With a cash ledger the sale proceeds STAY in the portfolio (they
+            # become cash), so total value V is unchanged and the trim solves
+            # (P − x)/V = T → x = P − T·V. Trades-only ledgers have proceeds
+            # leave V, so there it's (P − x)/(V − x) = T → x = (P − T·V)/(1 − T).
             target = POSITION_WEIGHT_FLAG
             mv_h = h["market_value"] or 0.0
-            sell_amt = max((mv_h - target * total_value) / (1 - target), 0.0)
+            if cash_tracking:
+                sell_amt = max(mv_h - target * total_value, 0.0)
+            else:
+                sell_amt = max((mv_h - target * total_value) / (1 - target), 0.0)
             sell_shares = sell_amt / h["last_price"]
             tax = _trim_tax(h, sell_shares)
             trim_pct = sell_amt / mv_h * 100 if mv_h else 0.0
@@ -956,8 +982,10 @@ def compute_portfolio(owner_id: str | None = None,
     for s in allocation["sectors"]:
         if s["weight"] and s["weight"] > SECTOR_WEIGHT_FLAG:
             # buying a$ of a broad-market diversifier dilutes the sector to the
-            # threshold: S/(V + a) = T  →  a = S/T − V
-            add_amt = max(s["value"] / SECTOR_WEIGHT_FLAG - total_value, 0.0)
+            # threshold: S/(pos + a) = T → a = S/T − pos. Sector weights are
+            # measured against POSITION value (not total incl. cash), so the
+            # dilution must use the same denominator.
+            add_amt = max(s["value"] / SECTOR_WEIGHT_FLAG - pos_mv, 0.0)
             sector_tk = [h["ticker"] for h in holdings
                          if (h["sector"] or "Unknown") == s["sector"]]
             flags.append({

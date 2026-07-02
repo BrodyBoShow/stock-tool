@@ -147,12 +147,22 @@ def project_portfolio(
         return {"has_portfolio": False}
 
     if weights:
-        # simulated allocation: same starting money, caller-specified weights
+        # simulated allocation: same starting money, caller-specified weights.
+        # Defense-in-depth (the API schema also enforces this): cap the asset
+        # count — an unbounded dict means a huge price pull + O(N³) Cholesky —
+        # and drop non-finite values, which would NaN the whole simulation.
+        if len(weights) > 50:
+            return {"has_portfolio": True, "insufficient_history": True,
+                    "excluded": ["too many tickers (max 50)"]}
         clean = {str(t).upper(): float(w) for t, w in weights.items()
-                 if float(w) > 0}
+                 if np.isfinite(float(w)) and float(w) > 0}
         sid_map = _resolve_ticker_sids(sorted(clean))
         assets = [{"ticker": t, "security_id": sid_map[t], "weight": clean[t]}
                   for t in clean if t in sid_map]
+        # tickers we can't resolve must SURFACE in `excluded` — silently
+        # dropping them would redistribute their weight and answer a different
+        # allocation than the caller asked for
+        unresolved = sorted(t for t in clean if t not in sid_map)
         if not assets:
             return {"has_portfolio": True, "insufficient_history": True,
                     "excluded": sorted(clean)}
@@ -162,6 +172,7 @@ def project_portfolio(
                    "security_id": int(h["security_id"]),
                    "weight": float(h["market_value"])} for h in held]
         start_money = float(sum(a["weight"] for a in assets))
+        unresolved = []
 
     sids = [int(a["security_id"]) for a in assets]
     bench_ticker = (compare_bench or "").upper().strip() or None
@@ -183,13 +194,13 @@ def project_portfolio(
 
     if not usable:
         return {"has_portfolio": True, "insufficient_history": True,
-                "excluded": [a.get("ticker") for a in excluded]}
+                "excluded": [a.get("ticker") for a in excluded] + unresolved}
 
     sids_u = [int(a["security_id"]) for a in usable]
     rets = rets_full[sids_u].dropna()  # common dates across the usable set
     if len(rets) < MIN_RETURNS:
         return {"has_portfolio": True, "insufficient_history": True,
-                "excluded": [a.get("ticker") for a in excluded]}
+                "excluded": [a.get("ticker") for a in excluded] + unresolved}
 
     # Weights renormalized over the usable assets; starting equity = the
     # portfolio's current position value (same money, chosen allocation).
@@ -316,7 +327,7 @@ def project_portfolio(
         "portfolio_assumptions": {"ann_return": round(port_mu, 4), "ann_vol": round(port_vol, 4),
                                   "n_obs": int(len(rets))},
         "holdings_assumptions": assumptions,
-        "excluded": [h.get("ticker") for h in excluded],
+        "excluded": [h.get("ticker") for h in excluded] + unresolved,
         "disclaimer": DISCLAIMER,
         "seed": PROJECTION_SEED,
     }
