@@ -16,15 +16,18 @@ from api.schemas import (
     LinkedAccountsResponse,
     LinkedProviderInfo,
     LinkSyncResponse,
+    PortfolioAnalyticsResponse,
     PortfolioMutationResponse,
     PortfolioResponse,
     PortfolioTransactionRow,
     PortfolioTransactionsCreateRequest,
     PortfolioTransactionsResponse,
     ProjectionResponse,
+    ProjectionRunRequest,
 )
 from engine import portfolio as portfolio_engine
 from engine import portfolio_sync
+from engine.portfolio_analytics import portfolio_analytics
 from engine.portfolio_projection import project_portfolio
 
 router = APIRouter()
@@ -51,12 +54,48 @@ def get_projection(
     return ProjectionResponse(**out)
 
 
+@router.post(
+    "/projection",
+    response_model=ProjectionResponse,
+    dependencies=[Depends(rate_limit(20, 60))],
+)
+def run_projection(body: ProjectionRunRequest, user: CurrentUser) -> ProjectionResponse:
+    """Projection with the extended knobs the Rebalance Simulator needs: custom
+    weights (what-if allocation), a goal amount, and a benchmark comparison."""
+    out = project_portfolio(
+        years=body.years, monthly=body.monthly, annual_fee=body.annual_fee,
+        stress=body.stress, owner_id=user.id,
+        weights=body.weights, goal=body.goal, compare_bench=body.compare_bench,
+    )
+    return ProjectionResponse(**out)
+
+
 @router.get("", response_model=PortfolioResponse)
-def get_portfolio(user: CurrentUser) -> PortfolioResponse:
-    """The whole Portfolio tab: holdings, TWR/MWR performance vs SPY, risk
-    stats, factor tilt, allocation, dividend income, and action-center flags —
-    all derived live from the transaction ledger (nothing precomputed)."""
-    return PortfolioResponse(**portfolio_engine.compute_portfolio(owner_id=user.id))
+def get_portfolio(
+    user: CurrentUser,
+    benchmark: str = Query("SPY", min_length=1, max_length=10),
+) -> PortfolioResponse:
+    """The whole Portfolio tab: holdings, TWR/MWR performance vs the chosen
+    benchmark, risk stats, factor tilt, allocation, dividend income, and
+    action cards — all derived live from the transaction ledger."""
+    return PortfolioResponse(
+        **portfolio_engine.compute_portfolio(owner_id=user.id, benchmark=benchmark))
+
+
+@router.get(
+    "/analytics",
+    response_model=PortfolioAnalyticsResponse,
+    dependencies=[Depends(rate_limit(30, 60))],
+)
+def get_analytics(
+    user: CurrentUser,
+    benchmark: str = Query("SPY", min_length=1, max_length=10),
+) -> PortfolioAnalyticsResponse:
+    """Diagnostics layer: per-holding betas, pairwise correlations, 30-day
+    sparklines, the aligned 1Y daily-returns matrix (client-side rebalance
+    math), shrunk expected returns, and historical stress tests."""
+    return PortfolioAnalyticsResponse(
+        **portfolio_analytics(owner_id=user.id, benchmark=benchmark))
 
 
 @router.get("/transactions", response_model=PortfolioTransactionsResponse)

@@ -211,13 +211,20 @@ def delete_transaction(txn_id: int, owner_id: str | None = None) -> bool:
 
 # ── derived portfolio (the whole tab in one computation pass) ────────────────
 
-def _load_inputs(conn, sids: list[int], start: date) -> dict[str, Any]:
-    """Prices, corporate actions, SPY series, and latest factor scores for the
-    securities the ledger touches. One round-trip group, then pure Python."""
+def _load_inputs(conn, sids: list[int], start: date,
+                 benchmark: str = "SPY") -> dict[str, Any]:
+    """Prices, corporate actions, benchmark series, and latest factor scores for
+    the securities the ledger touches. One round-trip group, then pure Python."""
     out: dict[str, Any] = {}
     with conn.cursor() as cur:
-        cur.execute("SELECT security_id FROM securities WHERE ticker = 'SPY' LIMIT 1")
+        cur.execute("SELECT security_id FROM securities WHERE ticker = %s LIMIT 1",
+                    (benchmark,))
         row = cur.fetchone()
+        if row is None and benchmark != "SPY":  # unknown ticker → SPY fallback
+            cur.execute(
+                "SELECT security_id FROM securities WHERE ticker = 'SPY' LIMIT 1")
+            row = cur.fetchone()
+            out["benchmark_fallback"] = True
         spy_sid = int(row[0]) if row else None
         out["spy_sid"] = spy_sid
 
@@ -252,9 +259,24 @@ def _load_inputs(conn, sids: list[int], start: date) -> dict[str, Any]:
                 divs[ex].append((int(sid), float(amount)))
         out["splits"], out["divs"] = splits, divs
 
+        # benchmark TTM dividends (per share) for the yield comparison
+        bench_ttm_div = 0.0
+        if spy_sid:
+            cur.execute(
+                """
+                SELECT COALESCE(sum(amount), 0) FROM corporate_actions
+                WHERE security_id = %s AND action_type = 'dividend'
+                  AND ex_date > CURRENT_DATE - 366
+                """,
+                (spy_sid,),
+            )
+            r = cur.fetchone()
+            bench_ttm_div = float(r[0]) if r and r[0] is not None else 0.0
+        out["bench_ttm_div"] = bench_ttm_div
+
         cur.execute(
             """
-            SELECT s.security_id, s.ticker, s.name, s.sector,
+            SELECT s.security_id, s.ticker, s.name, s.sector, s.industry,
                    fs.composite, fs.growth_pctl, fs.value_pctl,
                    fs.quality_pctl, fs.momentum_pctl
             FROM securities s
@@ -270,15 +292,39 @@ def _load_inputs(conn, sids: list[int], start: date) -> dict[str, Any]:
         meta: dict[int, dict[str, Any]] = {}
         for r in cur.fetchall():
             meta[int(r[0])] = {
-                "ticker": r[1], "name": r[2], "sector": r[3],
-                "composite": float(r[4]) if r[4] is not None else None,
-                "growth_pctl": float(r[5]) if r[5] is not None else None,
-                "value_pctl": float(r[6]) if r[6] is not None else None,
-                "quality_pctl": float(r[7]) if r[7] is not None else None,
-                "momentum_pctl": float(r[8]) if r[8] is not None else None,
+                "ticker": r[1], "name": r[2], "sector": r[3], "industry": r[4],
+                "composite": float(r[5]) if r[5] is not None else None,
+                "growth_pctl": float(r[6]) if r[6] is not None else None,
+                "value_pctl": float(r[7]) if r[7] is not None else None,
+                "quality_pctl": float(r[8]) if r[8] is not None else None,
+                "momentum_pctl": float(r[9]) if r[9] is not None else None,
             }
         out["meta"] = meta
     return out
+
+
+def _load_theses(conn, sids: list[int],
+                 owner_id: str | None) -> dict[int, dict[str, Any]]:
+    """OWNER-SCOPED one-liner thesis per held security (latest per sid), for the
+    Holdings table's thesis link. Empty when no owner (single-user legacy)."""
+    if not sids or owner_id is None:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT ON (security_id)
+                   security_id, id, summary, status, conviction
+            FROM theses
+            WHERE security_id = ANY(%s) AND owner_id = %s
+            ORDER BY security_id, updated_at DESC
+            """,
+            (sids, owner_id),
+        )
+        return {
+            int(r[0]): {"id": int(r[1]), "summary": r[2],
+                        "status": r[3], "conviction": r[4]}
+            for r in cur.fetchall()
+        }
 
 
 def _xirr(flows: list[tuple[date, float]]) -> float | None:
@@ -360,8 +406,15 @@ def _fifo_sell(q: list[list[float]], to_sell: float) -> float:
     return cost_out
 
 
-def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915
-    """The entire Portfolio tab payload in one pass over the ledger."""
+def compute_portfolio(owner_id: str | None = None,
+                      benchmark: str = "SPY") -> dict[str, Any]:  # noqa: PLR0912, PLR0915
+    """The entire Portfolio tab payload in one pass over the ledger.
+
+    `benchmark` swaps the reference series everywhere (TWR comparison curve,
+    beta, the vs-market table) — any ticker with prices works; unknown tickers
+    fall back to SPY. Output keys keep their legacy spy_* names (the curve is
+    whatever benchmark was requested) plus an explicit `benchmark` field."""
+    benchmark = (benchmark or "SPY").upper().strip()
     owner_clause = " WHERE owner_id = %s" if owner_id is not None else ""
     params = (owner_id,) if owner_id is not None else ()
     conn = acquire()
@@ -393,7 +446,8 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
 
         first_date = ledger[0]["date"]
         sids = sorted({t["sid"] for t in ledger if t["sid"] is not None})
-        inputs = _load_inputs(conn, sids, first_date)
+        inputs = _load_inputs(conn, sids, first_date, benchmark)
+        theses = _load_theses(conn, sids, owner_id)
     finally:
         release(conn)
 
@@ -416,7 +470,10 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
         txns_by_date[t["date"]].append(t)
 
     # ── day-by-day simulation ────────────────────────────────────────────────
-    lots: dict[int, list[list[float]]] = defaultdict(list)  # sid -> [shares, cost$]
+    # sid -> [shares, cost$, acquired: date]. _fifo_sell only touches indices
+    # 0/1; the acquisition date rides along so tax lots keep their age as they
+    # partially deplete (FIFO preserves lot identity).
+    lots: dict[int, list[list[Any]]] = defaultdict(list)
     cash = 0.0
     last_close: dict[int, float] = {}
     realized: dict[int, float] = defaultdict(float)
@@ -473,7 +530,9 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
             typ, sid = t["type"], t["sid"]
             if typ == "buy":
                 amt = cash_amt(t)
-                lots[sid].append([t["shares"], amt])
+                # acquisition date = the trade date (not the priced day), so lot
+                # age is right even for weekend/pre-history trades
+                lots[sid].append([t["shares"], amt, t["date"]])
                 cash -= amt
                 if not cash_tracking:
                     flow += amt
@@ -567,7 +626,7 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
             typ, sid = t["type"], t["sid"]
             if typ == "buy":
                 amt = cash_amt(t)
-                lots[sid].append([t["shares"], amt])
+                lots[sid].append([t["shares"], amt, t["date"]])
                 cash -= amt
                 if not cash_tracking:
                     net_invested += amt
@@ -610,6 +669,11 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
         for sid in lots if sid in last_close
     ) + (cash if cash_tracking else 0.0)
     holdings: list[dict[str, Any]] = []
+    # tickers bought in the last 30 days: selling them at a loss now would risk a
+    # wash sale (the recent buy would absorb the disallowed loss)
+    recent_buy_sids = {t["sid"] for t in ledger
+                       if t["type"] == "buy" and t["sid"] is not None
+                       and (last_day - t["date"]).days <= 30}
     for sid in sids:
         shares = sum(lot[0] for lot in lots.get(sid, ()))
         if shares <= 1e-9:
@@ -621,6 +685,26 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
         prev_px = series[px_dates[-2]] if len(px_dates) >= 2 else None
         cost = sum(lot[1] for lot in lots.get(sid, ()))
         mv = shares * last_px if last_px is not None else None
+
+        # tax lots: unrealized P/L split long-term (held ≥ 1y) vs short-term
+        lots_out: list[dict[str, Any]] = []
+        lt_pl = st_pl = 0.0
+        oldest: date | None = None
+        for lot_sh, lot_cost, lot_acq in lots.get(sid, ()):
+            if lot_sh <= 1e-9:
+                continue
+            lots_out.append({"shares": round(lot_sh, 6),
+                             "cost": round(lot_cost, 2),
+                             "acquired": str(lot_acq)})
+            if oldest is None or lot_acq < oldest:
+                oldest = lot_acq
+            if last_px is not None:
+                pl = lot_sh * last_px - lot_cost
+                if (last_day - lot_acq).days >= 365:
+                    lt_pl += pl
+                else:
+                    st_pl += pl
+
         holdings.append({
             "security_id": sid,
             "ticker": m.get("ticker"),
@@ -647,6 +731,16 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
             "value_pctl": m.get("value_pctl"),
             "quality_pctl": m.get("quality_pctl"),
             "momentum_pctl": m.get("momentum_pctl"),
+            "industry": m.get("industry"),
+            "lots": lots_out,
+            "lt_unrealized": round(lt_pl, 2) if last_px is not None else None,
+            "st_unrealized": round(st_pl, 2) if last_px is not None else None,
+            "oldest_acquired": str(oldest) if oldest else None,
+            # wash-sale RISK on a sell today: position at a loss + a buy within
+            # the last 30 days (that buy would absorb the disallowed loss)
+            "wash_sale_risk": bool(sid in recent_buy_sids
+                                   and mv is not None and mv < cost),
+            "thesis": theses.get(sid),
         })
     holdings.sort(key=lambda h: -(h["market_value"] or 0))
 
@@ -701,7 +795,11 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
         "first_date": str(first_date),
         "as_of": str(last_day),
         **stats,
+        # the *_total / *_curve keys hold whatever benchmark was requested; the
+        # legacy spy_* names are kept so older clients keep working
+        "benchmark": benchmark if not inputs.get("benchmark_fallback") else "SPY",
         "spy_total": round(spy_curve[-1] - 1.0, 6) if spy_curve else None,
+        "bench_total": round(spy_curve[-1] - 1.0, 6) if spy_curve else None,
     }
 
     # factor tilt: market-value-weighted percentiles over scored holdings
@@ -741,40 +839,160 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
             for sid, amt in pairs:
                 per_share_ttm[sid] += amt
     fwd = sum(per_share_ttm[h["security_id"]] * h["shares"] for h in holdings)
+
+    # forward income calendar: each trailing-year ex-date is PROJECTED one year
+    # forward at the same per-share amount × current shares. No declared future
+    # ex-dates in the free data — every entry is an estimate, labeled as such.
+    held_shares = {h["security_id"]: h["shares"] for h in holdings}
+    cal_totals: dict[str, float] = defaultdict(float)
+    cal_tickers: dict[str, set[str]] = defaultdict(set)
+    upcoming: list[dict[str, Any]] = []
+    for ex_date, pairs in divs.items():
+        if not (ttm_cut < ex_date <= last_day):
+            continue
+        proj = ex_date + timedelta(days=365)
+        month = f"{proj.year:04d}-{proj.month:02d}"
+        for sid, per_share in pairs:
+            sh = held_shares.get(sid, 0.0)
+            if sh <= 0:
+                continue
+            tk = meta.get(sid, {}).get("ticker") or str(sid)
+            cal_totals[month] += per_share * sh
+            cal_tickers[month].add(tk)
+            if 0 <= (proj - last_day).days <= 31:
+                upcoming.append({"ticker": tk, "projected_date": str(proj),
+                                 "per_share": round(per_share, 4),
+                                 "shares": sh,
+                                 "est_amount": round(per_share * sh, 2)})
+    upcoming.sort(key=lambda u: u["projected_date"])
+    # 12 consecutive months starting from the current one, zero-filled
+    cal_out = []
+    y, mth = last_day.year, last_day.month
+    for _ in range(12):
+        key = f"{y:04d}-{mth:02d}"
+        cal_out.append({"month": key, "total": round(cal_totals.get(key, 0.0), 2),
+                        "tickers": sorted(cal_tickers.get(key, ()))})
+        mth += 1
+        if mth > 12:
+            mth, y = 1, y + 1
+
+    bench_last_px = None
+    if spy_sid and prices.get(spy_sid):
+        bench_dates = sorted(prices[spy_sid])
+        bench_last_px = prices[spy_sid][bench_dates[-1]]
     income = {
         "ttm_received": round(ttm, 2),
         "forward_12m": round(fwd, 2),
         "yield_on_cost": round(fwd / total_cost, 6) if total_cost > 0 else None,
         "yield_on_value": round(fwd / pos_mv, 6) if pos_mv > 0 else None,
+        "calendar": cal_out,
+        "upcoming": upcoming,
+        # benchmark trailing yield (TTM dividends / last close) for comparison
+        "bench_yield": (round(inputs["bench_ttm_div"] / bench_last_px, 6)
+                        if bench_last_px and inputs.get("bench_ttm_div") else None),
     }
 
-    # ── action center (descriptive flags, not recommendations) ──────────────
-    flags: list[dict[str, str]] = []
+    # ── action center: structured, severity-ranked cards with a pre-computed
+    # suggested fix (descriptive analytics + arithmetic, not advice) ──────────
+    def _trim_tax(h: dict[str, Any], sell_shares: float) -> dict[str, Any]:
+        """FIFO-walk the holding's open lots for a hypothetical sell of
+        `sell_shares` at the last close → realized P/L split LT/ST."""
+        px = h["last_price"] or 0.0
+        remaining = sell_shares
+        lt = st = 0.0
+        for lot in h["lots"]:
+            if remaining <= 1e-9:
+                break
+            take = min(lot["shares"], remaining)
+            pl = take * px - lot["cost"] * (take / lot["shares"])
+            acq = date.fromisoformat(lot["acquired"])
+            if (last_day - acq).days >= 365:
+                lt += pl
+            else:
+                st += pl
+            remaining -= take
+        return {"lt": round(lt, 2), "st": round(st, 2)}
+
+    flags: list[dict[str, Any]] = []
     for h in holdings:
-        if h["weight"] and h["weight"] > POSITION_WEIGHT_FLAG:
-            flags.append({"level": "warn", "kind": "concentration",
-                          "text": f"{h['ticker']} is {h['weight']*100:.0f}% of the "
-                                  f"portfolio (>{POSITION_WEIGHT_FLAG*100:.0f}%)."})
+        if h["weight"] and h["weight"] > POSITION_WEIGHT_FLAG and h["last_price"]:
+            # sell x$ so that (P − x)/(V − x) = threshold
+            target = POSITION_WEIGHT_FLAG
+            mv_h = h["market_value"] or 0.0
+            sell_amt = max((mv_h - target * total_value) / (1 - target), 0.0)
+            sell_shares = sell_amt / h["last_price"]
+            tax = _trim_tax(h, sell_shares)
+            trim_pct = sell_amt / mv_h * 100 if mv_h else 0.0
+            # one decimal for small trims so the text never reads "trim by 0%"
+            trim_txt = f"{trim_pct:.0f}%" if trim_pct >= 10 else f"{trim_pct:.1f}%"
+            flags.append({
+                "level": "warn", "kind": "concentration", "severity": "high",
+                "ticker": h["ticker"],
+                "text": f"{h['ticker']} is {h['weight']*100:.0f}% of the "
+                        f"portfolio (>{POSITION_WEIGHT_FLAG*100:.0f}%).",
+                "weight": h["weight"], "threshold": POSITION_WEIGHT_FLAG,
+                "fix": {
+                    "action": f"Trim {h['ticker']} by {trim_txt} "
+                              f"(sell {sell_shares:.4g} shares)",
+                    "sell_ticker": h["ticker"],
+                    "sell_shares": round(sell_shares, 6),
+                    "sell_amount": round(sell_amt, 2),
+                    "target_weight": target,
+                    "tax_lt": tax["lt"], "tax_st": tax["st"],
+                    "wash_sale_risk": bool(h["wash_sale_risk"]),
+                },
+            })
         if h["price_date"] and (last_day - date.fromisoformat(h["price_date"])).days \
                 > STALE_PRICE_DAYS:
-            flags.append({"level": "warn", "kind": "stale_price",
+            flags.append({"level": "warn", "kind": "stale_price", "severity": "med",
+                          "ticker": h["ticker"],
                           "text": f"{h['ticker']} last priced {h['price_date']} — "
                                   "value may be stale."})
         if h["composite"] is None:
-            flags.append({"level": "info", "kind": "unscored",
+            flags.append({"level": "info", "kind": "unscored", "severity": "low",
+                          "ticker": h["ticker"],
                           "text": f"{h['ticker']} has no factor scores — excluded "
                                   "from the tilt averages."})
     for s in allocation["sectors"]:
         if s["weight"] and s["weight"] > SECTOR_WEIGHT_FLAG:
-            flags.append({"level": "warn", "kind": "sector",
-                          "text": f"{s['sector']} is {s['weight']*100:.0f}% of "
-                                  f"positions (>{SECTOR_WEIGHT_FLAG*100:.0f}%)."})
+            # buying a$ of a broad-market diversifier dilutes the sector to the
+            # threshold: S/(V + a) = T  →  a = S/T − V
+            add_amt = max(s["value"] / SECTOR_WEIGHT_FLAG - total_value, 0.0)
+            sector_tk = [h["ticker"] for h in holdings
+                         if (h["sector"] or "Unknown") == s["sector"]]
+            flags.append({
+                "level": "warn", "kind": "sector", "severity": "med",
+                "sector": s["sector"],
+                "text": f"{s['sector']} is {s['weight']*100:.0f}% of "
+                        f"positions (>{SECTOR_WEIGHT_FLAG*100:.0f}%).",
+                "weight": s["weight"], "threshold": SECTOR_WEIGHT_FLAG,
+                "tickers": sector_tk,
+                "fix": {
+                    "action": f"Add ~${add_amt:,.0f} of a broad-market fund "
+                              "(e.g. VTI) to dilute the sector below "
+                              f"{SECTOR_WEIGHT_FLAG*100:.0f}%",
+                    "add_ticker": "VTI",
+                    "add_amount": round(add_amt, 2),
+                    "target_weight": SECTOR_WEIGHT_FLAG,
+                },
+            })
     if twr_curve:
         peak = max(twr_curve)
         dd_now = twr_curve[-1] / peak - 1.0
         if dd_now < -DRAWDOWN_FLAG:
-            flags.append({"level": "warn", "kind": "drawdown",
+            flags.append({"level": "warn", "kind": "drawdown", "severity": "low",
                           "text": f"Portfolio is {dd_now*100:.0f}% below its peak."})
+    sev_rank = {"high": 0, "med": 1, "low": 2}
+    flags.sort(key=lambda f: sev_rank.get(f.get("severity", "low"), 2))
+
+    # ledger events for the performance chart's markers (deposits/trades/divs)
+    events = [
+        {"date": str(t["date"]), "type": t["type"],
+         "ticker": meta.get(t["sid"], {}).get("ticker") if t["sid"] else None,
+         "amount": round(t["amount"] if t["amount"] is not None
+                         else (t["shares"] or 0) * (t["price"] or 0), 2)}
+        for t in ledger
+    ]
 
     return {
         "has_transactions": True,
@@ -788,6 +1006,8 @@ def compute_portfolio(owner_id: str | None = None) -> dict[str, Any]:  # noqa: P
                             else invested_series,
             "twr_curve": twr_curve,
             "spy_curve": spy_curve,
+            "bench_curve": spy_curve,
+            "events": events,
         },
         "allocation": allocation,
         "factor_tilt": tilt,

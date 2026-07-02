@@ -27,8 +27,10 @@ import type {
   MarketPulseResponse,
   PeerStripResponse,
   PortfolioMutationResponse,
+  PortfolioAnalyticsResponse,
   PortfolioResponse,
   ProjectionResponse,
+  ProjectionRunRequest,
   PortfolioTransactionCreate,
   PortfolioTransactionsResponse,
   QuotesResponse,
@@ -360,8 +362,16 @@ export function generateMarketBrief(): Promise<MarketBriefResponse> {
   return sendJson<MarketBriefResponse>('POST', '/market/brief')
 }
 
-export function getPortfolio(): Promise<PortfolioResponse> {
-  return getJson<PortfolioResponse>('/portfolio')
+export function getPortfolio(benchmark = 'SPY'): Promise<PortfolioResponse> {
+  return getJson<PortfolioResponse>(
+    `/portfolio?benchmark=${encodeURIComponent(benchmark)}`)
+}
+
+export function getPortfolioAnalytics(
+  benchmark = 'SPY',
+): Promise<PortfolioAnalyticsResponse> {
+  return getJson<PortfolioAnalyticsResponse>(
+    `/portfolio/analytics?benchmark=${encodeURIComponent(benchmark)}`)
 }
 
 export function getProjection(p: {
@@ -377,6 +387,11 @@ export function getProjection(p: {
     stress: String(p.stress),
   })
   return getJson<ProjectionResponse>(`/portfolio/projection?${qs.toString()}`)
+}
+
+/** Extended projection (POST): custom weights, goal probability, benchmark cone. */
+export function runProjection(body: ProjectionRunRequest): Promise<ProjectionResponse> {
+  return sendJson<ProjectionResponse>('POST', '/portfolio/projection', body)
 }
 
 export function getPortfolioTransactions(): Promise<PortfolioTransactionsResponse> {

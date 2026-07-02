@@ -126,11 +126,46 @@ class ProjectionResponse(BaseModel):
     cone: dict | None = None
     max_drawdown: dict | None = None
     prob_gain: float | None = None
+    prob_goal: float | None = None
+    goal: float | None = None
+    benchmark: dict | None = None
+    simulated_weights: dict | None = None
     portfolio_assumptions: dict | None = None
     holdings_assumptions: list | None = None
     excluded: list | None = None
     disclaimer: str | None = None
     seed: int | None = None
+
+
+class ProjectionRunRequest(BaseModel):
+    """POST body for the extended projection (Rebalance Simulator reruns)."""
+    years: int = Field(10, ge=1, le=40)
+    monthly: float = Field(0.0, ge=0.0, le=1_000_000.0)
+    annual_fee: float = Field(0.0, ge=0.0, le=0.1)
+    stress: bool = False
+    weights: dict[str, float] | None = None   # ticker → weight (what-if allocation)
+    goal: float | None = Field(None, ge=0.0, le=1e12)
+    compare_bench: str | None = Field(None, max_length=10)
+
+
+class PortfolioAnalyticsResponse(BaseModel):
+    """Portfolio diagnostics: betas, correlations, sparklines, the aligned 1Y
+    returns matrix, shrunk expected returns, and stress tests. Loose nested
+    types — the frontend owns the shaped typing."""
+    has_portfolio: bool
+    error: str | None = None
+    as_of: str | None = None
+    benchmark: str | None = None
+    tickers: list[str] | None = None
+    candidates: list[str] | None = None
+    axis_dates: list[str] | None = None
+    returns: dict | None = None
+    betas: dict | None = None
+    corr: list | None = None
+    sparks: dict | None = None
+    expected: dict | None = None
+    last_close: dict | None = None
+    stress: list | None = None
 
 
 # ── securities (deep-dive) ────────────────────────────────────────────────────

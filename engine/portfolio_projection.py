@@ -95,6 +95,22 @@ MARKET_PRIOR = 0.08  # long-run equity expected return (~8%/yr)
 RETURN_SHRINK = 0.5  # weight on the prior; short-window means are unreliable
 
 
+def _resolve_ticker_sids(tickers: list[str]) -> dict[str, int]:
+    """ticker → security_id for arbitrary tickers (simulator buy candidates)."""
+    if not tickers:
+        return {}
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT ticker, security_id FROM securities WHERE ticker = ANY(%s)",
+                (tickers,),
+            )
+            return {r[0]: int(r[1]) for r in cur.fetchall()}
+    finally:
+        release(conn)
+
+
 def project_portfolio(
     years: int = 10,
     monthly: float = 0.0,
@@ -103,12 +119,21 @@ def project_portfolio(
     lookback_days: int = 1095,
     stress: bool = False,
     owner_id: str | None = None,
+    weights: dict[str, float] | None = None,
+    goal: float | None = None,
+    compare_bench: str | None = None,
 ) -> dict[str, Any]:
     """Correlated Monte Carlo projection of the current holdings (monthly steps).
 
     Returns the percentile cone, terminal percentiles, a max-drawdown
     distribution, P(end > contributed), the per-holding assumptions used, and a
     disclaimer. Monthly rebalance back to current weights is assumed.
+
+    `weights` (ticker → weight, may include tickers not currently held, e.g. a
+    simulated VTI buy) reruns the cone with the SAME starting money reallocated
+    to those weights — the Rebalance Simulator's "what if" path. `goal` adds
+    P(terminal ≥ goal). `compare_bench` adds a same-contribution single-asset
+    cone for that benchmark ticker plus P(beat benchmark).
     """
     years = max(1, min(int(years), 40))
     n_sims = max(200, min(int(n_sims), 5000))
@@ -121,31 +146,55 @@ def project_portfolio(
     if not held:
         return {"has_portfolio": False}
 
-    sids = [int(h["security_id"]) for h in held]
-    px = _load_price_history(sids, lookback_days)
+    if weights:
+        # simulated allocation: same starting money, caller-specified weights
+        clean = {str(t).upper(): float(w) for t, w in weights.items()
+                 if float(w) > 0}
+        sid_map = _resolve_ticker_sids(sorted(clean))
+        assets = [{"ticker": t, "security_id": sid_map[t], "weight": clean[t]}
+                  for t in clean if t in sid_map]
+        if not assets:
+            return {"has_portfolio": True, "insufficient_history": True,
+                    "excluded": sorted(clean)}
+        start_money = float(sum(h["market_value"] for h in held))
+    else:
+        assets = [{"ticker": h.get("ticker"),
+                   "security_id": int(h["security_id"]),
+                   "weight": float(h["market_value"])} for h in held]
+        start_money = float(sum(a["weight"] for a in assets))
 
-    # Daily log returns; keep only holdings with enough overlapping history.
+    sids = [int(a["security_id"]) for a in assets]
+    bench_ticker = (compare_bench or "").upper().strip() or None
+    bench_sid = None
+    if bench_ticker:
+        bench_sid = _resolve_ticker_sids([bench_ticker]).get(bench_ticker)
+    px = _load_price_history(
+        sids + ([bench_sid] if bench_sid and bench_sid not in sids else []),
+        lookback_days)
+
+    # Daily log returns; keep only assets with enough overlapping history.
     rets_full = np.log(px / px.shift(1)) if not px.empty else pd.DataFrame()
     usable, excluded = [], []
-    for h in held:
-        sid = int(h["security_id"])
+    for a in assets:
+        sid = int(a["security_id"])
         has_col = not rets_full.empty and sid in rets_full.columns
         col = rets_full[sid].dropna() if has_col else pd.Series(dtype=float)
-        (usable if len(col) >= MIN_RETURNS else excluded).append(h)
+        (usable if len(col) >= MIN_RETURNS else excluded).append(a)
 
     if not usable:
         return {"has_portfolio": True, "insufficient_history": True,
-                "excluded": [h.get("ticker") for h in excluded]}
+                "excluded": [a.get("ticker") for a in excluded]}
 
-    sids_u = [int(h["security_id"]) for h in usable]
+    sids_u = [int(a["security_id"]) for a in usable]
     rets = rets_full[sids_u].dropna()  # common dates across the usable set
     if len(rets) < MIN_RETURNS:
         return {"has_portfolio": True, "insufficient_history": True,
-                "excluded": [h.get("ticker") for h in excluded]}
+                "excluded": [a.get("ticker") for a in excluded]}
 
-    # Weights renormalized over the usable holdings; starting equity = their MV.
-    mv = np.array([float(h["market_value"]) for h in usable])
-    start_balance = float(mv.sum())
+    # Weights renormalized over the usable assets; starting equity = the
+    # portfolio's current position value (same money, chosen allocation).
+    mv = np.array([float(a["weight"]) for a in usable])
+    start_balance = start_money
     w = mv / mv.sum()
 
     mean_d = rets.mean().to_numpy()
@@ -199,6 +248,36 @@ def project_portfolio(
             "p90": float(np.percentile(a, 90)),
         }
 
+    # Optional benchmark comparison: a single-asset sim of `compare_bench` with
+    # the SAME contributions/fee (its own seed) — "what if I just bought SPY".
+    bench_out: dict[str, Any] | None = None
+    if bench_sid is not None and not rets_full.empty and bench_sid in rets_full.columns:
+        bcol = rets_full[bench_sid].dropna()
+        if len(bcol) >= MIN_RETURNS:
+            b_mu_trail = float(bcol.mean()) * TRADING_DAYS
+            b_mu = (1.0 - RETURN_SHRINK) * b_mu_trail + RETURN_SHRINK * MARKET_PRIOR
+            b_vol = float(bcol.std()) * float(np.sqrt(TRADING_DAYS))
+            b_rng = np.random.default_rng(PROJECTION_SEED + 1)
+            b_bal = np.full(n_sims, start_balance, dtype=float)
+            b_yearly = np.zeros((n_sims, years), dtype=float)
+            b_mu_m = b_mu / MONTHS_PER_YEAR
+            b_sd_m = b_vol / np.sqrt(MONTHS_PER_YEAR)
+            for m in range(n_months):
+                r = np.clip(b_mu_m + b_sd_m * b_rng.standard_normal(n_sims),
+                            -0.95, None)
+                b_bal = (b_bal + monthly) * (1.0 + r) * monthly_fee
+                if (m + 1) % MONTHS_PER_YEAR == 0:
+                    b_yearly[:, (m + 1) // MONTHS_PER_YEAR - 1] = b_bal
+            bench_out = {
+                "ticker": bench_ticker,
+                "terminal": {k2: round(v, 2) for k2, v in pcts(b_bal).items()},
+                "cone_p50": [round(float(np.percentile(b_yearly[:, y], 50)), 2)
+                             for y in range(years)],
+                "assumptions": {"ann_return": round(b_mu, 4),
+                                "ann_vol": round(b_vol, 4)},
+                "prob_beat": round(float((balances > b_bal).mean()), 4),
+            }
+
     cone = {
         "years": list(range(1, years + 1)),
         "p10": [float(np.percentile(yearly[:, y], 10)) for y in range(years)],
@@ -227,6 +306,13 @@ def project_portfolio(
         "max_drawdown": {"p50": round(float(np.percentile(max_dd, 50)), 4),
                          "p10": round(float(np.percentile(max_dd, 10)), 4)},  # p10 = a bad path
         "prob_gain": round(float((balances > contributed).mean()), 4),
+        "prob_goal": (round(float((balances >= float(goal)).mean()), 4)
+                      if goal and float(goal) > 0 else None),
+        "goal": float(goal) if goal and float(goal) > 0 else None,
+        "benchmark": bench_out,
+        "simulated_weights": ({a["ticker"]: round(float(wi), 4)
+                               for a, wi in zip(usable, w, strict=False)}
+                              if weights else None),
         "portfolio_assumptions": {"ann_return": round(port_mu, 4), "ann_vol": round(port_vol, 4),
                                   "n_obs": int(len(rets))},
         "holdings_assumptions": assumptions,
