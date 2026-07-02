@@ -1,153 +1,161 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { pushRecent } from '@/lib/recentlyViewed'
+import { CompareDrawer } from '@/components/deepdive/CompareDrawer'
 import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
+import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
 import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FilingIntelligencePanel } from '@/components/deepdive/FilingIntelligencePanel'
 import { FilingsListPanel } from '@/components/deepdive/FilingsListPanel'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
-import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
 import { IntrinsicValuePanel } from '@/components/deepdive/IntrinsicValuePanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
+import { OverviewPane } from '@/components/deepdive/OverviewPane'
 import { PeerStrip } from '@/components/deepdive/PeerStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
+import { RightRail } from '@/components/deepdive/RightRail'
 import { ScoreForensicsPanel } from '@/components/deepdive/ScoreForensicsPanel'
 import { ScoreStoryPanel } from '@/components/deepdive/ScoreStoryPanel'
 import { ScoreWaterfall } from '@/components/deepdive/ScoreWaterfall'
+import { ShortcutsOverlay } from '@/components/deepdive/ShortcutsOverlay'
 import { ThesisPanel } from '@/components/deepdive/ThesisPanel'
 import { ErrorCard } from '@/components/ErrorCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { getSecurity } from '@/lib/api'
+import { pushRecent } from '@/lib/recentlyViewed'
+import { pagerFor } from '@/lib/screenerOrder'
 
-const NAV_SECTIONS = [
-  { id: 'brief', label: 'Brief' },
-  { id: 'story', label: 'Story' },
-  { id: 'chart', label: 'Chart' },
-  { id: 'score', label: 'Score' },
-  { id: 'factors', label: 'Factors' },
-  { id: 'value', label: 'Value' },
-  { id: 'financials', label: 'Financials' },
-  { id: 'filings', label: 'Filings' },
-  { id: 'insiders', label: 'Insiders' },
+/**
+ * Deep dive — grouped-pane IA (mock: stockbud_deep_dive_mock.html).
+ * 10 flat scroll-sections became 4 grouped sections of sub-panes with
+ * `?pane=` routing (default: brief — the most useful landing view), a
+ * breadcrumb + J/K screener pager, a right rail on the reading panes, and a
+ * keyboard layer (J/K tickers · g+letter panes · ? overlay).
+ */
+
+export type PaneId =
+  | 'overview' | 'brief'
+  | 'story' | 'chart' | 'score' | 'factors' | 'value'
+  | 'financials' | 'filings'
+  | 'insiders'
+
+const PANE_GROUPS: Array<{ label: string; panes: Array<{ id: PaneId; label: string }> }> = [
+  { label: 'Summary', panes: [{ id: 'overview', label: 'Overview' }, { id: 'brief', label: 'Brief' }] },
+  {
+    label: 'Analysis',
+    panes: [
+      { id: 'story', label: 'Story' },
+      { id: 'chart', label: 'Chart' },
+      { id: 'score', label: 'Score' },
+      { id: 'factors', label: 'Factors' },
+      { id: 'value', label: 'Value' },
+    ],
+  },
+  { label: 'Data', panes: [{ id: 'financials', label: 'Financials' }, { id: 'filings', label: 'Filings' }] },
+  { label: 'Activity', panes: [{ id: 'insiders', label: 'Insiders' }] },
 ]
 
-function SectionNav({ ticker }: { ticker: string }) {
-  const [active, setActive] = useState('brief')
-  const [progress, setProgress] = useState(0)
-  const observerRef = useRef<IntersectionObserver | null>(null)
+const PANE_IDS = PANE_GROUPS.flatMap((g) => g.panes.map((p) => p.id))
 
-  useEffect(() => {
-    observerRef.current?.disconnect()
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActive(entry.target.id)
-          }
-        }
-      },
-      { rootMargin: '-20% 0px -70% 0px', threshold: 0 },
-    )
-    for (const s of NAV_SECTIONS) {
-      const el = document.getElementById(s.id)
-      if (el) observerRef.current.observe(el)
-    }
-    return () => observerRef.current?.disconnect()
-  }, [ticker])
-
-  // page scroll progress (thin bar under the nav)
-  useEffect(() => {
-    const onScroll = () => {
-      const h = document.documentElement
-      const max = h.scrollHeight - h.clientHeight
-      setProgress(max > 0 ? Math.min(100, (h.scrollTop / max) * 100) : 0)
-    }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  // ←/→ jump between sections (unless typing)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-      const tag = (e.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-      const i = NAV_SECTIONS.findIndex((s) => s.id === active)
-      const next = e.key === 'ArrowRight' ? i + 1 : i - 1
-      if (next >= 0 && next < NAV_SECTIONS.length) {
-        e.preventDefault()
-        scrollTo(NAV_SECTIONS[next].id)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [active])
-
-  return (
-    <nav className="sticky top-0 z-30 -mx-4 border-b border-gray-200 bg-white/95 px-4 py-2 backdrop-blur-sm shadow-[0_1px_6px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center gap-1 overflow-x-auto">
-        <span className="mr-2 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-300">
-          {ticker}
-        </span>
-        {NAV_SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => scrollTo(s.id)}
-            className={`flex-none rounded-full px-3 py-1 text-[0.72rem] font-semibold transition-all ${
-              active === s.id
-                ? 'bg-slate-800 text-white'
-                : 'text-gray-500 hover:bg-slate-100 hover:text-slate-800'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-        <span className="ml-auto hidden flex-none pl-3 text-[0.62rem] text-slate-300 sm:inline">
-          ← → to move
-        </span>
-      </div>
-      <span
-        className="absolute bottom-0 left-0 h-[2px] bg-indigo-500 transition-[width] duration-150"
-        style={{ width: `${progress}%` }}
-      />
-    </nav>
-  )
+/** g+<key> pane jumps (spec §7.3, extended to every pane). */
+const G_KEYS: Record<string, PaneId> = {
+  o: 'overview', b: 'brief', s: 'story', c: 'chart', r: 'score',
+  f: 'factors', v: 'value', n: 'financials', l: 'filings', i: 'insiders',
 }
+
+/** Panes that read better with the right rail; charts/tables take full width. */
+const RAIL_PANES: PaneId[] = ['overview', 'brief', 'factors', 'value']
 
 function DeepDiveSkeleton() {
   return (
     <div className="space-y-5">
       <Skeleton className="h-[100px] w-full rounded-card" />
+      <Skeleton className="h-9 w-full rounded-card" />
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-5">
         {Array.from({ length: 5 }, (_, i) => (
           <Skeleton key={i} className="h-[130px] rounded-card" />
         ))}
       </div>
       <Skeleton className="h-[400px] w-full rounded-card" />
-      <Skeleton className="h-[320px] w-full rounded-card" />
     </div>
   )
 }
 
 export function DeepDivePage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawPane = searchParams.get('pane')
+  const pane: PaneId = PANE_IDS.includes(rawPane as PaneId) ? (rawPane as PaneId) : 'brief'
   const [days, setDays] = useState(365)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const pendingG = useRef(false)
+  const gTimer = useRef<number | null>(null)
 
   useEffect(() => {
     if (ticker) pushRecent(ticker)
   }, [ticker])
+
+  const setPane = (id: PaneId) => {
+    setSearchParams(id === 'brief' ? {} : { pane: id })
+    window.scrollTo({ top: 0 })
+  }
+
+  const pager = pagerFor(ticker)
+
+  // Keyboard layer: J/K ticker pager, g+<key> pane jumps, ? shortcuts, Esc.
+  // The effect only wires the listener; handlers do the navigation/setState.
+  useEffect(() => {
+    const goto = (t: string | null) => {
+      if (t) navigate(`/securities/${t}${window.location.search}`)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      const tag = el?.tagName
+      const typing =
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+      if (e.key === 'Escape') {
+        setShortcutsOpen(false)
+        setCompareOpen(false)
+        return
+      }
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return
+      if (pendingG.current) {
+        pendingG.current = false
+        if (gTimer.current) window.clearTimeout(gTimer.current)
+        const target = G_KEYS[e.key.toLowerCase()]
+        if (target) {
+          e.preventDefault()
+          setPane(target)
+        }
+        return
+      }
+      if (e.key === 'g') {
+        pendingG.current = true
+        gTimer.current = window.setTimeout(() => {
+          pendingG.current = false
+        }, 900)
+        return
+      }
+      if (e.key === '?') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+      } else if (e.key === 'j' || e.key === 'J') {
+        goto(pagerFor(ticker)?.next ?? null)
+      } else if (e.key === 'k' || e.key === 'K') {
+        goto(pagerFor(ticker)?.prev ?? null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, navigate])
 
   const { data, isPending, isFetching, error, refetch } = useQuery({
     queryKey: ['security', ticker.toUpperCase(), days],
@@ -156,28 +164,62 @@ export function DeepDivePage() {
     placeholderData: keepPreviousData,
   })
 
-  const backLink = (
-    <Link
-      to="/"
-      className="inline-flex items-center gap-1 text-[0.82rem] font-semibold text-slate-500 hover:text-slate-800"
-    >
-      ← Screener
-    </Link>
+  // Breadcrumb + pager strip (always rendered, even while loading).
+  const crumb = (
+    <div className="flex flex-wrap items-center gap-2 text-[0.78rem]">
+      <Link to="/" className="font-semibold text-slate-500 hover:text-indigo-600">
+        ← Screener
+      </Link>
+      <span className="text-gray-300">/</span>
+      <span className="text-slate-400">Securities</span>
+      <span className="text-gray-300">/</span>
+      <span className="font-semibold text-slate-800">{ticker.toUpperCase()}</span>
+      {pager && (
+        <span className="ml-auto flex items-center gap-1.5 text-[0.7rem] text-slate-400">
+          Screener result {pager.index} of {pager.total}
+          <button
+            type="button"
+            disabled={!pager.prev}
+            onClick={() => pager.prev && navigate(`/securities/${pager.prev}${window.location.search}`)}
+            title="Previous ticker (K)"
+            className="rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[0.68rem] text-slate-500 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40"
+          >
+            ← K
+          </button>
+          <button
+            type="button"
+            disabled={!pager.next}
+            onClick={() => pager.next && navigate(`/securities/${pager.next}${window.location.search}`)}
+            title="Next ticker (J)"
+            className="rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[0.68rem] text-slate-500 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40"
+          >
+            J →
+          </button>
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => setShortcutsOpen(true)}
+        title="Keyboard shortcuts (?)"
+        className={`rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[0.68rem] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 ${pager ? '' : 'ml-auto'}`}
+      >
+        ?
+      </button>
+    </div>
   )
 
   if (isPending) {
     return (
       <div className="space-y-4">
-        {backLink}
+        {crumb}
         <DeepDiveSkeleton />
       </div>
     )
   }
-
   if (error) {
     return (
       <div className="space-y-4">
-        {backLink}
+        {crumb}
         <ErrorCard error={error} onRetry={() => void refetch()} />
       </div>
     )
@@ -189,27 +231,36 @@ export function DeepDivePage() {
     .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)} ${(v * 100).toFixed(0)}%`)
     .join(' · ')
   const roicIsProxy = header.details?.flags?.roic_pool === 'roa_proxy'
+  const showRail = RAIL_PANES.includes(pane)
 
-  return (
-    <div className="space-y-5">
-      {backLink}
-      <HeaderCard
-        header={header}
-        action={<WatchlistButton ticker={header.ticker} variant="button" />}
-      />
+  const paneBody = (
+    <div className="min-h-[60vh] space-y-5">
+      {pane === 'overview' && (
+        <OverviewPane
+          header={header}
+          prices={prices}
+          fundamentals={fundamentals}
+          filings={data.filings}
+          onNavigate={setPane}
+        />
+      )}
 
-      <SectionNav ticker={header.ticker} />
+      {pane === 'brief' && (
+        <>
+          <DecisionBriefPanel ticker={header.ticker} header={header} />
+          <ThesisPanel ticker={header.ticker} />
+        </>
+      )}
 
-      <div id="brief">
-        <DecisionBriefPanel ticker={header.ticker} header={header} />
-      </div>
+      {pane === 'story' && (
+        <>
+          <ScoreStoryPanel ticker={header.ticker} />
+          <ScoreForensicsPanel ticker={header.ticker} />
+          <ScoreWaterfall header={header} />
+        </>
+      )}
 
-      <div id="story" className="space-y-5">
-        <ScoreStoryPanel ticker={header.ticker} />
-        <ScoreForensicsPanel ticker={header.ticker} />
-      </div>
-
-      <div id="chart">
+      {pane === 'chart' && (
         <PriceChart
           prices={prices}
           days={days}
@@ -218,51 +269,126 @@ export function DeepDivePage() {
           ticker={header.ticker}
           filings={data.filings}
         />
-      </div>
+      )}
 
-      <div id="score">
-        <ScoreWaterfall header={header} />
-      </div>
+      {pane === 'score' && <FactorInputsTable header={header} />}
 
-      <div id="factors">
-        <FactorCards header={header} ticker={header.ticker} prices={prices} />
-        <p className="mt-2 text-[0.72rem] text-gray-400">
-          Cross-sectional percentile ranks within the US-listed universe (100 =
-          top), as of {header.score_date ?? 'n/a'} (nightly)
-          {weightStr ? ` · Weights: ${weightStr}` : ''}.
-        </p>
-      </div>
+      {pane === 'factors' && (
+        <>
+          <FactorCards header={header} ticker={header.ticker} prices={prices} />
+          <p className="text-[0.72rem] text-gray-400">
+            Cross-sectional percentile ranks within the US-listed universe (100 = top),
+            as of {header.score_date ?? 'n/a'} (nightly)
+            {weightStr ? ` · Weights: ${weightStr}` : ''}.
+          </p>
+          <PeerStrip ticker={header.ticker} composite={header.composite} />
+        </>
+      )}
 
-      <PeerStrip ticker={header.ticker} composite={header.composite} />
+      {pane === 'value' && (
+        <>
+          <IntrinsicValuePanel ticker={header.ticker} />
+          <MacroStrip />
+        </>
+      )}
 
-      <div id="value">
-        <IntrinsicValuePanel ticker={header.ticker} />
-      </div>
+      {pane === 'financials' && (
+        <>
+          <FundamentalsTable
+            fundamentals={fundamentals}
+            sector={header.sector}
+            ticker={header.ticker}
+            roicIsProxy={roicIsProxy}
+          />
+          <EventsPanel ticker={header.ticker} />
+        </>
+      )}
 
-      <ThesisPanel ticker={header.ticker} />
+      {pane === 'filings' && (
+        <>
+          <FilingIntelligencePanel ticker={header.ticker} filings={data.filings} />
+          <FilingsListPanel ticker={header.ticker} filings={data.filings} />
+        </>
+      )}
 
-      <MacroStrip />
+      {pane === 'insiders' && <InsiderPanel ticker={header.ticker} />}
+    </div>
+  )
 
-      <div id="financials">
-        <FactorInputsTable header={header} />
-      </div>
+  return (
+    <div className="space-y-4">
+      {crumb}
 
-      <FundamentalsTable
-        fundamentals={fundamentals}
-        sector={header.sector}
-        ticker={header.ticker}
-        roicIsProxy={roicIsProxy}
+      <HeaderCard
+        header={header}
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCompareOpen(true)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-bold text-slate-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+            >
+              Compare
+            </button>
+            <WatchlistButton ticker={header.ticker} variant="button" />
+          </div>
+        }
       />
 
-      <div id="filings" className="space-y-5">
-        <EventsPanel ticker={header.ticker} />
-        <FilingIntelligencePanel ticker={header.ticker} filings={data.filings} />
-        <FilingsListPanel ticker={header.ticker} filings={data.filings} />
-      </div>
+      {/* grouped pane nav — Summary | Analysis | Data | Activity */}
+      <nav
+        aria-label="Deep-dive sections"
+        className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-gray-200 bg-white/95 px-4 backdrop-blur-sm"
+      >
+        <div className="flex items-end gap-5">
+          {PANE_GROUPS.map((g) => (
+            <div key={g.label} className="flex items-center gap-0.5">
+              <span className="mr-2 flex h-5 items-center border-r border-gray-200 pr-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-300">
+                {g.label}
+              </span>
+              {g.panes.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-current={pane === p.id ? 'page' : undefined}
+                  onClick={() => setPane(p.id)}
+                  className={`whitespace-nowrap border-b-2 px-2.5 py-2 text-[0.78rem] transition-colors ${
+                    pane === p.id
+                      ? 'border-indigo-600 font-semibold text-slate-900'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </nav>
 
-      <div id="insiders">
-        <InsiderPanel ticker={header.ticker} />
-      </div>
+      {showRail ? (
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 lg:col-span-8">{paneBody}</div>
+          <div className="col-span-12 lg:col-span-4">
+            <RightRail
+              pane={pane}
+              header={header}
+              fundamentals={fundamentals}
+              onNavigate={setPane}
+              onCompare={() => setCompareOpen(true)}
+            />
+          </div>
+        </div>
+      ) : (
+        paneBody
+      )}
+
+      <CompareDrawer
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        baseTicker={header.ticker}
+      />
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   )
 }

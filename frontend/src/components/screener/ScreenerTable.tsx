@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 
@@ -20,6 +20,7 @@ import {
   type ScreenerSortKey,
 } from '@/lib/filters'
 import { DASH, fmtMoney, fmtPrice } from '@/lib/format'
+import { setScreenerOrder } from '@/lib/screenerOrder'
 import type { QuoteRow, ScreenerRow } from '@/types/api'
 
 const FACTOR_SORT: Record<FactorKey, ScreenerSortKey> = {
@@ -252,6 +253,12 @@ export function ScreenerTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sort, liveByTicker])
   const visible = expanded ? sorted : sorted.slice(0, PREVIEW_N)
+
+  // Persist the visible result order so the deep dive can offer a J/K
+  // prev/next pager ("Screener result 12 of 240"). Pure side effect.
+  useEffect(() => {
+    setScreenerOrder(sorted.map((r) => r.ticker.toUpperCase()))
+  }, [sorted])
 
   // Export the FULL filtered + sorted set (not just the visible page).
   const exportCsv = () => {

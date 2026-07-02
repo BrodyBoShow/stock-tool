@@ -19,6 +19,19 @@ const CATEGORY_ORDER = [
   'Status & other',
 ]
 
+// Plain-English hover explanations for the most common form codes (B12).
+const FORM_TOOLTIPS: Record<string, string> = {
+  '10-K': 'Audited annual report',
+  '10-Q': 'Unaudited quarterly report',
+  '8-K': 'Material corporate event — filed within 4 business days',
+  '6-K': 'Foreign private issuer report',
+  '4': 'Insider ownership change (Form 4)',
+  'DEF 14A': 'Proxy statement',
+}
+
+// How many rows show before "Load 10 more" (B6 preview + load-more).
+const PREVIEW_ROWS = 5
+
 // Tint the form badge by category so the list scans at a glance.
 const CATEGORY_TINT: Record<string, string> = {
   'Annual report': 'bg-indigo-50 text-indigo-800',
@@ -94,9 +107,18 @@ export function FilingsListPanel({
   ticker: string
   filings: FilingRow[]
 }) {
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
   const [open, setOpen] = useState<Record<string, FilingSummary>>({})
+  const [shown, setShown] = useState(PREVIEW_ROWS)
+  const [prevKey, setPrevKey] = useState(ticker)
   const toast = useToast()
+
+  // Render-phase derived-state reset (React-sanctioned, unlike setState in an
+  // effect): when the list's identity changes, snap the preview back to 5.
+  if (prevKey !== ticker) {
+    setPrevKey(ticker)
+    setShown(PREVIEW_ROWS)
+  }
 
   const gen = useMutation({
     mutationFn: (accession: string) => generateSummary(ticker, { accession }),
@@ -105,7 +127,10 @@ export function FilingsListPanel({
       toast('error', e instanceof ApiError ? e.message : 'Could not summarize the filing'),
   })
 
-  const groups = groupByCategory(filings)
+  // Newest first, then cap to the preview window; grouping runs on the
+  // visible slice so category headers only appear for rows on screen.
+  const filtered = [...filings].sort((a, b) => b.filed_date.localeCompare(a.filed_date))
+  const groups = groupByCategory(filtered.slice(0, shown))
 
   return (
     <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
@@ -140,10 +165,41 @@ export function FilingsListPanel({
       {!collapsed && (
         <div className="mt-3">
           {filings.length === 0 ? (
-            <p className="text-[0.85rem] text-gray-400">
-              No filings catalogued for {ticker} yet — a recently-added name may
-              still be backfilling overnight.
-            </p>
+            <div className="py-8 text-center">
+              <svg
+                className="mx-auto text-slate-300"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+                <path d="M9 13h6" />
+                <path d="M9 17h6" />
+              </svg>
+              <div className="mt-2 text-[0.82rem] font-semibold text-slate-600">
+                No SEC filings on file
+              </div>
+              <p className="mt-1 text-[0.72rem] text-slate-400">
+                No filings in StockBud&rsquo;s catalog for this security —
+                coverage can lag for foreign issuers, non-common share classes
+                and recently added names.
+              </p>
+              <a
+                href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${encodeURIComponent(ticker)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+              >
+                Search EDGAR →
+              </a>
+            </div>
           ) : (
             <div className="space-y-4">
               {groups.map(([category, rows]) => (
@@ -162,6 +218,7 @@ export function FilingsListPanel({
                               {fmtDate(f.filed_date)}
                             </span>
                             <span
+                              title={FORM_TOOLTIPS[f.form] ?? f.label ?? f.form}
                               className={`inline-flex items-center rounded-md px-2 py-0.5 text-[0.72rem] font-semibold ${
                                 CATEGORY_TINT[f.category ?? 'Status & other'] ??
                                 CATEGORY_TINT['Status & other']
@@ -200,6 +257,23 @@ export function FilingsListPanel({
                   </ul>
                 </div>
               ))}
+              {filtered.length > PREVIEW_ROWS && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
+                  <span className="text-[0.66rem] text-slate-400 tabular-nums">
+                    Showing the {Math.min(shown, filtered.length)} newest of {filtered.length},
+                    grouped by category
+                  </span>
+                  {filtered.length > shown && (
+                    <button
+                      type="button"
+                      onClick={() => setShown((s) => s + 10)}
+                      className="text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+                    >
+                      Load 10 more →
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
