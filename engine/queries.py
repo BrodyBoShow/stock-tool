@@ -897,7 +897,11 @@ def watchlist_remove_by_ticker(
     Returns (removed, status) where status is one of:
       "removed"          — row was deleted
       "not_in_watchlist" — ticker found but not in watchlist
-      "not_found"        — ticker not in securities or inactive
+      "not_found"        — ticker not in securities
+
+    Unlike watchlist_add_by_ticker, this does NOT require is_active: a name
+    can be watchlisted while active and later get pruned from the universe
+    (e.g. an ETF, or a delisting) — removal must still work for it.
 
     owner_id (default None) preserves current behavior — deletes by
     security_id alone. When set, the delete is scoped to that owner's row.
@@ -907,7 +911,7 @@ def watchlist_remove_by_ticker(
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT security_id FROM securities WHERE ticker = %s AND is_active LIMIT 1",
+                "SELECT security_id FROM securities WHERE ticker = %s LIMIT 1",
                 (ticker,),
             )
             row = cur.fetchone()

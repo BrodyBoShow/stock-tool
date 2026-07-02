@@ -77,12 +77,17 @@ def add_to_watchlist(
 
 @router.delete("/{ticker}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_from_watchlist(ticker: str, user: CurrentUser) -> None:
-    """Remove a ticker from the watchlist. 404 if the ticker is unknown."""
+    """Remove a ticker from the watchlist. 404 if the ticker is unknown.
+
+    Not gated on is_active: a name can be watchlisted while active and
+    later pruned from the universe (e.g. an ETF, or a delisting) — removal
+    must still work for it.
+    """
     ticker = ticker.upper()
     deleted, del_status = queries.watchlist_remove_by_ticker(ticker, owner_id=user.id)
     if del_status == "not_found":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Ticker {ticker!r} not found or inactive",
+            detail=f"Ticker {ticker!r} not found",
         )
     # "not_in_watchlist" is silently accepted (idempotent delete)
