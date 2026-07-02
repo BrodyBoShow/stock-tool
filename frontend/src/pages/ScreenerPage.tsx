@@ -106,6 +106,28 @@ export function ScreenerPage() {
     return [...s].sort()
   }, [rows])
 
+  // Live-adjusted # by ticker, ranked over the FULL universe (before search/
+  // sector/factor filters narrow the table) so a stock's rank badge reflects
+  // true universe standing and doesn't renumber 1..N when a filter shrinks
+  // the visible set.
+  const liveRankByTicker = useMemo(() => {
+    const q = quotes?.quotes
+    if (!q || !Object.values(q).some((qr) => qr.composite_live != null)) return null
+    const withLive = rows
+      .map((r) => ({ ticker: r.ticker, v: q[r.ticker]?.composite_live ?? r.composite }))
+      .sort((a, b) => {
+        if (a.v === null && b.v === null) return 0
+        if (a.v === null) return 1
+        if (b.v === null) return -1
+        return b.v - a.v
+      })
+    const map: Record<string, number> = {}
+    withLive.forEach((r, i) => {
+      map[r.ticker] = i + 1
+    })
+    return map
+  }, [rows, quotes])
+
   const filtered = useMemo(
     () => applyFilters(rows, filters),
     [rows, filters],
@@ -192,6 +214,7 @@ export function ScreenerPage() {
             rows={filtered}
             scoreDate={data.score_date}
             liveByTicker={quotes?.quotes}
+            liveRankByTicker={liveRankByTicker}
             sort={sort}
             onSortChange={setSort}
             emptyHint={emptyHint}

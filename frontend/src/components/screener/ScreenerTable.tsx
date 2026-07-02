@@ -170,6 +170,7 @@ export function ScreenerTable({
   rowAccessory,
   onRowClick,
   liveByTicker,
+  liveRankByTicker,
   sort: controlledSort,
   onSortChange,
   emptyHint,
@@ -182,6 +183,14 @@ export function ScreenerTable({
   onRowClick?: (row: ScreenerRow) => void
   /** Live-adjusted scores by ticker (display overlay; rank/sort stay nightly). */
   liveByTicker?: Record<string, QuoteRow>
+  /**
+   * Live-adjusted # by ticker, computed by the page over the FULL universe
+   * (before any search/sector/filter narrows `rows`) — so a stock's rank
+   * badge reflects true universe standing and doesn't renumber 1..N just
+   * because a filter shrank the visible set. Falls back to the nightly
+   * `r.rank` for tickers outside this map (e.g. complete-only mismatch).
+   */
+  liveRankByTicker?: Record<string, number> | null
   /** Controlled sort (for URL state). Falls back to internal state when omitted. */
   sort?: ScreenerSort
   onSortChange?: (s: ScreenerSort) => void
@@ -551,9 +560,13 @@ export function ScreenerTable({
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
                     <span
                       className="numeric text-[0.74rem] font-semibold text-slate-600"
-                      title={liveRanked ? 'Live-adjusted rank · nightly #' + r.rank : undefined}
+                      title={
+                        liveRanked
+                          ? 'Live-adjusted universe rank · nightly #' + r.rank
+                          : undefined
+                      }
                     >
-                      {liveRanked ? vi.index + 1 : r.rank}
+                      {liveRanked ? (liveRankByTicker?.[r.ticker] ?? r.rank) : r.rank}
                     </span>
                     {r.rank_delta != null && r.rank_delta !== 0 && (
                       <span
