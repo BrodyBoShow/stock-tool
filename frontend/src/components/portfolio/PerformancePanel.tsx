@@ -54,8 +54,9 @@ interface ChartRow {
   bench?: number
   /** Drawdown as a PERCENT number (≤ 0) for the right axis. */
   dd?: number
-  /** = twr when trailing the benchmark, else undefined (shaded region). */
-  under?: number
+  /** [twr, bench] range while trailing the benchmark — a BAND between the two
+   *  curves (a scalar here would fill from the chart floor, encoding nothing). */
+  under?: [number, number]
   value?: number
   invested?: number
 }
@@ -141,7 +142,7 @@ export function PerformancePanel({
           twr: twr[i],
           bench: b,
           dd: dd[i] * 100,
-          under: b != null && twr[i] < b ? twr[i] : undefined,
+          under: b != null && twr[i] < b ? ([twr[i], b] as [number, number]) : undefined,
         })
       }
 

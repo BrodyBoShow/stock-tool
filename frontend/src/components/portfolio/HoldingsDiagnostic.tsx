@@ -58,6 +58,9 @@ interface Row {
   day: number | null // fraction
   value: number | null
   pl: number | null
+  /** live value / live total — keeps Weight consistent with the live Value
+   *  column (the nightly h.weight would sit stale next to a live value) */
+  liveWeight: number | null
 }
 
 interface CorrBadge {
@@ -76,7 +79,17 @@ function buildRow(
   const day = q?.change_pct != null ? q.change_pct / 100 : h.day_change_pct
   const value = price != null ? price * h.shares : h.market_value
   const pl = value != null ? value - h.cost_basis : h.unrealized_pl
-  return { h, price, live: q?.price != null, day, value, pl }
+  return { h, price, live: q?.price != null, day, value, pl, liveWeight: null }
+}
+
+/** Fill Row.liveWeight from the live total (positions only). */
+function withLiveWeights(rows: Row[]): Row[] {
+  let total = 0
+  for (const r of rows) total += r.value ?? 0
+  return rows.map((r) => ({
+    ...r,
+    liveWeight: r.value != null && total > 0 ? r.value / total : r.h.weight,
+  }))
 }
 
 function sortVal(r: Row, key: SortKey): number | null {
@@ -84,7 +97,7 @@ function sortVal(r: Row, key: SortKey): number | null {
     case 'value':
       return r.value
     case 'weight':
-      return r.h.weight
+      return r.liveWeight ?? r.h.weight
     case 'pl':
       return r.pl
     case 'day':
@@ -167,7 +180,7 @@ function buildCsv(rows: Row[]): string {
         r.h.avg_cost ?? '',
         r.price ?? '',
         r.value ?? '',
-        r.h.weight ?? '',
+        r.liveWeight ?? r.h.weight ?? '',
         r.pl ?? '',
       ].join(','),
     )
@@ -265,7 +278,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
   const [filterSector, setFilterSector] = useState<string>('all')
 
   // ── Derived rows: live overlay → filter → sort → group ──
-  const allRows = holdings.map((h) => buildRow(h, quotes))
+  const allRows = withLiveWeights(holdings.map((h) => buildRow(h, quotes)))
   const filtered =
     filterSector === 'all'
       ? allRows
@@ -632,7 +645,7 @@ function HoldingRow({
         </td>
         <td className="px-2 py-2 text-right tabular-nums">{fmtPrice(value)}</td>
         <td className="px-2 py-2 text-right font-semibold tabular-nums">
-          {h.weight == null ? DASH : `${(h.weight * 100).toFixed(1)}%`}
+          {row.liveWeight == null ? DASH : `${(row.liveWeight * 100).toFixed(1)}%`}
         </td>
         <td
           className="whitespace-nowrap px-2 py-2 text-right tabular-nums"

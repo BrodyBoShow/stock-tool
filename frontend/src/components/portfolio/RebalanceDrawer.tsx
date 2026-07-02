@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
-import { whatIfStats, tradesToWeights, taxForSell } from '@/components/portfolio/portfolioUi'
+import { capWeights, whatIfStats, tradesToWeights, taxForSell } from '@/components/portfolio/portfolioUi'
 import type { SimTrade } from '@/components/portfolio/portfolioUi'
 import { useToast } from '@/components/ui/Toast'
 import { runProjection } from '@/lib/api'
@@ -114,7 +114,8 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
 
   const mcMut = useMutation({
     mutationFn: async () => {
-      const newW = tradesToWeights(holdings, trades)
+      // capWeights: the API rejects >50 tickers; keep the largest and renormalize
+      const newW = capWeights(tradesToWeights(holdings, trades))
       const [base, what] = await Promise.all([
         runProjection({ years: 10, compare_bench: bench }),
         runProjection({ years: 10, weights: newW, compare_bench: bench }),
@@ -259,7 +260,9 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
               <p className="mt-1.5 text-[0.68rem] text-slate-400">
                 Selling ≈ {fmtPrice(sells)} · buying ≈ {fmtPrice(buys)}
                 {sells > buys + 0.5 &&
-                  ` · ${fmtPrice(sells - buys)} unspent sale value leaves the simulated book (cash)`}
+                  ` · note: the stats and Monte Carlo below describe only the remaining INVESTED positions, fully re-scaled — the ${fmtPrice(sells - buys)} of unspent sale value (cash) is not modeled`}
+                {buys > sells + 0.5 &&
+                  ' · note: added purchases are modeled as reallocating today’s money to the new mix, not as new contributions'}
               </p>
             )}
           </section>
@@ -312,7 +315,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                 {/* tax impact */}
                 <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
                   <div className="text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400">
-                    Tax impact (these sells, FIFO)
+                    Realized P/L (these sells, FIFO) — not the tax owed
                   </div>
                   <div className="mt-1 flex flex-wrap items-baseline gap-2 text-[0.85rem] font-bold tabular-nums">
                     {tax.lt === 0 && tax.st === 0 ? (
@@ -360,7 +363,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                   <McStat
                     label="Median in 10y"
                     value={fmtK(mc.what.terminal.p50)}
-                    sub={`vs ${fmtK(mc.base.terminal.p50)} today`}
+                    sub={`vs ${fmtK(mc.base.terminal.p50)} do-nothing`}
                   />
                   <McStat
                     label="Range (P10–P90)"
@@ -370,12 +373,12 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                   <McStat
                     label="Median worst DD"
                     value={mc.what.max_drawdown ? `${Math.round(mc.what.max_drawdown.p50 * 100)}%` : DASH}
-                    sub={mc.base.max_drawdown ? `vs ${Math.round(mc.base.max_drawdown.p50 * 100)}% today` : undefined}
+                    sub={mc.base.max_drawdown ? `vs ${Math.round(mc.base.max_drawdown.p50 * 100)}% do-nothing` : undefined}
                   />
                   <McStat
                     label={`Beat ${bench}`}
                     value={mc.what.benchmark ? `${Math.round(mc.what.benchmark.prob_beat * 100)}%` : DASH}
-                    sub={mc.base.benchmark ? `vs ${Math.round(mc.base.benchmark.prob_beat * 100)}% today` : undefined}
+                    sub={mc.base.benchmark ? `vs ${Math.round(mc.base.benchmark.prob_beat * 100)}% do-nothing` : undefined}
                   />
                 </div>
                 <p className="mt-1.5 text-[0.66rem] text-slate-400">

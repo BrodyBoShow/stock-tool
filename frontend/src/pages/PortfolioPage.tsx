@@ -13,10 +13,13 @@ import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
 import {
   BENCHMARK_OPTIONS,
+  activeSnoozes,
+  capWeights,
+  flagKey,
   tradesToWeights,
   whatIfStats,
 } from '@/components/portfolio/portfolioUi'
-import type { RangeKey, SimTrade } from '@/components/portfolio/portfolioUi'
+import type { RangeKey, SimTrade, WhatIfStats } from '@/components/portfolio/portfolioUi'
 import { RebalanceDrawer } from '@/components/portfolio/RebalanceDrawer'
 import { StressTestPanel } from '@/components/portfolio/StressTestPanel'
 import { AllocationPanel, FactorTiltRadar } from '@/components/portfolio/TiltAllocation'
@@ -43,12 +46,19 @@ function initialBenchmark(): string {
   }
 }
 
-/** Trades implied by the action cards' suggested fixes (simulator prefill). */
+/** Trades implied by the action cards' suggested fixes (simulator prefill).
+
+    Trim sizes are RE-derived with the simulator's own semantics — proceeds
+    leave the simulated book, so the sell that reaches the target weight is
+    x = (P − T·Vpos)/(1 − T) over POSITION value. The backend's sell_shares
+    can assume proceeds become cash (cash-tracked ledgers), which would land
+    above target inside the simulator. */
 function fixTrades(
   flags: PortfolioFlag[],
   holdings: PortfolioHolding[],
   lastClose: Record<string, number | null> | undefined,
 ): SimTrade[] {
+  const posValue = holdings.reduce((a, h) => a + (h.market_value ?? 0), 0)
   const out: SimTrade[] = []
   for (const f of flags) {
     const fix = f.fix
@@ -56,7 +66,15 @@ function fixTrades(
     if (fix.sell_ticker && fix.sell_shares && fix.sell_shares > 0) {
       const h = holdings.find((x) => x.ticker === fix.sell_ticker)
       const px = lastClose?.[fix.sell_ticker] ?? h?.last_price ?? 0
-      if (px > 0) out.push({ side: 'sell', ticker: fix.sell_ticker, shares: fix.sell_shares, price: px })
+      if (px <= 0) continue
+      let shares = fix.sell_shares
+      const target = fix.target_weight
+      const mv = h?.market_value
+      if (target != null && target < 1 && mv != null && posValue > 0) {
+        const sellAmt = Math.max((mv - target * posValue) / (1 - target), 0)
+        shares = Number((sellAmt / px).toFixed(6))
+      }
+      if (shares > 0) out.push({ side: 'sell', ticker: fix.sell_ticker, shares, price: px })
     } else if (fix.add_ticker && fix.add_amount && fix.add_amount > 0) {
       const px = lastClose?.[fix.add_ticker] ?? 0
       if (px > 0) {
@@ -95,7 +113,7 @@ export function PortfolioPage() {
     queryFn: () => getPortfolio(benchmark),
     staleTime: 60 * 1000,
   })
-  const { data: analytics } = useQuery({
+  const { data: analytics, isPending: analyticsPending } = useQuery({
     queryKey: ['portfolio', 'analytics', benchmark],
     queryFn: () => getPortfolioAnalytics(benchmark),
     staleTime: 5 * 60 * 1000,
@@ -118,21 +136,38 @@ export function PortfolioPage() {
   const holdings = useMemo(() => data?.holdings ?? [], [data])
   const flags = useMemo(() => data?.flags ?? [], [data])
 
-  // Simulator prefill from the action-card fixes, and the "after fixes" stats
-  // shown on the risk spectrum / vs-market panel.
+  // Snoozed cards shouldn't count toward the hero's "See N fixes" — bump a
+  // version whenever the stack snoozes/unsnoozes so this recomputes.
+  const [snoozeVersion, setSnoozeVersion] = useState(0)
+  const heroFlags = useMemo(() => {
+    const snoozed = activeSnoozes()
+    return flags.filter((f) => !(flagKey(f) in snoozed))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flags, snoozeVersion])
+
+  // Simulator prefill from the action-card fixes, and the before/after stats
+  // shown on the risk spectrum / vs-market panel. BOTH sides come from the
+  // same trailing-1Y matrix, so the shown improvement is the fixes — not a
+  // full-history-vs-1Y window artifact.
   const suggested = useMemo(() => {
     const trades = fixTrades(flags, holdings, analytics?.last_close ?? undefined)
     if (!trades.length || !analytics?.returns) {
-      return { trades, weights: null as Record<string, number> | null, stats: null }
+      return {
+        trades,
+        weights: null as Record<string, number> | null,
+        whatIf: null as { before: WhatIfStats; after: WhatIfStats } | null,
+      }
     }
-    const weights = tradesToWeights(holdings, trades)
-    const stats = whatIfStats(
-      weights,
-      analytics.returns,
-      analytics.benchmark ?? benchmark,
-      analytics.expected ?? undefined,
+    const bench = analytics.benchmark ?? benchmark
+    const weights = capWeights(tradesToWeights(holdings, trades))
+    const before = whatIfStats(
+      tradesToWeights(holdings, []),
+      analytics.returns, bench, analytics.expected ?? undefined,
     )
-    return { trades, weights, stats }
+    const after = whatIfStats(
+      weights, analytics.returns, bench, analytics.expected ?? undefined,
+    )
+    return { trades, weights, whatIf: { before, after } }
   }, [flags, holdings, analytics, benchmark])
 
   const openSimulator = (trades: SimTrade[]) =>
@@ -208,15 +243,22 @@ export function PortfolioPage() {
     const live = q?.price ?? null
     const value = live != null ? live * h.shares : h.market_value
     const day = q?.change_pct != null ? q.change_pct / 100 : h.day_change_pct
-    if (value == null || day == null) return acc
+    // 1+day <= 0 (a −100% print / provider glitch) would divide by zero
+    if (value == null || day == null || 1 + day <= 0) return acc
     return acc + (value * day) / (1 + day)
   }, 0)
+  // liveTotal covers POSITIONS only — a cash-tracked ledger must add the cash
+  // back or the headline "drops" by the cash balance the moment quotes arrive
+  const liveCash = data.cash_tracking ? s.cash ?? 0 : 0
   const view = anyLive
     ? {
         live: true,
-        total_value: liveTotal,
+        total_value: liveTotal + liveCash,
         day_change: liveDayPL,
-        day_change_pct: liveTotal - liveDayPL !== 0 ? liveDayPL / (liveTotal - liveDayPL) : 0,
+        day_change_pct:
+          liveTotal + liveCash - liveDayPL !== 0
+            ? liveDayPL / (liveTotal + liveCash - liveDayPL)
+            : 0,
         unrealized_pl: liveTotal - s.cost_basis,
       }
     : {
@@ -256,13 +298,17 @@ export function PortfolioPage() {
       <PortfolioHero
         summary={s}
         view={view}
-        flags={flags}
+        flags={heroFlags}
         cashTracking={data.cash_tracking}
         onSeeFixes={scrollToFixes}
       />
 
       <div id="portfolio-fixes">
-        <ActionCardStack flags={flags} onOpenSimulator={openForFlag} />
+        <ActionCardStack
+          flags={flags}
+          onOpenSimulator={openForFlag}
+          onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
+        />
       </div>
 
       {data.performance && (
@@ -278,7 +324,7 @@ export function PortfolioPage() {
         <VsMarketPanel
           summary={s}
           performance={data.performance}
-          afterStats={suggested.stats}
+          whatIf={suggested.whatIf}
           onApplyFixes={() => openSimulator(suggested.trades)}
         />
       )}
@@ -312,7 +358,9 @@ export function PortfolioPage() {
         )}
       </div>
 
-      <OverlapMatrixPanel analytics={analytics} isLoading={!analytics} />
+      {/* pass the real query state — !analytics would show a skeleton forever
+          when the analytics endpoint errors out */}
+      <OverlapMatrixPanel analytics={analytics} isLoading={analyticsPending} />
 
       {data.income && <DividendsPanel income={data.income} benchmark={s.benchmark} />}
 

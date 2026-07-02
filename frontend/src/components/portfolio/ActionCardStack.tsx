@@ -7,6 +7,8 @@ export interface ActionCardStackProps {
   flags: PortfolioFlag[]
   /** Pre-fill the Rebalance drawer with this card's fix. */
   onOpenSimulator: (flag: PortfolioFlag) => void
+  /** Fires after any snooze/unsnooze so the parent (hero fix-count) can react. */
+  onSnoozeChange?: () => void
 }
 
 type SortBy = 'severity' | 'kind'
@@ -49,8 +51,10 @@ function ActionCard({ flag, isSnoozed, onSnooze, onOpenSimulator }: ActionCardPr
   const why = whyLine(flag)
   const fix = flag.fix
   const hasSimTarget = fix != null && (fix.sell_ticker != null || fix.add_ticker != null)
+  // FIFO realized gains/losses of the trim, NOT the tax owed — labeling them
+  // "tax:" would read as a tax bill (or, for a loss, a refund)
   const taxParts: string[] = []
-  if (fix?.tax_lt != null) taxParts.push(`tax: LT ${fmtSignedMoney(fix.tax_lt)}`)
+  if (fix?.tax_lt != null) taxParts.push(`realizes LT ${fmtSignedMoney(fix.tax_lt)}`)
   if (fix?.tax_st != null && fix.tax_st !== 0) taxParts.push(`ST ${fmtSignedMoney(fix.tax_st)}`)
 
   return (
@@ -140,6 +144,7 @@ export function ActionCardStack(props: ActionCardStackProps): JSX.Element | null
   const handleSnooze = (f: PortfolioFlag, days: number) => {
     snoozeFlag(f, days)
     setSnoozed(activeSnoozes())
+    props.onSnoozeChange?.()
   }
 
   const sortPill = (key: SortBy, label: string) => (

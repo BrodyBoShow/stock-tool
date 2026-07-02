@@ -304,6 +304,25 @@ export function tradesToWeights(
   return w
 }
 
+/**
+ * The projection API caps `weights` at 50 entries. For 50+ position books,
+ * keep the 50 largest weights and renormalize — a raw 422 on "Run cone" would
+ * be worse than a slightly-truncated tail (the drop is disclosed by the sim's
+ * excluded/assumptions output being shorter than the book).
+ */
+export function capWeights(
+  weights: Record<string, number>,
+  max = 50,
+): Record<string, number> {
+  const entries = Object.entries(weights)
+  if (entries.length <= max) return weights
+  const top = [...entries].sort((a, b) => b[1] - a[1]).slice(0, max)
+  const total = top.reduce((a, [, w]) => a + w, 0)
+  const out: Record<string, number> = {}
+  for (const [t, w] of top) out[t] = total > 0 ? w / total : 0
+  return out
+}
+
 // ── Client-side FIFO tax preview (mirrors the backend) ──────────────────────
 /** IRS long-term = held MORE than one year (anniversary; Feb 29 → Mar 1). */
 export function isLongTerm(acquiredISO: string, asofISO: string): boolean {
@@ -331,6 +350,8 @@ export function taxForSell(
   let st = 0
   for (const lot of lots) {
     if (remaining <= 1e-9) break
+    // dust lots can round to 0 shares on the wire — 0/0 below would NaN the tax
+    if (lot.shares <= 0) continue
     const take = Math.min(lot.shares, remaining)
     const pl = take * px - lot.cost * (take / lot.shares)
     if (isLongTerm(lot.acquired, asofISO)) lt += pl
@@ -441,7 +462,13 @@ export function activeSnoozes(): SnoozeMap {
 
 export function snoozeFlag(f: PortfolioFlag, days: number): void {
   const map = readSnoozes()
-  map[flagKey(f)] = Date.now() + days * 86_400_000
+  if (days <= 0) {
+    // unsnooze: delete outright — writing expiry=now wouldn't prune until the
+    // next millisecond, so the card would stay hidden in-session
+    delete map[flagKey(f)]
+  } else {
+    map[flagKey(f)] = Date.now() + days * 86_400_000
+  }
   try {
     localStorage.setItem(SNOOZE_KEY, JSON.stringify(map))
   } catch {

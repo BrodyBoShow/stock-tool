@@ -4,11 +4,19 @@ import { plColor } from '@/lib/colors'
 import { DASH, fmtPct, fmtRatio, fmtSignedPct } from '@/lib/format'
 import { TABLE_HEAD_ROW } from '@/lib/constants'
 
+interface WhatIfSide {
+  vol: number | null
+  beta: number | null
+  maxDD: number | null
+}
+
 export interface VsMarketPanelProps {
   summary: PortfolioSummary
   performance: PortfolioPerformance
-  /** what-if stats if suggested fixes applied (null when no fixes) */
-  afterStats: { vol: number | null; beta: number | null; maxDD: number | null } | null
+  /** Current-weights vs after-fixes stats, BOTH from the same trailing-1Y
+   *  matrix — mixing the full-history summary stats with 1Y what-if stats
+   *  would attribute the window difference to the fixes. Null when no fixes. */
+  whatIf: { before: WhatIfSide; after: WhatIfSide } | null
   /** open the Rebalance Simulator pre-filled with all suggested fixes */
   onApplyFixes: () => void
 }
@@ -85,7 +93,7 @@ function Marker({ left, label, value, dotClass, bold }: MarkerProps) {
 }
 
 export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
-  const { summary, performance, afterStats, onApplyFixes } = props
+  const { summary, performance, whatIf, onApplyFixes } = props
   const bench = useMemo(() => computeBenchStats(performance.bench_curve), [performance.bench_curve])
 
   const benchmark = summary.benchmark
@@ -203,8 +211,11 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
       <div className="mt-5">
         <div className="text-[0.74rem] font-semibold text-slate-500">
           Risk spectrum &mdash; annualized volatility
-          {afterStats && (
-            <span className="font-normal"> &middot; where you&apos;d land after the suggested fixes</span>
+          {whatIf && (
+            <span className="font-normal">
+              {' '}
+              &middot; where you&apos;d land after the suggested fixes (both trailing-1Y)
+            </span>
           )}
         </div>
         <div className="relative mt-3 h-3 rounded-full bg-gradient-to-r from-green-500 via-amber-400 to-red-600">
@@ -226,20 +237,23 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
             value={fmtPct(bench.vol ?? 0.17)}
             dotClass="h-2.5 w-2.5 translate-y-[1px] rounded-full border border-slate-400 bg-white"
           />
-          {summary.volatility !== null && (
+          {/* the "You" dot uses the same 1Y window as "You (after)" when the
+              preview is up — full-history vol next to a 1Y what-if would show a
+              window artifact as if it were the fixes */}
+          {(whatIf?.before.vol ?? summary.volatility) !== null && (
             <Marker
-              left={spectrumLeft(summary.volatility)}
+              left={spectrumLeft((whatIf?.before.vol ?? summary.volatility) as number)}
               label="You"
-              value={fmtPct(summary.volatility)}
+              value={fmtPct(whatIf?.before.vol ?? summary.volatility)}
               dotClass="h-3 w-3 rounded-full border-2 border-white bg-indigo-600 shadow"
               bold
             />
           )}
-          {afterStats?.vol != null && (
+          {whatIf?.after.vol != null && (
             <Marker
-              left={spectrumLeft(afterStats.vol)}
+              left={spectrumLeft(whatIf.after.vol)}
               label="You (after)"
-              value={fmtPct(afterStats.vol)}
+              value={fmtPct(whatIf.after.vol)}
               dotClass="h-3 w-3 rounded-full border-2 border-green-600 bg-white shadow"
             />
           )}
@@ -247,21 +261,25 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
         <div className="h-11" />
       </div>
 
-      {afterStats && (
+      {whatIf && (
         <div className="mt-2 text-[0.74rem] text-slate-500">
-          If you applied the suggested fixes: vol {fmtPct(summary.volatility)} &rarr;{' '}
+          If you applied the suggested fixes: vol {fmtPct(whatIf.before.vol)} &rarr;{' '}
           <span className="font-semibold" style={{ color: GREEN }}>
-            {fmtPct(afterStats.vol)}
+            {fmtPct(whatIf.after.vol)}
           </span>
-          , &beta; {fmtRatio(summary.beta)} &rarr;{' '}
+          , &beta; {fmtRatio(whatIf.before.beta)} &rarr;{' '}
           <span className="font-semibold" style={{ color: GREEN }}>
-            {fmtRatio(afterStats.beta)}
+            {fmtRatio(whatIf.after.beta)}
           </span>
-          , max DD (1Y sim){' '}
+          , max DD (1Y replay) {fmtSignedPct(whatIf.before.maxDD)} &rarr;{' '}
           <span className="font-semibold" style={{ color: GREEN }}>
-            {fmtSignedPct(afterStats.maxDD)}
+            {fmtSignedPct(whatIf.after.maxDD)}
           </span>
-          . <span className="text-slate-400">estimates from your holdings&apos; trailing-1Y returns</span>
+          .{' '}
+          <span className="text-slate-400">
+            before AND after from your holdings&apos; trailing-1Y returns — an
+            apples-to-apples estimate
+          </span>
           <button
             type="button"
             onClick={onApplyFixes}
