@@ -108,16 +108,27 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
     ['Momentum', latest.momentum_pctl, base?.momentum_pctl ?? null],
   ]
 
+  const nightlyTitle = `As of the ${fmtDate(latest.score_date)} nightly close — not the live-adjusted number you may see elsewhere while the market is open.`
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-[0.78rem] font-semibold text-indigo-800">
+      <span
+        className="inline-flex items-baseline gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-[0.78rem] font-semibold text-indigo-800"
+        title={nightlyTitle}
+      >
         Composite {latest.composite?.toFixed(1) ?? '—'}
         {base?.composite != null && latest.composite != null && (
           <Delta value={latest.composite - base.composite} zeroDash />
         )}
+        <span className="text-[0.6rem] font-bold uppercase tracking-[0.05em] text-indigo-400">
+          nightly
+        </span>
       </span>
       {latest.rank != null && (
-        <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.78rem] font-semibold text-slate-700">
+        <span
+          className="inline-flex items-baseline gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.78rem] font-semibold text-slate-700"
+          title={nightlyTitle}
+        >
           Rank #{latest.rank}
           {base?.rank != null && base.rank !== latest.rank && (
             <span
