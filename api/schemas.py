@@ -514,6 +514,8 @@ class ValuationResponse(BaseModel):
     sector: str | None
     industry: str | None
     currency: str
+    # {currency, usd_per_unit, rate_date} when converted from a foreign filing; None otherwise
+    fx: dict[str, Any] | None = None
     current_price: float | None
     as_of: dict[str, Any]            # {price_date, fundamentals_period}
     applicability: dict[str, Any]    # {path, active_models, suppressed_models, reasons}

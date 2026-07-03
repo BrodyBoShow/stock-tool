@@ -437,6 +437,7 @@ export interface ValuationResponse {
   sector: string | null
   industry: string | null
   currency: string
+  fx: { currency: string; usd_per_unit: number; rate_date: string | null } | null
   current_price: number | null
   as_of: { price_date: string | null; fundamentals_period: string | null }
   applicability: {
