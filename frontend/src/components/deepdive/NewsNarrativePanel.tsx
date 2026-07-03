@@ -25,6 +25,27 @@ function fmtSeen(s: string | null): string {
   return `${MONTHS[mo] ?? '?'} ${d}`
 }
 
+/** GDELT credit — the source LINK is required by GDELT's terms of use, not just
+ *  a text mention. `full` adds the name-matching relevance caveat. */
+function NewsCredit({ full = false }: { full?: boolean }) {
+  return (
+    <p className="mt-2 text-[0.64rem] leading-relaxed text-slate-400">
+      {full &&
+        'Automated name-based matching may include unrelated same-name coverage, so read the headlines to judge relevance. '}
+      Source:{' '}
+      <a
+        href="https://www.gdeltproject.org/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:text-indigo-600"
+      >
+        GDELT Project
+      </a>
+      . Not a sentiment score, not a signal, not investment advice.
+    </p>
+  )
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
@@ -60,16 +81,18 @@ export function NewsNarrativePanel({ ticker }: { ticker: string }) {
     )
   }
 
-  if (isError || !data?.available || data.articles.length === 0) {
+  // Distinguish "couldn't check" (fetch error / GDELT outage → available=false)
+  // from a verified "nothing found" — don't assert an absence we didn't confirm.
+  const couldNotCheck = isError || !data?.available
+  if (couldNotCheck || data.articles.length === 0) {
     return (
       <Shell>
         <p className="mt-2 text-[0.82rem] text-gray-400">
-          No recent news coverage found for this name.
+          {couldNotCheck
+            ? 'Couldn’t reach the news source right now — try again shortly.'
+            : 'No recent news coverage found for this name.'}
         </p>
-        <p className="mt-2 text-[0.64rem] leading-relaxed text-slate-400">
-          Automated name-based matching (GDELT, free). Not a sentiment score. Not
-          investment advice.
-        </p>
+        <NewsCredit />
       </Shell>
     )
   }
@@ -104,11 +127,7 @@ export function NewsNarrativePanel({ ticker }: { ticker: string }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[0.64rem] leading-relaxed text-slate-400">
-        Automated name-based matching (GDELT, free) — may include unrelated same-name
-        coverage, so read the headlines to judge relevance. Not a sentiment score, not a
-        signal, not investment advice.
-      </p>
+      <NewsCredit full />
     </Shell>
   )
 }
