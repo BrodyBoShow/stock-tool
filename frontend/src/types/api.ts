@@ -113,6 +113,24 @@ export interface CommodityBackdrop {
   path: CommodityBackdropPoint[]
 }
 
+export interface ForwardSensitivityDriver {
+  driver: string // 'curve' | 'credit' | 'inflation' | 'rate10y'
+  label: string
+  value: number
+  unit: string // 'bps' | '%'
+  bucket: string | null // level bucket (null for rate10y)
+  delta: number | null
+  direction: string
+  stress: boolean
+  note: string // why this driver matters for the sector
+}
+
+export interface ForwardSensitivity {
+  sector: string | null
+  drivers: ForwardSensitivityDriver[]
+  diffuse_note: string | null // set when no single driver dominates the sector
+}
+
 export interface SecurityResponse {
   header: SecurityHeader
   prices: PricePoint[]
@@ -121,6 +139,9 @@ export interface SecurityResponse {
   // Forward commodity backdrops (oil + gas) for upstream oil & gas producers;
   // null for every other name.
   commodity_backdrops: CommodityBackdrop[] | null
+  // Universal per-company forward sensitivity (sector's dominant macro driver);
+  // null for producers (commodity backdrop covers them) and unknown sectors.
+  forward_sensitivity: ForwardSensitivity | null
 }
 
 export interface FilingSummaryContent {
