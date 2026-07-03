@@ -85,11 +85,35 @@ export interface FilingRow {
   analyzable: boolean // can the AI Overview read this filing?
 }
 
+export interface CommodityBackdropPoint {
+  period: string // 'YYYY-MM-DD'
+  value: number
+  is_forecast: boolean
+}
+
+export interface CommodityBackdrop {
+  series_id: string
+  commodity: string // 'oil' | 'natural gas'
+  label: string // e.g. 'WTI crude'
+  unit: string // e.g. '$/bbl'
+  vintage: string // retrieval month (first-of-month)
+  near_price: number
+  near_period: string
+  forward_price: number
+  forward_period: string
+  slope_pct: number | null // (forward-near)/near, percent
+  direction: string // 'declining' | 'rising' | 'flat' | 'unknown'
+  path: CommodityBackdropPoint[]
+}
+
 export interface SecurityResponse {
   header: SecurityHeader
   prices: PricePoint[]
   fundamentals: FundamentalPoint[]
   filings: FilingRow[]
+  // Forward commodity backdrops (oil + gas) for upstream oil & gas producers;
+  // null for every other name.
+  commodity_backdrops: CommodityBackdrop[] | null
 }
 
 export interface FilingSummaryContent {

@@ -227,11 +227,40 @@ class FilingRow(BaseModel):
     analyzable: bool = False          # can the AI Overview read this filing?
 
 
+class CommodityBackdropPoint(BaseModel):
+    period: str          # 'YYYY-MM-DD' (first of month)
+    value: float
+    is_forecast: bool
+
+
+class CommodityBackdrop(BaseModel):
+    """Forward EIA STEO commodity-price path for a commodity an oil & gas
+    producer sells. CONTEXT ONLY — never feeds the score; a caveat that trailing
+    cheapness may be flattered by a commodity price forecast to fall. The near
+    anchor is the STEO's near-term month (not a claimed realized spot)."""
+    series_id: str
+    commodity: str          # 'oil' | 'natural gas'
+    label: str              # e.g. 'WTI crude'
+    unit: str               # e.g. '$/bbl'
+    vintage: str            # retrieval month (first-of-month) this path was pulled
+    near_price: float
+    near_period: str
+    forward_price: float
+    forward_period: str
+    slope_pct: float | None  # (forward-near)/near, percent
+    direction: str           # 'declining' | 'rising' | 'flat' | 'unknown'
+    path: list[CommodityBackdropPoint]
+
+
 class SecurityResponse(BaseModel):
     header: SecurityHeader
     prices: list[PricePoint]
     fundamentals: list[FundamentalPoint]
     filings: list[FilingRow]
+    # Forward commodity backdrops (oil + gas) for upstream oil & gas producers;
+    # None for every other name. The user applies whichever matches the
+    # company's oil/gas weighting.
+    commodity_backdrops: list[CommodityBackdrop] | None = None
 
 
 # ── AI filing summaries (Phase 10) ────────────────────────────────────────────

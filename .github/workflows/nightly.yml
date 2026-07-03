@@ -34,6 +34,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       # Set this repo secret to make the nightly use Massive for prices; empty =
       # run_nightly falls back to yfinance automatically.
@@ -68,6 +69,15 @@ jobs:
         if: ${{ env.FRED_API_KEY != '' }}
         continue-on-error: true
         run: python scripts/ingest_macro.py
+
+      # Commodity forecasts (EIA STEO) — CONTEXT ONLY (writes commodity_forecasts,
+      # never the scoring tables). Powers the deep-dive "forward commodity
+      # backdrop" caveat. Best-effort: skipped if the EIA key isn't set; an EIA
+      # outage won't fail the workflow or the scoring run above.
+      - name: Refresh commodity forecasts (EIA STEO)
+        if: ${{ env.EIA_API_KEY != '' }}
+        continue-on-error: true
+        run: python scripts/ingest_commodity_forecasts.py
 
       # Insider transactions (Form 4) — CONTEXT ONLY, never scoring tables.
       # Incremental by accession, so steady-state nightly deltas are small.
