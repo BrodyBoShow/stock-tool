@@ -23,6 +23,7 @@ from api.schemas import (
     InsiderWindow,
     LiveFactorsResponse,
     MaterialEvent,
+    NewsNarrativeResponse,
     PeerStripResponse,
     PricePoint,
     SecurityHeader,
@@ -35,7 +36,7 @@ from engine import commodity_backdrop as commodity_backdrop_engine
 from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
 from engine import forward_context as forward_context_engine
-from engine import live_factors, queries, summarize, valuation
+from engine import live_factors, news_narrative, queries, summarize, valuation
 from engine import quotes as quotes_engine
 from engine.filing_taxonomy import analysis_profile, form_category, form_label
 
@@ -107,6 +108,18 @@ def get_security(
         commodity_backdrops=backdrops,
         forward_sensitivity=forward_sensitivity,
     )
+
+
+@router.get("/{ticker}/news", response_model=NewsNarrativeResponse)
+def get_news(ticker: str) -> NewsNarrativeResponse:
+    """Recent news coverage for a company from GDELT (free, on-demand, cached).
+    CONTEXT ONLY — name-based matching, no scored sentiment; the returned
+    headlines let the user judge relevance. Never feeds factor scores."""
+    ticker, header = _require_security(ticker)
+    payload = news_narrative.for_ticker(ticker, header.get("name"))
+    if payload is None:
+        return NewsNarrativeResponse(ticker=ticker, available=False)
+    return NewsNarrativeResponse(available=True, **payload)
 
 
 @router.get("/{ticker}/live-factors", response_model=LiveFactorsResponse)

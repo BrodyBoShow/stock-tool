@@ -20,6 +20,7 @@ import type {
   LinkedAccountsResponse,
   LinkSyncResponse,
   LiveFactorsResponse,
+  NewsNarrativeResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
   MarketBriefResponse,
@@ -312,6 +313,12 @@ export function getBriefStatus(ticker: string): Promise<BriefStatusResponse> {
 export function getLiveFactors(ticker: string): Promise<LiveFactorsResponse> {
   return getJson<LiveFactorsResponse>(
     `/securities/${encodeURIComponent(ticker)}/live-factors`,
+  )
+}
+
+export function getNews(ticker: string): Promise<NewsNarrativeResponse> {
+  return getJson<NewsNarrativeResponse>(
+    `/securities/${encodeURIComponent(ticker)}/news`,
   )
 }
 

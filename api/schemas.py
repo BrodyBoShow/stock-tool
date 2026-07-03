@@ -283,6 +283,26 @@ class FilingRow(BaseModel):
     analyzable: bool = False          # can the AI Overview read this filing?
 
 
+class NewsArticle(BaseModel):
+    title: str
+    url: str
+    domain: str | None = None
+    seendate: str | None = None   # GDELT 'YYYYMMDDTHHMMSSZ'
+
+
+class NewsNarrativeResponse(BaseModel):
+    """Recent GDELT news coverage for a company (on-demand). CONTEXT ONLY — name-
+    based matching, no scored sentiment; the headlines let the user judge."""
+    ticker: str
+    available: bool
+    query: str | None = None
+    window_days: int | None = None
+    article_count: int | None = None   # returned count; "at least N" when capped
+    capped: bool = False
+    articles: list[NewsArticle] = []
+    as_of_epoch: float | None = None
+
+
 class SecurityResponse(BaseModel):
     header: SecurityHeader
     prices: list[PricePoint]

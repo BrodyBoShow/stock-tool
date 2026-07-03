@@ -131,6 +131,24 @@ export interface ForwardSensitivity {
   diffuse_note: string | null // set when no single driver dominates the sector
 }
 
+export interface NewsArticle {
+  title: string
+  url: string
+  domain: string | null
+  seendate: string | null // GDELT 'YYYYMMDDTHHMMSSZ'
+}
+
+export interface NewsNarrativeResponse {
+  ticker: string
+  available: boolean
+  query: string | null
+  window_days: number | null
+  article_count: number | null // "at least N" when capped
+  capped: boolean
+  articles: NewsArticle[]
+  as_of_epoch: number | null
+}
+
 export interface SecurityResponse {
   header: SecurityHeader
   prices: PricePoint[]
