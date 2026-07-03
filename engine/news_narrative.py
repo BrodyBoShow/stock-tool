@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 import threading
 import time
+from datetime import date, datetime
 from typing import Any
 
 import httpx
@@ -48,21 +49,27 @@ def _clean_name(name: str) -> str:
     return re.sub(r"\s+", " ", n).strip()
 
 
-def _fetch(query: str) -> list[dict[str, Any]] | None:
-    """One throttled GDELT ArtList call. Returns the raw article list, or None on
-    any failure (429, network, non-JSON). Serialized to <= 1 req / _MIN_SPACING
-    globally so we never trip GDELT's rate limit."""
+def _parse_ts(s: Any) -> date | None:
+    """GDELT 'YYYYMMDDT...' -> date. None on anything unexpected."""
+    if not isinstance(s, str) or len(s) < 8:
+        return None
+    try:
+        return datetime.strptime(s[:8], "%Y%m%d").date()
+    except ValueError:
+        return None
+
+
+def _get(params: dict[str, Any]) -> dict[str, Any] | None:
+    """One throttled GDELT call. Returns parsed JSON, or None on any failure
+    (429, network, non-JSON). Serialized to <= 1 req / _MIN_SPACING globally so
+    we never trip GDELT's rate limit."""
     with _lock:
         wait = _MIN_SPACING - (time.monotonic() - _last_call[0])
         if wait > 0:
             time.sleep(min(wait, _MIN_SPACING))
         try:
             resp = httpx.get(
-                _GDELT_URL,
-                params={
-                    "query": query, "mode": "ArtList", "maxrecords": _MAX_RECORDS,
-                    "timespan": f"{_WINDOW_DAYS}d", "format": "json", "sort": "DateDesc",
-                },
+                _GDELT_URL, params=params,
                 headers={"User-Agent": "StockBud/1.0 (personal research tool)"},
                 timeout=_TIMEOUT,
             )
@@ -74,11 +81,52 @@ def _fetch(query: str) -> list[dict[str, Any]] | None:
     if resp.status_code != 200:
         return None
     try:
-        data = resp.json()          # GDELT returns plaintext on rate-limit → raises
+        return resp.json()          # GDELT returns plaintext on rate-limit → raises
     except Exception:  # noqa: BLE001
+        return None
+
+
+def _fetch(query: str) -> list[dict[str, Any]] | None:
+    """Recent-article list (ArtList mode). Raw GDELT list, or None on failure."""
+    data = _get({
+        "query": query, "mode": "ArtList", "maxrecords": _MAX_RECORDS,
+        "timespan": f"{_WINDOW_DAYS}d", "format": "json", "sort": "DateDesc",
+    })
+    if data is None:
         return None
     arts = data.get("articles")
     return arts if isinstance(arts, list) else None
+
+
+def daily_volume(name: str | None) -> list[tuple[date, int]] | None:
+    """Daily article-count series for a company over the trailing ~month (GDELT
+    TimelineVolRaw), oldest-first. None on failure or no usable name. Throttled;
+    not cached (the nightly news-signals job manages cadence). Volume only — no
+    tone/sentiment."""
+    if not name:
+        return None
+    cleaned = _clean_name(name)
+    if not cleaned:
+        return None
+    data = _get({
+        "query": f'"{cleaned}"', "mode": "TimelineVolRaw",
+        "timespan": "30d", "format": "json",
+    })
+    if data is None:
+        return None
+    tl = data.get("timeline")
+    if not isinstance(tl, list) or not tl:
+        return None
+    pts = tl[0].get("data")
+    if not isinstance(pts, list):
+        return None
+    out: list[tuple[date, int]] = []
+    for p in pts:
+        d = _parse_ts(p.get("date"))
+        v = p.get("value")
+        if d is not None and isinstance(v, (int, float)):
+            out.append((d, int(v)))
+    return out or None
 
 
 def for_ticker(ticker: str, name: str | None) -> dict[str, Any] | None:

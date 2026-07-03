@@ -79,6 +79,13 @@ jobs:
         continue-on-error: true
         run: python scripts/ingest_commodity_forecasts.py
 
+      # News coverage-volume spikes for watchlisted names (GDELT, free, no key).
+      # CONTEXT ONLY (writes news_signals, never scoring). Best-effort: GDELT is
+      # rate-limited (globally throttled in-engine) and non-fatal on outage.
+      - name: Refresh news signals (GDELT)
+        continue-on-error: true
+        run: python scripts/ingest_news_signals.py
+
       # Insider transactions (Form 4) — CONTEXT ONLY, never scoring tables.
       # Incremental by accession, so steady-state nightly deltas are small.
       # The expanded universe still has a one-time Form 4 backfill to chew
