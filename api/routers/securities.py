@@ -31,6 +31,7 @@ from api.schemas import (
     ValuationResponse,
 )
 from engine import brief as brief_engine
+from engine import commodity_backdrop as commodity_backdrop_engine
 from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
 from engine import live_factors, queries, summarize, valuation
@@ -75,6 +76,11 @@ def get_security(
     prices = queries.price_history_rows(ticker, days=days)
     fundamentals = queries.fundamental_metric_rows(ticker)
     filings = queries.filings_for_ticker(ticker)
+    # Forward commodity backdrops — only for upstream oil & gas producers (oil +
+    # gas paths); None otherwise. Context only, never touches the score.
+    backdrops = commodity_backdrop_engine.for_security(
+        header.get("sector"), header.get("industry")
+    )
 
     return SecurityResponse(
         header=SecurityHeader(**header),
@@ -89,6 +95,7 @@ def get_security(
             )
             for f in filings
         ],
+        commodity_backdrops=backdrops,
     )
 
 
