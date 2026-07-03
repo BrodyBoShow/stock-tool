@@ -605,6 +605,10 @@ class WatchlistChange(BaseModel):
     insider_buy_value: float | None
     # thesis review is due (review_date on/before today)
     review_due: bool
+    # GDELT news coverage-volume spike (Slice 3.1) — context only, not a signal.
+    news_spike: bool = False
+    news_ratio: float | None = None   # recent volume / baseline
+    news_count: int | None = None     # recent article count
 
 
 class WatchlistChangesResponse(BaseModel):

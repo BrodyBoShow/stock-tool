@@ -494,6 +494,10 @@ export interface WatchlistChange {
   insider_buy_count: number
   insider_buy_value: number | null
   review_due: boolean
+  // GDELT news coverage-volume spike (Slice 3.1) — context only, not a signal.
+  news_spike: boolean
+  news_ratio: number | null
+  news_count: number | null
 }
 
 export interface WatchlistChangesResponse {

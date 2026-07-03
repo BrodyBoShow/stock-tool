@@ -23,6 +23,8 @@ def compute(owner_id: str | None = None) -> list[dict[str, Any]]:
     """
     core = queries.watchlist_change_core(owner_id=owner_id)
     today = str(date.today())
+    # GDELT coverage-volume spike per name (Slice 3.1) — one bulk lookup.
+    news = queries.news_signals_for([c["security_id"] for c in core])
     out: list[dict[str, Any]] = []
     for c in core:
         ticker = c["ticker"]
@@ -48,6 +50,7 @@ def compute(owner_id: str | None = None) -> list[dict[str, Any]]:
         ins = queries.insider_summary(queries.insider_rows(ticker, months=3), months=3)
 
         rd = c.get("review_date")
+        ns = news.get(c["security_id"])
         out.append({
             "security_id": c["security_id"],
             "ticker": ticker,
@@ -64,5 +67,9 @@ def compute(owner_id: str | None = None) -> list[dict[str, Any]]:
             "insider_buy_count": ins.get("buy_count", 0),
             "insider_buy_value": ins.get("buy_value"),
             "review_due": rd is not None and rd <= today,
+            # GDELT news coverage-volume spike (context only, never a signal/score).
+            "news_spike": bool(ns["is_spike"]) if ns else False,
+            "news_ratio": float(ns["ratio"]) if ns and ns["ratio"] is not None else None,
+            "news_count": int(ns["latest_count"]) if ns else None,
         })
     return out

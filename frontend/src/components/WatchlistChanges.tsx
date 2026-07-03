@@ -11,6 +11,7 @@ function activity(c: WatchlistChange): number {
   let s = 0
   if (c.review_due) s += 1000
   s += c.new_events * 100
+  if (c.news_spike) s += 75
   if (c.insider_buy_count > 0) s += 50
   if (c.rank != null && c.rank_prior != null) s += Math.abs(c.rank_prior - c.rank)
   return s
@@ -20,7 +21,7 @@ function Chip({
   tone,
   children,
 }: {
-  tone: 'rank' | 'live' | 'event' | 'insider' | 'review' | 'quiet'
+  tone: 'rank' | 'live' | 'event' | 'insider' | 'review' | 'quiet' | 'news'
   children: React.ReactNode
 }) {
   const styles: Record<string, string> = {
@@ -30,6 +31,7 @@ function Chip({
     insider: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     review: 'border-amber-300 bg-amber-100 text-amber-800',
     quiet: 'border-[#eef1f6] bg-[#fafbfc] text-gray-400',
+    news: 'border-violet-200 bg-violet-50 text-violet-700',
   }
   return (
     <span
@@ -56,6 +58,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
   const quiet =
     !c.review_due &&
     c.new_events === 0 &&
+    !c.news_spike &&
     c.insider_buy_count === 0 &&
     (rankMove == null || rankMove === 0) &&
     !liveShown
@@ -144,6 +147,20 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
           <Chip tone="insider">
             ▴ Insider {c.insider_buy_count} buy{c.insider_buy_count === 1 ? '' : 's'}
             {c.insider_buy_value ? ` · ${fmtMoney(c.insider_buy_value)}` : ''} (3m)
+          </Chip>
+        )}
+
+        {/* GDELT news coverage-volume spike (context, not a signal) */}
+        {c.news_spike && (
+          <Chip tone="news">
+            <span
+              title="Recent news coverage jumped above this name's own recent baseline (GDELT article volume, matched by company name — may catch unrelated same-name coverage). Context only, not a signal — open the name to see the headlines."
+              className="cursor-help"
+            >
+              📰 News spike
+              {c.news_ratio ? ` · ${c.news_ratio.toFixed(1)}× vs usual` : ''}
+              {c.news_count != null ? ` (${c.news_count} art.)` : ''}
+            </span>
           </Chip>
         )}
 

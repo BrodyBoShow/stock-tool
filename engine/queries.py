@@ -715,6 +715,25 @@ def watchlist_tickers(owner_id: str | None = None) -> frozenset[str]:
     return frozenset(r[0] for r in rows)
 
 
+def news_signals_for(security_ids: list[int]) -> dict[int, dict[str, Any]]:
+    """news_signals rows (GDELT coverage-volume spike, Slice 3.1) keyed by
+    security_id. Empty dict when the table isn't populated yet. CONTEXT ONLY."""
+    if not security_ids:
+        return {}
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id, as_of_date, latest_count, baseline_median, "
+                "ratio, is_spike FROM news_signals WHERE security_id = ANY(%s)",
+                (security_ids,),
+            )
+            cols = [d[0] for d in cur.description]
+            return {r[0]: dict(zip(cols, r, strict=True)) for r in cur.fetchall()}
+    finally:
+        release(conn)
+
+
 def watchlist_change_core(
     baseline_days: int = 25, owner_id: str | None = None
 ) -> list[dict[str, Any]]:
