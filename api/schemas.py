@@ -37,6 +37,28 @@ class CommodityBackdrop(BaseModel):
     path: list[CommodityBackdropPoint]
 
 
+class ForwardSensitivityDriver(BaseModel):
+    """One forward-macro driver a company's sector is sensitive to, with its
+    current level, ~1-month direction, and a factual relationship note."""
+    driver: str              # 'curve' | 'credit' | 'inflation' | 'rate10y'
+    label: str
+    value: float
+    unit: str                # 'bps' | '%'
+    bucket: str | None       # level bucket (None for rate10y)
+    delta: float | None      # ~1-month change
+    direction: str
+    stress: bool
+    note: str                # why this driver matters for the sector
+
+
+class ForwardSensitivity(BaseModel):
+    """Universal per-company forward read: the sector's dominant free forward
+    driver(s), or a diffuse-sector note. CONTEXT ONLY — never feeds the score."""
+    sector: str | None
+    drivers: list[ForwardSensitivityDriver]
+    diffuse_note: str | None  # set when no single driver dominates the sector
+
+
 # ── screener ──────────────────────────────────────────────────────────────────
 
 class ScreenerRow(BaseModel):
@@ -270,6 +292,10 @@ class SecurityResponse(BaseModel):
     # None for every other name. The user applies whichever matches the
     # company's oil/gas weighting.
     commodity_backdrops: list[CommodityBackdrop] | None = None
+    # Universal per-company forward sensitivity (sector's dominant macro driver)
+    # for every non-producer; None for producers (the commodity backdrop covers
+    # them) and unknown sectors.
+    forward_sensitivity: ForwardSensitivity | None = None
 
 
 # ── AI filing summaries (Phase 10) ────────────────────────────────────────────

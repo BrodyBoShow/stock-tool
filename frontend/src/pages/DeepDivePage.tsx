@@ -10,6 +10,7 @@ import { FactorInputsTable } from '@/components/deepdive/FactorInputsTable'
 import { FilingIntelligencePanel } from '@/components/deepdive/FilingIntelligencePanel'
 import { FilingsListPanel } from '@/components/deepdive/FilingsListPanel'
 import { CommodityBackdropCard } from '@/components/deepdive/CommodityBackdropCard'
+import { ForwardSensitivityCard } from '@/components/deepdive/ForwardSensitivityCard'
 import { FundamentalsTable } from '@/components/deepdive/FundamentalsTable'
 import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
@@ -288,9 +289,11 @@ export function DeepDivePage() {
 
       {pane === 'value' && (
         <>
-          {data?.commodity_backdrops && data.commodity_backdrops.length > 0 && (
+          {data?.commodity_backdrops && data.commodity_backdrops.length > 0 ? (
             <CommodityBackdropCard backdrops={data.commodity_backdrops} />
-          )}
+          ) : data?.forward_sensitivity ? (
+            <ForwardSensitivityCard sensitivity={data.forward_sensitivity} />
+          ) : null}
           <IntrinsicValuePanel ticker={header.ticker} />
           <MacroStrip />
         </>

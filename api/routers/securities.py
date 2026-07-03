@@ -34,6 +34,7 @@ from engine import brief as brief_engine
 from engine import commodity_backdrop as commodity_backdrop_engine
 from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
+from engine import forward_context as forward_context_engine
 from engine import live_factors, queries, summarize, valuation
 from engine import quotes as quotes_engine
 from engine.filing_taxonomy import analysis_profile, form_category, form_label
@@ -81,6 +82,14 @@ def get_security(
     backdrops = commodity_backdrop_engine.for_security(
         header.get("sector"), header.get("industry")
     )
+    # Universal forward sensitivity for every OTHER name (the sector's dominant
+    # macro driver). Producers already get the richer commodity backdrop, so
+    # skip it for them to avoid two overlapping cards.
+    forward_sensitivity = None
+    if backdrops is None:
+        forward_sensitivity = forward_context_engine.for_security(
+            header.get("sector"), header.get("industry")
+        )
 
     return SecurityResponse(
         header=SecurityHeader(**header),
@@ -96,6 +105,7 @@ def get_security(
             for f in filings
         ],
         commodity_backdrops=backdrops,
+        forward_sensitivity=forward_sensitivity,
     )
 
 
