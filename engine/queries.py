@@ -16,6 +16,7 @@ import time
 from datetime import date, timedelta
 from typing import Any
 
+from engine import commodity_backdrop
 from engine.db import acquire, release
 
 MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS", "BAMLH0A0HYM2"]
@@ -268,7 +269,7 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                       AND composite IS NOT NULL
                     GROUP BY security_id
                 )
-                SELECT s.ticker, s.name, s.sector, s.exchange,
+                SELECT s.ticker, s.name, s.sector, s.exchange, s.industry,
                        fs.composite,
                        fs.growth_pctl, fs.value_pctl, fs.quality_pctl, fs.momentum_pctl,
                        lp.close  AS last_price,
@@ -347,6 +348,14 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
         del row["composite_7d_ago"]  # only the delta is surfaced
         ch = row.get("composite_history")
         row["composite_history"] = [float(x) for x in ch] if ch else None
+        # Forward-commodity marker: is this an upstream oil & gas producer whose
+        # trailing valuation depends on the forward commodity curve? (Context
+        # only — never affects the score/rank.) `industry` is dropped after; the
+        # screener frontend only needs the boolean + the response-level backdrop.
+        row["commodity_producer"] = commodity_backdrop.is_producer(
+            row.get("sector"), row.get("industry")
+        )
+        row.pop("industry", None)
         rows.append(row)
     return rows, score_date
 

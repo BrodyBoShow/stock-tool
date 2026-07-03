@@ -21,7 +21,7 @@ import {
 } from '@/lib/filters'
 import { DASH, fmtMoney, fmtPrice } from '@/lib/format'
 import { setScreenerOrder } from '@/lib/screenerOrder'
-import type { QuoteRow, ScreenerRow } from '@/types/api'
+import type { CommodityBackdrop, QuoteRow, ScreenerRow } from '@/types/api'
 
 const FACTOR_SORT: Record<FactorKey, ScreenerSortKey> = {
   composite: 'composite',
@@ -136,6 +136,63 @@ function ValueTrapMark({ row }: { row: ScreenerRow }) {
   )
 }
 
+/** Neutral ⛽ marker on upstream oil & gas producers: their trailing valuation
+ *  depends on the forward commodity curve the score can't see. Direction is
+ *  NOT encoded per-name (a producer's oil/gas weighting isn't knowable from its
+ *  industry) — the tooltip carries both real forecast directions, and the user
+ *  opens the Value pane for detail. Hidden when both commodities are flat. */
+const COMMODITY_VERB: Record<string, string> = {
+  declining: 'forecast to fall',
+  rising: 'forecast to rise',
+  flat: 'forecast flat',
+  unknown: 'forecast',
+}
+const COMMODITY_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+]
+
+/** 'YYYY-MM-DD' -> 'Mon YYYY' (matches the deep-dive card's provenance line). */
+function fmtVintage(iso: string): string {
+  const [y, m] = iso.split('-')
+  return `${COMMODITY_MONTHS[Number(m) - 1] ?? m} ${y}`
+}
+
+function CommodityMark({
+  row,
+  backdrops,
+}: {
+  row: ScreenerRow
+  backdrops: CommodityBackdrop[] | null | undefined
+}) {
+  if (!row.commodity_producer || !backdrops || backdrops.length === 0) return null
+  const material = backdrops.filter(
+    (b) => b.direction === 'declining' || b.direction === 'rising',
+  )
+  if (material.length === 0) return null
+  // "forecast to fall" verb (not a bare "declining") keeps the forward framing
+  // unambiguous next to every direction, matching the deep-dive card.
+  const summary = backdrops
+    .map(
+      (b) =>
+        `${b.label} ${b.slope_pct != null ? (b.slope_pct > 0 ? '+' : '') + b.slope_pct + '%' : ''} (${COMMODITY_VERB[b.direction] ?? 'forecast'})`,
+    )
+    .join(', ')
+  return (
+    <span
+      className="flex-none cursor-help text-[0.62rem] leading-none text-slate-400"
+      title={
+        `Oil & gas producer — trailing valuation depends on the forward commodity ` +
+        `curve. EIA STEO (retrieved ${fmtVintage(backdrops[0].vintage)}): ${summary}. ` +
+        `Open the Value pane for detail.`
+      }
+      aria-label="Forward commodity backdrop caveat"
+    >
+      ⛽
+    </span>
+  )
+}
+
 /** 7-day composite move → left-edge signal color (null = no meaningful move). */
 function signalColor(d: number | null): string | null {
   if (d == null) return null
@@ -171,6 +228,7 @@ export function ScreenerTable({
   onRowClick,
   liveByTicker,
   liveRankByTicker,
+  commodityBackdrops,
   sort: controlledSort,
   onSortChange,
   emptyHint,
@@ -191,6 +249,9 @@ export function ScreenerTable({
    * `r.rank` for tickers outside this map (e.g. complete-only mismatch).
    */
   liveRankByTicker?: Record<string, number> | null
+  /** Oil + gas forward paths (EIA STEO), shared by every producer row's ⛽
+   *  marker. Same object for all rows; the marker only shows on producers. */
+  commodityBackdrops?: CommodityBackdrop[] | null
   /** Controlled sort (for URL state). Falls back to internal state when omitted. */
   sort?: ScreenerSort
   onSortChange?: (s: ScreenerSort) => void
@@ -594,6 +655,7 @@ export function ScreenerTable({
                             {r.ticker}
                           </Link>
                           <ValueTrapMark row={r} />
+                          <CommodityMark row={r} backdrops={commodityBackdrops} />
                           <WhatChanged d={r.composite_delta_7d} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
@@ -610,6 +672,7 @@ export function ScreenerTable({
                             {r.ticker}
                           </span>
                           <ValueTrapMark row={r} />
+                          <CommodityMark row={r} backdrops={commodityBackdrops} />
                           <WhatChanged d={r.composite_delta_7d} />
                         </span>
                         <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">

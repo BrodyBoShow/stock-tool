@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from api.auth import get_current_user
 from api.schemas import ScreenerResponse, ScreenerRow
-from engine import queries
+from engine import commodity_backdrop, queries
 
 # Login required for beta. Global ranked data — no owner scoping.
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -24,4 +24,5 @@ def get_screener(complete_only: bool = True) -> ScreenerResponse:
     return ScreenerResponse(
         score_date=score_date,
         rows=[ScreenerRow(**r) for r in rows],
+        commodity_backdrops=commodity_backdrop.producer_backdrops(),
     )

@@ -21,12 +21,19 @@ export interface ScreenerRow {
   composite_delta_7d: number | null
   sub_pctls: Record<string, number | null> | null
   composite_history: number[] | null
+  // Upstream oil & gas producer whose trailing valuation depends on the forward
+  // commodity curve (context marker; never affects rank). Paths ride on the
+  // response-level commodity_backdrops.
+  commodity_producer: boolean
   security_id: number
 }
 
 export interface ScreenerResponse {
   score_date: string | null
   rows: ScreenerRow[]
+  // Oil + gas forward paths (EIA STEO) shared by every producer row's marker;
+  // null before the first ingest. Context only — never feeds the ranking.
+  commodity_backdrops: CommodityBackdrop[] | null
 }
 
 /** factor_scores.details JSON — shape confirmed against the live API. */
