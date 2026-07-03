@@ -53,7 +53,10 @@ RETRY_BACKOFF = (3, 10, 30)     # seconds between attempts; len+1 total attempts
 #   VIXCLS   CBOE volatility index (daily, level)
 #   DTWEXBGS Nominal broad US dollar index (daily, index)
 #   BAMLH0A0HYM2 ICE BofA US high-yield option-adjusted spread (daily, %)
-SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS", "BAMLH0A0HYM2"]
+#   T10YIE   10-year breakeven inflation rate (daily, %) — forward inflation
+#            expectations, for the market forward-regime read
+SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS",
+              "BAMLH0A0HYM2", "T10YIE"]
 
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 

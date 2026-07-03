@@ -68,6 +68,7 @@ MACRO_DISPLAY = [
     ("VIXCLS", "VIX", "", 1),
     ("DTWEXBGS", "US Dollar", "", 1),      # nominal broad USD index
     ("BAMLH0A0HYM2", "HY spread", "%", 2),  # high-yield credit stress
+    ("T10YIE", "10Y breakeven", "%", 2),   # 10y inflation expectations (forward)
 ]
 
 _ET = ZoneInfo("America/New_York")
@@ -365,6 +366,120 @@ def _insider_buys(cur, since: date) -> list[dict[str, Any]]:
     ]
 
 
+def _value_ago(obs: list[tuple[date, float]], days: int) -> float | None:
+    """Value at the latest observation on/before (last_date - days), for a
+    ~1-month direction read. None if the series doesn't reach back that far."""
+    if not obs:
+        return None
+    cutoff = obs[-1][0] - timedelta(days=days)
+    prior = [v for d, v in obs if d <= cutoff]
+    return prior[-1] if prior else None
+
+
+def _bucket(value: float, edges: list[tuple[float, str]]) -> str:
+    """First label whose upper edge `value` is below; last label otherwise."""
+    for hi, label in edges:
+        if value < hi:
+            return label
+    return edges[-1][1]
+
+
+def _dir(delta: float | None, thresh: float, up: str, down: str) -> str:
+    if delta is None:
+        return "stable"
+    if delta >= thresh:
+        return up
+    if delta <= -thresh:
+        return down
+    return "stable"
+
+
+def _forward_regime(series: dict[str, list[tuple[date, float]]],
+                    latest: dict[str, float]) -> dict[str, Any] | None:
+    """Neutral forward-macro read synthesized from FRED's forward-looking
+    series: the yield-curve slope (10y-2y), high-yield credit spread, and 10y
+    inflation breakeven — each as a factual level bucket + ~1-month direction,
+    plus a descriptive (never prescriptive) one-liner. CONTEXT ONLY — never
+    feeds factor scores; this is a macro backdrop, not advice. Historical regime
+    signals, not predictions. None if the underlying series are unavailable."""
+    dims: list[dict[str, Any]] = []
+    stress_notes: list[str] = []
+
+    # Yield curve: 10y - 2y, in basis points. Inverted has historically led
+    # slowdowns; steep often accompanies early-cycle recovery.
+    if "DGS10" in latest and "DGS2" in latest:
+        bps = round((latest["DGS10"] - latest["DGS2"]) * 100, 1)
+        d10a, d2a = _value_ago(series.get("DGS10", []), 30), _value_ago(series.get("DGS2", []), 30)
+        prior_bps = (d10a - d2a) * 100 if d10a is not None and d2a is not None else None
+        delta = round(bps - prior_bps, 1) if prior_bps is not None else None
+        bucket = _bucket(
+            bps, [(0.0, "inverted"), (50.0, "flat"), (150.0, "normal"), (1e9, "steep")]
+        )
+        stress = bucket == "inverted"
+        dims.append({
+            "key": "curve", "label": "Yield curve (10y-2y)", "bucket": bucket,
+            "value": bps, "unit": "bps", "delta": delta,
+            "direction": _dir(delta, 5, "steepening", "flattening"), "stress": stress,
+        })
+        if stress:
+            stress_notes.append("an inverted curve")
+
+    # High-yield credit spread (OAS), in basis points. Wide/widening = risk-off
+    # stress; tight = calm risk appetite.
+    if "BAMLH0A0HYM2" in latest:
+        bps = round(latest["BAMLH0A0HYM2"] * 100, 1)
+        prior = _value_ago(series.get("BAMLH0A0HYM2", []), 30)
+        delta = round(bps - prior * 100, 1) if prior is not None else None
+        bucket = _bucket(
+            bps, [(350.0, "tight"), (500.0, "normal"), (800.0, "wide"), (1e9, "stressed")]
+        )
+        stress = bucket in ("wide", "stressed")
+        dims.append({
+            "key": "credit", "label": "Credit spreads (HY OAS)", "bucket": bucket,
+            "value": bps, "unit": "bps", "delta": delta,
+            "direction": _dir(delta, 15, "widening", "tightening"), "stress": stress,
+        })
+        if stress:
+            stress_notes.append("wide credit spreads")
+
+    # 10y inflation breakeven, in percent — forward inflation expectations.
+    if "T10YIE" in latest:
+        pct = round(latest["T10YIE"], 2)
+        prior = _value_ago(series.get("T10YIE", []), 30)
+        delta = round(pct - prior, 2) if prior is not None else None
+        bucket = _bucket(pct, [(2.0, "soft"), (2.5, "anchored"), (3.0, "elevated"), (1e9, "high")])
+        direction = _dir(delta, 0.05, "rising", "falling")
+        # A high-but-falling breakeven isn't a forward stress; only elevated/high
+        # AND rising is. Per-dim flag = the single source the badge colors from.
+        stress = bucket in ("elevated", "high") and direction == "rising"
+        dims.append({
+            "key": "inflation", "label": "Inflation expectations (10y breakeven)",
+            "bucket": bucket, "value": pct, "unit": "%", "delta": delta,
+            "direction": direction, "stress": stress,
+        })
+        if stress:
+            stress_notes.append("rising inflation expectations")
+
+    if not dims:
+        return None
+
+    by = {d["key"]: d for d in dims}
+    parts = []
+    if "curve" in by:
+        parts.append(f"{by['curve']['bucket']} yield curve")
+    if "credit" in by:
+        parts.append(f"{by['credit']['bucket']} credit spreads")
+    if "inflation" in by:
+        parts.append(f"{by['inflation']['bucket']} inflation expectations")
+    config = ", ".join(parts)
+    if stress_notes:
+        synthesis = f"Forward stress signals present ({', '.join(stress_notes)}): {config}."
+    else:
+        synthesis = f"No acute stress in the forward signals: {config}."
+
+    return {"dims": dims, "synthesis": synthesis, "stress": bool(stress_notes)}
+
+
 def _macro(cur) -> dict[str, Any]:
     ids = [m[0] for m in MACRO_DISPLAY] + ["CPIAUCSL"]
     cur.execute(
@@ -408,7 +523,8 @@ def _macro(cur) -> dict[str, Any]:
             cpi_yoy = round(last_v / year_ago[-1] - 1.0, 4)
 
     return {"cards": cards, "curve_bps": curve_bps, "cpi_yoy": cpi_yoy,
-            "cpi_as_of": str(cpi[-1][0]) if cpi else None}
+            "cpi_as_of": str(cpi[-1][0]) if cpi else None,
+            "regime": _forward_regime(series, latest)}
 
 
 # ── external headlines (separate, longer-lived cache; fail-soft) ─────────────

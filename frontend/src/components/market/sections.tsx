@@ -8,6 +8,7 @@ import { fmtDate, fmtMoney, fmtSignedPct } from '@/lib/format'
 import type {
   MarketAiBrief,
   MarketFactorDay,
+  MarketForwardRegimeDim,
   MarketMacroCard,
   MarketMover,
   MarketMoverFactors,
@@ -294,6 +295,95 @@ export function RegimeStrip({ d }: { d: MarketOverviewResponse }) {
         </div>
       ))}
     </div>
+  )
+}
+
+/** Forward-macro read (Slice 2 of the forward-context layer): a NEUTRAL,
+ *  synthesized backdrop from FRED's forward-looking series — yield-curve slope,
+ *  credit spreads, inflation expectations — each a factual level bucket + a
+ *  ~1-month direction. Distinct from RegimeStrip (a coincident same-day risk
+ *  read). Context only: never feeds scores, never advice — amber flags genuine
+ *  stress states, everything else stays neutral slate (a macro variable's
+ *  direction isn't inherently good or bad). */
+const REGIME_TIP: Record<string, string> = {
+  curve:
+    '10-year minus 2-year Treasury yield. Inverted (negative) has historically preceded slowdowns; steep often accompanies early-cycle recovery. Arrow = ~1-month change.',
+  credit:
+    'High-yield bond spread over Treasuries (option-adjusted). Tight = calm risk appetite; wide/widening = risk-off stress. Arrow = ~1-month change.',
+  inflation:
+    '10-year breakeven = the bond market’s implied average inflation over 10 years. Anchored ≈ 2–2.5%. Arrow = ~1-month change.',
+}
+
+function regimeArrow(direction: string): string {
+  if (['steepening', 'widening', 'rising'].includes(direction)) return '▲'
+  if (['flattening', 'tightening', 'falling'].includes(direction)) return '▼'
+  return '■'
+}
+
+function RegimeDimRow({ dim }: { dim: MarketForwardRegimeDim }) {
+  // Colour from the backend's per-dim stress flag (single source of truth), so
+  // the badge can never contradict the panel's "stress / no stress" headline.
+  const stress = dim.stress
+  const deltaTxt =
+    dim.delta == null
+      ? ''
+      : `${dim.delta > 0 ? '+' : ''}${dim.delta}${dim.unit === '%' ? 'pp' : dim.unit}`
+  return (
+    <li className="flex items-center justify-between gap-3 py-1.5">
+      <span className="flex items-center gap-1 text-[0.76rem] text-slate-600">
+        {dim.label}
+        <InfoTip text={REGIME_TIP[dim.key] ?? ''} />
+      </span>
+      <span className="flex items-center gap-2">
+        <span
+          className={
+            'rounded px-1.5 py-0.5 text-[0.64rem] font-bold uppercase tracking-[0.04em] ' +
+            (stress ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500')
+          }
+        >
+          {dim.bucket}
+        </span>
+        <span className="numeric text-[0.8rem] font-bold text-slate-800">
+          {dim.value}
+          <span className="text-[0.66rem] font-medium text-slate-400"> {dim.unit}</span>
+        </span>
+        <span className="numeric flex w-16 items-center justify-end gap-0.5 text-[0.66rem] text-slate-400">
+          <span aria-hidden>{regimeArrow(dim.direction)}</span>
+          {deltaTxt}
+        </span>
+      </span>
+    </li>
+  )
+}
+
+export function ForwardMacroPanel({ d }: { d: MarketOverviewResponse }) {
+  const regime = d.macro.regime
+  if (!regime || regime.dims.length === 0) return null
+  const tone = regime.stress ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-white'
+  return (
+    <section className={`rounded-card border p-4 shadow-card ${tone}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-[0.67rem] font-bold uppercase tracking-[0.08em] text-slate-500">
+          Forward macro
+        </div>
+        <span
+          title="Forward-looking macro backdrop from FRED — context only, never feeds scores"
+          className="cursor-help rounded bg-slate-100 px-1.5 text-[0.6rem] font-semibold text-slate-500"
+        >
+          CONTEXT
+        </span>
+      </div>
+      <p className="mt-1.5 text-[0.82rem] leading-relaxed text-slate-700">{regime.synthesis}</p>
+      <ul className="mt-1.5 divide-y divide-slate-100">
+        {regime.dims.map((dim) => (
+          <RegimeDimRow key={dim.key} dim={dim} />
+        ))}
+      </ul>
+      <p className="mt-2 text-[0.64rem] leading-relaxed text-slate-400">
+        Forward-looking series from FRED (Treasury curve, high-yield spread, inflation
+        breakeven). Historical regime signals, not predictions. Not investment advice.
+      </p>
+    </section>
   )
 }
 

@@ -16,6 +16,7 @@ import { MarketSubHeader } from '@/components/market/MarketSubHeader'
 import {
   AiBrief,
   FactorOfDay,
+  ForwardMacroPanel,
   FreshnessRow,
   MacroCardBox,
   RegimeHero,
@@ -262,6 +263,9 @@ export function MarketPage() {
 
         <SectionCard title="Macro dashboard" hint="Rates, volatility and inflation context — 90-day trend in each sparkline.">
           <div className="mb-2"><Provenance kind="fred" /></div>
+          <div className="mb-3">
+            <ForwardMacroPanel d={d} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             {d.macro.cards.map((c) => <MacroCardBox key={c.id} card={c} />)}
           </div>
