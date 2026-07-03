@@ -5,7 +5,7 @@ import logging
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
-from api.auth import get_current_user
+from api.auth import CurrentUser, get_current_user
 from api.ratelimit import ai_daily_cap, rate_limit
 from api.schemas import (
     BriefStatusResponse,
@@ -93,20 +93,29 @@ def get_security(
 
 
 @router.get("/{ticker}/live-factors", response_model=LiveFactorsResponse)
-def get_live_factors(ticker: str) -> LiveFactorsResponse:
+def get_live_factors(ticker: str, user: CurrentUser) -> LiveFactorsResponse:
     """Live-adjusted Value/Momentum/Composite for one security: the price-driven
     sub-signals recomputed from the latest (~15m delayed) quote against last
-    night's frozen cross-section. Growth/Quality are held nightly. Display only."""
+    night's frozen cross-section. Growth/Quality are held nightly. Display only.
+
+    Also carries rank/rank_total — this ticker's position under the exact
+    method the screener's # column uses (same complete-factor population,
+    live-adjusted composite substituted for the bounded quoted set), so the
+    deep dive's rank matches what the screener shows right now rather than
+    only the last nightly close.
+    """
     ticker, header = _require_security(ticker)
 
     quote = quotes_engine.get_quote_one(ticker)
     adj = live_factors.live_adjust(header["security_id"], quote["price"])
+    live_rank = live_factors.live_universe_rank(ticker, owner_id=user.id)
     if adj is None:
         # Not scored yet — no factor view to adjust.
         return LiveFactorsResponse(
             ticker=ticker, has_scores=False, live=False,
             price=quote["price"], as_of_epoch=quote["as_of_epoch"], stale=quote["stale"],
             live_factors=None, nightly=None,
+            rank=None, rank_total=None,
         )
     return LiveFactorsResponse(
         ticker=ticker,
@@ -120,6 +129,8 @@ def get_live_factors(ticker: str) -> LiveFactorsResponse:
             momentum=adj["momentum"], composite=adj["composite"],
         ),
         nightly=FactorSet(**adj["nightly"]),
+        rank=live_rank["rank"] if live_rank else None,
+        rank_total=live_rank["total"] if live_rank else None,
     )
 
 

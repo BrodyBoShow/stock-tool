@@ -41,7 +41,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from engine.queries import ACTIVE_CONFIG_VERSION, acquire, release
+from engine import quotes as quotes_engine
+from engine.queries import ACTIVE_CONFIG_VERSION, acquire, release, top_quote_tickers
 
 # How long a built snapshot is reused before we re-check the score_date. The
 # cross-section only changes on a nightly run, so this just bounds how quickly a
@@ -340,3 +341,59 @@ def live_adjust_many_by_ticker(
         if res is not None and res["live"]:
             out[ticker] = res
     return out
+
+
+def live_universe_rank(ticker: str, owner_id: str | None = None) -> dict[str, Any] | None:
+    """One ticker's rank under the SAME method the screener's # column uses:
+    the complete-factor active universe (matching queries.screener_rows'
+    complete_only basis), with live-adjusted composite substituted for the
+    bounded top_quote_tickers set (the same overlay /quotes applies) wherever
+    a live price landed. Every other name keeps its nightly composite — an
+    exact re-derivation of what a user sorted-by-composite on the screener
+    would see for this ticker right now.
+
+    Returns {"rank": int, "total": int, "live": bool} (live=True only if
+    THIS ticker itself got a live-adjusted composite), or None if the ticker
+    isn't in the complete-factor universe today (partial name, unscored, or
+    inactive).
+
+    Reuses live_factors' own 600s-cached snapshot (no extra DB round trip
+    beyond what's already paid for elsewhere) and quotes' 90s TTL cache for
+    the bounded set (the exact ticker set /quotes fetches) — so repeated
+    deep-dive opens are cheap and never re-hit yfinance within the TTL.
+    """
+    snap = _load_snapshot()
+    if snap is None:
+        return None
+    sid = snap.by_ticker.get(ticker)
+    if sid is None:
+        return None
+
+    # Same population the screener ranks over: active names with all four
+    # component factors present (screener_rows(complete_only=True)).
+    complete = {
+        s: m["composite"]
+        for s, m in snap.meta.items()
+        if m["growth_pctl"] is not None
+        and m["value_pctl"] is not None
+        and m["quality_pctl"] is not None
+        and m["momentum_pctl"] is not None
+        and m["composite"] is not None
+    }
+    if sid not in complete:
+        return None
+
+    bounded = top_quote_tickers(owner_id=owner_id)
+    quote_payload = quotes_engine.get_quotes(bounded)
+    price_by_ticker = {t: q.get("price") for t, q in quote_payload["quotes"].items()}
+    overlay = live_adjust_many_by_ticker(price_by_ticker)
+    for t, adj in overlay.items():
+        s2 = snap.by_ticker.get(t)
+        if s2 in complete and adj.get("composite") is not None:
+            complete[s2] = adj["composite"]
+
+    ordered = sorted(complete.items(), key=lambda kv: kv[1], reverse=True)
+    rank = next((i + 1 for i, (s, _) in enumerate(ordered) if s == sid), None)
+    if rank is None:
+        return None
+    return {"rank": rank, "total": len(ordered), "live": ticker in overlay}

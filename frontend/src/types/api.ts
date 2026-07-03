@@ -254,6 +254,10 @@ export interface LiveFactorsResponse {
   stale: boolean
   live_factors: FactorSet | null // live-adjusted (== nightly when live=false)
   nightly: FactorSet | null // last night's baseline
+  // This ticker's rank under the same method the screener's live-ranked #
+  // column uses — matches the screener right now, not just the last close.
+  rank: number | null
+  rank_total: number | null
 }
 
 export interface QuotesResponse {

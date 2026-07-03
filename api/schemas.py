@@ -87,6 +87,12 @@ class LiveFactorsResponse(BaseModel):
     stale: bool
     live_factors: FactorSet | None  # live-adjusted (== nightly when live=False)
     nightly: FactorSet | None       # last night's baseline, for comparison
+    # This ticker's rank under the exact method the screener's live-ranked #
+    # column uses (complete-factor universe, live composite substituted for
+    # the bounded quoted set) — matches what the screener shows right now,
+    # not just the last nightly close. None if not in the complete universe.
+    rank: int | None
+    rank_total: int | None
 
 
 class BacktestRunResponse(BaseModel):

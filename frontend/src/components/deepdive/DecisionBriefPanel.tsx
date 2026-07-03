@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Delta } from '@/components/ui/Delta'
 import { useToast } from '@/components/ui/Toast'
-import { ApiError, generateBrief, getBriefStatus } from '@/lib/api'
+import { ApiError, generateBrief, getBriefStatus, getLiveFactors } from '@/lib/api'
 import { rankColor } from '@/lib/colors'
 import { FACTOR_DEFS, INPUT_LABELS, PANEL_LABEL as LABEL } from '@/lib/constants'
 import { fmtDate, fmtInput } from '@/lib/format'
@@ -94,8 +94,20 @@ function daysBetween(a: string, b: string): number {
 
 
 /** Factor-rank trend chips — rendered from our own score history, present even
- * before (or without) an AI brief. */
-function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
+ * before (or without) an AI brief. `liveRank`/`liveRankTotal` come from
+ * /live-factors, computed the same way the screener's # column is: same
+ * complete-factor universe, live-adjusted composite substituted for the
+ * bounded quoted set — so when present, the Rank chip matches the screener
+ * right now instead of only the last nightly close. */
+function TrendChips({
+  trend,
+  liveRank,
+  liveRankTotal,
+}: {
+  trend: FactorTrendPoint[]
+  liveRank?: number | null
+  liveRankTotal?: number | null
+}) {
   const latest = trend[trend.length - 1]
   if (!latest) return null
   const base = compareBaseline(trend)
@@ -109,6 +121,13 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
   ]
 
   const nightlyTitle = `As of the ${fmtDate(latest.score_date)} nightly close — not the live-adjusted number you may see elsewhere while the market is open.`
+  const shownRank = liveRank ?? latest.rank
+  const rankTitle =
+    liveRank != null
+      ? `Live-adjusted rank — matches the screener right now${
+          liveRankTotal != null ? ` (of ${liveRankTotal} complete-factor names)` : ''
+        }. Last nightly close was #${latest.rank ?? '—'}.`
+      : nightlyTitle
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -124,21 +143,22 @@ function TrendChips({ trend }: { trend: FactorTrendPoint[] }) {
           nightly
         </span>
       </span>
-      {latest.rank != null && (
+      {shownRank != null && (
         <span
           className="inline-flex items-baseline gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.78rem] font-semibold text-slate-700"
-          title={nightlyTitle}
+          title={rankTitle}
         >
-          Rank #{latest.rank}
-          {base?.rank != null && base.rank !== latest.rank && (
+          Rank #{shownRank}
+          {base?.rank != null && base.rank !== shownRank && (
             <span
-              className={
-                latest.rank < base.rank ? 'text-emerald-600' : 'text-red-600'
-              }
+              className={shownRank < base.rank ? 'text-emerald-600' : 'text-red-600'}
             >
-              {latest.rank < base.rank ? '▲' : '▼'} from #{base.rank}
+              {shownRank < base.rank ? '▲' : '▼'} from #{base.rank}
             </span>
           )}
+          <span className="text-[0.6rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+            {liveRank != null ? 'live' : 'nightly'}
+          </span>
         </span>
       )}
       {factors.map(([name, now, then]) => (
@@ -342,6 +362,16 @@ export function DecisionBriefPanel({
       q.state.data && !q.state.data.brief && q.state.data.generating ? 5000 : false,
   })
 
+  // Same query key/shape as FactorCards — shared cache, and gives us this
+  // ticker's live-adjusted universe rank (matches the screener's # column).
+  const { data: liveFactors } = useQuery({
+    queryKey: ['live-factors', ticker],
+    queryFn: () => getLiveFactors(ticker),
+    staleTime: 60 * 1000,
+    refetchInterval: (q) =>
+      q.state.data?.live && !q.state.data.stale ? 90 * 1000 : false,
+  })
+
   const gen = useMutation({
     mutationFn: () => generateBrief(ticker),
     onSuccess: () => {
@@ -391,7 +421,11 @@ export function DecisionBriefPanel({
           </p>
         ) : (
           <>
-            <TrendChips trend={data.trend} />
+            <TrendChips
+              trend={data.trend}
+              liveRank={liveFactors?.rank}
+              liveRankTotal={liveFactors?.rank_total}
+            />
             {data.brief ? (
               <BriefBody cached={data.brief} header={header} />
             ) : gen.isError ? (
