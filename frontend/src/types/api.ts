@@ -838,6 +838,23 @@ export interface MarketMacroCard {
   spark_values: number[]
 }
 
+export interface MarketForwardRegimeDim {
+  key: string // 'curve' | 'credit' | 'inflation'
+  label: string
+  bucket: string // e.g. 'flat', 'tight', 'anchored'
+  value: number
+  unit: string // 'bps' | '%'
+  delta: number | null // ~1-month change
+  direction: string // 'steepening'|'flattening'|'widening'|'tightening'|'rising'|'falling'|'stable'
+  stress: boolean // this dimension is in a genuine forward-stress state (single source for badge color)
+}
+
+export interface MarketForwardRegime {
+  dims: MarketForwardRegimeDim[]
+  synthesis: string // neutral, descriptive one-liner (never advice)
+  stress: boolean // any dimension in a stress bucket
+}
+
 export interface MarketFilingRow {
   security_id: number
   ticker: string | null
@@ -923,6 +940,7 @@ export interface MarketOverviewResponse {
     curve_bps: number | null
     cpi_yoy: number | null
     cpi_as_of: string | null
+    regime: MarketForwardRegime | null
   }
   filings: MarketFilingRow[]
   insider_buys: MarketInsiderBuy[]
