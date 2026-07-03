@@ -10,6 +10,33 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
+# ── forward commodity backdrop (context only — used by screener + deep-dive) ──
+
+class CommodityBackdropPoint(BaseModel):
+    period: str          # 'YYYY-MM-DD' (first of month)
+    value: float
+    is_forecast: bool
+
+
+class CommodityBackdrop(BaseModel):
+    """Forward EIA STEO commodity-price path for a commodity an oil & gas
+    producer sells. CONTEXT ONLY — never feeds the score; a caveat that trailing
+    cheapness may be flattered by a commodity price forecast to fall. The near
+    anchor is the STEO's near-term month (not a claimed realized spot)."""
+    series_id: str
+    commodity: str          # 'oil' | 'natural gas'
+    label: str              # e.g. 'WTI crude'
+    unit: str               # e.g. '$/bbl'
+    vintage: str            # retrieval month (first-of-month) this path was pulled
+    near_price: float
+    near_period: str
+    forward_price: float
+    forward_period: str
+    slope_pct: float | None  # (forward-near)/near, percent
+    direction: str           # 'declining' | 'rising' | 'flat' | 'unknown'
+    path: list[CommodityBackdropPoint]
+
+
 # ── screener ──────────────────────────────────────────────────────────────────
 
 class ScreenerRow(BaseModel):
@@ -33,12 +60,19 @@ class ScreenerRow(BaseModel):
     composite_delta_7d: float | None = None  # composite vs ~1 week ago (signal dot)
     sub_pctls: dict[str, float | None] | None = None  # per-sub-metric percentiles
     composite_history: list[float] | None = None  # composite series (~45d) for sparkline
+    # Upstream oil & gas producer whose trailing valuation depends on the
+    # forward commodity curve (context marker; never affects rank). The actual
+    # forward paths ride on ScreenerResponse.commodity_backdrops (shared).
+    commodity_producer: bool = False
     security_id: int
 
 
 class ScreenerResponse(BaseModel):
     score_date: date | None
     rows: list[ScreenerRow]
+    # Oil + gas forward paths (EIA STEO), shared by every producer row's marker.
+    # None before the first EIA ingest. Context only — never feeds the ranking.
+    commodity_backdrops: list[CommodityBackdrop] | None = None
 
 
 # ── live quotes (Phase 15 — intraday price overlay, context only) ─────────────
@@ -225,31 +259,6 @@ class FilingRow(BaseModel):
     label: str | None = None          # plain-English form name (filing_taxonomy)
     category: str | None = None       # display grouping (e.g. "Proxy & governance")
     analyzable: bool = False          # can the AI Overview read this filing?
-
-
-class CommodityBackdropPoint(BaseModel):
-    period: str          # 'YYYY-MM-DD' (first of month)
-    value: float
-    is_forecast: bool
-
-
-class CommodityBackdrop(BaseModel):
-    """Forward EIA STEO commodity-price path for a commodity an oil & gas
-    producer sells. CONTEXT ONLY — never feeds the score; a caveat that trailing
-    cheapness may be flattered by a commodity price forecast to fall. The near
-    anchor is the STEO's near-term month (not a claimed realized spot)."""
-    series_id: str
-    commodity: str          # 'oil' | 'natural gas'
-    label: str              # e.g. 'WTI crude'
-    unit: str               # e.g. '$/bbl'
-    vintage: str            # retrieval month (first-of-month) this path was pulled
-    near_price: float
-    near_period: str
-    forward_price: float
-    forward_period: str
-    slope_pct: float | None  # (forward-near)/near, percent
-    direction: str           # 'declining' | 'rising' | 'flat' | 'unknown'
-    path: list[CommodityBackdropPoint]
 
 
 class SecurityResponse(BaseModel):

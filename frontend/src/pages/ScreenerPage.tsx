@@ -215,6 +215,7 @@ export function ScreenerPage() {
             scoreDate={data.score_date}
             liveByTicker={quotes?.quotes}
             liveRankByTicker={liveRankByTicker}
+            commodityBackdrops={data.commodity_backdrops}
             sort={sort}
             onSortChange={setSort}
             emptyHint={emptyHint}

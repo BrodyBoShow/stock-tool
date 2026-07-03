@@ -31,6 +31,8 @@ scripts/ingest_commodity_forecasts.py).
 """
 from __future__ import annotations
 
+import threading
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -139,11 +141,32 @@ def backdrop(series_id: str) -> dict[str, Any] | None:
     }
 
 
+# The oil+gas backdrops are the same for every producer, so compute them once
+# and reuse for a short TTL — they only change on the nightly EIA ingest. This
+# keeps the screener hot path (a producer marker per row) off the DB.
+_PB_TTL_SECONDS = 600.0
+_pb_lock = threading.Lock()
+_pb_cache: dict[str, Any] = {"at": 0.0, "val": None}
+
+
+def producer_backdrops() -> list[dict[str, Any]] | None:
+    """The oil (WTI) + gas (Henry Hub) forward paths an upstream producer sells,
+    computed once and cached for a short TTL. None before the first ingest.
+    Shared by the deep-dive card and the screener producer marker."""
+    now = time.monotonic()
+    cached = _pb_cache["val"]
+    if cached is not None and (now - _pb_cache["at"]) < _PB_TTL_SECONDS:
+        return cached
+    out = [b for sid in _PRODUCER_SERIES if (b := backdrop(sid)) is not None]
+    val = out or None
+    with _pb_lock:
+        _pb_cache["val"] = val
+        _pb_cache["at"] = now
+    return val
+
+
 def for_security(sector: str | None, industry: str | None) -> list[dict[str, Any]] | None:
     """Forward commodity backdrops for one security — the oil and gas paths for
     upstream producers, else None. Returns None (not []) for non-producers and
     when no forecast data exists yet, so the UI simply omits the card."""
-    if not is_producer(sector, industry):
-        return None
-    out = [b for sid in _PRODUCER_SERIES if (b := backdrop(sid)) is not None]
-    return out or None
+    return producer_backdrops() if is_producer(sector, industry) else None
