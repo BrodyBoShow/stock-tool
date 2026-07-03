@@ -31,6 +31,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from engine.db import get_connection  # noqa: E402
+from engine.fx import FX_SERIES_IDS  # noqa: E402
 from engine.jobs import finish_job, start_job  # noqa: E402
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -55,8 +56,10 @@ RETRY_BACKOFF = (3, 10, 30)     # seconds between attempts; len+1 total attempts
 #   BAMLH0A0HYM2 ICE BofA US high-yield option-adjusted spread (daily, %)
 #   T10YIE   10-year breakeven inflation rate (daily, %) — forward inflation
 #            expectations, for the market forward-regime read
+# Plus daily USD exchange rates (engine.fx.FX_SERIES_IDS) so the valuation engine
+# can convert foreign filers' financials to USD instead of suppressing them.
 SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS",
-              "BAMLH0A0HYM2", "T10YIE"]
+              "BAMLH0A0HYM2", "T10YIE"] + FX_SERIES_IDS
 
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 

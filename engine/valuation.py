@@ -35,8 +35,14 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from engine import fx
 from engine import metrics as M
 from engine.db import get_connection
+
+
+def _fx_scale(x: float | None, rate: float) -> float | None:
+    """Scale a reporting-currency money amount into USD (None-safe)."""
+    return x * rate if x is not None else None
 
 SCHEMA_VERSION = "v1"
 
@@ -314,7 +320,49 @@ def valuation_inputs(ticker: str) -> dict[str, Any] | None:
     is_fin = "financ" in sec_l or "bank" in ind_l or "insurance" in ind_l
     is_reit = "reit" in ind_l or "real estate" in sec_l
 
+    # FX: a foreign filer reports money in its own currency but trades in USD.
+    # Rather than suppress everything, convert its money amounts to USD at the
+    # latest FRED rate so the USD-priced multiples/DCF are apples-to-apples; the
+    # rest of the router then treats it like a USD filer. The USD-gated derived
+    # metrics (fcf/eps/revenue) are re-derived from the raw XBRL facts (present
+    # in the reporting currency) BEFORE conversion. Unsupported currency / no
+    # rate -> fx_rate None -> fall through to the non_usd suppression below.
+    fx_rate: float | None = None
+    fx_date = None
     if not usd:
+        fx_rate, fx_date = fx.usd_per_unit(ccy)
+    usd_ok = usd or fx_rate is not None
+    if not usd and fx_rate is not None:
+        if fcf is None and ocf_ttm is not None and capex_ttm is not None:
+            fcf = ocf_ttm - capex_ttm
+        if eps is None and ni_ttm is not None and shares:
+            eps = ni_ttm / shares
+            eps_proxied = True
+        if rev is None:
+            rev = _ttm(snap, "revenue")
+        # Scale money amounts only — shares (a count) and ratios stay as-is, and
+        # current_price is already USD.
+        equity_bv = _fx_scale(equity_bv, fx_rate)
+        debt = _fx_scale(debt, fx_rate)
+        cash = _fx_scale(cash, fx_rate)
+        ebitda = _fx_scale(ebitda, fx_rate)
+        ocf_ttm = _fx_scale(ocf_ttm, fx_rate)
+        capex_ttm = _fx_scale(capex_ttm, fx_rate)
+        ni_ttm = _fx_scale(ni_ttm, fx_rate)
+        fcf = _fx_scale(fcf, fx_rate)
+        eps = _fx_scale(eps, fx_rate)
+        rev = _fx_scale(rev, fx_rate)
+        # Display the rate to ~4 significant figures: the number is exact, but a
+        # single daily spot rate applied to a full year of trailing financials is
+        # only an approximation, so don't imply spurious precision.
+        fx_disp = float(f"{fx_rate:.4g}")
+        reasons.append(
+            f"Financials converted from {ccy} to USD at 1 {ccy} = "
+            f"{fx_disp} USD (FRED daily rate, {fx_date}); fair values move with the "
+            f"exchange rate."
+        )
+
+    if not usd_ok:
         path = "non_usd"
         suppressed |= {
             "reverse_dcf",
@@ -326,7 +374,8 @@ def valuation_inputs(ticker: str) -> dict[str, Any] | None:
             "graham",
         }
         reasons.append(
-            f"Reports in {ccy}; USD-price-based valuation is suppressed to avoid mixing currencies."
+            f"Reports in {ccy} and no USD exchange rate is available, so "
+            f"USD-price-based valuation is suppressed to avoid mixing currencies."
         )
     elif is_fin:
         path = "financials"
@@ -666,6 +715,18 @@ def valuation_inputs(ticker: str) -> dict[str, Any] | None:
         "sector": sector,
         "industry": industry,
         "currency": ccy,
+        # Structured conversion provenance so the UI can surface "reports in
+        # {ccy}, shown in USD" next to the money figures (not just in prose).
+        # None on the USD path and on the suppressed no-rate path.
+        "fx": (
+            {
+                "currency": ccy,
+                "usd_per_unit": float(f"{fx_rate:.4g}"),
+                "rate_date": fx_date.isoformat() if fx_date else None,
+            }
+            if fx_rate is not None
+            else None
+        ),
         "current_price": price,
         "as_of": {
             "price_date": price_date.isoformat() if price_date else None,

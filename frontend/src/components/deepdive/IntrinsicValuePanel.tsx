@@ -438,6 +438,24 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         {data.peer_context.n > 0 && `Peers: ${data.peer_context.n} ${data.sector} names.`}
       </p>
 
+      {/* Foreign filer: financials were converted to USD. Disclose the currency,
+          rate, and rate date HERE, next to the figures — not buried in the reasons. */}
+      {data.fx && data.currency !== 'USD' && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[0.68rem] text-sky-800">
+          <span className="font-semibold">Reports in {data.currency}</span>
+          <span className="text-sky-400">·</span>
+          <span>
+            figures shown in USD, converted at 1 {data.currency} = {data.fx.usd_per_unit} USD
+          </span>
+          {data.fx.rate_date && (
+            <>
+              <span className="text-sky-400">·</span>
+              <span>FRED daily rate {data.fx.rate_date}</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── Headline: reverse-DCF (market-implied growth vs history) ── */}
       {active.has('reverse_dcf') && (
         <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
