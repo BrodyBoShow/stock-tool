@@ -16,6 +16,7 @@ import { HeaderCard } from '@/components/deepdive/HeaderCard'
 import { InsiderPanel } from '@/components/deepdive/InsiderPanel'
 import { IntrinsicValuePanel } from '@/components/deepdive/IntrinsicValuePanel'
 import { MacroStrip } from '@/components/deepdive/MacroStrip'
+import { NewsNarrativePanel } from '@/components/deepdive/NewsNarrativePanel'
 import { OverviewPane } from '@/components/deepdive/OverviewPane'
 import { PeerStrip } from '@/components/deepdive/PeerStrip'
 import { PriceChart } from '@/components/deepdive/PriceChart'
@@ -238,13 +239,16 @@ export function DeepDivePage() {
   const paneBody = (
     <div className="min-h-[60vh] space-y-5">
       {pane === 'overview' && (
-        <OverviewPane
-          header={header}
-          prices={prices}
-          fundamentals={fundamentals}
-          filings={data.filings}
-          onNavigate={setPane}
-        />
+        <div className="space-y-4">
+          <OverviewPane
+            header={header}
+            prices={prices}
+            fundamentals={fundamentals}
+            filings={data.filings}
+            onNavigate={setPane}
+          />
+          <NewsNarrativePanel ticker={header.ticker} />
+        </div>
       )}
 
       {pane === 'brief' && (
