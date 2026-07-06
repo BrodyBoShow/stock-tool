@@ -32,6 +32,21 @@ export interface ScreenerRow {
   security_id: number
 }
 
+// Per-user risk profile — a stated PREFERENCE the user declares (quiz or
+// manual pick), not an assessment; bands/guardrails always derived server-side.
+export interface RiskProfileResponse {
+  has_profile: boolean
+  profile: 'conservative' | 'balanced' | 'aggressive' | null
+  source: 'quiz' | 'manual' | null
+  answers: Record<string, number> | null
+  band_min: number | null
+  band_max: number | null
+  ideas_min: number | null
+  ideas_max: number | null
+  guardrails: { max_position_pct: number; max_sector_pct: number } | null
+  updated_at: string | null
+}
+
 export interface ScreenerResponse {
   score_date: string | null
   rows: ScreenerRow[]

@@ -35,6 +35,7 @@ import type {
   PortfolioTransactionCreate,
   PortfolioTransactionsResponse,
   QuotesResponse,
+  RiskProfileResponse,
   ScreenerResponse,
   SearchResponse,
   SecurityResponse,
@@ -177,6 +178,18 @@ async function sendJson<T>(
   }
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
+}
+
+export function getRiskProfile(): Promise<RiskProfileResponse> {
+  return getJson<RiskProfileResponse>('/settings/risk-profile')
+}
+
+/** Set the risk profile from quiz answers OR a direct manual pick. The server
+ * derives the profile/bands/guardrails — the client never sends them. */
+export function putRiskProfile(
+  body: { answers: Record<string, number> } | { profile: string },
+): Promise<RiskProfileResponse> {
+  return sendJson<RiskProfileResponse>('PUT', '/settings/risk-profile', body)
 }
 
 export function getWatchlist(): Promise<WatchlistResponse> {
