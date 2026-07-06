@@ -86,6 +86,11 @@ class ScreenerRow(BaseModel):
     # forward commodity curve (context marker; never affects rank). The actual
     # forward paths ride on ScreenerResponse.commodity_backdrops (shared).
     commodity_producer: bool = False
+    # Historical risk band 1-5 (realized vol/beta/drawdown over the past year;
+    # engine/risk_metrics.py). CONTEXT ONLY — attached after ranking, never
+    # affects the score/rank. None = under a year of history (never estimated).
+    risk_band: int | None = None
+    risk_score: float | None = None  # 0-100 universe-percentile composite (sort only)
     security_id: int
 
 

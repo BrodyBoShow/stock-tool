@@ -8,6 +8,10 @@ export interface Filters {
   minMarketCap: number // dollars; 0 = "Any"
   completeOnly: boolean // only rank names with all 4 component factors (server-side)
   excludePenny: boolean // drop names priced under $1 (client-side)
+  // Historical risk bands to include (1-5); empty = all. 0 stands for "No band"
+  // (under a year of trading history) — missing history is opt-in when the
+  // filter is active so IPOs don't silently vanish without an explicit choice.
+  riskBands: number[]
 }
 
 export const DEFAULT_FILTERS: Filters = {
@@ -17,6 +21,7 @@ export const DEFAULT_FILTERS: Filters = {
   minMarketCap: 0,
   completeOnly: true,
   excludePenny: false,
+  riskBands: [],
 }
 
 /** Market-cap floor presets (label, dollars). */
@@ -58,6 +63,13 @@ export function applyFilters(rows: ScreenerRow[], f: Filters): ScreenerRow[] {
     // Penny-stock exclude: drop known sub-$1 names (null price is kept — missing
     // ≠ penny). Frontend-only; the backend already floors scoring at $1.
     if (f.excludePenny && r.last_price != null && r.last_price < 1) return false
+    // Risk-band filter: keep only the selected historical bands. A null band
+    // (under a year of history) is kept only when "No band" (0) is selected —
+    // an explicit opt-in, so new listings don't look deleted by accident.
+    if (f.riskBands.length > 0) {
+      const band = r.risk_band ?? 0
+      if (!f.riskBands.includes(band)) return false
+    }
     for (const key of Object.keys(f.mins) as FactorKey[]) {
       const min = f.mins[key]
       if (min > 0) {
@@ -75,6 +87,7 @@ export function activeFilterCount(f: Filters): number {
   if (f.sectors.length > 0) n += 1
   if (f.minMarketCap > 0) n += 1
   if (f.excludePenny) n += 1
+  if (f.riskBands.length > 0) n += 1
   for (const key of Object.keys(f.mins) as FactorKey[]) {
     if (f.mins[key] > 0) n += 1
   }
@@ -95,6 +108,7 @@ export type ScreenerSortKey =
   | 'last_price'
   | 'market_cap'
   | 'rank_delta'
+  | 'risk_score'
 
 export interface ScreenerSort {
   key: ScreenerSortKey
@@ -106,6 +120,7 @@ export const DEFAULT_SORT: ScreenerSort = { key: 'composite', dir: -1 }
 const SORT_KEYS = new Set<string>([
   'rank', 'ticker', 'sector', 'composite', 'growth_pctl', 'value_pctl',
   'quality_pctl', 'momentum_pctl', 'last_price', 'market_cap', 'rank_delta',
+  'risk_score',
 ])
 
 /** Serialize filters + sort into URL query params (defaults omitted, so a
@@ -117,6 +132,7 @@ export function filtersToParams(f: Filters, sort: ScreenerSort): URLSearchParams
   if (f.minMarketCap > 0) sp.set('mcap', String(f.minMarketCap))
   if (!f.completeOnly) sp.set('partial', '1')
   if (f.excludePenny) sp.set('penny', '1')
+  if (f.riskBands.length > 0) sp.set('risk', f.riskBands.join(','))
   for (const key of Object.keys(f.mins) as FactorKey[]) {
     if (f.mins[key] > 0) sp.set(key, String(f.mins[key]))
   }
@@ -138,12 +154,26 @@ export function filtersFromParams(sp: URLSearchParams): {
     if (Number.isFinite(v) && v > 0) mins[key] = Math.min(100, Math.max(0, Math.round(v)))
   }
   const mcap = Number(sp.get('mcap'))
+  // Gate on param PRESENCE before splitting: an absent param must parse to []
+  // (no filter), not [0] via Number('') === 0 — 0 ("No band") is a legal value
+  // so a .filter(Boolean) can't be used here.
+  const riskRaw = sp.get('risk')
+  const riskBands =
+    riskRaw === null
+      ? []
+      : riskRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s !== '')
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n >= 0 && n <= 5)
   const filters: Filters = {
     search: sp.get('q') ?? '',
     sectors: (sp.get('sector') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     minMarketCap: Number.isFinite(mcap) && mcap > 0 ? mcap : 0,
     completeOnly: sp.get('partial') !== '1',
     excludePenny: sp.get('penny') === '1',
+    riskBands,
     mins,
   }
   const sk = sp.get('sort')

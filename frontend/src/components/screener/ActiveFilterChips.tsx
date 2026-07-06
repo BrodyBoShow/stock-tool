@@ -49,6 +49,14 @@ export function ActiveFilterChips({
       label: 'No penny stocks',
       clear: () => onChange({ ...filters, excludePenny: false }),
     })
+  if (filters.riskBands.length > 0)
+    chips.push({
+      key: 'risk',
+      label: `Risk band ${filters.riskBands
+        .map((b) => (b === 0 ? 'none' : b))
+        .join(', ')}`,
+      clear: () => onChange({ ...filters, riskBands: [] }),
+    })
   if (!filters.completeOnly)
     chips.push({
       key: 'partial',
