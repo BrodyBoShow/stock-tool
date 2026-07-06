@@ -11,6 +11,7 @@ import { MonteCarloPanel } from '@/components/portfolio/MonteCarloPanel'
 import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
 import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
+import { RiskProfileCard } from '@/components/portfolio/risk/RiskProfileCard'
 import {
   BENCHMARK_OPTIONS,
   activeSnoozes,
@@ -302,6 +303,10 @@ export function PortfolioPage() {
         cashTracking={data.cash_tracking}
         onSeeFixes={scrollToFixes}
       />
+
+      {/* Risk preference (PR2): quiz entry / profile card. Interim placement
+          under the hero — moves into the "Risk & Fit" pane in the PR4 reorg. */}
+      <RiskProfileCard />
 
       <div id="portfolio-fixes">
         <ActionCardStack

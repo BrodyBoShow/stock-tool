@@ -94,6 +94,29 @@ class ScreenerRow(BaseModel):
     security_id: int
 
 
+# ── per-user risk profile (risk-personalization; a stated PREFERENCE, not advice) ─
+
+class RiskProfileUpsertRequest(BaseModel):
+    """Exactly one of `answers` (5 quiz answers, each 1-3) or `profile` (a direct
+    manual pick). Bands/guardrails are always derived server-side. Strict ints so
+    Pydantic can't lax-coerce true/"2"/2.0 past the engine's validation."""
+    answers: dict[str, Annotated[int, Field(strict=True)]] | None = None
+    profile: str | None = None
+
+
+class RiskProfileResponse(BaseModel):
+    has_profile: bool
+    profile: str | None = None            # conservative | balanced | aggressive
+    source: str | None = None             # quiz | manual
+    answers: dict[str, int] | None = None
+    band_min: int | None = None           # holdings-fit band range (risk bands 1-5)
+    band_max: int | None = None
+    ideas_min: int | None = None          # discovery band range
+    ideas_max: int | None = None
+    guardrails: dict[str, float] | None = None  # {max_position_pct, max_sector_pct}
+    updated_at: str | None = None
+
+
 class ScreenerResponse(BaseModel):
     score_date: date | None
     rows: list[ScreenerRow]
