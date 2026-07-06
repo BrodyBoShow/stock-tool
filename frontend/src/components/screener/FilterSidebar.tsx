@@ -22,6 +22,19 @@ const FACTOR_LABEL: Record<FactorKey, string> = {
  *  prominent slider in Step 3). */
 const ADVANCED_FACTORS: FactorKey[] = ['growth', 'value', 'quality', 'momentum']
 
+/** Historical risk bands (realized vol over the past year; see RiskBandChip).
+ * 0 = "No band" — names with under a year of history, explicit opt-in. */
+const RISK_BAND_OPTIONS: Array<{ value: number; label: string; title: string }> = [
+  // Titles frame the vol range as the band's ANCHOR, not each name's measured
+  // vol — modifiers can raise a lower-volatility name into a band.
+  { value: 1, label: '1 Very Low', title: 'Volatility anchor < 18%/yr' },
+  { value: 2, label: '2 Low', title: 'Volatility anchor 18–28%/yr (modifiers can raise lower-vol names into a band)' },
+  { value: 3, label: '3 Moderate', title: 'Volatility anchor 28–40%/yr (modifiers can raise lower-vol names into a band)' },
+  { value: 4, label: '4 High', title: 'Volatility anchor 40–60%/yr (modifiers can raise lower-vol names into a band)' },
+  { value: 5, label: '5 Speculative', title: 'Volatility anchor ≥ 60%/yr (modifiers can raise lower-vol names into a band)' },
+  { value: 0, label: 'No band', title: 'Under 1 year of trading history or no recent prices — band never estimated' },
+]
+
 interface Preset {
   label: string
   emoji: string
@@ -158,7 +171,8 @@ export function FilterSidebar({
     filters.sectors.length === 0 &&
     filters.search === '' &&
     filters.minMarketCap === 0 &&
-    !filters.excludePenny
+    !filters.excludePenny &&
+    filters.riskBands.length === 0
   const presetActive = (p: Preset) =>
     pristineExceptMins && JSON.stringify(filters.mins) === JSON.stringify(p.mins)
 
@@ -290,6 +304,41 @@ export function FilterSidebar({
                 }
               >
                 {o.label.replace(/ \(.*\)/, '').replace('Any size', 'Any')}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Historical risk band — a backward-looking measurement (realized vol/
+            beta/drawdown), attached after ranking; filtering by it never changes
+            any name's rank. "No band" (under 1y of history) is an explicit
+            opt-in so new listings don't silently vanish. */}
+        <div className="mb-1 mt-3.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+          Risk band <span className="normal-case font-medium">(historical)</span>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {RISK_BAND_OPTIONS.map((o) => {
+            const on = filters.riskBands.includes(o.value)
+            return (
+              <button
+                key={o.value}
+                type="button"
+                title={o.title}
+                onClick={() =>
+                  set({
+                    riskBands: on
+                      ? filters.riskBands.filter((b) => b !== o.value)
+                      : [...filters.riskBands, o.value].sort((a, b) => a - b),
+                  })
+                }
+                className={
+                  'rounded-md border px-1.5 py-1 text-center text-[0.62rem] font-semibold leading-tight transition-all ' +
+                  (on
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-slate-500 hover:border-indigo-300')
+                }
+              >
+                {o.label}
               </button>
             )
           })}

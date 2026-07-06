@@ -62,6 +62,15 @@ jobs:
           python scripts/supervise_backfill.py --label nightly --stall 900 --
           python -u scripts/run_nightly.py
 
+      # Per-security historical risk bands — CONTEXT ONLY (writes security_risk,
+      # never scoring/rank tables; screener attaches the band AFTER ranking).
+      # Sequential after the pipeline so it never overlaps the heavy steps'
+      # disk IO. Best-effort: a failure leaves yesterday's rows (staleness is
+      # visible via as_of_date).
+      - name: Compute security risk metrics
+        continue-on-error: true
+        run: python -m engine.risk_metrics
+
       # Macro is CONTEXT ONLY (writes macro_series, never the scoring tables).
       # Best-effort: skipped if the FRED key isn't set, and a FRED outage won't
       # fail the workflow or the scoring run above.

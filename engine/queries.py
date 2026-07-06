@@ -280,6 +280,14 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                        fs7.composite AS composite_7d_ago,
                        fs.details -> 'sub_pctls' AS sub_pctls,
                        h.composite_history,
+                       -- Staleness guard: a band frozen by a halted/stale name
+                       -- (nightly step is best-effort) must not read as current
+                       -- — after ~30 days without a fresh window it goes NULL
+                       -- ("no recent price data") instead of silently stale.
+                       CASE WHEN sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
+                            THEN sr.risk_band END AS risk_band,
+                       CASE WHEN sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
+                            THEN sr.risk_score END AS risk_score,
                        s.security_id
                 FROM securities s
                 JOIN factor_scores fs
@@ -309,6 +317,10 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                       AND f.normalized_concept = 'shares_outstanding'
                     ORDER BY f.period_end DESC LIMIT 1
                 ) sh ON true
+                -- Historical risk band: CONTEXT ONLY, attached after ranking.
+                -- A LEFT JOIN on the PK can't drop or reorder rows, and the
+                -- ORDER BY (composite) is untouched — rank-inert by design.
+                LEFT JOIN security_risk sr ON sr.security_id = s.security_id
                 WHERE s.is_active{complete_clause}
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
@@ -325,6 +337,7 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl", "momentum_pctl",
         "last_price", "prev_close", "market_cap", "composite_prev", "composite_7d_ago",
+        "risk_score",
     }
     rows: list[dict[str, Any]] = []
     for rank, raw in enumerate(db_rows, start=1):
@@ -356,6 +369,11 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
             row.get("sector"), row.get("industry")
         )
         row.pop("industry", None)
+        # Historical risk band (1-5) — a backward-looking measurement from
+        # security_risk (CONTEXT ONLY, attached after ranking; None = under a
+        # year of trading history, never estimated).
+        rb = row.get("risk_band")
+        row["risk_band"] = int(rb) if rb is not None else None
         rows.append(row)
     return rows, score_date
 

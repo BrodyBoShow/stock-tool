@@ -25,6 +25,10 @@ export interface ScreenerRow {
   // commodity curve (context marker; never affects rank). Paths ride on the
   // response-level commodity_backdrops.
   commodity_producer: boolean
+  // Historical risk band 1-5 (realized vol/beta/drawdown over the past year).
+  // Context only — never affects rank. null = under a year of trading history.
+  risk_band: number | null
+  risk_score: number | null
   security_id: number
 }
 

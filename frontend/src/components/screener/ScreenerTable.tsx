@@ -6,6 +6,7 @@ import type { MouseEvent } from 'react'
 import { ScoreCell } from '@/components/screener/ScoreCell'
 import { SectorPill } from '@/components/screener/SectorPill'
 import { InfoTip } from '@/components/ui/InfoTip'
+import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { scoreHeat } from '@/lib/colors'
 import {
   FACTOR_ORDER,
@@ -60,6 +61,7 @@ const OPTIONAL_COLS: { key: string; label: string }[] = [
   { key: 'quality', label: 'Quality' },
   { key: 'momentum', label: 'Momentum' },
   { key: 'market_cap', label: 'Market cap' },
+  { key: 'risk', label: 'Risk band' },
 ]
 
 const TH =
@@ -71,6 +73,17 @@ function compareRows(
   key: ScreenerSortKey,
   dir: 1 | -1,
 ): number {
+  // Risk sorts by the DISPLAYED band first (so the digit column reads
+  // monotone), with the finer risk_score only breaking ties within a band —
+  // never reordering across bands the user can't see the reason for.
+  if (key === 'risk_score') {
+    const ab = a.risk_band
+    const bb = b.risk_band
+    if (ab === null && bb === null) return 0
+    if (ab === null) return 1 // no-band rows always sink
+    if (bb === null) return -1
+    if (ab !== bb) return (ab - bb) * dir
+  }
   const av = a[key]
   const bv = b[key]
   // nulls always sink to the bottom, regardless of direction
@@ -334,7 +347,7 @@ export function ScreenerTable({
   const exportCsv = () => {
     const head = [
       'rank', 'ticker', 'name', 'sector', 'composite', 'growth', 'value',
-      'quality', 'momentum', 'market_cap', 'price', 'rank_delta',
+      'quality', 'momentum', 'market_cap', 'risk_band', 'price', 'rank_delta',
     ]
     const esc = (v: unknown) => {
       const s = v == null ? '' : String(v)
@@ -346,7 +359,7 @@ export function ScreenerTable({
         [
           r.rank, r.ticker, r.name, r.sector, r.composite, r.growth_pctl,
           r.value_pctl, r.quality_pctl, r.momentum_pctl, r.market_cap,
-          r.last_price, r.rank_delta,
+          r.risk_band, r.last_price, r.rank_delta,
         ]
           .map(esc)
           .join(','),
@@ -389,6 +402,7 @@ export function ScreenerTable({
   tracks.push('minmax(78px,1fr)') // composite — always shown
   for (const f of SUB) if (show(f)) tracks.push('minmax(78px,1fr)')
   if (show('market_cap')) tracks.push('minmax(82px,0.8fr)')
+  if (show('risk')) tracks.push('minmax(64px,0.6fr)')
   tracks.push('minmax(90px,0.9fr)') // price — always shown
   if (rowAccessory) tracks.push('44px')
   const gridCols = tracks.join(' ')
@@ -396,6 +410,7 @@ export function ScreenerTable({
   if (show('sector')) mw += 130
   for (const f of SUB) if (show(f)) mw += 78
   if (show('market_cap')) mw += 82
+  if (show('risk')) mw += 64
 
   const compareRowsData = rows.filter((r) => selected.has(r.ticker))
 
@@ -550,6 +565,12 @@ export function ScreenerTable({
           {show('market_cap') && (
             <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-gray-500`}>
               Mkt cap{arrow('market_cap')}
+            </button>
+          )}
+          {show('risk') && (
+            <button type="button" onClick={() => toggleSort('risk_score')} className={`${TH} justify-center text-gray-500`}>
+              Risk{arrow('risk_score')}
+              <InfoTip text="Historical risk band 1-5 from realized volatility, beta and drawdown over the past year — a backward-looking measurement, not a prediction. Sorts by band, finer risk detail breaking ties." />
             </button>
           )}
           <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-gray-500`}>
@@ -718,6 +739,11 @@ export function ScreenerTable({
                   {show('market_cap') && (
                     <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-slate-600">
                       {fmtMoney(r.market_cap)}
+                    </div>
+                  )}
+                  {show('risk') && (
+                    <div className="flex h-full items-center justify-center px-2">
+                      <RiskBandChip band={r.risk_band} compact />
                     </div>
                   )}
                   <PriceCell row={r} />
