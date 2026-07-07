@@ -23,12 +23,15 @@ MACRO_SERIES_IDS = ["DGS10", "DGS2", "FEDFUNDS", "CPIAUCSL", "VIXCLS", "DTWEXBGS
 
 # Which scoring config the app serves. factor_scores can hold several config
 # versions per score_date side by side; every read below pins to this one so the
-# screener/deep-dive never double-count. Flipped to 'v5_qmean' at the 2026-06-30
-# cutover: carries the pruning into the Quality MEAN (drops the measured-noise
-# gross_margin/debt_to_equity/net_debt_ebitda members), cleanly beat v4_lean on
-# the gate AND in both split-halves (H1 +0.066 vs +0.058, H2 +0.078 vs +0.074).
-# Rollback = set back to 'v4_lean' / 'v3_pruned' / 'v2_linear' (rows coexist).
-ACTIVE_CONFIG_VERSION = "v5_qmean"
+# screener/deep-dive never double-count. Flipped to 'v6_trend' at the 2026-07-07
+# cutover: reshapes MOMENTUM to reward "still trending, good entry" over "already
+# spiked" — drops raw r6m (measured non-predictive, IC t=+1.5) and ranks Momentum
+# on r12_1m + prox_52w (52-wk-high proximity) + pos_days (up-day fraction). Both
+# new members cleared the |t|>2.7 sub-metric gate (prox_52w t=+2.7, pos_days
+# t=+3.9); Momentum-factor IC rose +0.038->+0.062, with the edge widening at the
+# 3/6/12-month horizons a holder actually cares about. Composite deltas are within
+# noise (low screener disruption). Rollback = set back to 'v5_qmean' (rows coexist).
+ACTIVE_CONFIG_VERSION = "v6_trend"
 
 
 def _f(v) -> float | None:
