@@ -39,6 +39,7 @@ from typing import Any
 
 import numpy as np
 
+from engine import risk_profile
 from engine.db import acquire, release
 from engine.queries import ACTIVE_CONFIG_VERSION
 
@@ -284,13 +285,20 @@ def _load_inputs(conn, sids: list[int], start: date,
             """
             SELECT s.security_id, s.ticker, s.name, s.sector, s.industry,
                    fs.composite, fs.growth_pctl, fs.value_pctl,
-                   fs.quality_pctl, fs.momentum_pctl
+                   fs.quality_pctl, fs.momentum_pctl,
+                   -- Historical risk band (CONTEXT; engine/risk_metrics.py) with
+                   -- the same 30-day staleness guard as the screener — a halted
+                   -- name's frozen band must not read as current.
+                   CASE WHEN sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
+                        THEN sr.risk_band END AS risk_band,
+                   sr.band_reason
             FROM securities s
             LEFT JOIN factor_scores fs
                 ON fs.security_id = s.security_id
                 AND fs.config_version = %s
                 AND fs.score_date = (SELECT max(score_date) FROM factor_scores
                                      WHERE config_version = %s)
+            LEFT JOIN security_risk sr ON sr.security_id = s.security_id
             WHERE s.security_id = ANY(%s)
             """,
             (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, sids),
@@ -304,6 +312,8 @@ def _load_inputs(conn, sids: list[int], start: date,
                 "value_pctl": float(r[7]) if r[7] is not None else None,
                 "quality_pctl": float(r[8]) if r[8] is not None else None,
                 "momentum_pctl": float(r[9]) if r[9] is not None else None,
+                "risk_band": int(r[10]) if r[10] is not None else None,
+                "band_reason": r[11],
             }
         out["meta"] = meta
     return out
@@ -748,6 +758,10 @@ def compute_portfolio(owner_id: str | None = None,
             "value_pctl": m.get("value_pctl"),
             "quality_pctl": m.get("quality_pctl"),
             "momentum_pctl": m.get("momentum_pctl"),
+            # Historical risk band (1-5; None = under a year of history or
+            # stale). CONTEXT only — never affects any portfolio math.
+            "risk_band": m.get("risk_band"),
+            "band_reason": m.get("band_reason"),
             "industry": m.get("industry"),
             "lots": lots_out,
             "lt_unrealized": round(lt_pl, 2) if last_px is not None else None,
@@ -933,14 +947,29 @@ def compute_portfolio(owner_id: str | None = None,
             remaining -= take
         return {"lt": round(lt, 2), "st": round(st, 2)}
 
+    # Flag thresholds: the user's stated risk profile (PR2) replaces the module
+    # constants when one exists; the constants are the no-profile fallback and
+    # equal the Balanced profile, so users without a profile see byte-identical
+    # behavior. Fail-soft: a profile read problem must never break /portfolio.
+    pos_flag, sector_flag = POSITION_WEIGHT_FLAG, SECTOR_WEIGHT_FLAG
+    if owner_id:
+        try:
+            _prof = risk_profile.get_profile(owner_id)
+        except Exception:  # noqa: BLE001 — the profile is optional context
+            _prof = None
+        if _prof and isinstance(_prof.get("guardrails"), dict):
+            g = _prof["guardrails"]
+            pos_flag = float(g.get("max_position_pct") or POSITION_WEIGHT_FLAG)
+            sector_flag = float(g.get("max_sector_pct") or SECTOR_WEIGHT_FLAG)
+
     flags: list[dict[str, Any]] = []
     for h in holdings:
-        if h["weight"] and h["weight"] > POSITION_WEIGHT_FLAG and h["last_price"]:
+        if h["weight"] and h["weight"] > pos_flag and h["last_price"]:
             # With a cash ledger the sale proceeds STAY in the portfolio (they
             # become cash), so total value V is unchanged and the trim solves
             # (P − x)/V = T → x = P − T·V. Trades-only ledgers have proceeds
             # leave V, so there it's (P − x)/(V − x) = T → x = (P − T·V)/(1 − T).
-            target = POSITION_WEIGHT_FLAG
+            target = pos_flag
             mv_h = h["market_value"] or 0.0
             if cash_tracking:
                 sell_amt = max(mv_h - target * total_value, 0.0)
@@ -955,8 +984,8 @@ def compute_portfolio(owner_id: str | None = None,
                 "level": "warn", "kind": "concentration", "severity": "high",
                 "ticker": h["ticker"],
                 "text": f"{h['ticker']} is {h['weight']*100:.0f}% of the "
-                        f"portfolio (>{POSITION_WEIGHT_FLAG*100:.0f}%).",
-                "weight": h["weight"], "threshold": POSITION_WEIGHT_FLAG,
+                        f"portfolio (>{pos_flag*100:.0f}%).",
+                "weight": h["weight"], "threshold": pos_flag,
                 "fix": {
                     "action": f"Trim {h['ticker']} by {trim_txt} "
                               f"(sell {sell_shares:.4g} shares)",
@@ -980,28 +1009,28 @@ def compute_portfolio(owner_id: str | None = None,
                           "text": f"{h['ticker']} has no factor scores — excluded "
                                   "from the tilt averages."})
     for s in allocation["sectors"]:
-        if s["weight"] and s["weight"] > SECTOR_WEIGHT_FLAG:
+        if s["weight"] and s["weight"] > sector_flag:
             # buying a$ of a broad-market diversifier dilutes the sector to the
             # threshold: S/(pos + a) = T → a = S/T − pos. Sector weights are
             # measured against POSITION value (not total incl. cash), so the
             # dilution must use the same denominator.
-            add_amt = max(s["value"] / SECTOR_WEIGHT_FLAG - pos_mv, 0.0)
+            add_amt = max(s["value"] / sector_flag - pos_mv, 0.0)
             sector_tk = [h["ticker"] for h in holdings
                          if (h["sector"] or "Unknown") == s["sector"]]
             flags.append({
                 "level": "warn", "kind": "sector", "severity": "med",
                 "sector": s["sector"],
                 "text": f"{s['sector']} is {s['weight']*100:.0f}% of "
-                        f"positions (>{SECTOR_WEIGHT_FLAG*100:.0f}%).",
-                "weight": s["weight"], "threshold": SECTOR_WEIGHT_FLAG,
+                        f"positions (>{sector_flag*100:.0f}%).",
+                "weight": s["weight"], "threshold": sector_flag,
                 "tickers": sector_tk,
                 "fix": {
                     "action": f"Add ~${add_amt:,.0f} of a broad-market fund "
                               "(e.g. VTI) to dilute the sector below "
-                              f"{SECTOR_WEIGHT_FLAG*100:.0f}%",
+                              f"{sector_flag*100:.0f}%",
                     "add_ticker": "VTI",
                     "add_amount": round(add_amt, 2),
-                    "target_weight": SECTOR_WEIGHT_FLAG,
+                    "target_weight": sector_flag,
                 },
             })
     if twr_curve:

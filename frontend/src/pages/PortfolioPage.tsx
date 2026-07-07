@@ -11,6 +11,8 @@ import { MonteCarloPanel } from '@/components/portfolio/MonteCarloPanel'
 import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
 import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
+import { AlignedIdeasPanel } from '@/components/portfolio/risk/AlignedIdeasPanel'
+import { RiskAlignmentPanel } from '@/components/portfolio/risk/RiskAlignmentPanel'
 import { RiskProfileCard } from '@/components/portfolio/risk/RiskProfileCard'
 import {
   BENCHMARK_OPTIONS,
@@ -33,6 +35,7 @@ import {
   getPortfolioAnalytics,
   getPortfolioTransactions,
   getQuotes,
+  getRiskAlignment,
 } from '@/lib/api'
 import type { PortfolioFlag, PortfolioHolding } from '@/types/api'
 
@@ -131,6 +134,15 @@ export function PortfolioPage() {
     queryFn: getQuotes,
     staleTime: 5 * 60 * 1000,
     enabled: !!data?.has_transactions,
+  })
+  // Risk-fit vs the user's stated preference (PR3). The endpoint fail-softs to
+  // has_profile:false when no profile is set; the panels render null then.
+  const { data: riskAlignment } = useQuery({
+    queryKey: ['portfolio', 'risk-alignment', benchmark],
+    queryFn: () => getRiskAlignment(benchmark),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!data?.has_transactions,
+    retry: 1,
   })
 
   const quotes = quotesData?.quotes ?? {}
@@ -304,9 +316,11 @@ export function PortfolioPage() {
         onSeeFixes={scrollToFixes}
       />
 
-      {/* Risk preference (PR2): quiz entry / profile card. Interim placement
-          under the hero — moves into the "Risk & Fit" pane in the PR4 reorg. */}
+      {/* Risk preference + alignment (PR2/PR3). Interim placement under the
+          hero — moves into the "Risk & Fit" pane in the PR4 reorg. */}
       <RiskProfileCard />
+      {riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}
+      {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
 
       <div id="portfolio-fixes">
         <ActionCardStack

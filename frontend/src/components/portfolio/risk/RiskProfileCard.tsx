@@ -39,6 +39,10 @@ export function RiskProfileCard() {
     mutationFn: putRiskProfile,
     onSuccess: (resp, variables) => {
       qc.setQueryData(['risk-profile'], resp)
+      // The profile drives the alignment panels AND the action-card thresholds
+      // inside /portfolio — refetch both so the page reflects the new setting
+      // immediately (not after the 1-5 min staleTime).
+      void qc.invalidateQueries({ queryKey: ['portfolio'] })
       // Only quiz submissions show the mapping-disclosure result screen.
       if ('answers' in variables) setSaved(resp)
       else setQuizOpen(false)
@@ -65,10 +69,10 @@ export function RiskProfileCard() {
               {profile.profile}
             </span>
             <span className="text-[0.74rem] text-slate-500">
-              Will compare holdings to risk bands {profile.band_min}–{profile.band_max} and
-              flag positions above {Math.round((profile.guardrails?.max_position_pct ?? 0) * 100)}%
+              Holdings are compared to risk bands {profile.band_min}–{profile.band_max} below;
+              positions above {Math.round((profile.guardrails?.max_position_pct ?? 0) * 100)}%
               / sectors above {Math.round((profile.guardrails?.max_sector_pct ?? 0) * 100)}%
-              <span className="text-slate-400"> — coming to this page soon</span>
+              are flagged (alerts, not enforced limits)
             </span>
             <div className="ml-auto flex items-center gap-1.5">
               {PROFILES.filter((p) => p !== profile.profile).map((p) => (
@@ -114,9 +118,9 @@ export function RiskProfileCard() {
                 How much risk do you want?
               </div>
               <div className="mt-0.5 text-[0.76rem] text-slate-500">
-                Answer 5 quick questions to set a risk preference. StockBud will then show
-                which of your holdings — and which screener names — fall inside the
-                historical risk bands you chose. (Coming soon.)
+                Answer 5 quick questions to set a risk preference. StockBud then shows which
+                of your holdings — and which screener names — fall inside the historical
+                risk bands you chose.
               </div>
             </div>
             <button

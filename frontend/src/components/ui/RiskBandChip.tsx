@@ -33,7 +33,7 @@ export function RiskBandChip({
   // modifiers, so never assert the range as the name's realized vol.
   const tip = meta
     ? `Risk band ${band} · ${meta.label} — volatility anchor ${meta.vol}/yr; micro-cap size or a weak balance sheet can place a lower-volatility name one band higher. ${METHODOLOGY}`
-    : 'No risk band — under 1 year of trading history or no recent price data (never estimated).'
+    : 'No risk band — funds/ETFs aren’t banded, or the name has under 1 year of trading history / no recent price data (never estimated).'
   return (
     <span className="group relative inline-flex">
       <span

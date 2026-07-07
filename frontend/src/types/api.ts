@@ -47,6 +47,53 @@ export interface RiskProfileResponse {
   updated_at: string | null
 }
 
+export interface RiskAlignmentHolding {
+  ticker: string | null
+  weight: number
+  risk_band: number | null
+  band_reason: string | null
+  fit: 'in_band' | 'above' | 'below' | 'no_band'
+}
+
+export interface RiskAlignmentIdea {
+  ticker: string
+  name: string | null
+  sector: string | null
+  composite: number | null
+  risk_band: number | null
+  vol_252d: number | null
+}
+
+export interface RiskAlignmentResponse {
+  has_profile: boolean
+  profile: {
+    profile: string
+    band_min: number
+    band_max: number
+    ideas_min: number
+    ideas_max: number
+    guardrails: { max_position_pct: number; max_sector_pct: number }
+  } | null
+  portfolio: {
+    weighted_band: number | null
+    in_band_weight_pct: number
+    above_band_weight_pct: number
+    no_band_weight_pct: number
+    volatility: number | null
+    beta: number | null
+  } | null
+  holdings: RiskAlignmentHolding[]
+  threshold_flags: Array<{
+    kind: string
+    subject: string | null
+    actual: number | null
+    threshold: number | null
+    text: string | null
+  }>
+  ideas: RiskAlignmentIdea[]
+  methodology: string
+}
+
 export interface ScreenerResponse {
   score_date: string | null
   rows: ScreenerRow[]
@@ -1100,6 +1147,9 @@ export interface PortfolioHolding {
   oldest_acquired: string | null
   wash_sale_risk: boolean // at a loss + bought within the last 30 days
   thesis: PortfolioThesisLink | null
+  // Historical risk band (context only; null = fund/ETF, short history, or stale)
+  risk_band: number | null
+  band_reason: string | null
 }
 
 export interface PortfolioSummary {

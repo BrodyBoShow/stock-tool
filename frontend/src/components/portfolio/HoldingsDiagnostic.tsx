@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom'
 
 import { Sparkline } from '@/components/screener/Sparkline'
 import { InfoTip } from '@/components/ui/InfoTip'
+import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { plColor } from '@/lib/colors'
 import { FORM_INPUT, TABLE_HEAD_ROW } from '@/lib/constants'
 import {
@@ -603,7 +604,10 @@ function HoldingRow({
           />
         </td>
         <td className="px-2 py-2 font-bold text-slate-800">
-          {h.ticker ?? DASH}
+          <span className="inline-flex items-center gap-1.5">
+            {h.ticker ?? DASH}
+            <RiskBandChip band={h.risk_band} compact />
+          </span>
         </td>
         <td className="px-2 py-2">
           <Sparkline
