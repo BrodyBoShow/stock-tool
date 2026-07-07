@@ -60,6 +60,7 @@ const OPTIONAL_COLS: { key: string; label: string }[] = [
   { key: 'value', label: 'Value' },
   { key: 'quality', label: 'Quality' },
   { key: 'momentum', label: 'Momentum' },
+  { key: 'garp', label: 'GARP (cheap & rising)' },
   { key: 'market_cap', label: 'Market cap' },
   { key: 'risk', label: 'Risk band' },
 ]
@@ -67,12 +68,29 @@ const OPTIONAL_COLS: { key: string; label: string }[] = [
 const TH =
   'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
 
+/** GARP = worst-of the value & momentum percentiles — rewards names strong on
+ *  BOTH (cheap AND rising), the value×momentum sweet spot. null when either
+ *  factor is missing. Display/discovery only — never affects the composite. */
+function garpScore(r: ScreenerRow): number | null {
+  return r.value_pctl != null && r.momentum_pctl != null
+    ? Math.min(r.value_pctl, r.momentum_pctl)
+    : null
+}
+
 function compareRows(
   a: ScreenerRow,
   b: ScreenerRow,
   key: ScreenerSortKey,
   dir: 1 | -1,
 ): number {
+  if (key === 'garp') {
+    const av = garpScore(a)
+    const bv = garpScore(b)
+    if (av === null && bv === null) return 0
+    if (av === null) return 1 // missing-factor rows sink
+    if (bv === null) return -1
+    return (av - bv) * dir
+  }
   // Risk sorts by the DISPLAYED band first (so the digit column reads
   // monotone), with the finer risk_score only breaking ties within a band —
   // never reordering across bands the user can't see the reason for.
@@ -347,7 +365,7 @@ export function ScreenerTable({
   const exportCsv = () => {
     const head = [
       'rank', 'ticker', 'name', 'sector', 'composite', 'growth', 'value',
-      'quality', 'momentum', 'market_cap', 'risk_band', 'price', 'rank_delta',
+      'quality', 'momentum', 'garp', 'market_cap', 'risk_band', 'price', 'rank_delta',
     ]
     const esc = (v: unknown) => {
       const s = v == null ? '' : String(v)
@@ -358,8 +376,8 @@ export function ScreenerTable({
       lines.push(
         [
           r.rank, r.ticker, r.name, r.sector, r.composite, r.growth_pctl,
-          r.value_pctl, r.quality_pctl, r.momentum_pctl, r.market_cap,
-          r.risk_band, r.last_price, r.rank_delta,
+          r.value_pctl, r.quality_pctl, r.momentum_pctl, garpScore(r),
+          r.market_cap, r.risk_band, r.last_price, r.rank_delta,
         ]
           .map(esc)
           .join(','),
@@ -401,6 +419,7 @@ export function ScreenerTable({
   if (show('sector')) tracks.push('minmax(130px,1.3fr)')
   tracks.push('minmax(78px,1fr)') // composite — always shown
   for (const f of SUB) if (show(f)) tracks.push('minmax(78px,1fr)')
+  if (show('garp')) tracks.push('minmax(70px,0.7fr)')
   if (show('market_cap')) tracks.push('minmax(82px,0.8fr)')
   if (show('risk')) tracks.push('minmax(64px,0.6fr)')
   tracks.push('minmax(90px,0.9fr)') // price — always shown
@@ -409,6 +428,7 @@ export function ScreenerTable({
   let mw = (compareMode ? 34 : 0) + 38 + 150 + 78 + 90 + (rowAccessory ? 44 : 0)
   if (show('sector')) mw += 130
   for (const f of SUB) if (show(f)) mw += 78
+  if (show('garp')) mw += 70
   if (show('market_cap')) mw += 82
   if (show('risk')) mw += 64
 
@@ -562,6 +582,12 @@ export function ScreenerTable({
               {arrow(FACTOR_SORT[k])}
             </button>
           ))}
+          {show('garp') && (
+            <button type="button" onClick={() => toggleSort('garp')} className={`${TH} justify-center text-emerald-700`}>
+              GARP{arrow('garp')}
+              <InfoTip text="Cheap & Rising: the worst-of your Value and Momentum percentiles, so a high GARP means a stock is strong on BOTH — reasonably priced AND trending. A discovery lens over existing scores; it does not change any factor score or the composite rank." />
+            </button>
+          )}
           {show('market_cap') && (
             <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-gray-500`}>
               Mkt cap{arrow('market_cap')}
@@ -735,6 +761,21 @@ export function ScreenerTable({
                       live={liveByTicker?.[r.ticker]?.momentum_live}
                       subPctls={r.sub_pctls}
                     />
+                  )}
+                  {show('garp') && (
+                    <div className="flex h-full items-center justify-center px-2">
+                      {garpScore(r) != null ? (
+                        <span
+                          className="numeric rounded px-1.5 py-0.5 text-[0.72rem] font-bold"
+                          style={{ background: scoreHeat(garpScore(r) as number).tint, color: '#334155' }}
+                          title={`Value ${r.value_pctl?.toFixed(0)} · Momentum ${r.momentum_pctl?.toFixed(0)} → worst-of ${(garpScore(r) as number).toFixed(0)}`}
+                        >
+                          {(garpScore(r) as number).toFixed(0)}
+                        </span>
+                      ) : (
+                        <span className="text-[0.72rem] text-gray-300">—</span>
+                      )}
+                    </div>
                   )}
                   {show('market_cap') && (
                     <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-slate-600">

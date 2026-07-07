@@ -49,6 +49,11 @@ const PRESETS: Preset[] = [
     mins: { composite: 0, growth: 0, value: 80, quality: 50, momentum: 0 } },
   { label: 'Momentum', emoji: '🚀', meta: 'Momentum ≥ 80',
     mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 80 } },
+  // "Cheap & Rising" (GARP): trending AND still reasonably priced — the
+  // value×momentum sweet spot. Pairs with the sortable GARP column (worst-of
+  // value/momentum) to rank names strong on BOTH.
+  { label: 'Cheap & Rising', emoji: '📈', meta: 'Value + Momentum ≥ 60',
+    mins: { composite: 0, growth: 0, value: 60, quality: 0, momentum: 60 } },
   { label: 'All Stars', emoji: '⭐', meta: 'Composite ≥ 80',
     mins: { composite: 80, growth: 0, value: 0, quality: 0, momentum: 0 } },
 ]
