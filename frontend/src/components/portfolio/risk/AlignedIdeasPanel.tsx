@@ -52,7 +52,7 @@ export function AlignedIdeasPanel({ data }: { data: RiskAlignmentResponse }) {
                 <tr key={i.ticker} className="border-b border-gray-50 hover:bg-slate-50/60">
                   <td className="py-1.5 pr-3">
                     <Link
-                      to={`/security/${i.ticker}`}
+                      to={`/securities/${i.ticker}`}
                       className="numeric font-bold text-indigo-600 hover:underline"
                     >
                       {i.ticker}

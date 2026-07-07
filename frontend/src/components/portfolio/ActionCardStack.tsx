@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { PortfolioFlag } from '@/types/api'
 import { SEVERITY_TONES, activeSnoozes, flagKey, snoozeFlag } from '@/components/portfolio/portfolioUi'
 import { fmtSignedMoney } from '@/lib/format'
@@ -109,15 +110,25 @@ function ActionCard({ flag, isSnoozed, onSnooze, onOpenSimulator }: ActionCardPr
           {fix.wash_sale_risk && (
             <span className="bg-red-50 text-red-700 rounded px-1.5">⚠ wash-sale risk</span>
           )}
-          {hasSimTarget && (
-            <button
-              type="button"
-              className="ml-auto rounded-md bg-indigo-600 px-2.5 py-1 text-[0.7rem] font-semibold text-white hover:bg-indigo-700"
-              onClick={() => onOpenSimulator(flag)}
-            >
-              Open in Rebalance Simulator →
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {flag.ticker && (
+              <Link
+                to={`/securities/${flag.ticker}`}
+                className="rounded-md border border-gray-200 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+              >
+                Analyze {flag.ticker} →
+              </Link>
+            )}
+            {hasSimTarget && (
+              <button
+                type="button"
+                className="rounded-md bg-indigo-600 px-2.5 py-1 text-[0.7rem] font-semibold text-white hover:bg-indigo-700"
+                onClick={() => onOpenSimulator(flag)}
+              >
+                Simulate trim →
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

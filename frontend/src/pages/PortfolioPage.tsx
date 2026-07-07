@@ -11,14 +11,19 @@ import { HoldingsDiagnostic } from '@/components/portfolio/HoldingsDiagnostic'
 import { MonteCarloPanel } from '@/components/portfolio/MonteCarloPanel'
 import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
 import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
+import { HealthScorePanel } from '@/components/portfolio/HealthScorePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
+import { StrategyDriftCard } from '@/components/portfolio/StrategyDriftCard'
 import { AlignedIdeasPanel } from '@/components/portfolio/risk/AlignedIdeasPanel'
 import { RiskAlignmentPanel } from '@/components/portfolio/risk/RiskAlignmentPanel'
 import { RiskProfileCard } from '@/components/portfolio/risk/RiskProfileCard'
 import {
   BENCHMARK_OPTIONS,
   activeSnoozes,
+  buildVerdict,
   capWeights,
+  computeBenchStats,
+  computeHealthScore,
   flagKey,
   tradesToWeights,
   whatIfStats,
@@ -205,6 +210,41 @@ export function PortfolioPage() {
     return { trades, weights, whatIf: { before, after } }
   }, [flags, holdings, analytics, benchmark])
 
+  // Portfolio Health — a deterministic 0-100 structural diagnostic, all
+  // client-side from the payload already fetched (never fabricates; renders a
+  // copy-only state on short history). Bridge tone matches the hero's verdict.
+  const health = useMemo(() => {
+    const summary = data?.summary
+    const perf = data?.performance
+    if (!summary || !perf) return null
+    return computeHealthScore({
+      summary,
+      holdings,
+      flags,
+      performance: { twr_curve: perf.twr_curve, bench_curve: perf.bench_curve },
+      allocation: data?.allocation ?? null,
+      benchStats: computeBenchStats(perf.bench_curve),
+      riskAlignment:
+        riskAlignment?.has_profile && riskAlignment.portfolio
+          ? { has_profile: true, in_band_weight_pct: riskAlignment.portfolio.in_band_weight_pct }
+          : null,
+    })
+  }, [data, holdings, flags, riskAlignment])
+
+  const verdictTone = useMemo(() => {
+    const summary = data?.summary
+    if (!summary) return 'warn' as const
+    return buildVerdict({
+      twrTotal: summary.twr_total,
+      benchTotal: summary.bench_total,
+      benchmark: summary.benchmark,
+      volatility: summary.volatility,
+      beta: summary.beta,
+      flags,
+      firstDate: summary.first_date,
+    }).tone
+  }, [data, flags])
+
   const openSimulator = (trades: SimTrade[]) =>
     setDrawer((d) => ({ open: true, trades, seq: d.seq + 1 }))
 
@@ -374,6 +414,11 @@ export function PortfolioPage() {
 
       {pane === 'overview' && (
         <>
+          {/* Portfolio Health leads the Overview — the structural how-am-I-doing
+              snapshot before the action list. */}
+          {health && (
+            <HealthScorePanel health={health} benchmark={s.benchmark} verdictTone={verdictTone} />
+          )}
           {/* No profile yet: surface the quiz prompt here too (the card shows
               its prompt variant); once set, it lives on Risk & Fit only. */}
           {riskAlignment && !riskAlignment.has_profile && <RiskProfileCard />}
@@ -384,6 +429,7 @@ export function PortfolioPage() {
               onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
             />
           </div>
+          <StrategyDriftCard holdings={holdings} />
           {data.performance && (
             <PerformancePanel
               performance={data.performance}

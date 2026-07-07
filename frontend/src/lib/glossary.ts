@@ -44,8 +44,11 @@ export const glossary: Record<string, string> = {
   Accruals:
     'Sloan accruals — the gap between reported earnings and cash flow. Lower = higher earnings quality.',
   Drawdown: 'Largest peak-to-trough decline over the window.',
-  Beta: 'Sensitivity to market moves (1.0 = moves with the market).',
-  Sharpe: 'Return earned per unit of volatility. Higher = better risk-adjusted return.',
+  Beta: 'Sensitivity to market moves. Above 1.0 means your portfolio swings more violently than the market; below 1.0, less.',
+  Sharpe: 'Return earned per unit of volatility. Higher = better risk-adjusted return; near zero or negative means you were not paid for the risk taken.',
+  Volatility: 'How much daily returns bounce around, annualized. Higher = a wilder ride.',
+  Sortino: 'Like Sharpe, but only penalizes downside volatility — reward per unit of bad swings.',
+  Concentration: 'How much of the book sits in a single name or sector. High concentration means one bad holding can sink the whole portfolio.',
 }
 
 /** Longest-key-first list for places that want to auto-annotate labels. */

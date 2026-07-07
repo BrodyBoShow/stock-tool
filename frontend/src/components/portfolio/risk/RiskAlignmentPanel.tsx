@@ -77,7 +77,7 @@ export function RiskAlignmentPanel({ data }: { data: RiskAlignmentResponse }) {
               className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/50 px-2.5 py-1.5"
             >
               <Link
-                to={`/security/${h.ticker}`}
+                to={`/securities/${h.ticker}`}
                 className="numeric w-14 shrink-0 text-[0.78rem] font-bold text-indigo-600 hover:underline"
               >
                 {h.ticker}
