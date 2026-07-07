@@ -449,7 +449,8 @@ def compute_portfolio(owner_id: str | None = None,
         with conn.cursor() as cur:
             cur.execute(
                 f"""
-                SELECT id, security_id, txn_type, trade_date, shares, price, amount
+                SELECT id, security_id, txn_type, trade_date, shares, price, amount,
+                       external_id
                 FROM portfolio_transactions
                 {owner_clause}
                 ORDER BY trade_date, id
@@ -465,6 +466,11 @@ def compute_portfolio(owner_id: str | None = None,
                     "shares": float(r[4]) if r[4] is not None else None,
                     "price": float(r[5]) if r[5] is not None else None,
                     "amount": float(r[6]) if r[6] is not None else None,
+                    # Brokerage-sync "opening balance" lots are pre-feed shares — a
+                    # TRANSFER-IN, not a cash purchase. Flagged so TWR treats the
+                    # entry as a market-value flow (see the buy handler) instead of
+                    # a cost-priced one, which would book a spurious one-day return.
+                    "opening": bool(r[7]) and str(r[7]).startswith("opening:"),
                 }
                 for r in cur.fetchall()
             ]
@@ -562,8 +568,18 @@ def compute_portfolio(owner_id: str | None = None,
                 lots[sid].append([t["shares"], amt, t["date"]])
                 cash -= amt
                 if not cash_tracking:
-                    flow += amt
-                    xirr_flows.append((day, -amt))
+                    # A reconcile "opening" lot is a transfer-in of pre-feed shares:
+                    # its TWR flow is the MARKET value at entry, not its (avg-cost)
+                    # book value — else a cost-priced flow against the market value
+                    # it adds books a spurious one-day return. Cost basis (the lot's
+                    # `amt` above) is untouched, so per-holding P/L stays correct.
+                    if t.get("opening"):
+                        mkt = prices.get(sid, {}).get(day) or last_close.get(sid)
+                        flow_amt = t["shares"] * mkt if mkt else amt
+                    else:
+                        flow_amt = amt
+                    flow += flow_amt
+                    xirr_flows.append((day, -flow_amt))
             elif typ == "sell":
                 amt = cash_amt(t)
                 to_sell = t["shares"]

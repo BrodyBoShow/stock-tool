@@ -729,20 +729,34 @@ def _current_shares_by_link(conn, link_id: int, owner_id: str | None = None,
 
 def _reconcile_positions(conn, link_id: int, positions: list[dict],
                          owner_id: str | None = None) -> int:
-    """Book TODAY-dated reconcile lots so the app's DISPLAYED holdings match the
-    broker's reported positions, even when the activity feed is incomplete.
+    """Book reconcile lots so the app's DISPLAYED holdings match the broker's
+    reported positions, even when the activity feed is incomplete.
 
-    Split-safe and two-directional (the earlier version dated lots at the first
-    trade date and diffed a naive buy-minus-sell net, so any split with a later
-    ex-date got applied a SECOND time by compute_portfolio — e.g. a 4:1 split
-    turned 2 reconciled shares into 8 — and sold-out positions lingered forever):
-      * for each broker position, book (units - what-the-app-shows) dated today,
-        so no later split re-scales it and a corrective FIFO sell lands after the
-        buys it offsets;
-      * for each security the app still shows but the broker no longer reports,
-        book a today-dated sell to zero it (a sold-out name must disappear).
-    Idempotent: opening rows (external_id 'opening:<link>:<sid>') are rebuilt each
-    sync. Priced at broker avg cost when known, else the last close."""
+    Satisfies two constraints at once:
+      1. CURRENT holdings equal the broker's units with NO split double-count. The
+         first version dated opening lots at the first trade date using naive
+         (split-unadjusted) nets, so compute_portfolio re-applied every later split
+         — a 4:1 split turned 2 reconciled shares into 8, a 1:10 reverse turned 5
+         into 0.5 — and sold-out names lingered forever.
+      2. The historical TWR curve keeps a share base from the first activity date.
+         Dating the opening lot at *today* fixes (1) but leaves the pre-acquisition
+         book with no base for names bought recently, so its value dips toward $0
+         and TWR divides by ~0 → an explosive spike then a -100% cliff.
+
+    So a POSITIVE gap (broker holds more than the app shows) is booked as a BUY
+    dated at the first activity date but NEVER before the name's last split ex-date.
+    Because prices_daily is split-ADJUSTED, a lot dated before a split would be both
+    price-adjusted AND share-scaled by compute_portfolio → a double-count that puts a
+    one-day cliff in the value curve; dating on/after the last split means compute
+    applies no split to it, so its current-basis share count values correctly and
+    lands exactly on the broker's units. A NEGATIVE gap (app shows more than the
+    broker) and a sold-out zero-out are booked as TODAY sells — a historical sell
+    would predate the buys it must offset and FIFO can't apply it.
+
+    Guards: no-op on an empty positions fetch AND on a total ticker-resolution
+    failure; a held name the broker still reports (ticker present) is never zeroed.
+    Idempotent: opening rows (external_id 'opening:<link>:<sid>') rebuilt each sync.
+    """
     # An empty positions list almost always means a transient/failed fetch — never
     # treat it as "sold everything" and wipe the reconciled book. Leave prior
     # opening rows intact and no-op.
@@ -786,8 +800,26 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
     zero_sids = [sid for sid in shown
                  if sid not in target and shown_ticker.get(sid) not in reported_tickers]
 
-    # Last close to price buys/zero-out sells when the broker gave no avg cost.
+    as_of = date.today()
+    # First real activity date — the base an opening lot extends back to.
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT min(trade_date) FROM portfolio_transactions "
+            f"WHERE linked_account_id = %s AND external_id NOT LIKE 'opening:%%'{owner_clause}",
+            (link_id, owner_id) if owner_id is not None else (link_id,),
+        )
+        first = cur.fetchone()[0]
+    first_activity = first or as_of
+
+    # Last close (price fallback) + each name's most recent split ex-date. prices_daily
+    # is SPLIT-ADJUSTED (a reverse-split name shows the same ~$ on both sides of its
+    # ex-date), so compute_portfolio's split step (which multiplies share counts) must
+    # NOT touch an opening lot or the valuation double-counts the split and the value
+    # curve gets a one-day cliff on the ex-date. We therefore date each opening lot
+    # ON/AFTER the name's last split — compute applies no split to it, and its constant
+    # current-basis share count is valued correctly against the adjusted price.
     last_close: dict[int, float] = {}
+    latest_split: dict[int, date] = {}
     price_sids = list({*target, *zero_sids})
     if price_sids:
         with conn.cursor() as cur:
@@ -798,8 +830,16 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
                 (price_sids,),
             )
             last_close = {int(s): float(c) for s, c in cur.fetchall() if c is not None}
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id, max(ex_date) FROM corporate_actions "
+                "WHERE action_type = 'split' AND ratio IS NOT NULL AND ratio > 0 "
+                "  AND ex_date <= %s AND security_id = ANY(%s) GROUP BY security_id",
+                (as_of, list(target)),
+            )
+            latest_split = {int(s): d for s, d in cur.fetchall() if d is not None}
 
-    today = date.today().isoformat()
+    today = as_of.isoformat()
     rows: list[tuple] = []
     for sid, p in target.items():
         gap = round(float(p["units"]) - shown.get(sid, 0.0), 6)
@@ -810,10 +850,14 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
         if gap > 0:
             if not price:
                 continue  # can't book a buy without any price
-            row = (sid, "buy", today, gap, price, None,
+            # Date at first activity, but never before the name's last split (so the
+            # split never re-scales this lot). No de-adjustment: gap is current-basis.
+            ls = latest_split.get(sid)
+            open_d = ls if ls and ls > first_activity else first_activity
+            row = (sid, "buy", open_d.isoformat(), gap, price, None,
                    "opening balance (reconciled to broker position)",
                    "snaptrade", ext, link_id)
-        else:  # app shows more than the broker holds — trim to match
+        else:  # app shows more than the broker holds — trim TODAY (after the buys)
             row = (sid, "sell", today, -gap, price or 0.0, None,
                    "opening adjustment (reconciled to broker position)",
                    "snaptrade", ext, link_id)
