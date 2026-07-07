@@ -24,9 +24,10 @@ from api.schemas import (
     PortfolioTransactionsResponse,
     ProjectionResponse,
     ProjectionRunRequest,
+    RiskAlignmentResponse,
 )
 from engine import portfolio as portfolio_engine
-from engine import portfolio_sync
+from engine import portfolio_sync, risk_alignment
 from engine.portfolio_analytics import portfolio_analytics
 from engine.portfolio_projection import project_portfolio
 
@@ -96,6 +97,23 @@ def get_analytics(
     math), shrunk expected returns, and historical stress tests."""
     return PortfolioAnalyticsResponse(
         **portfolio_analytics(owner_id=user.id, benchmark=benchmark))
+
+
+@router.get(
+    "/risk-alignment",
+    response_model=RiskAlignmentResponse,
+    dependencies=[Depends(rate_limit(30, 60))],
+)
+def get_risk_alignment(
+    user: CurrentUser,
+    benchmark: str = Query("SPY", min_length=1, max_length=10),
+) -> RiskAlignmentResponse:
+    """Portfolio vs the user's stated risk preference: per-holding band fit,
+    in-band weight share, profile-aware threshold flags, and idea discovery
+    inside the chosen bands. Descriptive only — historical measurements
+    compared against a range the user chose; never advice."""
+    return RiskAlignmentResponse(
+        **risk_alignment.risk_alignment(owner_id=user.id, benchmark=benchmark))
 
 
 @router.get("/transactions", response_model=PortfolioTransactionsResponse)

@@ -104,6 +104,36 @@ class RiskProfileUpsertRequest(BaseModel):
     profile: str | None = None
 
 
+class RiskAlignmentHolding(BaseModel):
+    ticker: str | None
+    weight: float
+    risk_band: int | None
+    band_reason: str | None
+    fit: str  # in_band | above | below | no_band
+
+
+class RiskAlignmentIdea(BaseModel):
+    """Discovery, not advice: top composite names inside the user's chosen idea
+    bands, excluding held + watchlisted. A mechanical filter, disclosed as such."""
+    ticker: str
+    name: str | None
+    sector: str | None
+    composite: float | None
+    risk_band: int | None
+    vol_252d: float | None
+
+
+class RiskAlignmentResponse(BaseModel):
+    has_profile: bool
+    profile: dict[str, Any] | None       # {profile, band_min/max, ideas_min/max, guardrails}
+    # {weighted_band, in/above/no_band weight pcts, volatility, beta}
+    portfolio: dict[str, Any] | None
+    holdings: list[RiskAlignmentHolding]
+    threshold_flags: list[dict[str, Any]]  # profile-aware concentration/sector flags
+    ideas: list[RiskAlignmentIdea]
+    methodology: str
+
+
 class RiskProfileResponse(BaseModel):
     has_profile: bool
     profile: str | None = None            # conservative | balanced | aggressive

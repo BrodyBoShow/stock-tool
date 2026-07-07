@@ -35,6 +35,7 @@ import type {
   PortfolioTransactionCreate,
   PortfolioTransactionsResponse,
   QuotesResponse,
+  RiskAlignmentResponse,
   RiskProfileResponse,
   ScreenerResponse,
   SearchResponse,
@@ -182,6 +183,12 @@ async function sendJson<T>(
 
 export function getRiskProfile(): Promise<RiskProfileResponse> {
   return getJson<RiskProfileResponse>('/settings/risk-profile')
+}
+
+export function getRiskAlignment(benchmark = 'SPY'): Promise<RiskAlignmentResponse> {
+  return getJson<RiskAlignmentResponse>(
+    `/portfolio/risk-alignment?benchmark=${encodeURIComponent(benchmark)}`,
+  )
 }
 
 /** Set the risk profile from quiz answers OR a direct manual pick. The server

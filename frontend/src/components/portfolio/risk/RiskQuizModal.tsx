@@ -104,13 +104,12 @@ export function RiskQuizModal({
               {result.profile}
             </div>
             <p className="mt-2 text-[0.8rem] leading-relaxed text-slate-500">
-              StockBud will compare your holdings against historical risk bands{' '}
-              {result.band_min}–{result.band_max} and flag positions above{' '}
-              {Math.round((result.guardrails?.max_position_pct ?? 0) * 100)}% or sectors above{' '}
-              {Math.round((result.guardrails?.max_sector_pct ?? 0) * 100)}% — these are alert
-              thresholds, not limits StockBud enforces. The comparison view is coming to the
-              Portfolio page soon. This is a preference you set — not advice — and you can
-              change it anytime.
+              StockBud compares your holdings against historical risk bands{' '}
+              {result.band_min}–{result.band_max} on the Portfolio page and flags positions
+              above {Math.round((result.guardrails?.max_position_pct ?? 0) * 100)}% or sectors
+              above {Math.round((result.guardrails?.max_sector_pct ?? 0) * 100)}% — these are
+              alert thresholds, not limits StockBud enforces. This is a preference you set —
+              not advice — and you can change it anytime.
             </p>
             <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
               <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
