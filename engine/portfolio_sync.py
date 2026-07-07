@@ -857,8 +857,11 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
             row = (sid, "buy", open_d.isoformat(), gap, price, None,
                    "opening balance (reconciled to broker position)",
                    "snaptrade", ext, link_id)
-        else:  # app shows more than the broker holds — trim TODAY (after the buys)
-            row = (sid, "sell", today, -gap, price or 0.0, None,
+        else:  # app shows more than the broker holds — trim TODAY (after the buys).
+            # Price the trim at MARKET (last close), not avg cost, so its TWR flow
+            # equals the market value removed (a cost-priced sell would book a
+            # spurious return on a priced session); mirrors the zero-out below.
+            row = (sid, "sell", today, -gap, last_close.get(sid) or price or 0.0, None,
                    "opening adjustment (reconciled to broker position)",
                    "snaptrade", ext, link_id)
         rows.append(row + (owner_id,) if owner_id is not None else row)

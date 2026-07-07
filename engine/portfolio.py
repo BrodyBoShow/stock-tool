@@ -566,20 +566,24 @@ def compute_portfolio(owner_id: str | None = None,
                 # acquisition date = the trade date (not the priced day), so lot
                 # age is right even for weekend/pre-history trades
                 lots[sid].append([t["shares"], amt, t["date"]])
-                cash -= amt
-                if not cash_tracking:
-                    # A reconcile "opening" lot is a transfer-in of pre-feed shares:
-                    # its TWR flow is the MARKET value at entry, not its (avg-cost)
-                    # book value — else a cost-priced flow against the market value
-                    # it adds books a spurious one-day return. Cost basis (the lot's
-                    # `amt` above) is untouched, so per-holding P/L stays correct.
-                    if t.get("opening"):
-                        mkt = prices.get(sid, {}).get(day) or last_close.get(sid)
-                        flow_amt = t["shares"] * mkt if mkt else amt
-                    else:
-                        flow_amt = amt
-                    flow += flow_amt
-                    xirr_flows.append((day, -flow_amt))
+                if t.get("opening"):
+                    # A reconcile "opening" lot is a TRANSFER-IN of pre-feed shares,
+                    # not a cash purchase: no cash is spent, and its flow is the
+                    # MARKET value at entry (shares × close), not its avg-cost book
+                    # value. Booking cost as the flow — or, in cash_tracking mode,
+                    # spending cash while positions rise at market — would put a
+                    # spurious one-day jump in the TWR curve. Handled in BOTH modes;
+                    # the lot's cost basis (`amt` above) is untouched so per-holding
+                    # P/L stays correct. (cash is left alone: nothing was spent.)
+                    mkt = prices.get(sid, {}).get(day) or last_close.get(sid)
+                    entry_val = t["shares"] * mkt if mkt else amt
+                    flow += entry_val
+                    xirr_flows.append((day, -entry_val))
+                else:
+                    cash -= amt
+                    if not cash_tracking:
+                        flow += amt
+                        xirr_flows.append((day, -amt))
             elif typ == "sell":
                 amt = cash_amt(t)
                 to_sell = t["shares"]
