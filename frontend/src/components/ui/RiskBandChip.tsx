@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
+
 /** Historical risk band chip (1-5) — shared by the screener and portfolio.
  *
  * Honesty contract: the band is a backward-looking MEASUREMENT (realized
@@ -20,6 +23,33 @@ const METHODOLOGY =
   'the past year. A backward-looking measurement, not a prediction — risk can ' +
   'change abruptly (e.g. around corporate events). Not investment advice.'
 
+/** The tooltip is portaled to <body> with fixed positioning (mirrors
+ *  ScoreCell's FactorTooltip) so the screener/holdings tables' overflow:auto
+ *  container can't clip it — that clipping is why the top rows' descriptions
+ *  were cut off. It flips above the chip when near the bottom of the viewport. */
+function ChipTooltip({ text, rect }: { text: string; rect: DOMRect }) {
+  const W = 260
+  const flipUp = rect.bottom > window.innerHeight - 170
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    width: W,
+    left: Math.max(8, Math.min(rect.left + rect.width / 2 - W / 2, window.innerWidth - W - 8)),
+    top: flipUp ? undefined : rect.bottom + 6,
+    bottom: flipUp ? window.innerHeight - rect.top + 6 : undefined,
+    zIndex: 80,
+  }
+  return createPortal(
+    <div
+      role="tooltip"
+      style={style}
+      className="pointer-events-none rounded-lg bg-slate-900 px-2.5 py-1.5 text-left text-[0.68rem] font-normal normal-case leading-snug tracking-normal text-white shadow-lg"
+    >
+      {text}
+    </div>,
+    document.body,
+  )
+}
+
 export function RiskBandChip({
   band,
   compact = false,
@@ -27,6 +57,7 @@ export function RiskBandChip({
   band: number | null
   compact?: boolean
 }) {
+  const [rect, setRect] = useState<DOMRect | null>(null)
   const meta = band != null ? BAND_META[band] : undefined
   // Honesty: the vol range is the BAND's anchor, not this name's measurement —
   // a lower-volatility name can sit one band higher via the size/balance-sheet
@@ -35,21 +66,20 @@ export function RiskBandChip({
     ? `Risk band ${band} · ${meta.label} — volatility anchor ${meta.vol}/yr; micro-cap size or a weak balance sheet can place a lower-volatility name one band higher. ${METHODOLOGY}`
     : 'No risk band — funds/ETFs aren’t banded, or the name has under 1 year of trading history / no recent price data (never estimated).'
   return (
-    <span className="group relative inline-flex">
+    <span
+      className="inline-flex cursor-help"
+      onMouseEnter={(e) => setRect(e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => setRect(null)}
+    >
       <span
-        className={`inline-flex cursor-default items-center gap-1 rounded-full border px-1.5 py-px font-semibold tabular-nums ${
+        className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold tabular-nums ${
           compact ? 'text-[0.6rem]' : 'text-[0.66rem]'
         } ${meta ? meta.cls : 'border-gray-200 bg-gray-50 text-gray-400'}`}
       >
         {band != null ? band : '—'}
         {!compact && <span className="font-medium">{meta ? meta.label : 'No band'}</span>}
       </span>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-64 -translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-1.5 text-left text-[0.68rem] font-normal normal-case leading-snug tracking-normal text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
-      >
-        {tip}
-      </span>
+      {rect && <ChipTooltip text={tip} rect={rect} />}
     </span>
   )
 }
