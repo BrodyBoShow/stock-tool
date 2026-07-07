@@ -39,7 +39,8 @@ const METHODOLOGY =
   'risk-adjusted return — computed from your own holdings and price history. ' +
   'It measures structural resilience, NOT stock-picking skill, and it is not ' +
   'investment advice. Each factor below shows the real number and the points it ' +
-  'cost; the score starts at 100 and subtracts those penalties.'
+  'cost; the score starts at 100 and subtracts those penalties. Bands: below 50 ' +
+  'Needs Attention, 50-74 Balanced, 75+ Resilient.'
 
 function Gauge({ score, band }: { score: number; band: HealthBand }) {
   const r = 30
