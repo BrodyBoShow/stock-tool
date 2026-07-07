@@ -449,7 +449,8 @@ def compute_portfolio(owner_id: str | None = None,
         with conn.cursor() as cur:
             cur.execute(
                 f"""
-                SELECT id, security_id, txn_type, trade_date, shares, price, amount
+                SELECT id, security_id, txn_type, trade_date, shares, price, amount,
+                       external_id
                 FROM portfolio_transactions
                 {owner_clause}
                 ORDER BY trade_date, id
@@ -465,6 +466,11 @@ def compute_portfolio(owner_id: str | None = None,
                     "shares": float(r[4]) if r[4] is not None else None,
                     "price": float(r[5]) if r[5] is not None else None,
                     "amount": float(r[6]) if r[6] is not None else None,
+                    # Brokerage-sync "opening balance" lots are pre-feed shares — a
+                    # TRANSFER-IN, not a cash purchase. Flagged so TWR treats the
+                    # entry as a market-value flow (see the buy handler) instead of
+                    # a cost-priced one, which would book a spurious one-day return.
+                    "opening": bool(r[7]) and str(r[7]).startswith("opening:"),
                 }
                 for r in cur.fetchall()
             ]
@@ -560,10 +566,24 @@ def compute_portfolio(owner_id: str | None = None,
                 # acquisition date = the trade date (not the priced day), so lot
                 # age is right even for weekend/pre-history trades
                 lots[sid].append([t["shares"], amt, t["date"]])
-                cash -= amt
-                if not cash_tracking:
-                    flow += amt
-                    xirr_flows.append((day, -amt))
+                if t.get("opening"):
+                    # A reconcile "opening" lot is a TRANSFER-IN of pre-feed shares,
+                    # not a cash purchase: no cash is spent, and its flow is the
+                    # MARKET value at entry (shares × close), not its avg-cost book
+                    # value. Booking cost as the flow — or, in cash_tracking mode,
+                    # spending cash while positions rise at market — would put a
+                    # spurious one-day jump in the TWR curve. Handled in BOTH modes;
+                    # the lot's cost basis (`amt` above) is untouched so per-holding
+                    # P/L stays correct. (cash is left alone: nothing was spent.)
+                    mkt = prices.get(sid, {}).get(day) or last_close.get(sid)
+                    entry_val = t["shares"] * mkt if mkt else amt
+                    flow += entry_val
+                    xirr_flows.append((day, -entry_val))
+                else:
+                    cash -= amt
+                    if not cash_tracking:
+                        flow += amt
+                        xirr_flows.append((day, -amt))
             elif typ == "sell":
                 amt = cash_amt(t)
                 to_sell = t["shares"]

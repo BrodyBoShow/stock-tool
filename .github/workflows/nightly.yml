@@ -39,6 +39,11 @@ jobs:
       # Set this repo secret to make the nightly use Massive for prices; empty =
       # run_nightly falls back to yfinance automatically.
       MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+      # Brokerage auto-sync (SnapTrade). PORTFOLIO_TOKEN_KEY decrypts the stored
+      # read-only OAuth tokens; SNAPTRADE_OAUTH_CLIENT_ID refreshes them. Both
+      # empty = the sync step below is skipped (no-op), so the nightly still runs.
+      PORTFOLIO_TOKEN_KEY: ${{ secrets.PORTFOLIO_TOKEN_KEY }}
+      SNAPTRADE_OAUTH_CLIENT_ID: ${{ secrets.SNAPTRADE_OAUTH_CLIENT_ID }}
 
     steps:
       - name: Checkout
@@ -70,6 +75,18 @@ jobs:
       - name: Compute security risk metrics
         continue-on-error: true
         run: python -m engine.risk_metrics
+
+      # Brokerage auto-sync (SnapTrade) — pulls each connected link's latest
+      # activity + positions into portfolio_transactions so linked portfolios
+      # track the broker without a manual "Sync" click. READ-ONLY at the broker
+      # (never trades); writes ONLY the portfolio ledger, never scoring/rank
+      # tables. Runs after the price refresh so reconcile valuations use fresh
+      # closes. Gated on the OAuth secrets; continue-on-error + the script exits 0
+      # even on a bad link, so an expired token can't fail the night.
+      - name: Sync connected brokerages (SnapTrade)
+        if: ${{ env.PORTFOLIO_TOKEN_KEY != '' && env.SNAPTRADE_OAUTH_CLIENT_ID != '' }}
+        continue-on-error: true
+        run: python scripts/sync_brokerages.py
 
       # Macro is CONTEXT ONLY (writes macro_series, never the scoring tables).
       # Best-effort: skipped if the FRED key isn't set, and a FRED outage won't

@@ -33,6 +33,7 @@ import os
 import secrets
 import time
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
@@ -269,8 +270,16 @@ class SnapTradeProvider(Provider):
         try:
             tok = self._token({"grant_type": "refresh_token", "refresh_token": rt,
                                "client_id": self._client_id()})
-        except httpx.HTTPStatusError as exc:
-            raise _ReauthNeeded("refresh rejected") from exc
+        except httpx.HTTPStatusError:
+            # 4xx/5xx on refresh means the token is dead -> re-auth. Drop the chain
+            # (from None): the raw httpx error can render the POST body, which holds
+            # the refresh_token, and it must never reach last_error / CI logs.
+            raise _ReauthNeeded("refresh rejected") from None
+        except httpx.RequestError as exc:
+            # Transport failure (timeout/connect) is transient, NOT a re-auth. Raise
+            # a body-free message so the token can't leak downstream.
+            raise RuntimeError(
+                f"SnapTrade token endpoint unreachable: {type(exc).__name__}") from None
         nb = self._bundle(tok)
         nb["refresh_token"] = nb.get("refresh_token") or rt   # keep if not rotated
         return nb["access_token"], nb
@@ -648,17 +657,127 @@ def _insert_synced(conn, link_id: int, provider: str,
     return inserted, skipped
 
 
+def _current_shares_by_link(conn, link_id: int, owner_id: str | None = None,
+                            as_of: date | None = None) -> dict[int, float]:
+    """Split-adjusted net shares per security for one link's REAL (non-'opening')
+    ledger, replayed chronologically with splits applied on their ex-date and
+    oversells clamped to zero — i.e. exactly what ``engine.portfolio`` SHOWS for
+    this link's holdings. Reconciliation targets THIS (not a naive buy-minus-sell
+    sum) so a today-dated adjustment lands the displayed holding on the broker's
+    number regardless of split double-counts or missing acquisition history."""
+    as_of = as_of or date.today()
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (link_id, owner_id) if owner_id is not None else (link_id,)
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT security_id, txn_type, trade_date, shares "
+            "FROM portfolio_transactions "
+            "WHERE linked_account_id = %s AND txn_type IN ('buy','sell') "
+            "  AND security_id IS NOT NULL AND shares IS NOT NULL "
+            f"  AND external_id NOT LIKE 'opening:%%'{owner_clause} "
+            "ORDER BY trade_date, id",
+            params,
+        )
+        txns = [(int(s), t, d, float(sh)) for s, t, d, sh in cur.fetchall()]
+        sids = {t[0] for t in txns}
+        splits: dict[date, list[tuple[int, float]]] = defaultdict(list)
+        trading_days: set[date] = set()
+        if sids:
+            cur.execute(
+                "SELECT security_id, ex_date, ratio FROM corporate_actions "
+                "WHERE action_type = 'split' AND ratio IS NOT NULL AND ratio > 0 "
+                "  AND ex_date <= %s AND security_id = ANY(%s)",
+                (as_of, list(sids)),
+            )
+            for sid, ex, ratio in cur.fetchall():
+                splits[ex].append((int(sid), float(ratio)))
+            if splits:
+                # compute_portfolio applies splits ONLY on days present in its price
+                # timeline; a split whose ex-date has no price row is silently
+                # dropped. Mirror that grid exactly (union of these names' price
+                # dates ≈ the trading calendar) so `shown` == what the app displays
+                # — the invariant that makes the today-dated gap land on the broker.
+                cur.execute(
+                    "SELECT DISTINCT date FROM prices_daily "
+                    "WHERE security_id = ANY(%s) AND date <= %s",
+                    (list(sids), as_of),
+                )
+                trading_days = {d for (d,) in cur.fetchall()}
+
+    shares: dict[int, float] = defaultdict(float)
+    split_dates = sorted(splits)
+    si = 0
+
+    def apply_splits_upto(d: date) -> None:
+        nonlocal si
+        while si < len(split_dates) and split_dates[si] <= d:
+            sd = split_dates[si]
+            if sd in trading_days:  # skip splits on non-priced days, as compute does
+                for sid, ratio in splits[sd]:
+                    shares[sid] *= ratio
+            si += 1
+
+    for sid, typ, tdate, sh in txns:
+        apply_splits_upto(tdate)  # a split's ex-date scales holdings before that day's trades
+        if typ == "buy":
+            shares[sid] += sh
+        else:  # sell — clamp to available, matching compute_portfolio's oversell clamp
+            shares[sid] = max(0.0, shares[sid] - sh)
+    apply_splits_upto(as_of)  # splits between the last trade and today
+    return {sid: v for sid, v in shares.items() if v > 1e-9}
+
+
 def _reconcile_positions(conn, link_id: int, positions: list[dict],
                          owner_id: str | None = None) -> int:
-    """Insert synthetic 'opening balance' lots so holdings match the broker's
-    actual position counts even when the activity feed is incomplete (shares
-    acquired before SnapTrade's available history — e.g. transfers / old lots).
+    """Book reconcile lots so the app's DISPLAYED holdings match the broker's
+    reported positions, even when the activity feed is incomplete.
 
-    Idempotent: the opening rows (external_id 'opening:<link>:<sid>') are rebuilt
-    each sync from the gap between the broker position and the activity-derived
-    net. Priced at the position's average cost so value AND cost basis line up."""
+    Satisfies two constraints at once:
+      1. CURRENT holdings equal the broker's units with NO split double-count. The
+         first version dated opening lots at the first trade date using naive
+         (split-unadjusted) nets, so compute_portfolio re-applied every later split
+         — a 4:1 split turned 2 reconciled shares into 8, a 1:10 reverse turned 5
+         into 0.5 — and sold-out names lingered forever.
+      2. The historical TWR curve keeps a share base from the first activity date.
+         Dating the opening lot at *today* fixes (1) but leaves the pre-acquisition
+         book with no base for names bought recently, so its value dips toward $0
+         and TWR divides by ~0 → an explosive spike then a -100% cliff.
+
+    So a POSITIVE gap (broker holds more than the app shows) is booked as a BUY
+    dated at the first activity date but NEVER before the name's last split ex-date.
+    Because prices_daily is split-ADJUSTED, a lot dated before a split would be both
+    price-adjusted AND share-scaled by compute_portfolio → a double-count that puts a
+    one-day cliff in the value curve; dating on/after the last split means compute
+    applies no split to it, so its current-basis share count values correctly and
+    lands exactly on the broker's units. A NEGATIVE gap (app shows more than the
+    broker) and a sold-out zero-out are booked as TODAY sells — a historical sell
+    would predate the buys it must offset and FIFO can't apply it.
+
+    Guards: no-op on an empty positions fetch AND on a total ticker-resolution
+    failure; a held name the broker still reports (ticker present) is never zeroed.
+    Idempotent: opening rows (external_id 'opening:<link>:<sid>') rebuilt each sync.
+    """
+    # An empty positions list almost always means a transient/failed fetch — never
+    # treat it as "sold everything" and wipe the reconciled book. Leave prior
+    # opening rows intact and no-op.
     if not positions:
         return 0
+
+    # Resolve broker tickers FIRST, before touching the ledger. reported_tickers is
+    # the raw set the broker reported (whether or not each maps to a security row).
+    reported_tickers = {(p.get("ticker") or "").strip().upper()
+                        for p in positions if p.get("ticker")}
+    sid_by_ticker = _resolve_tickers(conn, reported_tickers)
+    target: dict[int, dict] = {}
+    for p in positions:
+        sid = sid_by_ticker.get((p.get("ticker") or "").upper())
+        if sid and p.get("units") is not None:
+            target[sid] = p
+    # If NOTHING resolves (a securities-lookup hiccup / whole-account symbol change),
+    # treat as suspect and no-op — a resolution failure must never delete the book.
+    if not target:
+        return 0
+
     owner_clause = " AND owner_id = %s" if owner_id is not None else ""
     with conn.cursor() as cur:
         cur.execute(
@@ -666,49 +785,91 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
             f"WHERE linked_account_id = %s AND external_id LIKE 'opening:%%'{owner_clause}",
             (link_id, owner_id) if owner_id is not None else (link_id,),
         )
-        cur.execute(
-            "SELECT security_id, "
-            "  sum(CASE WHEN txn_type='buy' THEN shares "
-            "           WHEN txn_type='sell' THEN -shares ELSE 0 END) "
-            "FROM portfolio_transactions "
-            "WHERE linked_account_id = %s AND txn_type IN ('buy','sell') "
-            f"  AND security_id IS NOT NULL{owner_clause} GROUP BY security_id",
-            (link_id, owner_id) if owner_id is not None else (link_id,),
-        )
-        net_by_sid = {int(s): float(n or 0) for s, n in cur.fetchall()}
+    # What the app SHOWS now, per security, from the real (post-delete) ledger.
+    shown = _current_shares_by_link(conn, link_id, owner_id)
+
+    # Tickers for shown names, so we only zero out a held name the broker does NOT
+    # report BY TICKER — a name the broker still holds but whose ticker failed
+    # sid-resolution (rename/deactivation) is left intact, never wrongly closed.
+    shown_ticker: dict[int, str] = {}
+    if shown:
+        with conn.cursor() as cur:
+            cur.execute("SELECT security_id, ticker FROM securities "
+                        "WHERE security_id = ANY(%s)", (list(shown),))
+            shown_ticker = {int(s): (t or "").strip().upper() for s, t in cur.fetchall()}
+    zero_sids = [sid for sid in shown
+                 if sid not in target and shown_ticker.get(sid) not in reported_tickers]
+
+    as_of = date.today()
+    # First real activity date — the base an opening lot extends back to.
+    with conn.cursor() as cur:
         cur.execute(
             "SELECT min(trade_date) FROM portfolio_transactions "
             f"WHERE linked_account_id = %s AND external_id NOT LIKE 'opening:%%'{owner_clause}",
             (link_id, owner_id) if owner_id is not None else (link_id,),
         )
         first = cur.fetchone()[0]
-    open_date = first or date.today()
-    open_date = open_date.isoformat() if hasattr(open_date, "isoformat") else str(open_date)
+    first_activity = first or as_of
 
-    sid_by_ticker = _resolve_tickers(
-        conn, {p["ticker"].upper() for p in positions if p.get("ticker")}
-    )
+    # Last close (price fallback) + each name's most recent split ex-date. prices_daily
+    # is SPLIT-ADJUSTED (a reverse-split name shows the same ~$ on both sides of its
+    # ex-date), so compute_portfolio's split step (which multiplies share counts) must
+    # NOT touch an opening lot or the valuation double-counts the split and the value
+    # curve gets a one-day cliff on the ex-date. We therefore date each opening lot
+    # ON/AFTER the name's last split — compute applies no split to it, and its constant
+    # current-basis share count is valued correctly against the adjusted price.
+    last_close: dict[int, float] = {}
+    latest_split: dict[int, date] = {}
+    price_sids = list({*target, *zero_sids})
+    if price_sids:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT DISTINCT ON (security_id) security_id, close "
+                "FROM prices_daily WHERE security_id = ANY(%s) "
+                "ORDER BY security_id, date DESC",
+                (price_sids,),
+            )
+            last_close = {int(s): float(c) for s, c in cur.fetchall() if c is not None}
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id, max(ex_date) FROM corporate_actions "
+                "WHERE action_type = 'split' AND ratio IS NOT NULL AND ratio > 0 "
+                "  AND ex_date <= %s AND security_id = ANY(%s) GROUP BY security_id",
+                (as_of, list(target)),
+            )
+            latest_split = {int(s): d for s, d in cur.fetchall() if d is not None}
+
+    today = as_of.isoformat()
     rows: list[tuple] = []
-    for p in positions:
-        sid = sid_by_ticker.get((p.get("ticker") or "").upper())
-        units = p.get("units")
-        if not sid or units is None:
-            continue
-        gap = round(float(units) - net_by_sid.get(sid, 0.0), 6)
+    for sid, p in target.items():
+        gap = round(float(p["units"]) - shown.get(sid, 0.0), 6)
         if abs(gap) < 1e-6:
             continue
         ext = f"opening:{link_id}:{sid}"
-        price = p.get("avg_price")
+        price = p.get("avg_price") or last_close.get(sid)
         if gap > 0:
             if not price:
-                continue
-            row = (sid, "buy", open_date, gap, price, None,
-                   "opening balance (shares predating sync history)",
+                continue  # can't book a buy without any price
+            # Date at first activity, but never before the name's last split (so the
+            # split never re-scales this lot). No de-adjustment: gap is current-basis.
+            ls = latest_split.get(sid)
+            open_d = ls if ls and ls > first_activity else first_activity
+            row = (sid, "buy", open_d.isoformat(), gap, price, None,
+                   "opening balance (reconciled to broker position)",
                    "snaptrade", ext, link_id)
-        else:  # broker holds fewer than the activity feed implies
-            row = (sid, "sell", open_date, -gap, price or 0.0, None,
+        else:  # app shows more than the broker holds — trim TODAY (after the buys).
+            # Price the trim at MARKET (last close), not avg cost, so its TWR flow
+            # equals the market value removed (a cost-priced sell would book a
+            # spurious return on a priced session); mirrors the zero-out below.
+            row = (sid, "sell", today, -gap, last_close.get(sid) or price or 0.0, None,
                    "opening adjustment (reconciled to broker position)",
                    "snaptrade", ext, link_id)
+        rows.append(row + (owner_id,) if owner_id is not None else row)
+    for sid in zero_sids:
+        ext = f"opening:{link_id}:{sid}"
+        row = (sid, "sell", today, round(shown[sid], 6), last_close.get(sid) or 0.0, None,
+               "position closed at broker (reconciled)",
+               "snaptrade", ext, link_id)
         rows.append(row + (owner_id,) if owner_id is not None else row)
     if rows:
         if owner_id is not None:
@@ -805,6 +966,43 @@ def sync_account(link_id: int, owner_id: str | None = None) -> dict[str, Any]:
     return {"inserted": inserted, "skipped": skipped, "skipped_count": len(skipped),
             "reconciled": reconciled, "pending": False,
             "display_name": res.get("display_name")}
+
+
+def sync_all_accounts() -> list[dict[str, Any]]:
+    """Sync every connected brokerage link — the nightly auto-sync entrypoint.
+
+    Owner-scoped per row and continue-on-error: one expired/again-failing link is
+    recorded and skipped, never blocking the rest or aborting the batch. Skips
+    rows never connected (no secret) and no-ops links still pending re-auth (their
+    sync returns ``pending`` without raising). Read-only at the broker."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, owner_id FROM linked_accounts "
+                "WHERE secret_enc IS NOT NULL AND provider = ANY(%s) ORDER BY id",
+                (list(PROVIDERS),),
+            )
+            rows = [(int(r[0]), r[1]) for r in cur.fetchall()]
+    except psycopg.errors.UndefinedTable:
+        conn.rollback()
+        return []
+    finally:
+        release(conn)
+
+    out: list[dict[str, Any]] = []
+    for link_id, owner_id in rows:
+        owner = str(owner_id) if owner_id is not None else None
+        try:
+            res = sync_account(link_id, owner_id=owner)
+            out.append({"link_id": link_id, "ok": True,
+                        "inserted": res.get("inserted", 0),
+                        "reconciled": res.get("reconciled", 0),
+                        "pending": bool(res.get("pending")),
+                        "display_name": res.get("display_name")})
+        except Exception as exc:  # noqa: BLE001 - one bad link must not stop the batch
+            out.append({"link_id": link_id, "ok": False, "error": str(exc)[:300]})
+    return out
 
 
 def complete_oauth(state: str, code: str) -> int:
