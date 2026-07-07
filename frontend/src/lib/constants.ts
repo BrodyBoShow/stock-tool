@@ -59,7 +59,8 @@ export const FACTOR_TIP: Record<FactorKey, string> = {
   value: 'Valuation — cheaper on P/E, P/S, EV/EBITDA and FCF yield ranks higher.',
   quality:
     'Profitability & balance-sheet strength — ROIC, margins, low leverage, clean accruals, low share issuance.',
-  momentum: 'Price trend — 3/6/12-month returns (12-minus-1).',
+  momentum:
+    'Price trend that rewards a still-trending name — near its 52-week high, rising smoothly — over one that spiked then faded. Blends 12-minus-1 return, 52-week-high proximity and up-day fraction.',
 }
 
 export const LOW_SCORE_TINT = 'rgba(239,68,68,0.07)'
@@ -120,6 +121,8 @@ export const FACTOR_DEFS: Record<
     ['r6m', 'higher'],
     ['r12m', 'higher'], // v1
     ['r12_1m', 'higher'], // v2 (12-minus-1)
+    ['prox_52w', 'higher'], // v6 (52-week-high proximity)
+    ['pos_days', 'higher'], // v6 (up-day fraction)
   ],
 }
 
@@ -139,6 +142,8 @@ export const INPUT_LABELS: Record<string, string> = {
   r6m: '6-Month Return',
   r12m: '12-Month Return',
   r12_1m: '12-1 Momentum',
+  prox_52w: '52-Wk High Proximity',
+  pos_days: 'Up-Day Fraction',
   accruals: 'Accruals (Sloan)',
   share_count_trend: 'Net Share Issuance',
   insider_net_buy: 'Insider Net Buy',
@@ -183,6 +188,10 @@ export const METRIC_NA_REASON: Record<string, string> = {
   r6m: 'Not enough price history for a 6-month return (e.g. a recent listing).',
   r12m: 'Not enough price history for a 12-month return (e.g. a recent listing).',
   r12_1m: 'Not enough price history for 12-minus-1 momentum (needs ~13 months).',
+  prox_52w:
+    'Not enough price history to measure 52-week-high proximity (needs ~3 months).',
+  pos_days:
+    'Not enough price history to measure the up-day fraction (needs ~3 months).',
 }
 
 export const METRIC_NA_REASON_FALLBACK =

@@ -26,6 +26,10 @@ export const glossary: Record<string, string> = {
   EVP: 'Executive Vice President.',
   '12-1 momentum':
     'Return from ~12 months ago to ~1 month ago — the trailing 12-month return excluding the most recent month, which tends to mean-revert.',
+  '52-week high proximity':
+    "Today's price as a fraction of the trailing 52-week high (1.0 = at the high). Rewards names still trending near their highs over ones that spiked then faded.",
+  'Up-day fraction':
+    'Share of the last ~6 months of sessions that closed up — a smoothness/trend-persistence gauge. A steady climb scores higher than the same return from one big jump.',
   Wyckoff:
     'Wyckoff method — a price-action overlay highlighting accumulation/distribution phases.',
   Percentile:

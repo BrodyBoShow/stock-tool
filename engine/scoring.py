@@ -84,6 +84,14 @@ MOMENTUM_WINDOWS = {"r3m": 91, "r6m": 182, "r12m": 365}
 MOMENTUM_SKIP_DAYS = 21       # the "minus one month" gap for 12-1 momentum
 MOMENTUM_LOOKBACK_GRACE = 20  # days a reference bar may precede the target
 
+# Trend-quality windows (v6+ momentum): 52-week high proximity + up-day fraction.
+# Counted in TRADING sessions (rows), not calendar days — the ~405-day price load
+# above comfortably covers a 252-session year.
+TRADING_YEAR = 252      # sessions in the trailing 52-week-high window (prox_52w)
+POS_DAYS_WINDOW = 126   # sessions in the up-day-fraction window (pos_days)
+PROX_MIN_BARS = 60      # min sessions of history before prox_52w/pos_days are computed
+POS_DAYS_MIN = 40       # min daily changes before pos_days is trusted
+
 # Data-integrity guards on the price-return inputs, mirroring the backtest's
 # _fwd_returns so the live screener and the Lab rank the SAME universe. Without
 # them an unadjusted reverse split (e.g. PPCB adj_close $0.01 -> $250, a +2.5M%
@@ -196,12 +204,43 @@ FACTOR_DEFS_V5_QMEAN = {
     "momentum": FACTOR_DEFS_V4_LEAN["momentum"],
 }
 
+# v6_trend: reshape MOMENTUM to reward "still trending, good entry" over "already
+# spiked". Motivation (user report + a multi-horizon rank-IC study): the current
+# r6m member INCLUDES the most recent month, so a name that just ran up hard scores
+# high even when 6-12mo forward upside is spent. The study found, on 2022-26 monthly
+# rebalances, that at 6-12mo horizons `prox_52w` (nearness to the 52-week high) and
+# `pos_days` (up-day fraction, trend smoothness) rank forward returns better than raw
+# returns, and that WITHIN the top momentum quintile, names near their 52-wk high went
+# on to beat those far below it by ~9pp/yr. So v6 DROPS raw r6m (the spike-prone
+# member) and ranks Momentum on r12_1m (already skips the reversal-prone last month) +
+# prox_52w + pos_days. Growth/Value/Quality identical to v5_qmean. Dormant until it
+# clears the §6 A/B gate vs v5_qmean; reuses v5 factor weights (migration 0031).
+FACTOR_DEFS_V6_TREND = {
+    "growth": FACTOR_DEFS_V5_QMEAN["growth"],
+    "value": FACTOR_DEFS_V5_QMEAN["value"],
+    "quality": FACTOR_DEFS_V5_QMEAN["quality"],
+    "momentum": [("r12_1m", "higher"), ("prox_52w", "higher"), ("pos_days", "higher")],
+}
+
+# v6_wide: same additions but KEEP raw r6m in the Momentum mean (4 members). The
+# A/B foil for v6_trend — isolates whether DROPPING r6m helps or the new signals
+# alone carry it. Reuses v5 weights (migration 0031).
+FACTOR_DEFS_V6_WIDE = {
+    "growth": FACTOR_DEFS_V5_QMEAN["growth"],
+    "value": FACTOR_DEFS_V5_QMEAN["value"],
+    "quality": FACTOR_DEFS_V5_QMEAN["quality"],
+    "momentum": [("r6m", "higher"), ("r12_1m", "higher"),
+                 ("prox_52w", "higher"), ("pos_days", "higher")],
+}
+
 FACTOR_DEFS_BY_VERSION = {
     "v1_linear": FACTOR_DEFS_V1,
     "v2_linear": FACTOR_DEFS_V2,
     "v3_pruned": FACTOR_DEFS_V3_PRUNED,
     "v4_lean": FACTOR_DEFS_V4_LEAN,
     "v5_qmean": FACTOR_DEFS_V5_QMEAN,
+    "v6_trend": FACTOR_DEFS_V6_TREND,
+    "v6_wide": FACTOR_DEFS_V6_WIDE,
 }
 
 # details.inputs key list per version (v1 frozen exactly; v2 adds the new
@@ -223,6 +262,10 @@ INPUTS_BY_VERSION = {
     # Quality mean (gross_margin/debt_to_equity/net_debt_ebitda) are already in
     # _BASE_INPUTS, so they remain visible on the deep-dive as raw context.
     "v5_qmean": _BASE_INPUTS + ["r12_1m", "share_count_trend"],
+    # v6 adds the two trend-quality momentum members. r6m stays in _BASE_INPUTS as
+    # deep-dive context for v6_trend even though it's no longer ranked there.
+    "v6_trend": _BASE_INPUTS + ["r12_1m", "share_count_trend", "prox_52w", "pos_days"],
+    "v6_wide": _BASE_INPUTS + ["r12_1m", "share_count_trend", "prox_52w", "pos_days"],
 }
 
 MOMENTUM_BASIS_BY_VERSION = {
@@ -231,6 +274,8 @@ MOMENTUM_BASIS_BY_VERSION = {
     "v3_pruned": "12_minus_1_momentum_plus_3_6m_raw_no_spy",
     "v4_lean": "12_minus_1_momentum_plus_6m_raw_no_spy",
     "v5_qmean": "12_minus_1_momentum_plus_6m_raw_no_spy",
+    "v6_trend": "12_minus_1_plus_52w_proximity_plus_updays_no_spy",
+    "v6_wide": "12_minus_1_plus_6m_plus_52w_proximity_plus_updays_no_spy",
 }
 
 # Discretionary insider net-buy signal window (trailing months).
@@ -330,6 +375,21 @@ def _load_price_inputs(cur, score_date) -> pd.DataFrame:
         den = _ref_adj(MOMENTUM_WINDOWS["r12m"])
         if num is not None and den is not None and den > 0:
             row["r12_1m"] = _winsor(num / den - 1.0)
+        # Trend-QUALITY signals (v6+): distinguish a name still trending near its
+        # high, rising smoothly, from one that spiked then faded — both can show the
+        # same raw 6-mo return. Both bounded [0,1] (no winsor needed); higher=better.
+        #   prox_52w = today's adj close / trailing 52-week high (1.0 = at the high).
+        #   pos_days = fraction of up-days over the trailing ~126 sessions.
+        # Skip for very young names (< PROX_MIN_BARS history) so they fall back to
+        # the other momentum members rather than rank on a noisy partial window.
+        adj = g["adj_close"]
+        if len(adj) >= PROX_MIN_BARS:
+            hi52 = adj.tail(TRADING_YEAR).max()
+            if hi52 > 0:
+                row["prox_52w"] = last["adj_close"] / hi52
+            chg = adj.tail(POS_DAYS_WINDOW + 1).diff().dropna()
+            if len(chg) >= POS_DAYS_MIN:
+                row["pos_days"] = float((chg > 0).mean())
         out[sid] = row
     return pd.DataFrame.from_dict(out, orient="index")
 
