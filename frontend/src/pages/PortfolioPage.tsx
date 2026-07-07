@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
 import { ActionCardStack } from '@/components/portfolio/ActionCardStack'
@@ -40,6 +41,20 @@ import {
 import type { PortfolioFlag, PortfolioHolding } from '@/types/api'
 
 const BENCH_KEY = 'stockbud.portfolio.benchmark'
+
+/** PR4 IA reorg: the page is 4 focused panes (same ?pane= URL pattern as the
+ *  deep dive) instead of a 12-section scroll. Overview answers "how am I
+ *  doing?" in one screen; Risk & Fit holds the personalization layer. */
+type PaneId = 'overview' | 'risk' | 'holdings' | 'activity'
+
+const PANES: Array<{ id: PaneId; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'risk', label: 'Risk & Fit' },
+  { id: 'holdings', label: 'Holdings' },
+  { id: 'activity', label: 'Income & Activity' },
+]
+
+const PANE_IDS = PANES.map((p) => p.id)
 
 function initialBenchmark(): string {
   try {
@@ -97,6 +112,13 @@ function fixTrades(
 export function PortfolioPage() {
   const [benchmark, setBenchmarkState] = useState(initialBenchmark)
   const [range, setRange] = useState<RangeKey>('Max')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawPane = searchParams.get('pane')
+  const pane: PaneId = PANE_IDS.includes(rawPane as PaneId) ? (rawPane as PaneId) : 'overview'
+  const setPane = (id: PaneId) => {
+    setSearchParams(id === 'overview' ? {} : { pane: id })
+    window.scrollTo({ top: 0 })
+  }
   const [drawer, setDrawer] = useState<{ open: boolean; trades: SimTrade[]; seq: number }>({
     open: false,
     trades: [],
@@ -282,8 +304,17 @@ export function PortfolioPage() {
         unrealized_pl: s.unrealized_pl,
       }
 
-  const scrollToFixes = () =>
-    document.getElementById('portfolio-fixes')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const scrollToFixes = () => {
+    // The fixes stack lives on the Overview pane — jump there first if needed.
+    if (pane !== 'overview') setPane('overview')
+    window.setTimeout(
+      () =>
+        document
+          .getElementById('portfolio-fixes')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      60,
+    )
+  }
 
   return (
     <div className="space-y-5">
@@ -316,76 +347,110 @@ export function PortfolioPage() {
         onSeeFixes={scrollToFixes}
       />
 
-      {/* Risk preference + alignment (PR2/PR3). Interim placement under the
-          hero — moves into the "Risk & Fit" pane in the PR4 reorg. */}
-      <RiskProfileCard />
-      {riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}
-      {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
-
-      <div id="portfolio-fixes">
-        <ActionCardStack
-          flags={flags}
-          onOpenSimulator={openForFlag}
-          onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
-        />
-      </div>
-
-      {data.performance && (
-        <PerformancePanel
-          performance={data.performance}
-          benchmark={s.benchmark}
-          range={range}
-          onRangeChange={setRange}
-        />
-      )}
-
-      {data.performance && (
-        <VsMarketPanel
-          summary={s}
-          performance={data.performance}
-          whatIf={suggested.whatIf}
-          onApplyFixes={() => openSimulator(suggested.trades)}
-        />
-      )}
-
-      <StressTestPanel
-        stress={analytics?.stress ?? []}
-        benchmark={s.benchmark}
-        holdings={holdings}
-      />
-
-      <MonteCarloPanel benchmark={s.benchmark} suggestedWeights={suggested.weights} />
-
-      <SectionCard
-        title="Holdings"
-        hint="Price and day change use live quotes when available (~15m delayed), otherwise the nightly close. Click a row for tax lots, thesis, correlations and quick actions."
+      {/* pane nav (PR4 IA reorg): the 12-section scroll becomes 4 focused
+          panes, same ?pane= URL pattern as the deep dive. */}
+      <nav
+        aria-label="Portfolio sections"
+        className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-gray-200 bg-white/95 px-4 backdrop-blur-sm"
       >
-        <HoldingsDiagnostic
-          holdings={holdings}
-          quotes={quotes}
-          analytics={analytics}
-          flags={flags}
-          asOf={s.as_of}
-          onOpenSimulator={openForTicker}
-        />
-      </SectionCard>
+        <div className="flex items-center gap-1.5">
+          {PANES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-current={pane === p.id ? 'page' : undefined}
+              onClick={() => setPane(p.id)}
+              className={`whitespace-nowrap border-b-2 px-2.5 py-2 text-[0.78rem] transition-colors ${
+                pane === p.id
+                  ? 'border-indigo-600 font-semibold text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        {data.factor_tilt && <FactorTiltRadar tilt={data.factor_tilt} />}
-        {data.allocation && (
-          <AllocationPanel holdings={holdings} allocation={data.allocation} />
-        )}
-      </div>
+      {pane === 'overview' && (
+        <>
+          {/* No profile yet: surface the quiz prompt here too (the card shows
+              its prompt variant); once set, it lives on Risk & Fit only. */}
+          {riskAlignment && !riskAlignment.has_profile && <RiskProfileCard />}
+          <div id="portfolio-fixes">
+            <ActionCardStack
+              flags={flags}
+              onOpenSimulator={openForFlag}
+              onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
+            />
+          </div>
+          {data.performance && (
+            <PerformancePanel
+              performance={data.performance}
+              benchmark={s.benchmark}
+              range={range}
+              onRangeChange={setRange}
+            />
+          )}
+          {data.performance && (
+            <VsMarketPanel
+              summary={s}
+              performance={data.performance}
+              whatIf={suggested.whatIf}
+              onApplyFixes={() => openSimulator(suggested.trades)}
+            />
+          )}
+        </>
+      )}
 
-      {/* pass the real query state — !analytics would show a skeleton forever
-          when the analytics endpoint errors out */}
-      <OverlapMatrixPanel analytics={analytics} isLoading={analyticsPending} />
+      {pane === 'risk' && (
+        <>
+          <RiskProfileCard />
+          {riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}
+          <StressTestPanel
+            stress={analytics?.stress ?? []}
+            benchmark={s.benchmark}
+            holdings={holdings}
+          />
+          <MonteCarloPanel benchmark={s.benchmark} suggestedWeights={suggested.weights} />
+          {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
+        </>
+      )}
 
-      {data.income && <DividendsPanel income={data.income} benchmark={s.benchmark} />}
+      {pane === 'holdings' && (
+        <>
+          <SectionCard
+            title="Holdings"
+            hint="Price and day change use live quotes when available (~15m delayed), otherwise the nightly close. Click a row for tax lots, thesis, correlations and quick actions."
+          >
+            <HoldingsDiagnostic
+              holdings={holdings}
+              quotes={quotes}
+              analytics={analytics}
+              flags={flags}
+              asOf={s.as_of}
+              onOpenSimulator={openForTicker}
+            />
+          </SectionCard>
+          <div className="grid gap-5 lg:grid-cols-2">
+            {data.factor_tilt && <FactorTiltRadar tilt={data.factor_tilt} />}
+            {data.allocation && (
+              <AllocationPanel holdings={holdings} allocation={data.allocation} />
+            )}
+          </div>
+          {/* pass the real query state — !analytics would show a skeleton forever
+              when the analytics endpoint errors out */}
+          <OverlapMatrixPanel analytics={analytics} isLoading={analyticsPending} />
+        </>
+      )}
 
-      <TransactionsPanel rows={txnData?.rows ?? []} warnings={data.warnings} />
-
-      <BrokerageCard />
+      {pane === 'activity' && (
+        <>
+          {data.income && <DividendsPanel income={data.income} benchmark={s.benchmark} />}
+          <TransactionsPanel rows={txnData?.rows ?? []} warnings={data.warnings} />
+          <BrokerageCard />
+        </>
+      )}
 
       <p className="mx-auto max-w-3xl pb-2 text-center text-xs text-gray-400">
         Tracking and analytics over your own ledger — measurements and estimates, not
