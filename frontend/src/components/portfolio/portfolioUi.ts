@@ -11,9 +11,11 @@
  * ~8% market prior) — display them as estimates, never as promises.
  */
 import type {
+  PortfolioAllocation,
   PortfolioFlag,
   PortfolioHolding,
   PortfolioLot,
+  PortfolioSummary,
 } from '@/types/api'
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -159,6 +161,343 @@ export function drawdownSeries(curve: number[]): number[] {
     out.push(peak > 0 ? v / peak - 1 : 0)
   }
   return out
+}
+
+// ── Benchmark risk stats (shared by VsMarketPanel + the health engine) ───────
+export interface BenchStats {
+  vol: number | null
+  maxDD: number | null
+  sharpe: number | null
+}
+
+/** Annualized vol / max drawdown / Sharpe derived from a benchmark GROWTH curve
+ *  (the same client-side derivation the vs-market table has always used — moved
+ *  here so the health engine and the panel share one source). */
+export function computeBenchStats(curve: number[]): BenchStats {
+  if (!curve || curve.length < 3) return { vol: null, maxDD: null, sharpe: null }
+  const rets: number[] = []
+  for (let i = 1; i < curve.length; i++) {
+    const prev = curve[i - 1]
+    if (prev > 0) rets.push(curve[i] / prev - 1)
+  }
+  if (rets.length < 2) return { vol: null, maxDD: null, sharpe: null }
+  let sum = 0
+  for (let i = 0; i < rets.length; i++) sum += rets[i]
+  const mean = sum / rets.length
+  let sq = 0
+  for (let i = 0; i < rets.length; i++) sq += (rets[i] - mean) * (rets[i] - mean)
+  const sd = Math.sqrt(sq / (rets.length - 1))
+  const vol = sd * Math.sqrt(252)
+  const sharpe = sd > 0 ? (mean / sd) * Math.sqrt(252) : null
+  let peak = curve[0]
+  let maxDD = 0
+  for (let i = 1; i < curve.length; i++) {
+    if (curve[i] > peak) peak = curve[i]
+    if (peak > 0) {
+      const dd = curve[i] / peak - 1
+      if (dd < maxDD) maxDD = dd
+    }
+  }
+  return { vol, maxDD, sharpe }
+}
+
+/** Single best / worst DAY return from a growth curve (differences the curve;
+ *  use the TWR/bench growth curves, never the raw value array — TWR strips
+ *  deposit timing). null when the curve is too short. */
+export function bestWorstDay(curve: number[]): { best: number | null; worst: number | null } {
+  if (!curve || curve.length < 2) return { best: null, worst: null }
+  let best: number | null = null
+  let worst: number | null = null
+  for (let i = 1; i < curve.length; i++) {
+    const prev = curve[i - 1]
+    if (!(prev > 0)) continue
+    const r = curve[i] / prev - 1
+    if (best === null || r > best) best = r
+    if (worst === null || r < worst) worst = r
+  }
+  return { best, worst }
+}
+
+// ── Portfolio Health Score ──────────────────────────────────────────────────
+// A DETERMINISTIC 0-100 diagnostic of measurable STRUCTURAL issues — NOT a
+// rating of the user's stock-picking, and NOT advice. Start at 100 and subtract
+// measured penalties; each factor renders a plain-English "cost N pts" line, and
+// the transparent breakdown is the whole point. Every input already ships in the
+// /portfolio payload — nothing is fabricated. Short history / missing metrics /
+// no risk profile are handled honestly (see HEALTH_MIN_DAYS and the notes).
+
+export const HEALTH_MIN_DAYS = 60 // matches the 60-obs beta gate; below this we don't score
+
+export type HealthBand = 'needs_attention' | 'balanced' | 'resilient'
+
+export interface HealthFactor {
+  key: 'concentration' | 'sector' | 'drawdown' | 'sharpe' | 'relative' | 'diversification' | 'riskfit'
+  label: string
+  penalty: number // points lost (already renormalized + capped)
+  maxPenalty: number // this factor's renormalized budget
+  reason: string | null // plain-English line; null when the factor passed
+  ok: boolean // rounded penalty === 0
+}
+
+export interface HealthScore {
+  status: 'ok' | 'insufficient_history'
+  score: number | null // null when insufficient_history
+  band: HealthBand | null
+  factors: HealthFactor[]
+  scoredCount: number
+  totalFactors: number
+  notes: string[] // disclosures (dropped factors, etc.)
+}
+
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x)
+const pct = (x: number) => `${Math.round(x * 100)}%`
+
+export function healthBand(score: number): HealthBand {
+  if (score < 50) return 'needs_attention'
+  if (score < 75) return 'balanced'
+  return 'resilient'
+}
+
+export const HEALTH_BAND_LABEL: Record<HealthBand, string> = {
+  needs_attention: 'Needs Attention',
+  balanced: 'Balanced',
+  resilient: 'Resilient',
+}
+
+/** Internal per-factor spec before renormalization. */
+interface RawFactor {
+  key: HealthFactor['key']
+  label: string
+  baseMax: number // effective base budget (already reduced for a dropped sub-part)
+  available: boolean
+  needsHistory: boolean // true = return-based; deferred until ~3mo of daily returns
+  rawFraction: number // 0..1 of baseMax incurred
+  reason: (finalPenalty: number) => string // built after renorm using the final pts
+}
+
+export function computeHealthScore(args: {
+  summary: PortfolioSummary
+  holdings: PortfolioHolding[]
+  flags: PortfolioFlag[]
+  performance: { twr_curve: number[]; bench_curve: number[] } | null
+  allocation: PortfolioAllocation | null
+  benchStats: BenchStats
+  riskAlignment?: { has_profile: boolean; in_band_weight_pct: number } | null
+}): HealthScore {
+  const { summary, holdings, flags, performance, allocation, benchStats, riskAlignment } = args
+  const hasProfile = !!riskAlignment?.has_profile
+  const totalFactors = hasProfile ? 7 : 6
+
+  // Honesty gate: with NO holdings there is nothing to diagnose → copy only,
+  // never a fabricated number. Point-in-time factors (concentration,
+  // diversification, sector) are valid from day one; return-based factors
+  // (drawdown, Sharpe, relative) are deferred until ~3 months of history and
+  // disclosed — so a genuinely concentrated new book still gets its warning
+  // instead of an unhelpful "no score".
+  const twr = performance?.twr_curve ?? []
+  const usableHoldings = holdings.filter((h) => (h.weight ?? 0) > 0)
+  if (usableHoldings.length === 0) {
+    return {
+      status: 'insufficient_history',
+      score: null,
+      band: null,
+      factors: [],
+      scoredCount: 0,
+      totalFactors,
+      notes: [],
+    }
+  }
+  const hasHistory = twr.length >= HEALTH_MIN_DAYS
+
+  const raw: RawFactor[] = []
+
+  // 1 — Single-name concentration (base 24).
+  const weights = usableHoldings.map((h) => h.weight ?? 0)
+  let topW = 0
+  let topTicker = ''
+  for (const h of usableHoldings) {
+    const w = h.weight ?? 0
+    if (w > topW) { topW = w; topTicker = h.ticker ?? '' }
+  }
+  const concFlags = flags.filter((f) => f.kind === 'concentration')
+  const concBase = clamp01((topW - 0.1) / 0.3) * 20
+  const concExtra = Math.min(Math.max(concFlags.length - 1, 0) * 2, 4)
+  raw.push({
+    key: 'concentration',
+    label: 'Single-name concentration',
+    baseMax: 24,
+    available: true,
+    needsHistory: false,
+    rawFraction: (concBase + concExtra) / 24,
+    reason: (p) =>
+      `${topTicker || 'Your largest holding'} is ${pct(topW)} of the book` +
+      (concFlags.length > 1 ? ` (${concFlags.length} names over the threshold)` : '') +
+      ` — concentration cost ${Math.round(p)} pts.`,
+  })
+
+  // 2 — Sector concentration (base 14).
+  const sectorFlag = flags.filter((f) => f.kind === 'sector')
+  let maxSectorW: number | null = null
+  let maxSector = ''
+  for (const f of sectorFlag) {
+    if (f.weight != null && (maxSectorW === null || f.weight > maxSectorW)) {
+      maxSectorW = f.weight; maxSector = f.sector ?? ''
+    }
+  }
+  if (maxSectorW === null && allocation?.sectors) {
+    for (const s of allocation.sectors) {
+      if (s.weight != null && (maxSectorW === null || s.weight > maxSectorW)) {
+        maxSectorW = s.weight; maxSector = s.sector
+      }
+    }
+  }
+  raw.push({
+    key: 'sector',
+    label: 'Sector concentration',
+    baseMax: 14,
+    available: maxSectorW !== null,
+    needsHistory: false,
+    rawFraction: maxSectorW !== null ? clamp01((maxSectorW - 0.3) / 0.3) : 0,
+    reason: (p) => `${pct(maxSectorW ?? 0)} in ${maxSector || 'one sector'} — sector concentration cost ${Math.round(p)} pts.`,
+  })
+
+  // 3 — Drawdown / downside (base 22: abs 14 + excess-vs-SPY 8).
+  const maxDD = summary.max_drawdown
+  const benchDD = benchStats.maxDD
+  const ddAbs = maxDD != null ? clamp01((Math.abs(maxDD) - 0.15) / 0.35) * 14 : 0
+  const ddExcess =
+    maxDD != null && benchDD != null
+      ? clamp01((Math.abs(maxDD) - Math.abs(benchDD)) / 0.2) * 8
+      : 0
+  const ddBaseMax = benchDD != null ? 22 : 14 // drop only the vs-SPY sub-part if no bench
+  raw.push({
+    key: 'drawdown',
+    label: 'Drawdown & downside',
+    baseMax: ddBaseMax,
+    available: maxDD != null && hasHistory,
+    needsHistory: true,
+    rawFraction: maxDD != null ? (ddAbs + ddExcess) / ddBaseMax : 0,
+    reason: (p) =>
+      `Worst drawdown ${pct(maxDD ?? 0)}` +
+      (benchDD != null ? ` (${summary.benchmark} ${pct(benchDD)})` : '') +
+      ` — cost ${Math.round(p)} pts.`,
+  })
+
+  // 4 — Risk-adjusted return / Sharpe (base 16: abs 10 + vs-SPY 6).
+  const sharpe = summary.sharpe
+  const benchSharpe = benchStats.sharpe
+  const shAbs = sharpe != null ? clamp01((1.0 - sharpe) / 1.0) * 10 : 0
+  const shVs =
+    sharpe != null && benchSharpe != null && sharpe < benchSharpe
+      ? clamp01((benchSharpe - sharpe) / 0.6) * 6
+      : 0
+  const shBaseMax = benchSharpe != null ? 16 : 10
+  raw.push({
+    key: 'sharpe',
+    label: 'Risk-adjusted return',
+    baseMax: shBaseMax,
+    available: sharpe != null && hasHistory,
+    needsHistory: true,
+    rawFraction: sharpe != null ? (shAbs + shVs) / shBaseMax : 0,
+    reason: (p) =>
+      `Sharpe ${(sharpe ?? 0).toFixed(2)}` +
+      (benchSharpe != null ? ` vs ${summary.benchmark} ${benchSharpe.toFixed(2)}` : '') +
+      ` — risk-adjusted return cost ${Math.round(p)} pts.`,
+  })
+
+  // 5 — Relative performance vs benchmark (base 10). Deliberately LOW-weighted
+  // so the band reads as structural resilience, not "did you beat the market."
+  const deltaPp =
+    summary.twr_total != null && summary.bench_total != null
+      ? (summary.twr_total - summary.bench_total) * 100
+      : null
+  raw.push({
+    key: 'relative',
+    label: `Return vs ${summary.benchmark}`,
+    baseMax: 10,
+    available: deltaPp != null && hasHistory,
+    needsHistory: true,
+    rawFraction: deltaPp != null ? clamp01((1 - deltaPp) / 16) : 0,
+    reason: (p) => `Trailing ${summary.benchmark} by ${Math.abs(deltaPp ?? 0).toFixed(1)} pts — cost ${Math.round(p)} pts.`,
+  })
+
+  // 6 — Diversification via effective N (base 14).
+  const sumSq = weights.reduce((a, w) => a + w * w, 0)
+  const effN = sumSq > 0 ? 1 / sumSq : null
+  raw.push({
+    key: 'diversification',
+    label: 'Diversification',
+    baseMax: 14,
+    available: effN != null,
+    needsHistory: false,
+    rawFraction: effN != null ? clamp01((15 - effN) / 12) : 0,
+    reason: (p) => `Only ~${Math.round(effN ?? 0)} effective holdings — concentration of bets cost ${Math.round(p)} pts.`,
+  })
+
+  // 7 — Risk-fit vs the user's stated profile (base 12) — only when a profile exists.
+  if (hasProfile && riskAlignment && riskAlignment.in_band_weight_pct != null) {
+    const inBand = riskAlignment.in_band_weight_pct // fraction 0..1
+    raw.push({
+      key: 'riskfit',
+      label: 'Fit to your risk profile',
+      baseMax: 12,
+      available: true,
+      needsHistory: false,
+      rawFraction: clamp01((0.8 - inBand) / 0.8),
+      reason: (p) => `${pct(inBand)} of weight inside your chosen risk bands — cost ${Math.round(p)} pts.`,
+    })
+  }
+
+  // Renormalize the AVAILABLE factors' budgets to sum to 100, so the score is
+  // always out of 100 and a dropped factor never silently inflates it.
+  const active = raw.filter((f) => f.available)
+  const budgetSum = active.reduce((a, f) => a + f.baseMax, 0)
+  const notes: string[] = []
+  const dropped = raw.filter((f) => !f.available)
+  // Split "waiting on history" (honest, temporary) from "data unavailable".
+  const historyDropped = dropped.filter((f) => f.needsHistory && !hasHistory)
+  const dataDropped = dropped.filter((f) => !historyDropped.includes(f))
+  if (historyDropped.length > 0) {
+    notes.push(
+      `Based on about ${twr.length} trading days — drawdown, risk-adjusted ` +
+        `return and return-vs-${summary.benchmark} factors need roughly three ` +
+        `months of history, so this score reflects the structural factors ` +
+        `(concentration, diversification, sector) for now.`,
+    )
+  }
+  if (dataDropped.length > 0) {
+    notes.push(
+      `Scored without ${dataDropped.map((f) => f.label.toLowerCase()).join(', ')} ` +
+        `— unavailable for this book.`,
+    )
+  }
+
+  let totalPenalty = 0
+  const factors: HealthFactor[] = active.map((f) => {
+    const maxPenalty = budgetSum > 0 ? (f.baseMax * 100) / budgetSum : 0
+    const penalty = f.rawFraction * maxPenalty
+    totalPenalty += penalty
+    const ok = Math.round(penalty) === 0
+    return {
+      key: f.key,
+      label: f.label,
+      penalty,
+      maxPenalty,
+      reason: ok ? null : f.reason(penalty),
+      ok,
+    }
+  })
+
+  const score = Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
+  return {
+    status: 'ok',
+    score,
+    band: healthBand(score),
+    factors,
+    scoredCount: active.length,
+    totalFactors,
+    notes,
+  }
 }
 
 // ── What-if portfolio stats (Rebalance Simulator) ───────────────────────────

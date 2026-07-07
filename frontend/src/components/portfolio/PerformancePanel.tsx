@@ -116,7 +116,9 @@ export function PerformancePanel({
   onRangeChange,
 }: PerformancePanelProps) {
   const [mode, setMode] = useState<Mode>('growth')
-  const [showDrawdown, setShowDrawdown] = useState(false)
+  // Drawdown shading ON by default — the peak-to-trough decline is the single
+  // most useful "how bad has it been" signal for the copilot; toggle stays.
+  const [showDrawdown, setShowDrawdown] = useState(true)
   const [showEvents, setShowEvents] = useState(true)
   const [showUnderperf, setShowUnderperf] = useState(true)
 

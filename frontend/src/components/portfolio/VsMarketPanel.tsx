@@ -3,6 +3,9 @@ import type { PortfolioPerformance, PortfolioSummary } from '@/types/api'
 import { plColor } from '@/lib/colors'
 import { DASH, fmtPct, fmtRatio, fmtSignedPct } from '@/lib/format'
 import { TABLE_HEAD_ROW } from '@/lib/constants'
+import { bestWorstDay, computeBenchStats } from '@/components/portfolio/portfolioUi'
+import { InfoTip } from '@/components/ui/InfoTip'
+import { glossary } from '@/lib/glossary'
 
 interface WhatIfSide {
   vol: number | null
@@ -22,40 +25,6 @@ export interface VsMarketPanelProps {
 }
 
 const GREEN = '#16a34a'
-
-interface BenchStats {
-  vol: number | null
-  maxDD: number | null
-  sharpe: number | null
-}
-
-function computeBenchStats(curve: number[]): BenchStats {
-  if (!curve || curve.length < 3) return { vol: null, maxDD: null, sharpe: null }
-  const rets: number[] = []
-  for (let i = 1; i < curve.length; i++) {
-    const prev = curve[i - 1]
-    if (prev > 0) rets.push(curve[i] / prev - 1)
-  }
-  if (rets.length < 2) return { vol: null, maxDD: null, sharpe: null }
-  let sum = 0
-  for (let i = 0; i < rets.length; i++) sum += rets[i]
-  const mean = sum / rets.length
-  let sq = 0
-  for (let i = 0; i < rets.length; i++) sq += (rets[i] - mean) * (rets[i] - mean)
-  const sd = Math.sqrt(sq / (rets.length - 1))
-  const vol = sd * Math.sqrt(252)
-  const sharpe = sd > 0 ? (mean / sd) * Math.sqrt(252) : null
-  let peak = curve[0]
-  let maxDD = 0
-  for (let i = 1; i < curve.length; i++) {
-    if (curve[i] > peak) peak = curve[i]
-    if (peak > 0) {
-      const dd = curve[i] / peak - 1
-      if (dd < maxDD) maxDD = dd
-    }
-  }
-  return { vol, maxDD, sharpe }
-}
 
 function fmtPp(delta: number): string {
   return `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(1)} pp`
@@ -95,6 +64,9 @@ function Marker({ left, label, value, dotClass, bold }: MarkerProps) {
 export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
   const { summary, performance, whatIf, onApplyFixes } = props
   const bench = useMemo(() => computeBenchStats(performance.bench_curve), [performance.bench_curve])
+  // Best/worst single DAY, derived from the growth curves (both sides identically).
+  const pDay = useMemo(() => bestWorstDay(performance.twr_curve), [performance.twr_curve])
+  const bDay = useMemo(() => bestWorstDay(performance.bench_curve), [performance.bench_curve])
 
   const benchmark = summary.benchmark
   const benchTotal = summary.bench_total
@@ -142,7 +114,10 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
             </td>
           </tr>
           <tr className="border-b border-[#f3f5f9]">
-            <td className="py-1.5 pr-3 text-slate-500">Volatility (annualized)</td>
+            <td className="py-1.5 pr-3 text-slate-500">
+              Volatility (annualized)
+              <InfoTip text={glossary.Volatility} />
+            </td>
             <td className={`${numCell} font-semibold`}>{fmtPct(summary.volatility)}</td>
             <td className={numCell}>{fmtPct(bench.vol)}</td>
             <td className={numCell}>
@@ -156,7 +131,10 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
             </td>
           </tr>
           <tr className="border-b border-[#f3f5f9]">
-            <td className="py-1.5 pr-3 text-slate-500">Worst drawdown</td>
+            <td className="py-1.5 pr-3 text-slate-500">
+              Worst drawdown
+              <InfoTip text={glossary.Drawdown} />
+            </td>
             <td className={`${numCell} font-semibold`}>{fmtSignedPct(summary.max_drawdown)}</td>
             <td className={numCell}>{fmtSignedPct(bench.maxDD)}</td>
             <td className={numCell}>
@@ -170,7 +148,10 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
             </td>
           </tr>
           <tr className="border-b border-[#f3f5f9]">
-            <td className="py-1.5 pr-3 text-slate-500">Beta</td>
+            <td className="py-1.5 pr-3 text-slate-500">
+              Beta
+              <InfoTip text={glossary.Beta} />
+            </td>
             <td className={`${numCell} font-semibold`}>
               {summary.beta !== null ? `β ${fmtRatio(summary.beta)}` : DASH}
             </td>
@@ -183,8 +164,11 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
               )}
             </td>
           </tr>
-          <tr>
-            <td className="py-1.5 pr-3 text-slate-500">Sharpe</td>
+          <tr className="border-b border-[#f3f5f9]">
+            <td className="py-1.5 pr-3 text-slate-500">
+              Sharpe
+              <InfoTip text={glossary.Sharpe} />
+            </td>
             <td className={`${numCell} font-semibold`}>{fmtRatio(summary.sharpe)}</td>
             <td className={numCell}>{fmtRatio(bench.sharpe)}</td>
             <td className={numCell}>
@@ -192,6 +176,30 @@ export function VsMarketPanel(props: VsMarketPanelProps): JSX.Element {
                 <span className="font-medium" style={{ color: plColor(sharpeDelta) }}>
                   {`${sharpeDelta > 0 ? '+' : ''}${sharpeDelta.toFixed(2)}`}
                 </span>
+              ) : (
+                DASH
+              )}
+            </td>
+          </tr>
+          <tr className="border-b border-[#f3f5f9]">
+            <td className="py-1.5 pr-3 text-slate-500">Best day</td>
+            <td className={`${numCell} font-semibold`}>{fmtSignedPct(pDay.best)}</td>
+            <td className={numCell}>{fmtSignedPct(bDay.best)}</td>
+            <td className={numCell}>
+              {pDay.best !== null && bDay.best !== null ? (
+                <span className="text-slate-500">{fmtPp(pDay.best - bDay.best)}</span>
+              ) : (
+                DASH
+              )}
+            </td>
+          </tr>
+          <tr>
+            <td className="py-1.5 pr-3 text-slate-500">Worst day</td>
+            <td className={`${numCell} font-semibold`}>{fmtSignedPct(pDay.worst)}</td>
+            <td className={numCell}>{fmtSignedPct(bDay.worst)}</td>
+            <td className={numCell}>
+              {pDay.worst !== null && bDay.worst !== null ? (
+                <span className="text-slate-500">{fmtPp(pDay.worst - bDay.worst)}</span>
               ) : (
                 DASH
               )}
