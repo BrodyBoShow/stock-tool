@@ -125,6 +125,7 @@ export function RiskProfileCard() {
             </div>
             <button
               type="button"
+              id="risk-profile-quiz-btn"
               onClick={() => {
                 setSaved(null)
                 setQuizKey((k) => k + 1)

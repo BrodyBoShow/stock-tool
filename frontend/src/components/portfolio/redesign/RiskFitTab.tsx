@@ -43,13 +43,24 @@ export function RiskFitTab({
   const abovePct = riskAlignment?.portfolio?.above_band_weight_pct ?? 0
   const scrollFit = () =>
     document.getElementById(FIT_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // The quiz trigger lives in RiskProfileCard (Zone A). Open it directly so the
+  // "take the quiz" CTA actually launches the quiz — the alignment table below
+  // is profile-gated and renders nothing until a profile exists.
+  const openQuiz = () => {
+    const btn = document.getElementById('risk-profile-quiz-btn')
+    if (btn) btn.click()
+    else
+      document
+        .getElementById('risk-profile-setup')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const cta = !hasProfile
     ? {
         intent: 'primary' as const,
         message: 'Set your risk preference to see how each holding compares to it.',
         ctaLabel: 'Take the 60-second quiz',
-        onCta: scrollFit,
+        onCta: openQuiz,
       }
     : above.length > 0
       ? {
@@ -71,7 +82,9 @@ export function RiskFitTab({
   return (
     <div className="space-y-5">
       {/* Zone A */}
-      <RiskProfileCard />
+      <div id="risk-profile-setup">
+        <RiskProfileCard />
+      </div>
       <NextActionCTA {...cta} />
 
       {/* Zone B */}
