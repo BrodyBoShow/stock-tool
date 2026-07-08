@@ -641,6 +641,11 @@ class WatchlistRow(BaseModel):
     entry_trigger: str | None = None
     kill_criteria: str | None = None
     plan_updated_at: datetime | None = None
+    # thesis folded in from the retired Theses tab (edited on the deep dive)
+    thesis_summary: str | None = None
+    thesis_invalidation: str | None = None
+    thesis_review_date: date | None = None
+    thesis_review_due: bool = False
     watchlist_id: int
     security_id: int
 

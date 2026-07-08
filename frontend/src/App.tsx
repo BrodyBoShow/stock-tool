@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthGate } from '@/components/AuthGate'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -21,9 +21,6 @@ const WatchlistPage = lazy(() =>
 )
 const PortfolioPage = lazy(() =>
   import('@/pages/PortfolioPage').then((m) => ({ default: m.PortfolioPage })),
-)
-const ThesesPage = lazy(() =>
-  import('@/pages/ThesesPage').then((m) => ({ default: m.ThesesPage })),
 )
 const AlertsPage = lazy(() =>
   import('@/pages/AlertsPage').then((m) => ({ default: m.AlertsPage })),
@@ -56,7 +53,8 @@ export default function App() {
               <Route path="/securities/:ticker" element={<DeepDivePage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/portfolio" element={<PortfolioPage />} />
-              <Route path="/theses" element={<ThesesPage />} />
+              {/* /theses retired — thesis is folded into the Watchlist row + edited on the deep dive */}
+              <Route path="/theses" element={<Navigate to="/watchlist" replace />} />
               <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/funds" element={<FundsPage />} />
               <Route path="/lab" element={<LabPage />} />

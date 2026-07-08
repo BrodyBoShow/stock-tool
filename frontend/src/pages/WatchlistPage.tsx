@@ -163,7 +163,7 @@ export function WatchlistPage() {
           chips={[
             { label: 'Open the Screener', to: '/' },
             { label: 'Portfolio', to: '/portfolio' },
-            { label: 'Theses', to: '/theses' },
+            { label: 'Market', to: '/market' },
           ]}
         />
         <DisclaimerChip

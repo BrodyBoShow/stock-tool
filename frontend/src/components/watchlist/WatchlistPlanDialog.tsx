@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 
 import { DisclaimerChip } from '@/components/portfolio/redesign/DisclaimerChip'
 import { useToast } from '@/components/ui/Toast'
 import { useWatchlistMutations } from '@/hooks/useWatchlist'
 import { ApiError } from '@/lib/api'
+import { fmtDate } from '@/lib/format'
 import type { WatchlistRow } from '@/types/api'
 
 const FIELD =
@@ -179,6 +181,46 @@ export function WatchlistPlanDialog({
               className={FIELD}
             />
           </label>
+        </div>
+
+        {/* Thesis — folded in from the retired Theses tab; written/edited on the
+            deep dive, surfaced here read-only so the watch row is the one place
+            you see your full case. */}
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className={LABEL}>Your thesis</span>
+            {row.thesis_review_due && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-bold text-amber-800">
+                review due
+              </span>
+            )}
+          </div>
+          {row.thesis_summary ? (
+            <>
+              <p className="mt-1 text-[0.8rem] leading-snug text-slate-700">{row.thesis_summary}</p>
+              {row.thesis_review_date && (
+                <p className="mt-1 text-[0.68rem] text-slate-400">
+                  Review by {fmtDate(row.thesis_review_date)}
+                </p>
+              )}
+              <Link
+                to={`/securities/${row.ticker}`}
+                className="mt-1.5 inline-block text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+              >
+                Edit on the deep dive →
+              </Link>
+            </>
+          ) : (
+            <p className="mt-1 text-[0.76rem] text-slate-400">
+              No thesis yet.{' '}
+              <Link
+                to={`/securities/${row.ticker}`}
+                className="font-semibold text-indigo-600 hover:underline"
+              >
+                Write one on the deep dive →
+              </Link>
+            </p>
+          )}
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
