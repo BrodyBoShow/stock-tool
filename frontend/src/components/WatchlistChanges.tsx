@@ -1,9 +1,13 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { SectorPill } from '@/components/screener/SectorPill'
 import { Delta } from '@/components/ui/Delta'
 import { fmtDate, fmtMoney } from '@/lib/format'
+import { snoozedUntil, snoozeTicker } from '@/lib/watchlistSnooze'
 import type { WatchlistChange } from '@/types/api'
+
+const SNOOZE_DAYS = 30
 
 /** How "active" a name is, for sort-to-top within a tier: review due > new 8-Ks
  * > insider buys > a meaningful rank move. Quiet names sink to the bottom. */
@@ -81,7 +85,42 @@ function TierTag({ tier }: { tier: Tier }) {
   return null
 }
 
-function ChangeCard({ c }: { c: WatchlistChange }) {
+function ChangeCard({
+  c,
+  snoozedTs,
+  onSnooze,
+}: {
+  c: WatchlistChange
+  snoozedTs: number | null
+  onSnooze: (ticker: string, days: number) => void
+}) {
+  // Snoozed: a compact muted card that only offers "unsnooze" — no chips nagging.
+  if (snoozedTs != null) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-card border border-[#eef1f6] bg-[#fafbfc] px-4 py-3 shadow-card">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            to={`/securities/${c.ticker}`}
+            className="text-[0.9rem] font-bold text-slate-500 hover:text-indigo-600 hover:underline"
+          >
+            {c.ticker}
+          </Link>
+          <span className="text-[0.7rem] text-slate-400">
+            Snoozed · resumes{' '}
+            {new Date(snoozedTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSnooze(c.ticker, 0)}
+          className="flex-none text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+        >
+          Unsnooze
+        </button>
+      </div>
+    )
+  }
+
   const tier = tierOf(c)
   const rankMove =
     c.rank != null && c.rank_prior != null ? c.rank_prior - c.rank : null // +ve = improved
@@ -128,7 +167,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
         {/* ── ACT: developments that warrant a decision ─────────────────── */}
         {c.review_due && (
           <Link to={`/securities/${c.ticker}`}>
@@ -192,20 +231,57 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
           </Chip>
         )}
 
-        {tier === 'quiet' && <Chip tone="quiet">No material changes</Chip>}
+        {tier === 'quiet' ? (
+          <Chip tone="quiet">No material changes</Chip>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onSnooze(c.ticker, SNOOZE_DAYS)}
+            className="ml-auto text-[0.7rem] font-medium text-slate-400 hover:text-slate-600"
+            title={`Quiet ${c.ticker}'s updates for ${SNOOZE_DAYS} days`}
+          >
+            🔕 Snooze {SNOOZE_DAYS}d
+          </button>
+        )}
       </div>
     </div>
   )
 }
 
-export function WatchlistChanges({ rows }: { rows: WatchlistChange[] }) {
-  if (rows.length === 0) return null
-  const sorted = [...rows].sort(
-    (a, b) => TIER_RANK[tierOf(a)] - TIER_RANK[tierOf(b)] || activity(b) - activity(a),
-  )
-  const actCount = rows.filter((c) => tierOf(c) === 'act').length
-  const fyiCount = rows.filter((c) => tierOf(c) === 'fyi').length
+export function WatchlistChanges({
+  rows,
+  onSnoozeChange,
+}: {
+  rows: WatchlistChange[]
+  /** Fired when a snooze toggles, so the page's hero can recompute its count. */
+  onSnoozeChange?: () => void
+}) {
+  const [version, setVersion] = useState(0)
 
+  const handleSnooze = (ticker: string, days: number) => {
+    snoozeTicker(ticker, days)
+    setVersion((v) => v + 1)
+    onSnoozeChange?.()
+  }
+
+  // Recomputes when rows change or a snooze toggles (version).
+  const view = useMemo(() => {
+    const withSnooze = rows.map((c) => ({ c, ts: snoozedUntil(c.ticker) }))
+    const rank = (x: { c: WatchlistChange; ts: number | null }) =>
+      x.ts != null ? 3 : TIER_RANK[tierOf(x.c)]
+    withSnooze.sort((a, b) => rank(a) - rank(b) || activity(b.c) - activity(a.c))
+    const live = withSnooze.filter((x) => x.ts == null)
+    return {
+      sorted: withSnooze,
+      actCount: live.filter((x) => tierOf(x.c) === 'act').length,
+      fyiCount: live.filter((x) => tierOf(x.c) === 'fyi').length,
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, version])
+
+  if (rows.length === 0) return null
+
+  const { sorted, actCount, fyiCount } = view
   const summary =
     actCount > 0
       ? `${actCount} need${actCount === 1 ? 's' : ''} a look${fyiCount > 0 ? ` · ${fyiCount} FYI` : ''}`
@@ -222,8 +298,8 @@ export function WatchlistChanges({ rows }: { rows: WatchlistChange[] }) {
         </span>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        {sorted.map((c) => (
-          <ChangeCard key={c.security_id} c={c} />
+        {sorted.map(({ c, ts }) => (
+          <ChangeCard key={c.security_id} c={c} snoozedTs={ts} onSnooze={handleSnooze} />
         ))}
       </div>
     </section>
