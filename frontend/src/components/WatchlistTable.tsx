@@ -6,6 +6,7 @@ import { SectorPill } from '@/components/screener/SectorPill'
 import { Sparkline } from '@/components/screener/Sparkline'
 import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { WatchlistButton } from '@/components/WatchlistButton'
+import { WatchlistPlanDialog } from '@/components/watchlist/WatchlistPlanDialog'
 import { FACTOR_ORDER, FACTOR_TABLE, type FactorKey } from '@/lib/constants'
 import { DASH, fmtPrice, fmtSignedPct } from '@/lib/format'
 import type { WatchlistRow } from '@/types/api'
@@ -21,9 +22,9 @@ import type { WatchlistRow } from '@/types/api'
  * context the screener already shows but this table never did.
  */
 
-// company · sector · risk · 5 factors · trend · price · remove
+// company · sector · risk · 5 factors · trend · entry · price · remove
 const GRID =
-  'minmax(150px,1.5fr) minmax(120px,1.2fr) minmax(76px,0.8fr) repeat(5,minmax(70px,1fr)) minmax(60px,0.7fr) minmax(98px,1.05fr) 76px'
+  'minmax(146px,1.4fr) minmax(112px,1.1fr) minmax(72px,0.8fr) repeat(5,minmax(66px,1fr)) minmax(54px,0.6fr) minmax(92px,0.95fr) minmax(96px,1fr) 72px'
 
 type SortKey =
   | 'ticker'
@@ -85,6 +86,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
     key: 'composite',
     dir: -1,
   })
+  const [planRow, setPlanRow] = useState<WatchlistRow | null>(null)
 
   const sorted = useMemo(
     () => [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.dir)),
@@ -108,7 +110,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
       <div className="overflow-x-auto">
         {/* header */}
         <div
-          className="grid min-w-[980px] border-b border-gray-200 bg-gray-50"
+          className="grid min-w-[1080px] border-b border-gray-200 bg-gray-50"
           style={{ gridTemplateColumns: GRID }}
         >
           <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
@@ -140,6 +142,12 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
           <div className={`${TH} justify-center text-gray-400`} title="Price trend over the last ~30 trading sessions (end-of-day closes).">
             1M
           </div>
+          <div
+            className={`${TH} justify-center text-gray-500`}
+            title="Your entry plan: a target price you'd buy at (drives the buy-zone / %-above readout) plus your buy & drop criteria. Your private notes — StockBud never acts on them."
+          >
+            Entry
+          </div>
           <button
             type="button"
             onClick={() => toggleSort('last_price')}
@@ -152,7 +160,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
         </div>
 
         {/* rows */}
-        <div className="min-w-[980px]">
+        <div className="min-w-[1080px]">
           {sorted.map((r) => {
             const day = dayChange(r)
             const dayCls =
@@ -161,6 +169,13 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                 : day > 0
                   ? 'text-emerald-600'
                   : 'text-rose-600'
+            const target = r.target_price
+            const buyZone = target != null && r.last_price != null && r.last_price <= target
+            const pctAbove =
+              target != null && target > 0 && r.last_price != null && r.last_price > target
+                ? (r.last_price - target) / target
+                : null
+            const hasPlan = !!(r.note || r.entry_trigger || r.kill_criteria)
             return (
               <div
                 key={r.security_id}
@@ -207,6 +222,44 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                     title={`${r.ticker} price over the last ${r.price_history?.length ?? 0} sessions`}
                   />
                 </div>
+                <div className="relative z-10 flex h-full items-center justify-center px-1">
+                  {target != null ? (
+                    <button
+                      type="button"
+                      onClick={() => setPlanRow(r)}
+                      className="flex flex-col items-center gap-0.5 rounded-md px-1.5 py-1 hover:bg-slate-100"
+                      title="Edit your entry plan"
+                    >
+                      <span className="text-[0.78rem] font-semibold tabular-nums text-slate-700">
+                        {fmtPrice(target)}
+                      </span>
+                      {buyZone ? (
+                        <span
+                          className="rounded-full bg-emerald-50 px-1.5 text-[0.6rem] font-bold text-emerald-700"
+                          title={`Price has reached your ${fmtPrice(target)} target — your plan, not advice`}
+                        >
+                          in buy zone
+                        </span>
+                      ) : pctAbove != null ? (
+                        <span
+                          className="rounded-full bg-amber-50 px-1.5 text-[0.6rem] font-semibold text-amber-700"
+                          title={`${(pctAbove * 100).toFixed(0)}% above your ${fmtPrice(target)} target — your plan, not advice`}
+                        >
+                          {(pctAbove * 100).toFixed(0)}% above
+                        </span>
+                      ) : null}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPlanRow(r)}
+                      className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-[0.66rem] font-semibold text-slate-400 hover:border-indigo-300 hover:text-indigo-600"
+                      title="Set your entry plan (target price, why watching, buy/drop criteria)"
+                    >
+                      {hasPlan ? '✎ Plan' : '+ Plan'}
+                    </button>
+                  )}
+                </div>
                 <div className={`${cell} flex h-full flex-col items-end justify-center px-3 py-2`}>
                   <span className="text-[0.85rem] font-semibold text-gray-900">
                     {fmtPrice(r.last_price)}
@@ -223,6 +276,13 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
           })}
         </div>
       </div>
+      {planRow && (
+        <WatchlistPlanDialog
+          key={planRow.ticker}
+          row={planRow}
+          onClose={() => setPlanRow(null)}
+        />
+      )}
     </section>
   )
 }

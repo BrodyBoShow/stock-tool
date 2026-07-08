@@ -8,6 +8,8 @@ from api.schemas import (
     WatchlistChange,
     WatchlistChangesResponse,
     WatchlistMutationResponse,
+    WatchlistPlanResponse,
+    WatchlistPlanUpdate,
     WatchlistResponse,
     WatchlistRow,
 )
@@ -73,6 +75,35 @@ def add_to_watchlist(
         security_id=security_id,  # type: ignore[arg-type]
         status=wl_status,
     )
+
+
+@router.patch("/{ticker}/plan", response_model=WatchlistPlanResponse)
+def update_watchlist_plan(
+    ticker: str, body: WatchlistPlanUpdate, user: CurrentUser
+) -> WatchlistPlanResponse:
+    """Update a watched name's decision plan: a note, an entry target price, and
+    pre-registered entry/kill criteria. The user's own plan, not advice — and
+    StockBud never acts on it. Owner-scoped (owner_id from the JWT, never a
+    request param — IDOR-safe)."""
+    ticker = ticker.upper()
+    # exclude_unset → only the fields the client actually sent are written
+    # (true partial PATCH; an omitted field is left as-is, not wiped).
+    result = queries.watchlist_update_plan(
+        ticker,
+        owner_id=user.id,
+        fields=body.model_dump(exclude_unset=True),
+    )
+    if result == "not_found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticker {ticker!r} not found",
+        )
+    if result == "not_in_watchlist":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{ticker!r} is not in your watchlist",
+        )
+    return WatchlistPlanResponse(ticker=ticker, status=result)
 
 
 @router.delete("/{ticker}", status_code=status.HTTP_204_NO_CONTENT)
