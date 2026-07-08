@@ -5,8 +5,8 @@ import { Delta } from '@/components/ui/Delta'
 import { fmtDate, fmtMoney } from '@/lib/format'
 import type { WatchlistChange } from '@/types/api'
 
-/** How "active" a name is, for sort-to-top: review due > new 8-Ks > insider
- * buys > a meaningful rank move. Quiet names sink to the bottom. */
+/** How "active" a name is, for sort-to-top within a tier: review due > new 8-Ks
+ * > insider buys > a meaningful rank move. Quiet names sink to the bottom. */
 function activity(c: WatchlistChange): number {
   let s = 0
   if (c.review_due) s += 1000
@@ -16,6 +16,27 @@ function activity(c: WatchlistChange): number {
   if (c.rank != null && c.rank_prior != null) s += Math.abs(c.rank_prior - c.rank)
   return s
 }
+
+type Tier = 'act' | 'fyi' | 'quiet'
+
+/** Signal triage (spec: tier act-vs-FYI to fight alert fatigue).
+ *  ACT = a development that warrants a decision: a thesis review is due, a new
+ *  high-signal 8-K, or insider open-market buying. FYI = ambient context that
+ *  rarely needs action on its own: rank/score drift, the live intraday nudge,
+ *  or a news-coverage spike (which the app treats as context, not a signal). */
+function tierOf(c: WatchlistChange): Tier {
+  if (c.review_due || c.new_events > 0 || c.insider_buy_count > 0) return 'act'
+  const rankMoved = c.rank != null && c.rank_prior != null && c.rank !== c.rank_prior
+  const compMoved =
+    c.composite != null && c.composite_prior != null && c.composite !== c.composite_prior
+  const liveShown =
+    c.composite_live != null && c.composite != null &&
+    Math.abs(c.composite_live - c.composite) >= 0.1
+  if (c.news_spike || rankMoved || compMoved || liveShown) return 'fyi'
+  return 'quiet'
+}
+
+const TIER_RANK: Record<Tier, number> = { act: 0, fyi: 1, quiet: 2 }
 
 function Chip({
   tone,
@@ -42,41 +63,48 @@ function Chip({
   )
 }
 
+function TierTag({ tier }: { tier: Tier }) {
+  if (tier === 'act') {
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-amber-800">
+        Needs a look
+      </span>
+    )
+  }
+  if (tier === 'fyi') {
+    return (
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-slate-500">
+        FYI
+      </span>
+    )
+  }
+  return null
+}
+
 function ChangeCard({ c }: { c: WatchlistChange }) {
+  const tier = tierOf(c)
   const rankMove =
     c.rank != null && c.rank_prior != null ? c.rank_prior - c.rank : null // +ve = improved
   const compMove =
-    c.composite != null && c.composite_prior != null
-      ? c.composite - c.composite_prior
-      : null
+    c.composite != null && c.composite_prior != null ? c.composite - c.composite_prior : null
   const liveMove =
-    c.composite_live != null && c.composite != null
-      ? c.composite_live - c.composite
-      : null
+    c.composite_live != null && c.composite != null ? c.composite_live - c.composite : null
   const liveShown = liveMove != null && Math.abs(liveMove) >= 0.1
-
-  const quiet =
-    !c.review_due &&
-    c.new_events === 0 &&
-    !c.news_spike &&
-    c.insider_buy_count === 0 &&
-    (rankMove == null || rankMove === 0) &&
-    !liveShown
 
   return (
     <div
       className={
         'rounded-card border bg-white p-4 shadow-card ' +
-        (c.review_due
-          ? 'border-amber-200'
-          : quiet
+        (tier === 'act'
+          ? 'border-l-4 border-l-amber-400 border-amber-200'
+          : tier === 'quiet'
             ? 'border-[#eef1f6]'
             : 'border-gray-200')
       }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               to={`/securities/${c.ticker}`}
               className="text-[0.95rem] font-bold text-gray-900 hover:text-indigo-600 hover:underline"
@@ -84,6 +112,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
               {c.ticker}
             </Link>
             {c.sector && <SectorPill sector={c.sector} />}
+            <TierTag tier={tier} />
           </div>
           {c.name && (
             <div className="mt-0.5 truncate text-[0.75rem] text-gray-400">{c.name}</div>
@@ -100,7 +129,29 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {/* rank + move */}
+        {/* ── ACT: developments that warrant a decision ─────────────────── */}
+        {c.review_due && (
+          <Link to={`/securities/${c.ticker}`}>
+            <Chip tone="review">⏰ Thesis review due</Chip>
+          </Link>
+        )}
+        {c.new_events > 0 && (
+          <Chip tone="event">
+            ▾ {c.new_events} new 8-K
+            {c.latest_event_label ? ` · ${c.latest_event_label}` : ''}
+            {c.latest_event_date ? (
+              <span className="text-amber-500"> ({fmtDate(c.latest_event_date)})</span>
+            ) : null}
+          </Chip>
+        )}
+        {c.insider_buy_count > 0 && (
+          <Chip tone="insider">
+            ▴ Insider {c.insider_buy_count} buy{c.insider_buy_count === 1 ? '' : 's'}
+            {c.insider_buy_value ? ` · ${fmtMoney(c.insider_buy_value)}` : ''} (3m)
+          </Chip>
+        )}
+
+        {/* ── FYI: ambient context, rarely a standalone reason to act ────── */}
         {c.rank != null && (
           <Chip tone="rank">
             Rank #{c.rank}
@@ -122,35 +173,12 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
             )}
           </Chip>
         )}
-
-        {/* live intraday composite */}
         {liveShown && (
           <Chip tone="live">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
             Live {c.composite_live!.toFixed(1)} <Delta value={liveMove!} />
           </Chip>
         )}
-
-        {/* high-signal 8-K */}
-        {c.new_events > 0 && (
-          <Chip tone="event">
-            ▾ {c.new_events} new 8-K
-            {c.latest_event_label ? ` · ${c.latest_event_label}` : ''}
-            {c.latest_event_date ? (
-              <span className="text-amber-500"> ({fmtDate(c.latest_event_date)})</span>
-            ) : null}
-          </Chip>
-        )}
-
-        {/* insider open-market buys */}
-        {c.insider_buy_count > 0 && (
-          <Chip tone="insider">
-            ▴ Insider {c.insider_buy_count} buy{c.insider_buy_count === 1 ? '' : 's'}
-            {c.insider_buy_value ? ` · ${fmtMoney(c.insider_buy_value)}` : ''} (3m)
-          </Chip>
-        )}
-
-        {/* GDELT news coverage-volume spike (context, not a signal) */}
         {c.news_spike && (
           <Chip tone="news">
             <span
@@ -164,14 +192,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
           </Chip>
         )}
 
-        {/* thesis review due */}
-        {c.review_due && (
-          <Link to={`/securities/${c.ticker}`}>
-            <Chip tone="review">⏰ Thesis review due</Chip>
-          </Link>
-        )}
-
-        {quiet && <Chip tone="quiet">No material changes</Chip>}
+        {tier === 'quiet' && <Chip tone="quiet">No material changes</Chip>}
       </div>
     </div>
   )
@@ -179,18 +200,25 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
 
 export function WatchlistChanges({ rows }: { rows: WatchlistChange[] }) {
   if (rows.length === 0) return null
-  const sorted = [...rows].sort((a, b) => activity(b) - activity(a))
-  const active = sorted.filter((c) => activity(c) > 0).length
+  const sorted = [...rows].sort(
+    (a, b) => TIER_RANK[tierOf(a)] - TIER_RANK[tierOf(b)] || activity(b) - activity(a),
+  )
+  const actCount = rows.filter((c) => tierOf(c) === 'act').length
+  const fyiCount = rows.filter((c) => tierOf(c) === 'fyi').length
+
+  const summary =
+    actCount > 0
+      ? `${actCount} need${actCount === 1 ? 's' : ''} a look${fyiCount > 0 ? ` · ${fyiCount} FYI` : ''}`
+      : fyiCount > 0
+        ? `${fyiCount} FYI update${fyiCount === 1 ? '' : 's'}`
+        : 'no material updates'
 
   return (
     <section className="space-y-3">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-[0.95rem] font-bold text-gray-900">What&apos;s changed</h2>
-        <span className="text-[0.74rem] text-gray-400">
-          {active > 0
-            ? `${active} of ${rows.length} ${rows.length === 1 ? 'name has' : 'names have'} updates`
-            : 'no material updates'}{' '}
-          · rank/score vs ~1mo ago · 8-Ks &amp; insider buys recent
+        <span className="text-right text-[0.74rem] text-gray-400">
+          {summary} · rank/score vs ~1mo ago · 8-Ks &amp; insider buys recent
         </span>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
