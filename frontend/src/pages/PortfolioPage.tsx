@@ -3,41 +3,21 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
-import { ActionCardStack } from '@/components/portfolio/ActionCardStack'
 import { AddTransactionForm, CsvImportButton } from '@/components/portfolio/AddTransactionForm'
 import { BrokerageCard } from '@/components/portfolio/BrokerageCard'
-import { DividendsPanel } from '@/components/portfolio/DividendsPanel'
-import { HoldingsDiagnostic } from '@/components/portfolio/HoldingsDiagnostic'
-import { MonteCarloPanel } from '@/components/portfolio/MonteCarloPanel'
-import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
-import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
-import { HealthScorePanel } from '@/components/portfolio/HealthScorePanel'
-import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
 import { ActivityTab } from '@/components/portfolio/redesign/ActivityTab'
 import { HoldingsTab } from '@/components/portfolio/redesign/HoldingsTab'
 import { OverviewTab } from '@/components/portfolio/redesign/OverviewTab'
 import { RiskFitTab } from '@/components/portfolio/redesign/RiskFitTab'
-import { StrategyDriftCard } from '@/components/portfolio/StrategyDriftCard'
-import { AlignedIdeasPanel } from '@/components/portfolio/risk/AlignedIdeasPanel'
-import { RiskAlignmentPanel } from '@/components/portfolio/risk/RiskAlignmentPanel'
-import { RiskProfileCard } from '@/components/portfolio/risk/RiskProfileCard'
 import {
   BENCHMARK_OPTIONS,
-  activeSnoozes,
-  buildVerdict,
   capWeights,
   computeBenchStats,
   computeHealthScore,
-  flagKey,
   tradesToWeights,
-  whatIfStats,
 } from '@/components/portfolio/portfolioUi'
-import type { RangeKey, SimTrade, WhatIfStats } from '@/components/portfolio/portfolioUi'
+import type { RangeKey, SimTrade } from '@/components/portfolio/portfolioUi'
 import { RebalanceDrawer } from '@/components/portfolio/RebalanceDrawer'
-import { StressTestPanel } from '@/components/portfolio/StressTestPanel'
-import { AllocationPanel, FactorTiltRadar } from '@/components/portfolio/TiltAllocation'
-import { TransactionsPanel } from '@/components/portfolio/TransactionsPanel'
-import { VsMarketPanel } from '@/components/portfolio/VsMarketPanel'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -51,9 +31,11 @@ import type { PortfolioFlag, PortfolioHolding } from '@/types/api'
 
 const BENCH_KEY = 'stockbud.portfolio.benchmark'
 
-/** PR4 IA reorg: the page is 4 focused panes (same ?pane= URL pattern as the
- *  deep dive) instead of a 12-section scroll. Overview answers "how am I
- *  doing?" in one screen; Risk & Fit holds the personalization layer. */
+/** The Portfolio page is 4 focused panes (same ?pane= URL pattern as the deep
+ *  dive), each a 3-zone tab (hero + one next-action → analytical core → explore
+ *  chips). Overview answers "how am I doing?" in one screen; Risk & Fit holds the
+ *  personalization layer; Holdings the diagnostic table; Income & Activity the
+ *  cash-in ledger. */
 type PaneId = 'overview' | 'risk' | 'holdings' | 'activity'
 
 const PANES: Array<{ id: PaneId; label: string }> = [
@@ -124,26 +106,10 @@ export function PortfolioPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawPane = searchParams.get('pane')
   const pane: PaneId = PANE_IDS.includes(rawPane as PaneId) ? (rawPane as PaneId) : 'overview'
-  // Redesign flag (?redesign=1) — Phase 2 of the UX refinement ships the new
-  // 3-zone Overview behind it so it can be A/B'd against the current one before
-  // cutover. Sticky across pane switches; togglable in the sub-header.
-  const redesign = searchParams.get('redesign') === '1'
-  const paneParams = (id: PaneId, rd: boolean): Record<string, string> => {
-    const p: Record<string, string> = {}
-    if (id !== 'overview') p.pane = id
-    if (rd) p.redesign = '1'
-    return p
-  }
   const setPane = (id: PaneId) => {
-    setSearchParams(paneParams(id, redesign))
+    setSearchParams(id === 'overview' ? {} : { pane: id })
     window.scrollTo({ top: 0 })
   }
-  const toggleRedesign = () => setSearchParams(paneParams(pane, !redesign))
-  // Panes with a redesigned version wired (grows each phase; P4 adds 'activity').
-  // When active the pane renders its own Zone-A hero + Zone-C disclaimer, so the
-  // global hero + footnote are hidden for it.
-  const REDESIGNED_PANES: PaneId[] = ['overview', 'risk', 'holdings', 'activity']
-  const redesignActive = redesign && REDESIGNED_PANES.includes(pane)
   const [drawer, setDrawer] = useState<{ open: boolean; trades: SimTrade[]; seq: number }>({
     open: false,
     trades: [],
@@ -164,7 +130,7 @@ export function PortfolioPage() {
     queryFn: () => getPortfolio(benchmark),
     staleTime: 60 * 1000,
   })
-  const { data: analytics, isPending: analyticsPending } = useQuery({
+  const { data: analytics } = useQuery({
     queryKey: ['portfolio', 'analytics', benchmark],
     queryFn: () => getPortfolioAnalytics(benchmark),
     staleTime: 5 * 60 * 1000,
@@ -196,43 +162,20 @@ export function PortfolioPage() {
   const holdings = useMemo(() => data?.holdings ?? [], [data])
   const flags = useMemo(() => data?.flags ?? [], [data])
 
-  // Snoozed cards shouldn't count toward the hero's "See N fixes" — bump a
-  // version whenever the stack snoozes/unsnoozes so this recomputes.
-  const [snoozeVersion, setSnoozeVersion] = useState(0)
-  const heroFlags = useMemo(() => {
-    const snoozed = activeSnoozes()
-    return flags.filter((f) => !(flagKey(f) in snoozed))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flags, snoozeVersion])
-
-  // Simulator prefill from the action-card fixes, and the before/after stats
-  // shown on the risk spectrum / vs-market panel. BOTH sides come from the
-  // same trailing-1Y matrix, so the shown improvement is the fixes — not a
-  // full-history-vs-1Y window artifact.
+  // Simulator prefill from the action-card fixes, and the suggested weights fed
+  // to the Monte-Carlo projection. Both come from the same trailing-1Y matrix.
   const suggested = useMemo(() => {
     const trades = fixTrades(flags, holdings, analytics?.last_close ?? undefined)
     if (!trades.length || !analytics?.returns) {
-      return {
-        trades,
-        weights: null as Record<string, number> | null,
-        whatIf: null as { before: WhatIfStats; after: WhatIfStats } | null,
-      }
+      return { trades, weights: null as Record<string, number> | null }
     }
-    const bench = analytics.benchmark ?? benchmark
     const weights = capWeights(tradesToWeights(holdings, trades))
-    const before = whatIfStats(
-      tradesToWeights(holdings, []),
-      analytics.returns, bench, analytics.expected ?? undefined,
-    )
-    const after = whatIfStats(
-      weights, analytics.returns, bench, analytics.expected ?? undefined,
-    )
-    return { trades, weights, whatIf: { before, after } }
-  }, [flags, holdings, analytics, benchmark])
+    return { trades, weights }
+  }, [flags, holdings, analytics])
 
   // Portfolio Health — a deterministic 0-100 structural diagnostic, all
   // client-side from the payload already fetched (never fabricates; renders a
-  // copy-only state on short history). Bridge tone matches the hero's verdict.
+  // copy-only state on short history).
   const health = useMemo(() => {
     const summary = data?.summary
     const perf = data?.performance
@@ -251,25 +194,8 @@ export function PortfolioPage() {
     })
   }, [data, holdings, flags, riskAlignment])
 
-  const verdictTone = useMemo(() => {
-    const summary = data?.summary
-    if (!summary) return 'warn' as const
-    return buildVerdict({
-      twrTotal: summary.twr_total,
-      benchTotal: summary.bench_total,
-      benchmark: summary.benchmark,
-      volatility: summary.volatility,
-      beta: summary.beta,
-      flags,
-      firstDate: summary.first_date,
-    }).tone
-  }, [data, flags])
-
   const openSimulator = (trades: SimTrade[]) =>
     setDrawer((d) => ({ open: true, trades, seq: d.seq + 1 }))
-
-  const openForFlag = (flag: PortfolioFlag) =>
-    openSimulator(fixTrades([flag], holdings, analytics?.last_close ?? undefined))
 
   const openForTicker = (ticker: string | null) => {
     if (!ticker) {
@@ -327,7 +253,7 @@ export function PortfolioPage() {
   const s = data.summary!
 
   // Live-adjust the headline so the hero reconciles with the live-quote overlay
-  // on the holdings rows (same logic as before the redesign).
+  // on the holdings rows.
   const anyLive = holdings.some((h) => h.ticker && quotes[h.ticker]?.price != null)
   const liveTotal = holdings.reduce((acc, h) => {
     const live = h.ticker ? quotes[h.ticker]?.price ?? null : null
@@ -364,18 +290,6 @@ export function PortfolioPage() {
         unrealized_pl: s.unrealized_pl,
       }
 
-  const scrollToFixes = () => {
-    // The fixes stack lives on the Overview pane — jump there first if needed.
-    if (pane !== 'overview') setPane('overview')
-    window.setTimeout(
-      () =>
-        document
-          .getElementById('portfolio-fixes')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-      60,
-    )
-  }
-
   return (
     <div className="space-y-5">
       {/* sub-header: breadcrumb + global benchmark picker */}
@@ -386,18 +300,6 @@ export function PortfolioPage() {
           <span className="text-slate-400">Portfolio</span>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleRedesign}
-            aria-pressed={redesign}
-            className={`rounded-full border px-3 py-1 text-[0.72rem] font-semibold transition-colors ${
-              redesign
-                ? 'border-violet-300 bg-violet-50 text-violet-700'
-                : 'border-gray-200 bg-white text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {redesign ? '✨ New design · on' : 'Try new design'}
-          </button>
           <label className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-500">
             Benchmark
             <select
@@ -413,20 +315,8 @@ export function PortfolioPage() {
         </div>
       </div>
 
-      {/* The redesigned Overview provides its own Zone-A hero; the old global
-          hero stays for every other view (and old Overview). */}
-      {!redesignActive && (
-        <PortfolioHero
-          summary={s}
-          view={view}
-          flags={heroFlags}
-          cashTracking={data.cash_tracking}
-          onSeeFixes={scrollToFixes}
-        />
-      )}
-
-      {/* pane nav (PR4 IA reorg): the 12-section scroll becomes 4 focused
-          panes, same ?pane= URL pattern as the deep dive. */}
+      {/* pane nav: 4 focused panes, same ?pane= URL pattern as the deep dive.
+          Each pane carries its own Zone-A hero and Zone-C disclaimer. */}
       <nav
         aria-label="Portfolio sections"
         className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-gray-200 bg-white/95 px-4 backdrop-blur-sm"
@@ -450,148 +340,54 @@ export function PortfolioPage() {
         </div>
       </nav>
 
-      {pane === 'overview' &&
-        (redesign ? (
-          <OverviewTab
-            view={view}
-            summary={s}
-            health={health}
-            holdings={holdings}
-            flags={flags}
-            performance={data.performance ?? null}
-            benchmark={s.benchmark}
-            range={range}
-            onRangeChange={setRange}
-            onReview={openForTicker}
-            onExplore={setPane}
-          />
-        ) : (
-          <>
-            {/* Portfolio Health leads the Overview — the structural how-am-I-doing
-                snapshot before the action list. */}
-            {health && (
-              <HealthScorePanel health={health} benchmark={s.benchmark} verdictTone={verdictTone} />
-            )}
-            {/* No profile yet: surface the quiz prompt here too (the card shows
-                its prompt variant); once set, it lives on Risk & Fit only. */}
-            {riskAlignment && !riskAlignment.has_profile && <RiskProfileCard />}
-            <div id="portfolio-fixes">
-              <ActionCardStack
-                flags={flags}
-                onOpenSimulator={openForFlag}
-                onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
-              />
-            </div>
-            <StrategyDriftCard holdings={holdings} />
-            {data.performance && (
-              <PerformancePanel
-                performance={data.performance}
-                benchmark={s.benchmark}
-                range={range}
-                onRangeChange={setRange}
-              />
-            )}
-            {data.performance && (
-              <VsMarketPanel
-                summary={s}
-                performance={data.performance}
-                whatIf={suggested.whatIf}
-                onApplyFixes={() => openSimulator(suggested.trades)}
-              />
-            )}
-          </>
-        ))}
+      {pane === 'overview' && (
+        <OverviewTab
+          view={view}
+          summary={s}
+          health={health}
+          holdings={holdings}
+          flags={flags}
+          performance={data.performance ?? null}
+          benchmark={s.benchmark}
+          range={range}
+          onRangeChange={setRange}
+          onReview={openForTicker}
+          onExplore={setPane}
+        />
+      )}
 
-      {pane === 'risk' &&
-        (redesign ? (
-          <RiskFitTab
-            riskAlignment={riskAlignment}
-            performance={data.performance ?? null}
-            stress={analytics?.stress ?? []}
-            suggestedWeights={suggested.weights}
-            holdings={holdings}
-            benchmark={s.benchmark}
-            onExplore={setPane}
-          />
-        ) : (
-          <>
-            <RiskProfileCard />
-            {riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}
-            <StressTestPanel
-              stress={analytics?.stress ?? []}
-              benchmark={s.benchmark}
-              holdings={holdings}
-            />
-            <MonteCarloPanel benchmark={s.benchmark} suggestedWeights={suggested.weights} />
-            {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
-          </>
-        ))}
+      {pane === 'risk' && (
+        <RiskFitTab
+          riskAlignment={riskAlignment}
+          performance={data.performance ?? null}
+          stress={analytics?.stress ?? []}
+          suggestedWeights={suggested.weights}
+          holdings={holdings}
+          benchmark={s.benchmark}
+          onExplore={setPane}
+        />
+      )}
 
-      {pane === 'holdings' &&
-        (redesign ? (
-          <HoldingsTab
-            summary={s}
-            holdings={holdings}
-            quotes={quotes}
-            analytics={analytics}
-            flags={flags}
-            onReview={openForTicker}
-            onExplore={setPane}
-          />
-        ) : (
-          <>
-            <SectionCard
-              title="Holdings"
-              hint="Price and day change use live quotes when available (~15m delayed), otherwise the nightly close. Click a row for tax lots, thesis, correlations and quick actions."
-            >
-              <HoldingsDiagnostic
-                holdings={holdings}
-                quotes={quotes}
-                analytics={analytics}
-                flags={flags}
-                asOf={s.as_of}
-                onOpenSimulator={openForTicker}
-              />
-            </SectionCard>
-            <div className="grid gap-5 lg:grid-cols-2">
-              {data.factor_tilt && <FactorTiltRadar tilt={data.factor_tilt} />}
-              {data.allocation && (
-                <AllocationPanel holdings={holdings} allocation={data.allocation} />
-              )}
-            </div>
-            {/* pass the real query state — !analytics would show a skeleton forever
-                when the analytics endpoint errors out */}
-            <OverlapMatrixPanel analytics={analytics} isLoading={analyticsPending} />
-          </>
-        ))}
+      {pane === 'holdings' && (
+        <HoldingsTab
+          summary={s}
+          holdings={holdings}
+          quotes={quotes}
+          analytics={analytics}
+          flags={flags}
+          onReview={openForTicker}
+          onExplore={setPane}
+        />
+      )}
 
-      {pane === 'activity' &&
-        (redesign ? (
-          <ActivityTab
-            income={data.income ?? null}
-            txnRows={txnData?.rows ?? []}
-            warnings={data.warnings}
-            benchmark={s.benchmark}
-            onExplore={setPane}
-          />
-        ) : (
-          <>
-            {data.income && <DividendsPanel income={data.income} benchmark={s.benchmark} />}
-            <TransactionsPanel rows={txnData?.rows ?? []} warnings={data.warnings} />
-            <BrokerageCard />
-          </>
-        ))}
-
-      {/* Redesigned Overview carries its own single DisclaimerChip (Zone C); keep
-          the long global footnote for every other view. */}
-      {!redesignActive && (
-        <p className="mx-auto max-w-3xl pb-2 text-center text-xs text-gray-400">
-          Tracking and analytics over your own ledger — measurements and estimates, not
-          investment advice, and StockBud never places orders. Dividends and splits come
-          from nightly market data; prices are ~15-minute-delayed; forward income and
-          stress figures are labeled projections/estimates. Treat your official brokerage
-          statements as the source of truth.
-        </p>
+      {pane === 'activity' && (
+        <ActivityTab
+          income={data.income ?? null}
+          txnRows={txnData?.rows ?? []}
+          warnings={data.warnings}
+          benchmark={s.benchmark}
+          onExplore={setPane}
+        />
       )}
 
       <RebalanceDrawer

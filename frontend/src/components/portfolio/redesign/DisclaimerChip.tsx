@@ -7,7 +7,8 @@
  *    footer → the bottom-strip line under a tab's content (default)
  *    modal  → centered copy for a first-visit acceptance dialog (the dialog gate
  *             itself is wired at the page level; this just renders the text). */
-const FULL = 'Not investment advice — tracking & analytics over your own ledger.'
+const FULL =
+  'Not investment advice — tracking & analytics over your own ledger. StockBud never places orders.'
 
 export function DisclaimerChip({
   variant = 'footer',
