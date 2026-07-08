@@ -8,6 +8,7 @@ import { ExploreChips } from '@/components/portfolio/redesign/ExploreChips'
 import { NextActionCTA } from '@/components/portfolio/redesign/NextActionCTA'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WatchlistChanges } from '@/components/WatchlistChanges'
+import { StalenessNudge } from '@/components/watchlist/StalenessNudge'
 import { WatchlistHero, type WatchlistHeroView } from '@/components/watchlist/WatchlistHero'
 import { WatchlistTable } from '@/components/WatchlistTable'
 import { getWatchlist, getWatchlistChanges } from '@/lib/api'
@@ -150,8 +151,9 @@ export function WatchlistPage() {
       <WatchlistHero view={hero} />
       <NextActionCTA {...cta} />
 
-      {/* Zone B — what moved, then the full sortable grid */}
+      {/* Zone B — what moved, prune nudges, then the full sortable grid */}
       {changes && changes.rows.length > 0 && <WatchlistChanges rows={changes.rows} />}
+      <StalenessNudge rows={rows} />
       <div id="watchlist-grid">
         <WatchlistTable rows={rows} />
       </div>
