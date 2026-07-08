@@ -13,6 +13,7 @@ import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
 import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
 import { HealthScorePanel } from '@/components/portfolio/HealthScorePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
+import { ActivityTab } from '@/components/portfolio/redesign/ActivityTab'
 import { HoldingsTab } from '@/components/portfolio/redesign/HoldingsTab'
 import { OverviewTab } from '@/components/portfolio/redesign/OverviewTab'
 import { RiskFitTab } from '@/components/portfolio/redesign/RiskFitTab'
@@ -141,7 +142,7 @@ export function PortfolioPage() {
   // Panes with a redesigned version wired (grows each phase; P4 adds 'activity').
   // When active the pane renders its own Zone-A hero + Zone-C disclaimer, so the
   // global hero + footnote are hidden for it.
-  const REDESIGNED_PANES: PaneId[] = ['overview', 'risk', 'holdings']
+  const REDESIGNED_PANES: PaneId[] = ['overview', 'risk', 'holdings', 'activity']
   const redesignActive = redesign && REDESIGNED_PANES.includes(pane)
   const [drawer, setDrawer] = useState<{ open: boolean; trades: SimTrade[]; seq: number }>({
     open: false,
@@ -505,7 +506,9 @@ export function PortfolioPage() {
         (redesign ? (
           <RiskFitTab
             riskAlignment={riskAlignment}
+            performance={data.performance ?? null}
             stress={analytics?.stress ?? []}
+            suggestedWeights={suggested.weights}
             holdings={holdings}
             benchmark={s.benchmark}
             onExplore={setPane}
@@ -562,13 +565,22 @@ export function PortfolioPage() {
           </>
         ))}
 
-      {pane === 'activity' && (
-        <>
-          {data.income && <DividendsPanel income={data.income} benchmark={s.benchmark} />}
-          <TransactionsPanel rows={txnData?.rows ?? []} warnings={data.warnings} />
-          <BrokerageCard />
-        </>
-      )}
+      {pane === 'activity' &&
+        (redesign ? (
+          <ActivityTab
+            income={data.income ?? null}
+            txnRows={txnData?.rows ?? []}
+            warnings={data.warnings}
+            benchmark={s.benchmark}
+            onExplore={setPane}
+          />
+        ) : (
+          <>
+            {data.income && <DividendsPanel income={data.income} benchmark={s.benchmark} />}
+            <TransactionsPanel rows={txnData?.rows ?? []} warnings={data.warnings} />
+            <BrokerageCard />
+          </>
+        ))}
 
       {/* Redesigned Overview carries its own single DisclaimerChip (Zone C); keep
           the long global footnote for every other view. */}
