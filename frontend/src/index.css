@@ -4,6 +4,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Portfolio redesign design tokens (Jul 2026 handoff spec) ──────────────────
+ * Reference these by name in Portfolio components — never hard-code hex. They are
+ * additive CSS custom properties (they don't restyle the rest of the app); the
+ * Portfolio tab's redesign primitives read them via var(--token) or the Tailwind
+ * aliases in tailwind.config.js (e.g. text-ink, bg-accent). Values are copied
+ * verbatim from the spec's "Design tokens" panel. */
+:root {
+  /* color */
+  --bg: #f7f8fa; /* page */
+  --ink: #0f172a; /* text */
+  --muted: #64748b; /* secondary text */
+  --surface: #ffffff; /* cards */
+  --primary: #2563eb; /* links / active */
+  --accent: #7c3aed; /* the single primary CTA */
+  --pos: #16a34a; /* gains */
+  --neg: #dc2626; /* losses */
+  --warn: #d97706; /* risk / caution */
+  --info: #0891b2; /* neutral data */
+
+  /* type scale (px) */
+  --fs-display: 44px;
+  --fs-h1: 32px;
+  --fs-h2: 22px;
+  --fs-h3: 16px;
+  --fs-body: 14px;
+  --fs-small: 12px;
+  --fs-micro: 10px;
+
+  /* radii */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  /* shadows */
+  --sh-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --sh-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --sh-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+
+  /* motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+}
+
 /* Tabular monospace for dense numeric data (scores, prices, caps) — the single
  * change that makes the screener "feel like a pro data tool". Digits are fixed-
  * width so columns align; falls back to the system mono stack if the web font
