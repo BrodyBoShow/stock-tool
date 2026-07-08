@@ -35,6 +35,7 @@ export function WatchlistPlanDialog({
   )
   const [entry, setEntry] = useState(row.entry_trigger ?? '')
   const [kill, setKill] = useState(row.kill_criteria ?? '')
+  const [confirmClear, setConfirmClear] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -69,6 +70,33 @@ export function WatchlistPlanDialog({
         },
         onError: (e) =>
           toast('error', e instanceof ApiError ? e.message : `Could not save ${row.ticker}`),
+      },
+    )
+  }
+
+  // Whether this row already has a saved plan (drives the Clear button).
+  const hasExistingPlan =
+    row.target_price != null || !!row.note || !!row.entry_trigger || !!row.kill_criteria
+
+  // Two-click clear (guards against wiping typed notes by accident): first click
+  // arms it, second sends an all-null body so the partial PATCH clears every field.
+  const clear = () => {
+    if (!confirmClear) {
+      setConfirmClear(true)
+      return
+    }
+    updatePlan.mutate(
+      {
+        ticker: row.ticker,
+        body: { note: null, target_price: null, entry_trigger: null, kill_criteria: null },
+      },
+      {
+        onSuccess: () => {
+          toast('success', `Cleared your plan for ${row.ticker}`)
+          onClose()
+        },
+        onError: (e) =>
+          toast('error', e instanceof ApiError ? e.message : `Could not clear ${row.ticker}`),
       },
     )
   }
@@ -154,7 +182,24 @@ export function WatchlistPlanDialog({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <DisclaimerChip variant="inline" />
+          <div className="flex items-center gap-2">
+            <DisclaimerChip variant="inline" />
+            {hasExistingPlan && (
+              <button
+                type="button"
+                onClick={clear}
+                disabled={updatePlan.isPending}
+                className={`rounded-lg px-2.5 py-1.5 text-[0.78rem] font-semibold transition-colors disabled:opacity-50 ${
+                  confirmClear
+                    ? 'bg-rose-600 text-white hover:bg-rose-700'
+                    : 'text-rose-600 hover:bg-rose-50'
+                }`}
+                title="Remove this name's saved plan (target + notes)"
+              >
+                {confirmClear ? 'Confirm clear' : 'Clear plan'}
+              </button>
+            )}
+          </div>
           <div className="flex gap-2.5">
             <button
               type="button"
