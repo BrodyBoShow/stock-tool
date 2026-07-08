@@ -6,6 +6,7 @@ import { SectorPill } from '@/components/screener/SectorPill'
 import { Sparkline } from '@/components/screener/Sparkline'
 import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { WatchlistButton } from '@/components/WatchlistButton'
+import { WatchlistAlertDialog } from '@/components/watchlist/WatchlistAlertDialog'
 import { WatchlistPlanDialog } from '@/components/watchlist/WatchlistPlanDialog'
 import { FACTOR_ORDER, FACTOR_TABLE, type FactorKey } from '@/lib/constants'
 import { DASH, fmtPrice, fmtSignedPct } from '@/lib/format'
@@ -22,9 +23,9 @@ import type { WatchlistRow } from '@/types/api'
  * context the screener already shows but this table never did.
  */
 
-// company · sector · risk · 5 factors · trend · entry · price · remove
+// company · sector · risk · 5 factors · trend · entry · price · actions
 const GRID =
-  'minmax(146px,1.4fr) minmax(112px,1.1fr) minmax(72px,0.8fr) repeat(5,minmax(66px,1fr)) minmax(54px,0.6fr) minmax(92px,0.95fr) minmax(96px,1fr) 72px'
+  'minmax(146px,1.4fr) minmax(112px,1.1fr) minmax(72px,0.8fr) repeat(5,minmax(66px,1fr)) minmax(54px,0.6fr) minmax(92px,0.95fr) minmax(96px,1fr) 108px'
 
 type SortKey =
   | 'ticker'
@@ -87,6 +88,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
     dir: -1,
   })
   const [planRow, setPlanRow] = useState<WatchlistRow | null>(null)
+  const [alertTicker, setAlertTicker] = useState<string | null>(null)
 
   const sorted = useMemo(
     () => [...rows].sort((a, b) => compareRows(a, b, sort.key, sort.dir)),
@@ -110,7 +112,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
       <div className="overflow-x-auto">
         {/* header */}
         <div
-          className="grid min-w-[1080px] border-b border-gray-200 bg-gray-50"
+          className="grid min-w-[1116px] border-b border-gray-200 bg-gray-50"
           style={{ gridTemplateColumns: GRID }}
         >
           <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
@@ -160,7 +162,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
         </div>
 
         {/* rows */}
-        <div className="min-w-[1080px]">
+        <div className="min-w-[1116px]">
           {sorted.map((r) => {
             const day = dayChange(r)
             const dayCls =
@@ -276,7 +278,16 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                     {day == null ? DASH : `${day > 0 ? '▲' : day < 0 ? '▼' : ''} ${fmtSignedPct(day)}`}
                   </span>
                 </div>
-                <div className="relative z-10 flex h-full items-center justify-center">
+                <div className="relative z-10 flex h-full items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAlertTicker(r.ticker)}
+                    className="rounded-md px-1 py-1 text-[0.9rem] leading-none text-slate-400 hover:bg-slate-100 hover:text-indigo-600"
+                    title={`Set event alerts for ${r.ticker}`}
+                    aria-label={`Set alerts for ${r.ticker}`}
+                  >
+                    🔔
+                  </button>
                   <WatchlistButton ticker={r.ticker} variant="remove" />
                 </div>
               </div>
@@ -289,6 +300,13 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
           key={planRow.ticker}
           row={planRow}
           onClose={() => setPlanRow(null)}
+        />
+      )}
+      {alertTicker && (
+        <WatchlistAlertDialog
+          key={alertTicker}
+          ticker={alertTicker}
+          onClose={() => setAlertTicker(null)}
         />
       )}
     </section>
