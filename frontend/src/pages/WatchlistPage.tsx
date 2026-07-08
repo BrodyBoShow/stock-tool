@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
@@ -12,6 +12,7 @@ import { StalenessNudge } from '@/components/watchlist/StalenessNudge'
 import { WatchlistHero, type WatchlistHeroView } from '@/components/watchlist/WatchlistHero'
 import { WatchlistTable } from '@/components/WatchlistTable'
 import { getWatchlist, getWatchlistChanges } from '@/lib/api'
+import { snoozedUntil } from '@/lib/watchlistSnooze'
 import type { WatchlistChange } from '@/types/api'
 
 /** How "active" a change is (same weighting the WatchlistChanges cards use):
@@ -67,12 +68,18 @@ export function WatchlistPage() {
   })
 
   const rows = data?.rows ?? []
+  // Bumped when a name is snoozed/unsnoozed so the hero recomputes (snooze lives
+  // in localStorage, read inside the memo).
+  const [snoozeVersion, setSnoozeVersion] = useState(0)
 
   // Hero view model: total watched, how many moved, and the single most-active
-  // name (for the headline + the one CTA). Derived from the digest already
-  // fetched — no extra request.
+  // name (for the headline + the one CTA). Snoozed names are excluded — a name
+  // you've quieted shouldn't count as "needs a look". Derived from the digest
+  // already fetched — no extra request.
   const hero = useMemo<WatchlistHeroView>(() => {
-    const active = (changes?.rows ?? []).filter((c) => activityScore(c) > 0)
+    const active = (changes?.rows ?? []).filter(
+      (c) => activityScore(c) > 0 && snoozedUntil(c.ticker) == null,
+    )
     const top = [...active].sort((a, b) => activityScore(b) - activityScore(a))[0]
     return {
       total: rows.length,
@@ -82,7 +89,8 @@ export function WatchlistPage() {
       loading: changes === undefined,
       top: top ? { ticker: top.ticker, line: changeHeadline(top) } : null,
     }
-  }, [changes, rows.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [changes, rows.length, snoozeVersion])
 
   if (isPending) {
     return (
@@ -152,7 +160,12 @@ export function WatchlistPage() {
       <NextActionCTA {...cta} />
 
       {/* Zone B — what moved, prune nudges, then the full sortable grid */}
-      {changes && changes.rows.length > 0 && <WatchlistChanges rows={changes.rows} />}
+      {changes && changes.rows.length > 0 && (
+        <WatchlistChanges
+          rows={changes.rows}
+          onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
+        />
+      )}
       <StalenessNudge rows={rows} />
       <div id="watchlist-grid">
         <WatchlistTable rows={rows} />
