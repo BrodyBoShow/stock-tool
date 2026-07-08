@@ -536,6 +536,9 @@ export interface WatchlistRow {
   quality_pctl: number | null
   momentum_pctl: number | null
   last_price: number | null
+  prev_close: number | null
+  price_history: number[] | null
+  risk_band: number | null
   watchlist_id: number
   security_id: number
 }

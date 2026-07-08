@@ -678,7 +678,13 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
                 SELECT s.ticker, s.name, s.sector, w.added_at,
                        fs.composite, fs.growth_pctl, fs.value_pctl,
                        fs.quality_pctl, fs.momentum_pctl,
-                       lp.close AS last_price,
+                       lp.close  AS last_price,
+                       lp2.close AS prev_close,
+                       ph.price_history,
+                       -- Same 30-day staleness guard as the screener: a band
+                       -- frozen by a halted/stale name must not read as current.
+                       CASE WHEN sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
+                            THEN sr.risk_band END AS risk_band,
                        w.id AS watchlist_id, s.security_id
                 FROM watchlist w
                 JOIN securities s ON s.security_id = w.security_id
@@ -691,7 +697,22 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
                     SELECT close FROM prices_daily p
                     WHERE p.security_id = s.security_id
                     ORDER BY p.date DESC LIMIT 1
-                ) lp ON true{owner_clause}
+                ) lp ON true
+                LEFT JOIN LATERAL (
+                    SELECT close FROM prices_daily p2
+                    WHERE p2.security_id = s.security_id
+                    ORDER BY p2.date DESC LIMIT 1 OFFSET 1
+                ) lp2 ON true
+                LEFT JOIN LATERAL (
+                    -- ~30-session price sparkline, oldest→newest for drawing
+                    SELECT array_agg(close ORDER BY date) AS price_history
+                    FROM (
+                        SELECT close, date FROM prices_daily p3
+                        WHERE p3.security_id = s.security_id
+                        ORDER BY p3.date DESC LIMIT 30
+                    ) recent
+                ) ph ON true
+                LEFT JOIN security_risk sr ON sr.security_id = s.security_id{owner_clause}
                 ORDER BY w.added_at DESC
                 """,
                 params,
@@ -703,13 +724,17 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
 
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl",
-        "momentum_pctl", "last_price",
+        "momentum_pctl", "last_price", "prev_close",
     }
     result = []
     for raw in db_rows:
         row = dict(zip(cols, raw, strict=True))
         for k in numeric:
             row[k] = _f(row.get(k))
+        rb = row.get("risk_band")
+        row["risk_band"] = int(rb) if rb is not None else None
+        ph = row.get("price_history")
+        row["price_history"] = [float(x) for x in ph] if ph else None
         result.append(row)
     return result
 

@@ -632,6 +632,9 @@ class WatchlistRow(BaseModel):
     quality_pctl: float | None
     momentum_pctl: float | None
     last_price: float | None
+    prev_close: float | None = None
+    price_history: list[float] | None = None
+    risk_band: int | None = None
     watchlist_id: int
     security_id: int
 
