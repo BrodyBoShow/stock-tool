@@ -13,6 +13,7 @@ import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
 import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
 import { HealthScorePanel } from '@/components/portfolio/HealthScorePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
+import { OverviewTab } from '@/components/portfolio/redesign/OverviewTab'
 import { StrategyDriftCard } from '@/components/portfolio/StrategyDriftCard'
 import { AlignedIdeasPanel } from '@/components/portfolio/risk/AlignedIdeasPanel'
 import { RiskAlignmentPanel } from '@/components/portfolio/risk/RiskAlignmentPanel'
@@ -120,10 +121,22 @@ export function PortfolioPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawPane = searchParams.get('pane')
   const pane: PaneId = PANE_IDS.includes(rawPane as PaneId) ? (rawPane as PaneId) : 'overview'
+  // Redesign flag (?redesign=1) — Phase 2 of the UX refinement ships the new
+  // 3-zone Overview behind it so it can be A/B'd against the current one before
+  // cutover. Sticky across pane switches; togglable in the sub-header.
+  const redesign = searchParams.get('redesign') === '1'
+  const paneParams = (id: PaneId, rd: boolean): Record<string, string> => {
+    const p: Record<string, string> = {}
+    if (id !== 'overview') p.pane = id
+    if (rd) p.redesign = '1'
+    return p
+  }
   const setPane = (id: PaneId) => {
-    setSearchParams(id === 'overview' ? {} : { pane: id })
+    setSearchParams(paneParams(id, redesign))
     window.scrollTo({ top: 0 })
   }
+  const toggleRedesign = () => setSearchParams(paneParams(pane, !redesign))
+  const redesignOverview = redesign && pane === 'overview'
   const [drawer, setDrawer] = useState<{ open: boolean; trades: SimTrade[]; seq: number }>({
     open: false,
     trades: [],
@@ -365,27 +378,47 @@ export function PortfolioPage() {
           <span className="text-gray-300">/</span>
           <span className="text-slate-400">Portfolio</span>
         </div>
-        <label className="ml-auto flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-500">
-          Benchmark
-          <select
-            value={benchmark}
-            onChange={(e) => setBenchmark(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[0.74rem] font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none"
-          >
-            {BENCHMARK_OPTIONS.map((b) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-        </label>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          {pane === 'overview' && (
+            <button
+              type="button"
+              onClick={toggleRedesign}
+              aria-pressed={redesign}
+              className={`rounded-full border px-3 py-1 text-[0.72rem] font-semibold transition-colors ${
+                redesign
+                  ? 'border-violet-300 bg-violet-50 text-violet-700'
+                  : 'border-gray-200 bg-white text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {redesign ? '✨ New Overview · on' : 'Try new Overview'}
+            </button>
+          )}
+          <label className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-500">
+            Benchmark
+            <select
+              value={benchmark}
+              onChange={(e) => setBenchmark(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[0.74rem] font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none"
+            >
+              {BENCHMARK_OPTIONS.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
-      <PortfolioHero
-        summary={s}
-        view={view}
-        flags={heroFlags}
-        cashTracking={data.cash_tracking}
-        onSeeFixes={scrollToFixes}
-      />
+      {/* The redesigned Overview provides its own Zone-A hero; the old global
+          hero stays for every other view (and old Overview). */}
+      {!redesignOverview && (
+        <PortfolioHero
+          summary={s}
+          view={view}
+          flags={heroFlags}
+          cashTracking={data.cash_tracking}
+          onSeeFixes={scrollToFixes}
+        />
+      )}
 
       {/* pane nav (PR4 IA reorg): the 12-section scroll becomes 4 focused
           panes, same ?pane= URL pattern as the deep dive. */}
@@ -412,42 +445,57 @@ export function PortfolioPage() {
         </div>
       </nav>
 
-      {pane === 'overview' && (
-        <>
-          {/* Portfolio Health leads the Overview — the structural how-am-I-doing
-              snapshot before the action list. */}
-          {health && (
-            <HealthScorePanel health={health} benchmark={s.benchmark} verdictTone={verdictTone} />
-          )}
-          {/* No profile yet: surface the quiz prompt here too (the card shows
-              its prompt variant); once set, it lives on Risk & Fit only. */}
-          {riskAlignment && !riskAlignment.has_profile && <RiskProfileCard />}
-          <div id="portfolio-fixes">
-            <ActionCardStack
-              flags={flags}
-              onOpenSimulator={openForFlag}
-              onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
-            />
-          </div>
-          <StrategyDriftCard holdings={holdings} />
-          {data.performance && (
-            <PerformancePanel
-              performance={data.performance}
-              benchmark={s.benchmark}
-              range={range}
-              onRangeChange={setRange}
-            />
-          )}
-          {data.performance && (
-            <VsMarketPanel
-              summary={s}
-              performance={data.performance}
-              whatIf={suggested.whatIf}
-              onApplyFixes={() => openSimulator(suggested.trades)}
-            />
-          )}
-        </>
-      )}
+      {pane === 'overview' &&
+        (redesign ? (
+          <OverviewTab
+            view={view}
+            summary={s}
+            health={health}
+            holdings={holdings}
+            flags={flags}
+            performance={data.performance ?? null}
+            benchmark={s.benchmark}
+            range={range}
+            onRangeChange={setRange}
+            onReview={openForTicker}
+            onExplore={setPane}
+          />
+        ) : (
+          <>
+            {/* Portfolio Health leads the Overview — the structural how-am-I-doing
+                snapshot before the action list. */}
+            {health && (
+              <HealthScorePanel health={health} benchmark={s.benchmark} verdictTone={verdictTone} />
+            )}
+            {/* No profile yet: surface the quiz prompt here too (the card shows
+                its prompt variant); once set, it lives on Risk & Fit only. */}
+            {riskAlignment && !riskAlignment.has_profile && <RiskProfileCard />}
+            <div id="portfolio-fixes">
+              <ActionCardStack
+                flags={flags}
+                onOpenSimulator={openForFlag}
+                onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
+              />
+            </div>
+            <StrategyDriftCard holdings={holdings} />
+            {data.performance && (
+              <PerformancePanel
+                performance={data.performance}
+                benchmark={s.benchmark}
+                range={range}
+                onRangeChange={setRange}
+              />
+            )}
+            {data.performance && (
+              <VsMarketPanel
+                summary={s}
+                performance={data.performance}
+                whatIf={suggested.whatIf}
+                onApplyFixes={() => openSimulator(suggested.trades)}
+              />
+            )}
+          </>
+        ))}
 
       {pane === 'risk' && (
         <>
@@ -498,13 +546,17 @@ export function PortfolioPage() {
         </>
       )}
 
-      <p className="mx-auto max-w-3xl pb-2 text-center text-xs text-gray-400">
-        Tracking and analytics over your own ledger — measurements and estimates, not
-        investment advice, and StockBud never places orders. Dividends and splits come
-        from nightly market data; prices are ~15-minute-delayed; forward income and
-        stress figures are labeled projections/estimates. Treat your official brokerage
-        statements as the source of truth.
-      </p>
+      {/* Redesigned Overview carries its own single DisclaimerChip (Zone C); keep
+          the long global footnote for every other view. */}
+      {!redesignOverview && (
+        <p className="mx-auto max-w-3xl pb-2 text-center text-xs text-gray-400">
+          Tracking and analytics over your own ledger — measurements and estimates, not
+          investment advice, and StockBud never places orders. Dividends and splits come
+          from nightly market data; prices are ~15-minute-delayed; forward income and
+          stress figures are labeled projections/estimates. Treat your official brokerage
+          statements as the source of truth.
+        </p>
+      )}
 
       <RebalanceDrawer
         key={drawer.seq}

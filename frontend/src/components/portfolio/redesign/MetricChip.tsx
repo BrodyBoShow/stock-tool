@@ -26,7 +26,9 @@ export function MetricChip({ label, value, sub, sentiment = 'neutral', gloss }: 
         <span>{label}</span>
         <InfoTip text={gloss} />
       </div>
-      <div className="numeric mt-1 text-h2 font-bold leading-none">
+      {/* Deliberately ~14px so the hero (44px display) stays ≥3× larger — the
+          locked calm-hierarchy ratio. */}
+      <div className="numeric mt-1 text-body font-bold leading-none">
         <SentimentValue s={sentiment} srLabel={label}>
           {value}
         </SentimentValue>
