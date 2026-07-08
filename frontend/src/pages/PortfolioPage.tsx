@@ -13,7 +13,9 @@ import { OverlapMatrixPanel } from '@/components/portfolio/OverlapMatrixPanel'
 import { PerformancePanel } from '@/components/portfolio/PerformancePanel'
 import { HealthScorePanel } from '@/components/portfolio/HealthScorePanel'
 import { PortfolioHero } from '@/components/portfolio/PortfolioHero'
+import { HoldingsTab } from '@/components/portfolio/redesign/HoldingsTab'
 import { OverviewTab } from '@/components/portfolio/redesign/OverviewTab'
+import { RiskFitTab } from '@/components/portfolio/redesign/RiskFitTab'
 import { StrategyDriftCard } from '@/components/portfolio/StrategyDriftCard'
 import { AlignedIdeasPanel } from '@/components/portfolio/risk/AlignedIdeasPanel'
 import { RiskAlignmentPanel } from '@/components/portfolio/risk/RiskAlignmentPanel'
@@ -136,7 +138,11 @@ export function PortfolioPage() {
     window.scrollTo({ top: 0 })
   }
   const toggleRedesign = () => setSearchParams(paneParams(pane, !redesign))
-  const redesignOverview = redesign && pane === 'overview'
+  // Panes with a redesigned version wired (grows each phase; P4 adds 'activity').
+  // When active the pane renders its own Zone-A hero + Zone-C disclaimer, so the
+  // global hero + footnote are hidden for it.
+  const REDESIGNED_PANES: PaneId[] = ['overview', 'risk', 'holdings']
+  const redesignActive = redesign && REDESIGNED_PANES.includes(pane)
   const [drawer, setDrawer] = useState<{ open: boolean; trades: SimTrade[]; seq: number }>({
     open: false,
     trades: [],
@@ -379,20 +385,18 @@ export function PortfolioPage() {
           <span className="text-slate-400">Portfolio</span>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          {pane === 'overview' && (
-            <button
-              type="button"
-              onClick={toggleRedesign}
-              aria-pressed={redesign}
-              className={`rounded-full border px-3 py-1 text-[0.72rem] font-semibold transition-colors ${
-                redesign
-                  ? 'border-violet-300 bg-violet-50 text-violet-700'
-                  : 'border-gray-200 bg-white text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {redesign ? '✨ New Overview · on' : 'Try new Overview'}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleRedesign}
+            aria-pressed={redesign}
+            className={`rounded-full border px-3 py-1 text-[0.72rem] font-semibold transition-colors ${
+              redesign
+                ? 'border-violet-300 bg-violet-50 text-violet-700'
+                : 'border-gray-200 bg-white text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {redesign ? '✨ New design · on' : 'Try new design'}
+          </button>
           <label className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-500">
             Benchmark
             <select
@@ -410,7 +414,7 @@ export function PortfolioPage() {
 
       {/* The redesigned Overview provides its own Zone-A hero; the old global
           hero stays for every other view (and old Overview). */}
-      {!redesignOverview && (
+      {!redesignActive && (
         <PortfolioHero
           summary={s}
           view={view}
@@ -497,46 +501,66 @@ export function PortfolioPage() {
           </>
         ))}
 
-      {pane === 'risk' && (
-        <>
-          <RiskProfileCard />
-          {riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}
-          <StressTestPanel
+      {pane === 'risk' &&
+        (redesign ? (
+          <RiskFitTab
+            riskAlignment={riskAlignment}
             stress={analytics?.stress ?? []}
-            benchmark={s.benchmark}
             holdings={holdings}
+            benchmark={s.benchmark}
+            onExplore={setPane}
           />
-          <MonteCarloPanel benchmark={s.benchmark} suggestedWeights={suggested.weights} />
-          {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
-        </>
-      )}
-
-      {pane === 'holdings' && (
-        <>
-          <SectionCard
-            title="Holdings"
-            hint="Price and day change use live quotes when available (~15m delayed), otherwise the nightly close. Click a row for tax lots, thesis, correlations and quick actions."
-          >
-            <HoldingsDiagnostic
+        ) : (
+          <>
+            <RiskProfileCard />
+            {riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}
+            <StressTestPanel
+              stress={analytics?.stress ?? []}
+              benchmark={s.benchmark}
               holdings={holdings}
-              quotes={quotes}
-              analytics={analytics}
-              flags={flags}
-              asOf={s.as_of}
-              onOpenSimulator={openForTicker}
             />
-          </SectionCard>
-          <div className="grid gap-5 lg:grid-cols-2">
-            {data.factor_tilt && <FactorTiltRadar tilt={data.factor_tilt} />}
-            {data.allocation && (
-              <AllocationPanel holdings={holdings} allocation={data.allocation} />
-            )}
-          </div>
-          {/* pass the real query state — !analytics would show a skeleton forever
-              when the analytics endpoint errors out */}
-          <OverlapMatrixPanel analytics={analytics} isLoading={analyticsPending} />
-        </>
-      )}
+            <MonteCarloPanel benchmark={s.benchmark} suggestedWeights={suggested.weights} />
+            {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
+          </>
+        ))}
+
+      {pane === 'holdings' &&
+        (redesign ? (
+          <HoldingsTab
+            summary={s}
+            holdings={holdings}
+            quotes={quotes}
+            analytics={analytics}
+            flags={flags}
+            onReview={openForTicker}
+            onExplore={setPane}
+          />
+        ) : (
+          <>
+            <SectionCard
+              title="Holdings"
+              hint="Price and day change use live quotes when available (~15m delayed), otherwise the nightly close. Click a row for tax lots, thesis, correlations and quick actions."
+            >
+              <HoldingsDiagnostic
+                holdings={holdings}
+                quotes={quotes}
+                analytics={analytics}
+                flags={flags}
+                asOf={s.as_of}
+                onOpenSimulator={openForTicker}
+              />
+            </SectionCard>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {data.factor_tilt && <FactorTiltRadar tilt={data.factor_tilt} />}
+              {data.allocation && (
+                <AllocationPanel holdings={holdings} allocation={data.allocation} />
+              )}
+            </div>
+            {/* pass the real query state — !analytics would show a skeleton forever
+                when the analytics endpoint errors out */}
+            <OverlapMatrixPanel analytics={analytics} isLoading={analyticsPending} />
+          </>
+        ))}
 
       {pane === 'activity' && (
         <>
@@ -548,7 +572,7 @@ export function PortfolioPage() {
 
       {/* Redesigned Overview carries its own single DisclaimerChip (Zone C); keep
           the long global footnote for every other view. */}
-      {!redesignOverview && (
+      {!redesignActive && (
         <p className="mx-auto max-w-3xl pb-2 text-center text-xs text-gray-400">
           Tracking and analytics over your own ledger — measurements and estimates, not
           investment advice, and StockBud never places orders. Dividends and splits come
