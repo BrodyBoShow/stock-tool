@@ -728,12 +728,12 @@ function SubRow({
           {h.thesis ? (
             <span>
               Thesis:{' '}
-              <Link to="/theses" className="text-indigo-600 hover:underline">
+              <Link to={`/securities/${h.ticker}`} className="text-indigo-600 hover:underline">
                 &quot;{truncate(h.thesis.summary ?? 'View thesis', 60)}&quot;
               </Link>
             </span>
           ) : (
-            <Link to="/theses" className="text-slate-400 hover:text-indigo-600">
+            <Link to={`/securities/${h.ticker}`} className="text-slate-400 hover:text-indigo-600">
               + add thesis
             </Link>
           )}

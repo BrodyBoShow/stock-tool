@@ -188,8 +188,16 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                   className="absolute inset-0 z-0"
                 />
                 <div className={`${cell} flex h-full min-w-0 flex-col justify-center px-3 py-2`}>
-                  <span className="text-[0.88rem] font-bold leading-[1.15] text-gray-900">
+                  <span className="flex items-center gap-1.5 text-[0.88rem] font-bold leading-[1.15] text-gray-900">
                     {r.ticker}
+                    {r.thesis_review_due && (
+                      <span
+                        className="rounded-full bg-amber-100 px-1.5 text-[0.56rem] font-bold uppercase tracking-wide text-amber-800"
+                        title="Your thesis review date has passed — open the plan or the deep dive to review it."
+                      >
+                        review
+                      </span>
+                    )}
                   </span>
                   <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
                     {r.name ?? DASH}

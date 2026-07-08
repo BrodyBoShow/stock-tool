@@ -166,7 +166,7 @@ function ChangeCard({ c }: { c: WatchlistChange }) {
 
         {/* thesis review due */}
         {c.review_due && (
-          <Link to="/theses">
+          <Link to={`/securities/${c.ticker}`}>
             <Chip tone="review">⏰ Thesis review due</Chip>
           </Link>
         )}

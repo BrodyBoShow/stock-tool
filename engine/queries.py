@@ -687,6 +687,11 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
                             THEN sr.risk_band END AS risk_band,
                        w.note, w.target_price, w.entry_trigger, w.kill_criteria,
                        w.plan_updated_at,
+                       th.summary AS thesis_summary,
+                       th.invalidation_rules AS thesis_invalidation,
+                       th.review_date AS thesis_review_date,
+                       (th.review_date IS NOT NULL AND th.review_date <= CURRENT_DATE)
+                           AS thesis_review_due,
                        w.id AS watchlist_id, s.security_id
                 FROM watchlist w
                 JOIN securities s ON s.security_id = w.security_id
@@ -714,7 +719,16 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
                         ORDER BY p3.date DESC LIMIT 30
                     ) recent
                 ) ph ON true
-                LEFT JOIN security_risk sr ON sr.security_id = s.security_id{owner_clause}
+                LEFT JOIN security_risk sr ON sr.security_id = s.security_id
+                LEFT JOIN LATERAL (
+                    -- the user's current active thesis for this name, folded in
+                    -- from the retired Theses tab; ≤1 row → no fan-out
+                    SELECT tt.summary, tt.invalidation_rules, tt.review_date
+                    FROM theses tt
+                    WHERE tt.security_id = s.security_id AND tt.owner_id = w.owner_id
+                      AND tt.status = 'active'
+                    ORDER BY tt.updated_at DESC LIMIT 1
+                ) th ON true{owner_clause}
                 ORDER BY w.added_at DESC
                 """,
                 params,

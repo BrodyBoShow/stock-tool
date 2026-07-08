@@ -545,6 +545,11 @@ export interface WatchlistRow {
   entry_trigger: string | null
   kill_criteria: string | null
   plan_updated_at: string | null
+  // thesis folded in from the retired Theses tab (edited on the deep dive)
+  thesis_summary: string | null
+  thesis_invalidation: string | null
+  thesis_review_date: string | null
+  thesis_review_due: boolean
   watchlist_id: number
   security_id: number
 }
