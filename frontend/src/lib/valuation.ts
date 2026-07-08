@@ -7,6 +7,8 @@
 // Conventions: netDebt = total_debt − cash (can be negative = net cash).
 //   enterprise_value − netDebt = equity_value ; equity_value / shares = per share.
 
+import type { ValuationResponse } from '@/types/api'
+
 export interface DcfAssumptions {
   gStart: number // stage-1 growth (year 1)
   r: number // discount rate
@@ -126,4 +128,71 @@ export function grahamNumber(eps: number | null, bvps: number | null): number | 
 export function marginOfSafety(value: number | null, price: number | null): number | null {
   if (value == null || price == null || value <= 0) return null
   return (value - price) / value
+}
+
+export interface ValuationSummary {
+  price: number | null
+  /** peer-multiple fair values (per share); null where the input/median is missing */
+  fair: { pe: number | null; ps: number | null; evEbitda: number | null; pfcf: number | null }
+  /** low / high / midpoint across the AVAILABLE positive multiple fair values */
+  fairLow: number | null
+  fairHigh: number | null
+  fairMid: number | null
+  /** reverse-DCF: stage-1 FCF growth the current price implies (fraction/yr) */
+  impliedGrowth: number | null
+}
+
+/** Compact valuation read for a name — a REFERENCE, not a target or advice.
+ *
+ *  Reuses the exact extraction the deep-dive IntrinsicValuePanel uses (same
+ *  input keys, same peer medians, same assumption seeds for the reverse-DCF), so
+ *  the numbers match the panel. Everything is null-safe: a name with missing
+ *  inputs / no peer set / a suppressed model simply yields nulls. */
+export function valuationSummary(v: ValuationResponse): ValuationSummary {
+  const val = (k: string) => v.inputs.find((i) => i.key === k)?.value ?? null
+  const shares = val('shares_outstanding') ?? 0
+  const fcf0 = val('fcf_ttm')
+  const netDebt = (val('total_debt') ?? 0) - (val('cash_and_equivalents') ?? 0)
+  const eps = val('ttm_eps')
+  const rev = val('ttm_revenue')
+  const ebitda = val('ebitda_ttm')
+  const revPerShare = rev != null && shares > 0 ? rev / shares : null
+  const price = v.current_price
+
+  const active = v.applicability.active_models
+  const raw = multiplesFairValue(
+    { eps, revPerShare, ebitda, fcf0, netDebt, shares },
+    v.peer_context.medians,
+  )
+  // Gate each multiple on its model being active, exactly like the deep-dive
+  // panel's per-Stat gating, so the watchlist range never includes a fair value
+  // the deep dive suppresses for this name.
+  const fair = {
+    pe: active.includes('multiples_pe') ? raw.pe : null,
+    ps: active.includes('multiples_ps') ? raw.ps : null,
+    evEbitda: active.includes('multiples_ev_ebitda') ? raw.evEbitda : null,
+    pfcf: active.includes('multiples_pfcf') ? raw.pfcf : null,
+  }
+  const vals = [fair.pe, fair.ps, fair.evEbitda, fair.pfcf]
+    .filter((x): x is number => x != null && isFinite(x) && x > 0)
+    .sort((a, b) => a - b)
+  const fairLow = vals.length ? vals[0] : null
+  const fairHigh = vals.length ? vals[vals.length - 1] : null
+  const fairMid = vals.length
+    ? vals.length % 2
+      ? vals[(vals.length - 1) / 2]
+      : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2
+    : null
+
+  const seed = (k: string) => v.assumptions.find((a) => a.key === k)?.seed
+  const r = seed('discount_rate')
+  const gInf = seed('terminal_growth')
+  const horizon = seed('horizon')
+  const impliedG =
+    active.includes('reverse_dcf') &&
+    fcf0 != null && price != null && r != null && gInf != null && horizon != null
+      ? impliedGrowth(fcf0, netDebt, shares, price, { r, gInf, horizon })
+      : null
+
+  return { price, fair, fairLow, fairHigh, fairMid, impliedGrowth: impliedG }
 }

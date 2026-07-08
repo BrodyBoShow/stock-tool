@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
@@ -5,8 +6,9 @@ import { Link } from 'react-router-dom'
 import { DisclaimerChip } from '@/components/portfolio/redesign/DisclaimerChip'
 import { useToast } from '@/components/ui/Toast'
 import { useWatchlistMutations } from '@/hooks/useWatchlist'
-import { ApiError } from '@/lib/api'
-import { fmtDate } from '@/lib/format'
+import { ApiError, getValuation } from '@/lib/api'
+import { fmtDate, fmtPct, fmtPrice } from '@/lib/format'
+import { valuationSummary } from '@/lib/valuation'
 import type { WatchlistRow } from '@/types/api'
 
 const FIELD =
@@ -38,6 +40,21 @@ export function WatchlistPlanDialog({
   const [entry, setEntry] = useState(row.entry_trigger ?? '')
   const [kill, setKill] = useState(row.kill_criteria ?? '')
   const [confirmClear, setConfirmClear] = useState(false)
+
+  // StockBud's valuation read — fetched on demand when the dialog opens (the
+  // dialog only mounts while open), cached so reopening is instant. A reference
+  // to inform the target, never a target itself and never advice.
+  const { data: valuation, isLoading: valLoading } = useQuery({
+    queryKey: ['valuation', row.ticker],
+    queryFn: () => getValuation(row.ticker),
+    staleTime: 10 * 60_000,
+    retry: 1,
+  })
+  const iv = valuation ? valuationSummary(valuation) : null
+  const vsMid =
+    iv && iv.price != null && iv.fairMid != null && iv.fairMid > 0
+      ? (iv.price - iv.fairMid) / iv.fairMid
+      : null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -145,6 +162,54 @@ export function WatchlistPlanDialog({
               </span>
             )}
           </label>
+
+          {/* StockBud's valuation read — reference only, to help you place the
+              target above. Not a target, not advice. */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-[0.72rem]">
+            <div className="font-semibold text-slate-600">
+              StockBud’s read{' '}
+              <span className="font-normal text-slate-400">— reference, not a target</span>
+            </div>
+            {valLoading ? (
+              <div className="mt-1 text-slate-400">Loading valuation…</div>
+            ) : iv && (iv.fairLow != null || iv.impliedGrowth != null) ? (
+              <div className="mt-1 space-y-0.5 text-slate-600">
+                {iv.fairLow != null && iv.fairHigh != null && (
+                  <div>
+                    Peer-multiple fair value{' '}
+                    <span className="font-semibold text-slate-800">
+                      {fmtPrice(iv.fairLow)}
+                      {iv.fairHigh !== iv.fairLow ? `–${fmtPrice(iv.fairHigh)}` : ''}
+                    </span>
+                    {vsMid != null && (
+                      <span className={vsMid > 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                        {' '}
+                        · price {vsMid > 0 ? '+' : ''}
+                        {fmtPct(vsMid)} vs midpoint
+                      </span>
+                    )}
+                  </div>
+                )}
+                {iv.impliedGrowth != null && (
+                  <div>
+                    Reverse-DCF: the price implies{' '}
+                    <span className="font-semibold text-slate-800">{fmtPct(iv.impliedGrowth)}/yr</span>{' '}
+                    FCF growth
+                  </div>
+                )}
+                <Link
+                  to={`/securities/${row.ticker}`}
+                  className="inline-block pt-0.5 font-semibold text-indigo-600 hover:underline"
+                >
+                  Full valuation on the deep dive →
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-1 text-slate-400">
+                No valuation reference available for this name.
+              </div>
+            )}
+          </div>
 
           <label className="block">
             <span className={LABEL}>Why I’m watching</span>
