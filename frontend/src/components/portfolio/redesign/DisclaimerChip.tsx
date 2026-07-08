@@ -12,8 +12,12 @@ const FULL =
 
 export function DisclaimerChip({
   variant = 'footer',
+  text = FULL,
 }: {
   variant?: 'inline' | 'footer' | 'modal'
+  /** Override the footer/modal copy for non-portfolio surfaces (the inline pill
+   *  is always "Not advice"). Keep the "never places orders" clause. */
+  text?: string
 }) {
   if (variant === 'inline') {
     return (
@@ -23,6 +27,6 @@ export function DisclaimerChip({
     )
   }
   return (
-    <p className={`text-small text-muted ${variant === 'modal' ? 'text-center' : ''}`}>{FULL}</p>
+    <p className={`text-small text-muted ${variant === 'modal' ? 'text-center' : ''}`}>{text}</p>
   )
 }
