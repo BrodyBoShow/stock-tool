@@ -46,6 +46,8 @@ import type {
   ThesisUpsertRequest,
   WatchlistMutationResponse,
   WatchlistChangesResponse,
+  WatchlistPlanResponse,
+  WatchlistPlanUpdate,
   WatchlistResponse,
 } from '@/types/api'
 
@@ -359,6 +361,17 @@ export function addToWatchlist(ticker: string): Promise<WatchlistMutationRespons
 
 export function removeFromWatchlist(ticker: string): Promise<void> {
   return sendJson<void>('DELETE', `/watchlist/${encodeURIComponent(ticker)}`)
+}
+
+export function updateWatchlistPlan(
+  ticker: string,
+  body: WatchlistPlanUpdate,
+): Promise<WatchlistPlanResponse> {
+  return sendJson<WatchlistPlanResponse>(
+    'PATCH',
+    `/watchlist/${encodeURIComponent(ticker)}/plan`,
+    body,
+  )
 }
 
 export function upsertThesis(

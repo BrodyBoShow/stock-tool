@@ -635,12 +635,34 @@ class WatchlistRow(BaseModel):
     prev_close: float | None = None
     price_history: list[float] | None = None
     risk_band: int | None = None
+    # decision-plan capture (redesign P2b) — the user's own plan, not advice
+    note: str | None = None
+    target_price: float | None = None
+    entry_trigger: str | None = None
+    kill_criteria: str | None = None
+    plan_updated_at: datetime | None = None
     watchlist_id: int
     security_id: int
 
 
 class WatchlistResponse(BaseModel):
     rows: list[WatchlistRow]
+
+
+class WatchlistPlanUpdate(BaseModel):
+    """Editable decision-plan fields for a watchlist entry. All optional — an
+    omitted/null field clears that field. Text is bounded to keep the row light."""
+    note: str | None = Field(default=None, max_length=2000)
+    # ge=0 + finite + a generous cap: inf slips past a bare ge=0 (inf >= 0) and
+    # then serializes back to null on read — reject it up front.
+    target_price: float | None = Field(default=None, ge=0, le=100_000_000, allow_inf_nan=False)
+    entry_trigger: str | None = Field(default=None, max_length=2000)
+    kill_criteria: str | None = Field(default=None, max_length=2000)
+
+
+class WatchlistPlanResponse(BaseModel):
+    ticker: str
+    status: str  # "updated"
 
 
 class WatchlistChange(BaseModel):

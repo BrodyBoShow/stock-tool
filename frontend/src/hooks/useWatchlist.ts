@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
-import { addToWatchlist, getWatchlist, removeFromWatchlist } from '@/lib/api'
+import { addToWatchlist, getWatchlist, removeFromWatchlist, updateWatchlistPlan } from '@/lib/api'
+import type { WatchlistPlanUpdate } from '@/types/api'
 
 /** Membership set derived from the shared ['watchlist'] query (one fetch, cached). */
 export function useWatchlistSet() {
@@ -23,5 +24,10 @@ export function useWatchlistMutations() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['watchlist'] })
   const add = useMutation({ mutationFn: addToWatchlist, onSuccess: invalidate })
   const remove = useMutation({ mutationFn: removeFromWatchlist, onSuccess: invalidate })
-  return { add, remove }
+  const updatePlan = useMutation({
+    mutationFn: ({ ticker, body }: { ticker: string; body: WatchlistPlanUpdate }) =>
+      updateWatchlistPlan(ticker, body),
+    onSuccess: invalidate,
+  })
+  return { add, remove, updatePlan }
 }

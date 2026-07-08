@@ -539,8 +539,27 @@ export interface WatchlistRow {
   prev_close: number | null
   price_history: number[] | null
   risk_band: number | null
+  // decision-plan capture (redesign P2b) — the user's own plan, not advice
+  note: string | null
+  target_price: number | null
+  entry_trigger: string | null
+  kill_criteria: string | null
+  plan_updated_at: string | null
   watchlist_id: number
   security_id: number
+}
+
+/** Editable decision-plan fields for a watchlist entry (all optional). */
+export interface WatchlistPlanUpdate {
+  note?: string | null
+  target_price?: number | null
+  entry_trigger?: string | null
+  kill_criteria?: string | null
+}
+
+export interface WatchlistPlanResponse {
+  ticker: string
+  status: string
 }
 
 export interface WatchlistResponse {

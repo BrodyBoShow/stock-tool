@@ -685,6 +685,8 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
                        -- frozen by a halted/stale name must not read as current.
                        CASE WHEN sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
                             THEN sr.risk_band END AS risk_band,
+                       w.note, w.target_price, w.entry_trigger, w.kill_criteria,
+                       w.plan_updated_at,
                        w.id AS watchlist_id, s.security_id
                 FROM watchlist w
                 JOIN securities s ON s.security_id = w.security_id
@@ -724,7 +726,7 @@ def watchlist_rows(owner_id: str | None = None) -> list[dict[str, Any]]:
 
     numeric = {
         "composite", "growth_pctl", "value_pctl", "quality_pctl",
-        "momentum_pctl", "last_price", "prev_close",
+        "momentum_pctl", "last_price", "prev_close", "target_price",
     }
     result = []
     for raw in db_rows:
@@ -1006,6 +1008,66 @@ def watchlist_remove_by_ticker(
         release(conn)
 
     return deleted, ("removed" if deleted else "not_in_watchlist")
+
+
+_PLAN_COLUMNS = ("note", "target_price", "entry_trigger", "kill_criteria")
+
+
+def watchlist_update_plan(
+    ticker: str,
+    owner_id: str | None,
+    *,
+    fields: dict[str, Any],
+) -> str:
+    """Update the decision-plan fields on a watchlist entry (redesign P2b).
+
+    Partial-PATCH semantics: `fields` carries ONLY the columns the caller
+    explicitly sent, so omitted fields are left untouched (an explicit null
+    clears one). This avoids a partial request silently wiping a saved
+    kill-criteria. Allowed keys: note / target_price / entry_trigger /
+    kill_criteria; anything else is ignored. plan_updated_at is always bumped.
+
+    Returns one of:
+      "updated"          — the row was updated
+      "not_in_watchlist" — ticker exists but is not on this owner's watchlist
+      "not_found"        — ticker not in securities
+
+    Does NOT require is_active (a watchlisted name can later be pruned — editing
+    its plan must still work). owner_id scopes the write (IDOR-safe: it is the
+    JWT sub, never a request param); None updates by security_id alone (legacy).
+    """
+    # Column names come only from the fixed whitelist (never from request keys),
+    # so the f-string SET clause is injection-safe; values stay parameterized.
+    set_cols = [c for c in _PLAN_COLUMNS if c in fields]
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id FROM securities WHERE ticker = %s LIMIT 1",
+                (ticker,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return "not_found"
+            security_id: int = row[0]
+            assignments = [f"{c} = %s" for c in set_cols]
+            assignments.append("plan_updated_at = now()")
+            params: list[Any] = [fields[c] for c in set_cols]
+            params.append(security_id)
+            if owner_id is not None:
+                params.append(owner_id)
+            cur.execute(
+                f"UPDATE watchlist SET {', '.join(assignments)} "
+                f"WHERE security_id = %s{owner_clause}",
+                tuple(params),
+            )
+            updated = cur.rowcount > 0
+        conn.commit()
+    finally:
+        release(conn)
+
+    return "updated" if updated else "not_in_watchlist"
 
 
 def thesis_upsert_by_ticker(
