@@ -1084,6 +1084,63 @@ def watchlist_update_plan(
     return "updated" if updated else "not_in_watchlist"
 
 
+def whats_changed_get(security_id: int) -> dict[str, Any] | None:
+    """Cached "what changed" narrative for a name (redesign P4), or None."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT fingerprint, narrative, model, generated_at "
+                "FROM watchlist_whats_changed WHERE security_id = %s",
+                (security_id,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    return dict(zip(cols, row, strict=True))
+
+
+def whats_changed_save(
+    *,
+    security_id: int,
+    fingerprint: str,
+    narrative: str,
+    model: str,
+    input_tokens: int | None,
+    output_tokens: int | None,
+) -> Any:
+    """Upsert the narrative (one row per name, keyed on the signal fingerprint).
+    Returns the stored generated_at timestamp."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO watchlist_whats_changed
+                  (security_id, fingerprint, narrative, model, input_tokens,
+                   output_tokens, generated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, now())
+                ON CONFLICT (security_id) DO UPDATE SET
+                  fingerprint = EXCLUDED.fingerprint,
+                  narrative = EXCLUDED.narrative,
+                  model = EXCLUDED.model,
+                  input_tokens = EXCLUDED.input_tokens,
+                  output_tokens = EXCLUDED.output_tokens,
+                  generated_at = now()
+                RETURNING generated_at
+                """,
+                (security_id, fingerprint, narrative, model, input_tokens, output_tokens),
+            )
+            generated_at = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        release(conn)
+    return generated_at
+
+
 def thesis_upsert_by_ticker(
     ticker: str,
     summary: str,

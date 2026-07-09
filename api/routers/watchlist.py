@@ -12,8 +12,9 @@ from api.schemas import (
     WatchlistPlanUpdate,
     WatchlistResponse,
     WatchlistRow,
+    WhatsChangedResponse,
 )
-from engine import live_factors, queries, watchlist_signals
+from engine import live_factors, queries, watchlist_narrative, watchlist_signals
 from engine import quotes as quotes_engine
 
 router = APIRouter()
@@ -75,6 +76,27 @@ def add_to_watchlist(
         security_id=security_id,  # type: ignore[arg-type]
         status=wl_status,
     )
+
+
+@router.post("/{ticker}/whats-changed", response_model=WhatsChangedResponse)
+def whats_changed(ticker: str, user: CurrentUser) -> WhatsChangedResponse:
+    """On-demand plain-English "what changed" narrative for a watched name (Haiku,
+    cached by a signal fingerprint so it bills at most once per change). A cached
+    narrative is returned even without an API key; only a fresh generation needs
+    one. 404 if the name isn't on the caller's watchlist. Descriptive, not advice."""
+    try:
+        result = watchlist_narrative.get_or_generate(ticker.upper(), owner_id=user.id)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI narratives are unavailable — no API key configured.",
+        ) from None
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{ticker.upper()!r} is not on your watchlist",
+        )
+    return WhatsChangedResponse(**result)
 
 
 @router.patch("/{ticker}/plan", response_model=WatchlistPlanResponse)

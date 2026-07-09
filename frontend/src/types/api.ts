@@ -91,6 +91,9 @@ export interface RiskAlignmentResponse {
     text: string | null
   }>
   ideas: RiskAlignmentIdea[]
+  /** Sectors that have at least one qualifying idea in the band range — powers
+   *  the panel's sector filter. Independent of any selected sector. */
+  available_sectors: string[]
   methodology: string
 }
 
@@ -565,6 +568,14 @@ export interface WatchlistPlanUpdate {
 export interface WatchlistPlanResponse {
   ticker: string
   status: string
+}
+
+export interface WhatsChangedResponse {
+  ticker: string
+  narrative: string
+  model: string | null
+  generated_at: string | null
+  cached: boolean
 }
 
 export interface WatchlistResponse {

@@ -51,9 +51,89 @@ def _fit(band: int | None, band_min: int, band_max: int) -> str:
     return "above" if band > band_max else "below"
 
 
-def _ideas(owner_id: str, held_sids: list[int], ideas_min: int, ideas_max: int) -> list[dict]:
-    """Top composite names inside the idea band range, excluding held and
-    watchlisted names. Complete-scores only (same gate as the screener)."""
+def _query_ideas(
+    cur, excluded: set[int], ideas_min: int, ideas_max: int, sector: str | None
+) -> list[dict]:
+    """Top composite names inside the idea band range, optionally restricted to
+    one sector. Complete-scores only (same gate as the screener)."""
+    # DISTINCT ON (s.name): one listing per company, keeping its highest-composite
+    # line — otherwise an issuer's preferred shares can occupy several slots
+    # (disclosed in the methodology string). The sector filter is a parameterized
+    # equality (NULL param => no filter), so it's injection-safe.
+    cur.execute(
+        """
+        SELECT ticker, name, sector, composite, risk_band, vol_252d
+        FROM (
+            SELECT DISTINCT ON (s.name)
+                   s.ticker, s.name, s.sector, fs.composite,
+                   sr.risk_band, sr.vol_252d
+            FROM factor_scores fs
+            JOIN securities s ON s.security_id = fs.security_id
+            JOIN security_risk sr ON sr.security_id = fs.security_id
+            WHERE fs.config_version = %s
+              AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                                   WHERE config_version = %s)
+              AND s.is_active
+              AND s.name IS NOT NULL
+              AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
+              AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
+              AND sr.risk_band BETWEEN %s AND %s
+              AND sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
+              AND (%s::text IS NULL OR s.sector = %s)
+              AND NOT (fs.security_id = ANY(%s))
+            ORDER BY s.name, fs.composite DESC NULLS LAST
+        ) one_per_company
+        ORDER BY composite DESC NULLS LAST
+        LIMIT %s
+        """,
+        (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, ideas_min, ideas_max,
+         sector, sector, list(excluded) or [0], IDEAS_LIMIT),
+    )
+    return [
+        {
+            "ticker": r[0], "name": r[1], "sector": r[2],
+            "composite": float(r[3]) if r[3] is not None else None,
+            "risk_band": int(r[4]) if r[4] is not None else None,
+            "vol_252d": float(r[5]) if r[5] is not None else None,
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _query_sectors(cur, excluded: set[int], ideas_min: int, ideas_max: int) -> list[str]:
+    """Distinct sectors that actually HAVE a qualifying name in the idea band
+    range — so the filter dropdown only offers sectors with something to show
+    (deliberately independent of any selected sector)."""
+    cur.execute(
+        """
+        SELECT DISTINCT s.sector
+        FROM factor_scores fs
+        JOIN securities s ON s.security_id = fs.security_id
+        JOIN security_risk sr ON sr.security_id = fs.security_id
+        WHERE fs.config_version = %s
+          AND fs.score_date = (SELECT max(score_date) FROM factor_scores
+                               WHERE config_version = %s)
+          AND s.is_active
+          AND s.sector IS NOT NULL
+          AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
+          AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
+          AND sr.risk_band BETWEEN %s AND %s
+          AND sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
+          AND NOT (fs.security_id = ANY(%s))
+        ORDER BY s.sector
+        """,
+        (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION,
+         ideas_min, ideas_max, list(excluded) or [0]),
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def _idea_universe(
+    owner_id: str, held_sids: list[int], ideas_min: int, ideas_max: int,
+    sector: str | None = None,
+) -> tuple[list[dict], list[str]]:
+    """(ideas, available_sectors) for the discovery panel. One connection shared
+    by both queries; excludes the user's held + watchlisted names."""
     conn = acquire()
     try:
         with conn.cursor() as cur:
@@ -62,51 +142,27 @@ def _ideas(owner_id: str, held_sids: list[int], ideas_min: int, ideas_max: int) 
                 (owner_id,),
             )
             excluded = {r[0] for r in cur.fetchall()} | set(held_sids)
-            # DISTINCT ON (s.name): one listing per company, keeping its
-            # highest-composite line — otherwise an issuer's preferred shares
-            # can occupy several slots (disclosed in the methodology string).
-            cur.execute(
-                """
-                SELECT ticker, name, sector, composite, risk_band, vol_252d
-                FROM (
-                    SELECT DISTINCT ON (s.name)
-                           s.ticker, s.name, s.sector, fs.composite,
-                           sr.risk_band, sr.vol_252d
-                    FROM factor_scores fs
-                    JOIN securities s ON s.security_id = fs.security_id
-                    JOIN security_risk sr ON sr.security_id = fs.security_id
-                    WHERE fs.config_version = %s
-                      AND fs.score_date = (SELECT max(score_date) FROM factor_scores
-                                           WHERE config_version = %s)
-                      AND s.is_active
-                      AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
-                      AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
-                      AND sr.risk_band BETWEEN %s AND %s
-                      AND sr.as_of_date >= CURRENT_DATE - INTERVAL '30 days'
-                      AND NOT (fs.security_id = ANY(%s))
-                    ORDER BY s.name, fs.composite DESC NULLS LAST
-                ) one_per_company
-                ORDER BY composite DESC NULLS LAST
-                LIMIT %s
-                """,
-                (ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION,
-                 ideas_min, ideas_max, list(excluded) or [0], IDEAS_LIMIT),
-            )
-            return [
-                {
-                    "ticker": r[0], "name": r[1], "sector": r[2],
-                    "composite": float(r[3]) if r[3] is not None else None,
-                    "risk_band": int(r[4]) if r[4] is not None else None,
-                    "vol_252d": float(r[5]) if r[5] is not None else None,
-                }
-                for r in cur.fetchall()
-            ]
+            ideas = _query_ideas(cur, excluded, ideas_min, ideas_max, sector)
+            # available_sectors is sector-invariant and the frontend keeps the
+            # list from the initial (unfiltered) fetch, so a sector-filtered call
+            # doesn't need to re-derive it — skip that scan to halve the extra
+            # factor_scores work on each dropdown change.
+            sectors = _query_sectors(cur, excluded, ideas_min, ideas_max) if sector is None else []
+            return ideas, sectors
     finally:
         release(conn)
 
 
-def risk_alignment(owner_id: str, benchmark: str = "SPY") -> dict[str, Any]:
-    """The alignment payload for GET /portfolio/risk-alignment."""
+def risk_alignment(
+    owner_id: str, benchmark: str = "SPY", sector: str | None = None
+) -> dict[str, Any]:
+    """The alignment payload for GET /portfolio/risk-alignment.
+
+    ``sector`` (optional) restricts the idea-discovery list to one sector so a
+    user hunting e.g. Healthcare names isn't shown only the globally top-scored
+    ones (which tend to cluster in a couple of sectors). Everything else in the
+    payload is sector-agnostic.
+    """
     profile = risk_profile.get_profile(owner_id)
     port = portfolio_engine.compute_portfolio(owner_id=owner_id, benchmark=benchmark)
     holdings = port.get("holdings", [])
@@ -120,6 +176,7 @@ def risk_alignment(owner_id: str, benchmark: str = "SPY") -> dict[str, Any]:
             "holdings": [],
             "threshold_flags": [],
             "ideas": [],
+            "available_sectors": [],
             "methodology": _METHODOLOGY,
         }
 
@@ -167,7 +224,9 @@ def risk_alignment(owner_id: str, benchmark: str = "SPY") -> dict[str, Any]:
     ]
 
     held_sids = [h["security_id"] for h in holdings if h.get("security_id")]
-    ideas = _ideas(owner_id, held_sids, profile["ideas_min"], profile["ideas_max"])
+    ideas, available_sectors = _idea_universe(
+        owner_id, held_sids, profile["ideas_min"], profile["ideas_max"], sector=sector
+    )
 
     return {
         "has_profile": True,

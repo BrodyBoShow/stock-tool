@@ -1,6 +1,9 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { RiskBandChip } from '@/components/ui/RiskBandChip'
+import { getRiskAlignment } from '@/lib/api'
 import { fmtPct } from '@/lib/format'
 import type { RiskAlignmentResponse } from '@/types/api'
 
@@ -10,10 +13,44 @@ import type { RiskAlignmentResponse } from '@/types/api'
  * whose historical risk band falls inside the idea range the user chose,
  * excluding anything they already hold or watch, one listing per company.
  * Links go to the deep dive so the user does their own research.
+ *
+ * A sector filter lets the user narrow the list to (say) Healthcare — otherwise
+ * the globally top-scored names can all cluster in one or two sectors and crowd
+ * everything else out. The filter re-queries the server (the top-10 shown are
+ * already sector-skewed, so filtering them client-side would just show zero).
  */
-export function AlignedIdeasPanel({ data }: { data: RiskAlignmentResponse }) {
+export function AlignedIdeasPanel({
+  data,
+  benchmark = 'SPY',
+}: {
+  data: RiskAlignmentResponse
+  benchmark?: string
+}) {
+  const [sector, setSector] = useState('')
+
+  // Own query so changing the sector re-fetches only the ideas — the page's
+  // (sector-agnostic) fetch seeds the default via initialData. staleTime keeps
+  // that seed fresh so mounting doesn't trigger a duplicate fetch: no extra
+  // request happens until the user actually picks a sector.
+  const q = useQuery({
+    queryKey: ['portfolio', 'risk-alignment', 'ideas', benchmark, sector],
+    queryFn: () => getRiskAlignment(benchmark, sector || undefined),
+    initialData: sector === '' ? data : undefined,
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
+    enabled: data.has_profile,
+  })
+
   if (!data.has_profile || !data.profile) return null
   const p = data.profile
+  const view = q.data ?? data
+  const ideas = view.ideas
+  const sectors = data.available_sectors ?? []
+  const filtering = q.isFetching && sector !== ''
+  // A failed sector fetch must NOT leave the previous sector's rows on screen
+  // (keepPreviousData) under the new label — that would mislabel them. Show an
+  // error + a way back instead.
+  const fetchFailed = q.isError && sector !== ''
 
   return (
     <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
@@ -25,17 +62,77 @@ export function AlignedIdeasPanel({ data }: { data: RiskAlignmentResponse }) {
       </div>
       <p className="mt-1 text-[0.72rem] text-gray-500">
         Top composite-scored names in historical risk bands {p.ideas_min}–{p.ideas_max} (your
-        idea range) — a filter, not recommendations. Excludes your holdings and watchlist;
-        one listing per company.
+        idea range){sector ? ` within ${sector}` : ''} — a filter, not recommendations. Excludes
+        your holdings and watchlist; one listing per company.
       </p>
 
-      {data.ideas.length === 0 ? (
+      {sectors.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="ideas-sector" className="text-[0.7rem] font-semibold text-slate-500">
+            Sector
+          </label>
+          <select
+            id="ideas-sector"
+            value={sector}
+            onChange={(e) => setSector(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[0.75rem] text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+          >
+            <option value="">All sectors</option>
+            {sectors.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          {sector && (
+            <button
+              type="button"
+              onClick={() => setSector('')}
+              className="text-[0.7rem] font-medium text-indigo-600 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+          {filtering && <span className="text-[0.7rem] text-slate-400">Filtering…</span>}
+        </div>
+      )}
+
+      {fetchFailed ? (
+        <div className="mt-4 text-[0.8rem] text-amber-700">
+          Couldn’t load {sector} ideas.{' '}
+          <button
+            type="button"
+            onClick={() => q.refetch()}
+            className="font-semibold text-indigo-600 hover:underline"
+          >
+            Try again
+          </button>{' '}
+          or{' '}
+          <button
+            type="button"
+            onClick={() => setSector('')}
+            className="font-semibold text-indigo-600 hover:underline"
+          >
+            show all sectors
+          </button>
+          .
+        </div>
+      ) : ideas.length === 0 ? (
         <div className="mt-4 text-[0.8rem] text-gray-500">
-          No names currently pass the filter (band range {p.ideas_min}–{p.ideas_max}, complete
-          factor scores, fresh risk data).
+          No names currently pass the filter (band range {p.ideas_min}–{p.ideas_max}
+          {sector ? `, sector ${sector}` : ''}, complete factor scores, fresh risk data).
+          {sector && (
+            <button
+              type="button"
+              onClick={() => setSector('')}
+              className="ml-1 font-semibold text-indigo-600 hover:underline"
+            >
+              Show all sectors
+            </button>
+          )}
         </div>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <div className={`mt-3 overflow-x-auto transition-opacity ${filtering ? 'opacity-60' : ''}`}>
           <table className="w-full text-[0.78rem]">
             <thead>
               <tr className="border-b border-gray-100 text-left text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
@@ -48,7 +145,7 @@ export function AlignedIdeasPanel({ data }: { data: RiskAlignmentResponse }) {
               </tr>
             </thead>
             <tbody>
-              {data.ideas.map((i) => (
+              {ideas.map((i) => (
                 <tr key={i.ticker} className="border-b border-gray-50 hover:bg-slate-50/60">
                   <td className="py-1.5 pr-3">
                     <Link

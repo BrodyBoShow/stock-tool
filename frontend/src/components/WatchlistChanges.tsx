@@ -5,6 +5,7 @@ import { SectorPill } from '@/components/screener/SectorPill'
 import { Delta } from '@/components/ui/Delta'
 import { fmtDate, fmtMoney } from '@/lib/format'
 import { snoozedUntil, snoozeTicker } from '@/lib/watchlistSnooze'
+import { WhatsChangedButton } from '@/components/watchlist/WhatsChangedButton'
 import type { WatchlistChange } from '@/types/api'
 
 const SNOOZE_DAYS = 30
@@ -244,6 +245,8 @@ function ChangeCard({
           </button>
         )}
       </div>
+
+      {tier !== 'quiet' && <WhatsChangedButton ticker={c.ticker} />}
     </div>
   )
 }
