@@ -596,6 +596,10 @@ export interface WatchlistChange {
   new_events: number
   latest_event_label: string | null
   latest_event_date: string | null
+  /** Direct SEC EDGAR link to the most recent high-signal filing's primary doc,
+   *  and that filing's real form (8-K / 8-K/A / 6-K). */
+  latest_event_url: string | null
+  latest_event_form: string | null
   insider_buy_count: number
   insider_buy_value: number | null
   review_due: boolean
