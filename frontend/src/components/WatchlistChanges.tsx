@@ -275,6 +275,7 @@ function ChangeCard({
           ticker={c.ticker}
           filingUrl={c.latest_event_url}
           filingLabel={c.latest_event_label}
+          filingForm={c.latest_event_form}
         />
       )}
     </div>

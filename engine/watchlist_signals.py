@@ -45,6 +45,7 @@ def compute(
         latest_label = None
         latest_date = None
         latest_url = None
+        latest_form = None
         if hi:
             top = hi[0]  # newest first
             labels = [
@@ -54,9 +55,13 @@ def compute(
             latest_label = labels[0] if labels else None
             latest_date = str(top.get("event_date") or top["filed_date"])
             # Direct SEC EDGAR link to the primary document of the most recent
-            # high-signal 8-K, so the watch row / narrative can link straight to
-            # the filing it names. May be None if EDGAR gave no primary doc.
+            # high-signal filing, so the watch row / narrative can link straight
+            # to the filing it names. May be None if EDGAR gave no primary doc.
             latest_url = top.get("primary_doc_url")
+            # Real form of that filing (8-K / 8-K/A / 6-K …) — the high-signal
+            # filter is by item code, not form, so don't assume "8-K" when we
+            # name the filing.
+            latest_form = top.get("form")
 
         # Open-market insider buys, trailing 3 months.
         ins = queries.insider_summary(queries.insider_rows(ticker, months=3), months=3)
@@ -77,6 +82,7 @@ def compute(
             "latest_event_label": latest_label,
             "latest_event_date": latest_date,
             "latest_event_url": latest_url,
+            "latest_event_form": latest_form,
             "insider_buy_count": ins.get("buy_count", 0),
             "insider_buy_value": ins.get("buy_value"),
             "review_due": rd is not None and rd <= today,

@@ -14,10 +14,12 @@ export function WhatsChangedButton({
   ticker,
   filingUrl,
   filingLabel,
+  filingForm,
 }: {
   ticker: string
   filingUrl?: string | null
   filingLabel?: string | null
+  filingForm?: string | null
 }) {
   const [text, setText] = useState<string | null>(null)
   const m = useMutation({
@@ -42,7 +44,8 @@ export function WhatsChangedButton({
             rel="noopener noreferrer"
             className="mt-1.5 inline-flex items-center gap-1 text-[0.72rem] font-semibold text-violet-700 hover:underline"
           >
-            Read the {filingLabel ? `${filingLabel} ` : ''}8-K on SEC EDGAR ↗
+            Read the {filingLabel ? `${filingLabel} ` : ''}
+            {filingForm ?? 'filing'} on SEC EDGAR ↗
           </a>
         )}
       </div>
