@@ -54,9 +54,9 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
 
   if (rotation.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <div className="text-[0.82rem] font-bold text-slate-800">Category Rotation Compass</div>
-        <div className="mt-3 text-[0.7rem] text-slate-400">No rotation data available.</div>
+      <div className="rounded-lg border border-line bg-surface p-4">
+        <div className="text-[0.82rem] font-bold text-ink">Category Rotation Compass</div>
+        <div className="mt-3 text-[0.7rem] text-subtle">No rotation data available.</div>
       </div>
     );
   }
@@ -81,12 +81,12 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
   const tableRows = FUND_CATEGORIES.map((c) => ({ meta: c, row: map.get(c.key) ?? null }));
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-line bg-surface p-4">
       <div className="flex items-center gap-1">
-        <span className="text-[0.82rem] font-bold text-slate-800">Category Rotation Compass</span>
+        <span className="text-[0.82rem] font-bold text-ink">Category Rotation Compass</span>
         <InfoTip text="Avg category return today (solid) vs 5-day (semi) vs 20-day (outline). Shows rotation between asset classes at a glance." />
       </div>
-      <div className="text-[0.68rem] text-slate-400">Today vs 5-day vs 20-day avg return by category</div>
+      <div className="text-[0.68rem] text-subtle">Today vs 5-day vs 20-day avg return by category</div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* RADAR */}
@@ -152,7 +152,7 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
               ))}
             </g>
           </svg>
-          <div className="mt-1 text-center text-[0.6rem] text-slate-400">
+          <div className="mt-1 text-center text-[0.6rem] text-subtle">
             <span style={{ color: '#2563eb' }}>●</span> Today&nbsp;&nbsp;
             <span style={{ color: '#3b82f6' }}>●</span> 5-day&nbsp;&nbsp;
             <span style={{ color: '#94a3b8' }}>┄</span> 20-day
@@ -164,13 +164,13 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="text-left text-[0.55rem] font-bold uppercase tracking-wide text-slate-400">
+                <th className="text-left text-[0.55rem] font-bold uppercase tracking-wide text-subtle">
                   Category
                 </th>
                 {['1D', '5D', '20D', '90D', 'YTD'].map((h) => (
                   <th
                     key={h}
-                    className="text-right text-[0.55rem] font-bold uppercase tracking-wide text-slate-400"
+                    className="text-right text-[0.55rem] font-bold uppercase tracking-wide text-subtle"
                   >
                     {h}
                   </th>
@@ -181,10 +181,10 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
               {tableRows.map(({ meta, row }) => (
                 <tr
                   key={meta.key}
-                  className="border-b border-slate-50 hover:bg-slate-50"
+                  className="border-b border-slate-50 hover:bg-surface-2"
                   style={{ borderLeft: '3px solid ' + meta.accent }}
                 >
-                  <td className="py-1 pl-1 text-[0.68rem] font-semibold text-slate-800">
+                  <td className="py-1 pl-1 text-[0.68rem] font-semibold text-ink">
                     {meta.short}
                   </td>
                   {(['r1d', 'r5d', 'r20d', 'r90d', 'rytd'] as const).map((metric) => {

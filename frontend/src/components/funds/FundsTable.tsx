@@ -74,7 +74,7 @@ function renderCell(f: EnrichedFund, key: FundColumnKey, showRank: boolean): JSX
     case 'vol':
       return <>{fmtPct(f.vol)}</>;
     case 'mdd':
-      return <span className="text-red-600">{fmtSignedPct(f.mdd)}</span>;
+      return <span className="text-neg">{fmtSignedPct(f.mdd)}</span>;
     case 'sharpe':
       return <>{fmtRatio(f.sharpe, 2)}</>;
     default:
@@ -96,7 +96,7 @@ function SortHeader(props: {
   return (
     <th
       className={
-        'cursor-pointer select-none whitespace-nowrap px-2 py-1.5 text-[0.58rem] font-bold uppercase tracking-wide text-slate-400 hover:text-slate-600 ' +
+        'cursor-pointer select-none whitespace-nowrap px-2 py-1.5 text-[0.58rem] font-bold uppercase tracking-wide text-subtle hover:text-muted ' +
         (props.num ? 'text-right' : 'text-left')
       }
       onClick={() => props.onSort(props.sortKey)}
@@ -122,14 +122,14 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-[0.72rem]">
         <thead>
-          <tr className="border-b border-slate-100">
+          <tr className="border-b border-line">
             {props.compareMode && <th className="w-6 px-2 py-1.5" />}
             <SortHeader label="Ticker" sortKey="ticker" num={false} sort={props.sort} onSort={props.onSort} />
-            <th className="px-2 py-1.5 text-left text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+            <th className="px-2 py-1.5 text-left text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
               Name
             </th>
             {props.showCategory && (
-              <th className="px-2 py-1.5 text-left text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+              <th className="px-2 py-1.5 text-left text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                 Cat
               </th>
             )}
@@ -151,7 +151,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
                 <th
                   key={key}
                   className={
-                    'whitespace-nowrap px-2 py-1.5 text-[0.58rem] font-bold uppercase tracking-wide text-slate-400 ' +
+                    'whitespace-nowrap px-2 py-1.5 text-[0.58rem] font-bold uppercase tracking-wide text-subtle ' +
                     (col.num ? 'text-right' : 'text-left')
                   }
                 >
@@ -164,7 +164,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={colCount} className="px-2 py-6 text-center text-slate-400">
+              <td colSpan={colCount} className="px-2 py-6 text-center text-subtle">
                 No funds match.
               </td>
             </tr>
@@ -173,7 +173,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
             <tr
               key={f.security_id}
               onClick={() => props.onOpen(f.ticker)}
-              className="cursor-pointer border-b border-slate-50 hover:bg-slate-50"
+              className="cursor-pointer border-b border-slate-50 hover:bg-surface-2"
               style={{ borderLeft: '3px solid ' + catMeta(f.category).accent }}
             >
               {props.compareMode && (
@@ -189,15 +189,15 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
               <td className="px-2 py-1.5">
                 <span className="flex items-center gap-1">
                   {f.best_access && (
-                    <span title="Best Access" className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                    <span title="Best Access" className="inline-block h-1.5 w-1.5 rounded-full bg-pos-strong" />
                   )}
                   {f.most_liquid && (
                     <span title="Most Liquid" className="inline-block h-1.5 w-1.5 rounded-full bg-purple-500" />
                   )}
-                  <span className="font-semibold tabular-nums text-slate-800">{f.ticker}</span>
+                  <span className="font-semibold tabular-nums text-ink">{f.ticker}</span>
                 </span>
               </td>
-              <td className="max-w-[240px] truncate px-2 py-1.5 text-slate-500">{f.name ?? DASH_FALLBACK}</td>
+              <td className="max-w-[240px] truncate px-2 py-1.5 text-muted">{f.name ?? DASH_FALLBACK}</td>
               {props.showCategory && (
                 <td className="px-2 py-1.5">
                   <span
@@ -225,7 +225,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
         </tbody>
       </table>
       {capped && props.maxRows != null && (
-        <div className="px-2 py-1.5 text-[0.62rem] text-slate-400">
+        <div className="px-2 py-1.5 text-[0.62rem] text-subtle">
           Showing {props.maxRows} of {props.funds.length}
         </div>
       )}

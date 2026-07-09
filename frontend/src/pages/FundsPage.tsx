@@ -37,12 +37,12 @@ const COLUMN_ORDER: FundColumnKey[] = [
 function TierLabel({ n, title }: { n: 1 | 2 | 3; title: string }) {
   return (
     <div className="flex items-center gap-2 pt-1">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-slate-500">
-        <span className="text-indigo-600">Tier {n}</span>
-        <span className="text-slate-300" aria-hidden>·</span>
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-3 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted">
+        <span className="text-accent">Tier {n}</span>
+        <span className="text-subtle" aria-hidden>·</span>
         {title}
       </span>
-      <span className="h-px flex-1 bg-slate-100" />
+      <span className="h-px flex-1 bg-surface-3" />
     </div>
   )
 }
@@ -217,11 +217,11 @@ export function FundsPage() {
   return (
     <div className="space-y-5 pb-24">
       {/* Sticky sub-header: title + category tabs + toolbar */}
-      <div className="sticky top-12 z-20 -mx-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <div className="sticky top-12 z-20 -mx-4 border-b border-line bg-surface px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="mr-2">
-            <div className="text-[1rem] font-bold text-slate-800">Funds &amp; ETFs</div>
-            <div className="text-[0.66rem] text-slate-400">
+            <div className="text-[1rem] font-bold text-ink">Funds &amp; ETFs</div>
+            <div className="text-[0.66rem] text-subtle">
               {funds.length} ETFs · {catCounts.size} categories · {fmtAum(totalAum)} total AUM
             </div>
           </div>
@@ -231,8 +231,8 @@ export function FundsPage() {
               onClick={() => setView('cross')}
               className={`rounded-md px-3 py-1.5 text-[0.72rem] font-semibold transition ${
                 view === 'cross'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
+                  ? 'bg-accent-solid text-accent-ink'
+                  : 'text-muted hover:bg-surface-3'
               }`}
             >
               Cross-Category
@@ -243,8 +243,8 @@ export function FundsPage() {
                 onClick={() => setView(c.key)}
                 className={`rounded-md px-3 py-1.5 text-[0.72rem] font-semibold transition ${
                   view === c.key
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-500 hover:bg-slate-100'
+                    ? 'bg-accent-solid text-accent-ink'
+                    : 'text-muted hover:bg-surface-3'
                 }`}
               >
                 {c.label === 'Other (Broad Market)' ? 'Other' : c.label}
@@ -261,18 +261,18 @@ export function FundsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search funds… ( / )"
-              className="w-44 rounded-md border border-slate-200 px-2.5 py-1.5 text-[0.72rem] focus:border-blue-400 focus:outline-none"
+              className="w-44 rounded-md border border-line px-2.5 py-1.5 text-[0.72rem] focus:border-accent focus:outline-none"
             />
             <details className="relative">
-              <summary className="cursor-pointer list-none rounded-md border border-slate-200 px-2.5 py-1.5 text-[0.68rem] font-semibold text-slate-500 hover:border-slate-300">
+              <summary className="cursor-pointer list-none rounded-md border border-line px-2.5 py-1.5 text-[0.68rem] font-semibold text-muted hover:border-line">
                 Columns ▾
               </summary>
-              <div className="absolute right-0 z-30 mt-1 w-44 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+              <div className="absolute right-0 z-30 mt-1 w-44 rounded-md border border-line bg-surface p-2 shadow-lg">
                 {[...DEFAULT_FUND_COLUMNS.filter((k) => k !== 'spark'), ...OPTIONAL_FUND_COLUMNS].map(
                   (k) => (
                     <label
                       key={k}
-                      className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[0.7rem] text-slate-600 hover:bg-slate-50"
+                      className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[0.7rem] text-muted hover:bg-surface-2"
                     >
                       <input
                         type="checkbox"
@@ -289,8 +289,8 @@ export function FundsPage() {
               onClick={() => (compareMode ? exitCompare() : setCompareMode(true))}
               className={`rounded-md border px-2.5 py-1.5 text-[0.68rem] font-semibold transition ${
                 compareMode
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-muted hover:border-line'
               }`}
             >
               ⚔ Compare
@@ -314,14 +314,14 @@ export function FundsPage() {
               <div className="lg:col-span-1">
                 <CategoryHeatmap categories={categories} onSelect={setView} />
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
+              <div className="rounded-lg border border-line bg-surface p-4 lg:col-span-2">
                 <div className="mb-2 flex items-center justify-between">
                   <div>
-                    <div className="text-[0.82rem] font-bold text-slate-800">
+                    <div className="text-[0.82rem] font-bold text-ink">
                       Performance Leaderboard
                       <InfoTip text="All funds in one sortable table. Click a column to re-sort, a row to open its detail drawer." />
                     </div>
-                    <div className="text-[0.66rem] text-slate-400">
+                    <div className="text-[0.66rem] text-subtle">
                       All {funds.length} funds · sortable · click a row for detail
                     </div>
                   </div>
@@ -338,8 +338,8 @@ export function FundsPage() {
                         onClick={() => setLbFilter(k)}
                         className={`rounded-full border px-2.5 py-0.5 text-[0.62rem] font-semibold transition ${
                           lbFilter === k
-                            ? 'border-blue-500 bg-blue-600 text-white'
-                            : 'border-slate-200 text-slate-500 hover:border-blue-400'
+                            ? 'border-accent bg-accent-solid text-accent-ink'
+                            : 'border-line text-muted hover:border-accent'
                         }`}
                       >
                         {label}
@@ -401,11 +401,11 @@ export function FundsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setView('cross')}
-              className="text-[0.72rem] font-semibold text-blue-600 hover:underline"
+              className="text-[0.72rem] font-semibold text-accent hover:underline"
             >
               ← All categories
             </button>
-            <span className="text-[0.72rem] text-slate-400">
+            <span className="text-[0.72rem] text-subtle">
               {activeCatMeta?.label ?? view} · {categoryFunds.length} funds
             </span>
           </div>
@@ -425,10 +425,10 @@ export function FundsPage() {
             </section>
           )}
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-2 text-[0.82rem] font-bold text-slate-800">
+          <div className="rounded-lg border border-line bg-surface p-4">
+            <div className="mb-2 text-[0.82rem] font-bold text-ink">
               {activeCatMeta?.label ?? view}
-              <span className="ml-1.5 text-[0.66rem] font-normal text-slate-400">
+              <span className="ml-1.5 text-[0.66rem] font-normal text-subtle">
                 ({categoryFunds.length}) · click a row for detail · ● = Best Access
               </span>
             </div>
@@ -448,7 +448,7 @@ export function FundsPage() {
         </>
       )}
 
-      <p className="pt-2 text-center text-[0.62rem] text-slate-400">
+      <p className="pt-2 text-center text-[0.62rem] text-subtle">
         ETF metadata &amp; holdings from issuer/yfinance; prices from nightly closes; risk stats
         computed from ~1Y of daily returns. Not investment advice. Expense ratio, tracking error,
         and bid-ask spread are not in our free data and are intentionally omitted.
@@ -471,14 +471,14 @@ export function FundsPage() {
       {compareMode && compareSet.length > 0 && !showCompare && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 bg-slate-900 px-6 py-3 text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
           <span className="text-[0.72rem] font-semibold">Compare mode</span>
-          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[0.66rem] font-bold tabular-nums">
+          <span className="rounded-full bg-accent-solid px-2 py-0.5 text-[0.66rem] font-bold tabular-nums">
             {compareSet.length} selected
           </span>
           <div className="flex flex-wrap gap-1">
             {compareSet.map((t) => (
               <span
                 key={t}
-                className="rounded bg-white/15 px-2 py-0.5 text-[0.66rem] font-bold tabular-nums"
+                className="rounded bg-surface px-2 py-0.5 text-[0.66rem] font-bold tabular-nums"
               >
                 {t}
               </span>
@@ -494,7 +494,7 @@ export function FundsPage() {
             <button
               onClick={() => setShowCompare(true)}
               disabled={compareSet.length < 2}
-              className="rounded border border-blue-500 bg-blue-600 px-3 py-1 text-[0.68rem] font-semibold disabled:opacity-40"
+              className="rounded border border-accent bg-accent-solid px-3 py-1 text-[0.68rem] font-semibold disabled:opacity-40"
             >
               View Comparison ⚔
             </button>

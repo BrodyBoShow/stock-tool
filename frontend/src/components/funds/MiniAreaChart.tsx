@@ -40,7 +40,7 @@ export function MiniAreaChart({
   if (norm.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-md bg-slate-50 text-[0.72rem] text-slate-400"
+        className="flex items-center justify-center rounded-md bg-surface-2 text-[0.72rem] text-subtle"
         style={{ height }}
       >
         No price history

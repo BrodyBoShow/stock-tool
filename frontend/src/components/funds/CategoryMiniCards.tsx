@@ -26,10 +26,10 @@ export function CategoryMiniCards(props: CategoryMiniCardsProps): JSX.Element {
             tabIndex={0}
             onClick={() => props.onSelect(agg.key)}
             style={{ borderLeft: '3px solid ' + meta.accent }}
-            className="rounded-lg border border-slate-200 bg-white p-3.5 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+            className="rounded-lg border border-line bg-surface p-3.5 text-left transition hover:-translate-y-0.5 hover:border-line hover:shadow-sm"
           >
-            <div className="font-bold text-[0.8rem] text-slate-800">{meta.label}</div>
-            <div className="text-[0.62rem] text-slate-400">
+            <div className="font-bold text-[0.8rem] text-ink">{meta.label}</div>
+            <div className="text-[0.62rem] text-subtle">
               {agg.count} funds · {fmtAum(agg.aum)} AUM
             </div>
 
@@ -44,13 +44,13 @@ export function CategoryMiniCards(props: CategoryMiniCardsProps): JSX.Element {
               <Sparkline data={agg.spark} fluid height={24} color={plColor(sparkDelta)} />
             </div>
 
-            <div className="grid grid-cols-2 gap-y-1 border-t border-slate-100 pt-2 text-[0.62rem]">
-              <div className="text-slate-400">Best today</div>
-              <div className="text-right tabular-nums text-green-600">
+            <div className="grid grid-cols-2 gap-y-1 border-t border-line pt-2 text-[0.62rem]">
+              <div className="text-subtle">Best today</div>
+              <div className="text-right tabular-nums text-pos">
                 {agg.best ? `${agg.best.ticker} ${fmtSignedPct(agg.best.r1d)}` : DASH}
               </div>
-              <div className="text-slate-400">Worst today</div>
-              <div className="text-right tabular-nums text-red-600">
+              <div className="text-subtle">Worst today</div>
+              <div className="text-right tabular-nums text-neg">
                 {agg.worst ? `${agg.worst.ticker} ${fmtSignedPct(agg.worst.r1d)}` : DASH}
               </div>
             </div>

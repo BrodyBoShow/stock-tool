@@ -49,14 +49,14 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
     cells.push(<div key="corner" className="p-1" />);
     for (let j = 0; j < tickers.length; j++) {
       cells.push(
-        <div key={`h-${j}`} className="p-1 text-center text-[0.6rem] font-bold tabular-nums text-slate-500">
+        <div key={`h-${j}`} className="p-1 text-center text-[0.6rem] font-bold tabular-nums text-muted">
           {tickers[j]}
         </div>,
       );
     }
     for (let i = 0; i < tickers.length; i++) {
       cells.push(
-        <div key={`rh-${i}`} className="flex items-center p-1 text-[0.6rem] font-bold tabular-nums text-slate-500">
+        <div key={`rh-${i}`} className="flex items-center p-1 text-[0.6rem] font-bold tabular-nums text-muted">
           {tickers[i]}
         </div>,
       );
@@ -67,7 +67,7 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
           cells.push(
             <div
               key={`c-${i}-${j}`}
-              className="flex items-center justify-center rounded p-1 text-[0.62rem] tabular-nums text-slate-400"
+              className="flex items-center justify-center rounded p-1 text-[0.62rem] tabular-nums text-subtle"
               style={{ background: '#f1f5f9' }}
             >
               {DASH}
@@ -91,25 +91,25 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 max-h-[62vh] overflow-y-auto border-t border-slate-200 bg-white p-4 shadow-[0_-8px_24px_rgba(0,0,0,0.12)]">
+    <div className="fixed bottom-0 left-0 right-0 z-40 max-h-[62vh] overflow-y-auto border-t border-line bg-surface p-4 shadow-[0_-8px_24px_rgba(0,0,0,0.12)]">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <span className="text-[0.82rem] font-bold text-slate-800">Compare</span>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.62rem] font-bold tabular-nums text-slate-600">
+        <span className="text-[0.82rem] font-bold text-ink">Compare</span>
+        <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[0.62rem] font-bold tabular-nums text-muted">
           {funds.length}
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           {funds.map((f, i) => (
             <span
               key={f.ticker}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.62rem] font-semibold tabular-nums text-slate-700"
+              className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-2 px-2 py-0.5 text-[0.62rem] font-semibold tabular-nums text-ink"
             >
               <span className="inline-block h-2 w-2 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />
               {f.ticker}
               <button
                 type="button"
                 onClick={() => onRemove(f.ticker)}
-                className="ml-0.5 text-slate-400 hover:text-slate-700"
+                className="ml-0.5 text-subtle hover:text-ink"
                 aria-label={`Remove ${f.ticker}`}
               >
                 ×
@@ -121,14 +121,14 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
           <button
             type="button"
             onClick={onClear}
-            className="rounded border border-slate-200 px-2 py-1 text-[0.68rem] font-semibold text-slate-600 hover:bg-slate-50"
+            className="rounded border border-line px-2 py-1 text-[0.68rem] font-semibold text-muted hover:bg-surface-2"
           >
             Clear
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded border border-slate-200 px-2 py-1 text-[0.68rem] font-semibold text-slate-600 hover:bg-slate-50"
+            className="rounded border border-line px-2 py-1 text-[0.68rem] font-semibold text-muted hover:bg-surface-2"
           >
             Close
           </button>
@@ -137,16 +137,16 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
 
       <div className="mt-4 grid gap-4">
         {/* 1. Overlay chart */}
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="text-[0.82rem] font-bold text-slate-800">
-            Relative performance <span className="text-[0.68rem] font-normal text-slate-400">(~90-day, normalized to 100)</span>
+        <div className="rounded-lg border border-line bg-surface p-4">
+          <div className="text-[0.82rem] font-bold text-ink">
+            Relative performance <span className="text-[0.68rem] font-normal text-subtle">(~90-day, normalized to 100)</span>
           </div>
           <div className="mt-3">
             <MiniAreaChart height={200} showBaseline series={series} />
           </div>
           <div className="mt-2 flex flex-wrap gap-3">
             {funds.map((f, i) => (
-              <span key={f.ticker} className="inline-flex items-center gap-1.5 text-[0.66rem] tabular-nums text-slate-600">
+              <span key={f.ticker} className="inline-flex items-center gap-1.5 text-[0.66rem] tabular-nums text-muted">
                 <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PALETTE[i % PALETTE.length] }} />
                 {f.ticker}
               </span>
@@ -155,47 +155,47 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
         </div>
 
         {/* 2. Stats table */}
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="text-[0.82rem] font-bold text-slate-800">Stats</div>
+        <div className="rounded-lg border border-line bg-surface p-4">
+          <div className="text-[0.82rem] font-bold text-ink">Stats</div>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="py-1 pr-2 text-left text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">Fund</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">AUM</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">Vol</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">P/D</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">β</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">Vol σ</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">Max DD</th>
-                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">Sharpe</th>
-                  <th className="py-1 pl-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">YTD</th>
+                  <th className="py-1 pr-2 text-left text-[0.58rem] font-bold uppercase tracking-wide text-subtle">Fund</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">AUM</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">Vol</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">P/D</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">β</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">Vol σ</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">Max DD</th>
+                  <th className="py-1 px-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">Sharpe</th>
+                  <th className="py-1 pl-2 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">YTD</th>
                 </tr>
               </thead>
               <tbody>
                 {funds.map((f) => (
                   <tr
                     key={f.ticker}
-                    className="border-b border-slate-50 hover:bg-slate-50"
+                    className="border-b border-slate-50 hover:bg-surface-2"
                     style={{ borderLeft: '3px solid ' + catMeta(f.category).accent }}
                   >
                     <td className="py-1.5 pl-2 pr-2 text-left">
                       <span className="inline-flex items-center gap-1.5">
-                        {f.best_access && <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="Best access" />}
-                        <span className="font-semibold tabular-nums text-slate-800">{f.ticker}</span>
+                        {f.best_access && <span className="inline-block h-2 w-2 rounded-full bg-pos-strong" title="Best access" />}
+                        <span className="font-semibold tabular-nums text-ink">{f.ticker}</span>
                       </span>
                     </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-slate-700">{fmtAum(f.aum)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-slate-700">{fmtVol(f.avg_volume)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-ink">{fmtAum(f.aum)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-ink">{fmtVol(f.avg_volume)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums" style={{ color: plColor(f.premium_discount) }}>
                       {f.premium_discount == null ? DASH : fmtSignedPct(f.premium_discount, 2)}
                     </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-slate-700">{fmtRatio(f.beta)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-slate-700">{fmtPct(f.vol)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-ink">{fmtRatio(f.beta)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-ink">{fmtPct(f.vol)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums" style={{ color: plColor(f.mdd) }}>
                       {f.mdd == null ? DASH : fmtPct(f.mdd)}
                     </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-slate-700">{fmtRatio(f.sharpe)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-ink">{fmtRatio(f.sharpe)}</td>
                     <td className="py-1.5 pl-2 text-right tabular-nums" style={{ color: plColor(f.rytd) }}>
                       {f.rytd == null ? DASH : fmtSignedPct(f.rytd)}
                     </td>
@@ -207,14 +207,14 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
         </div>
 
         {/* 3. Overlap matrix */}
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-lg border border-line bg-surface p-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-[0.82rem] font-bold text-slate-800">Holdings overlap</span>
+            <span className="text-[0.82rem] font-bold text-ink">Holdings overlap</span>
             <InfoTip text="Weighted Jaccard overlap of top holdings. Green = well diversified, red = essentially the same exposure. Commodity/crypto funds hold no equities so overlap 0." />
           </div>
           <div className="mt-3">
             {ov.isPending ? (
-              <div className="h-32 w-full animate-pulse rounded bg-slate-100" />
+              <div className="h-32 w-full animate-pulse rounded bg-surface-3" />
             ) : matrix ? (
               <div
                 className="grid gap-1"
@@ -223,7 +223,7 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
                 {cells}
               </div>
             ) : (
-              <div className="text-[0.7rem] text-slate-400">No overlap data.</div>
+              <div className="text-[0.7rem] text-subtle">No overlap data.</div>
             )}
           </div>
         </div>
