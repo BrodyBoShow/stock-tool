@@ -18,10 +18,10 @@ function median(xs: number[]): number | null {
 
 function Chip({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
-      <div className="text-[0.62rem] font-bold uppercase tracking-[0.05em] text-slate-400">{label}</div>
-      <div className="numeric text-[0.92rem] font-extrabold text-slate-800">{value}</div>
-      {sub && <div className="text-[0.62rem] text-slate-400">{sub}</div>}
+    <div className="rounded-lg bg-surface-2 px-3 py-2">
+      <div className="text-[0.62rem] font-bold uppercase tracking-[0.05em] text-subtle">{label}</div>
+      <div className="numeric text-[0.92rem] font-extrabold text-ink">{value}</div>
+      {sub && <div className="text-[0.62rem] text-subtle">{sub}</div>}
     </div>
   )
 }
@@ -29,7 +29,7 @@ function Chip({ label, value, sub }: { label: string; value: string; sub?: strin
 function Cell({ children, heat }: { children: React.ReactNode; heat?: number | null }) {
   return (
     <td
-      className="numeric px-2.5 py-1.5 text-right text-[0.8rem] font-semibold text-slate-700"
+      className="numeric px-2.5 py-1.5 text-right text-[0.8rem] font-semibold text-ink"
       style={heat != null ? { background: scoreHeat(heat).tint } : undefined}
     >
       {children}
@@ -73,10 +73,10 @@ export function PeerStrip({ ticker, composite }: { ticker: string; composite: nu
     discBits.push(`${Math.abs(evDisc * 100).toFixed(0)}% on EV/EBITDA`)
 
   return (
-    <section className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
+    <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
       <div className="px-4 pb-2 pt-3.5">
-        <div className="text-base font-bold text-gray-900">Peers &amp; context</div>
-        <div className="mt-0.5 text-[0.78rem] text-gray-500">
+        <div className="text-base font-bold text-ink">Peers &amp; context</div>
+        <div className="mt-0.5 text-[0.78rem] text-muted">
           Closest {others.length} by market cap in {data.sector}
         </div>
       </div>
@@ -99,7 +99,7 @@ export function PeerStrip({ ticker, composite }: { ticker: string; composite: nu
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-y border-gray-100 bg-gray-50 text-[0.64rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+            <tr className="border-y border-line bg-surface-2 text-[0.64rem] font-bold uppercase tracking-[0.05em] text-subtle">
               <th className="px-3 py-1.5 text-left">Company</th>
               <th className="px-2.5 py-1.5 text-right">Comp</th>
               <th className="px-2.5 py-1.5 text-right">P/E</th>
@@ -113,21 +113,21 @@ export function PeerStrip({ ticker, composite }: { ticker: string; composite: nu
               <tr
                 key={p.ticker}
                 className={
-                  'border-b border-gray-50 ' + (p.is_focal ? 'bg-indigo-50/50' : 'hover:bg-slate-50')
+                  'border-b border-gray-50 ' + (p.is_focal ? 'bg-accent-soft' : 'hover:bg-surface-2')
                 }
               >
                 <td className="px-3 py-1.5">
                   {p.is_focal ? (
-                    <span className="text-[0.82rem] font-extrabold text-gray-900">
+                    <span className="text-[0.82rem] font-extrabold text-ink">
                       {p.ticker}
-                      <span className="ml-1.5 rounded bg-indigo-100 px-1.5 py-px text-[0.58rem] font-bold text-indigo-700">
+                      <span className="ml-1.5 rounded bg-accent-soft px-1.5 py-px text-[0.58rem] font-bold text-accent">
                         you
                       </span>
                     </span>
                   ) : (
                     <Link
                       to={`/securities/${p.ticker}`}
-                      className="text-[0.82rem] font-bold text-gray-800 hover:text-indigo-600 hover:underline"
+                      className="text-[0.82rem] font-bold text-ink hover:text-accent hover:underline"
                     >
                       {p.ticker}
                     </Link>
@@ -137,7 +137,7 @@ export function PeerStrip({ ticker, composite }: { ticker: string; composite: nu
                 <Cell>{xMult(p.pe)}</Cell>
                 <Cell>{xMult(p.ev_ebitda)}</Cell>
                 <Cell>{pctYield(p.fcf_yield)}</Cell>
-                <td className="numeric px-3 py-1.5 text-right text-[0.78rem] text-slate-500">
+                <td className="numeric px-3 py-1.5 text-right text-[0.78rem] text-muted">
                   {fmtMoney(p.market_cap)}
                 </td>
               </tr>
@@ -147,12 +147,12 @@ export function PeerStrip({ ticker, composite }: { ticker: string; composite: nu
       </div>
 
       {discBits.length > 0 && (
-        <div className="border-t border-gray-100 px-4 py-2.5 text-[0.8rem] text-slate-600">
+        <div className="border-t border-line px-4 py-2.5 text-[0.8rem] text-muted">
           {ticker} trades at a <span className="font-semibold">{discBits.join(', ')}</span> vs the
           peer median.
         </div>
       )}
-      <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-[0.7rem] text-gray-400">
+      <div className="border-t border-line bg-surface-2 px-4 py-2 text-[0.7rem] text-subtle">
         Same-sector names nearest by market cap · valuation from the latest nightly snapshot ·
         click a peer to open its deep-dive.
       </div>

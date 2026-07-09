@@ -29,7 +29,7 @@ function fmtSeen(s: string | null): string {
  *  a text mention. `full` adds the name-matching relevance caveat. */
 function NewsCredit({ full = false }: { full?: boolean }) {
   return (
-    <p className="mt-2 text-[0.64rem] leading-relaxed text-slate-400">
+    <p className="mt-2 text-[0.64rem] leading-relaxed text-subtle">
       {full &&
         'Automated name-based matching may include unrelated same-name coverage, so read the headlines to judge relevance. '}
       Source:{' '}
@@ -37,7 +37,7 @@ function NewsCredit({ full = false }: { full?: boolean }) {
         href="https://www.gdeltproject.org/"
         target="_blank"
         rel="noopener noreferrer"
-        className="underline hover:text-indigo-600"
+        className="underline hover:text-accent"
       >
         GDELT Project
       </a>
@@ -48,14 +48,14 @@ function NewsCredit({ full = false }: { full?: boolean }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+        <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-muted">
           In the news
         </div>
         <span
           title="Recent coverage from GDELT — context only, never feeds the score"
-          className="cursor-help rounded bg-slate-100 px-1.5 text-[0.6rem] font-semibold text-slate-500"
+          className="cursor-help rounded bg-surface-3 px-1.5 text-[0.6rem] font-semibold text-muted"
         >
           CONTEXT
         </span>
@@ -76,7 +76,7 @@ export function NewsNarrativePanel({ ticker }: { ticker: string }) {
   if (isPending) {
     return (
       <Shell>
-        <p className="mt-2 text-[0.82rem] text-gray-400">Checking recent coverage…</p>
+        <p className="mt-2 text-[0.82rem] text-subtle">Checking recent coverage…</p>
       </Shell>
     )
   }
@@ -87,7 +87,7 @@ export function NewsNarrativePanel({ ticker }: { ticker: string }) {
   if (couldNotCheck || data.articles.length === 0) {
     return (
       <Shell>
-        <p className="mt-2 text-[0.82rem] text-gray-400">
+        <p className="mt-2 text-[0.82rem] text-subtle">
           {couldNotCheck
             ? 'Couldn’t reach the news source right now — try again shortly.'
             : 'No recent news coverage found for this name.'}
@@ -103,25 +103,25 @@ export function NewsNarrativePanel({ ticker }: { ticker: string }) {
 
   return (
     <Shell>
-      <p className="mt-1.5 text-[0.82rem] text-slate-600">
-        <span className="font-semibold text-slate-800">{countLabel}</span> in the last{' '}
+      <p className="mt-1.5 text-[0.82rem] text-muted">
+        <span className="font-semibold text-ink">{countLabel}</span> in the last{' '}
         {data.window_days} days matching &ldquo;{data.query}&rdquo;.
       </p>
       <ul className="mt-2.5 space-y-2">
         {data.articles.map((a) => (
           <li key={a.url} className="flex items-baseline gap-2 text-[0.82rem]">
-            <span className="w-10 flex-none text-[0.68rem] tabular-nums text-slate-400">
+            <span className="w-10 flex-none text-[0.68rem] tabular-nums text-subtle">
               {fmtSeen(a.seendate)}
             </span>
             <a
               href={a.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 text-slate-700 hover:text-indigo-600 hover:underline"
+              className="min-w-0 text-ink hover:text-accent hover:underline"
             >
               {a.title}
               {a.domain && (
-                <span className="ml-1.5 text-[0.68rem] text-slate-400">· {a.domain}</span>
+                <span className="ml-1.5 text-[0.68rem] text-subtle">· {a.domain}</span>
               )}
             </a>
           </li>

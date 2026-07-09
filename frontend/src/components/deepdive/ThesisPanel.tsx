@@ -55,7 +55,7 @@ function ThesisForm({
     <form onSubmit={submit} className="space-y-3.5">
       <div>
         <label className={LABEL} htmlFor="thesis-summary">
-          Thesis <span className="text-red-600">*</span>
+          Thesis <span className="text-neg">*</span>
         </label>
         <textarea
           id="thesis-summary"
@@ -65,14 +65,14 @@ function ThesisForm({
           rows={4}
           placeholder="Why you'd own this — the core argument."
           className={
-            'mt-1 w-full resize-y rounded-lg border bg-white px-3 py-2 text-[0.88rem] text-gray-900 placeholder:text-gray-400 focus:outline-none ' +
+            'mt-1 w-full resize-y rounded-lg border bg-surface px-3 py-2 text-[0.88rem] text-ink placeholder:text-subtle focus:outline-none ' +
             (touched && summaryError
-              ? 'border-red-300 focus:border-red-600'
-              : 'border-gray-200 focus:border-indigo-600')
+              ? 'border-neg-border focus:border-red-600'
+              : 'border-line focus:border-accent')
           }
         />
         {touched && summaryError && (
-          <p className="mt-1 text-[0.72rem] font-medium text-red-600">
+          <p className="mt-1 text-[0.72rem] font-medium text-neg">
             A thesis summary is required.
           </p>
         )}
@@ -80,7 +80,7 @@ function ThesisForm({
 
       <div>
         <label className={LABEL} htmlFor="thesis-invalidation">
-          Invalidation rule <span className="font-normal normal-case text-gray-400">(optional)</span>
+          Invalidation rule <span className="font-normal normal-case text-subtle">(optional)</span>
         </label>
         <textarea
           id="thesis-invalidation"
@@ -88,20 +88,20 @@ function ThesisForm({
           onChange={(e) => setInvalidation(e.target.value)}
           rows={2}
           placeholder="What would prove this wrong and make you sell."
-          className="mt-1 w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-[0.88rem] text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:outline-none"
+          className="mt-1 w-full resize-y rounded-lg border border-line bg-surface px-3 py-2 text-[0.88rem] text-ink placeholder:text-subtle focus:border-accent focus:outline-none"
         />
       </div>
 
       <div>
         <label className={LABEL} htmlFor="thesis-review">
-          Review date <span className="font-normal normal-case text-gray-400">(optional)</span>
+          Review date <span className="font-normal normal-case text-subtle">(optional)</span>
         </label>
         <input
           id="thesis-review"
           type="date"
           value={reviewDate ?? ''}
           onChange={(e) => setReviewDate(e.target.value)}
-          className="mt-1 block rounded-lg border border-gray-200 bg-white px-3 py-2 text-[0.88rem] text-gray-900 focus:border-indigo-600 focus:outline-none"
+          className="mt-1 block rounded-lg border border-line bg-surface px-3 py-2 text-[0.88rem] text-ink focus:border-accent focus:outline-none"
         />
       </div>
 
@@ -109,7 +109,7 @@ function ThesisForm({
         <button
           type="submit"
           disabled={save.isPending || summaryError}
-          className="rounded-lg bg-indigo-600 px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-lg bg-accent-solid px-4 py-1.5 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
         >
           {save.isPending ? 'Saving…' : hasExisting ? 'Save changes' : 'Save thesis'}
         </button>
@@ -118,7 +118,7 @@ function ThesisForm({
             type="button"
             onClick={onClose}
             disabled={save.isPending}
-            className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-[0.82rem] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-line bg-surface px-3.5 py-1.5 text-[0.82rem] font-semibold text-muted hover:bg-surface-2 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -158,7 +158,7 @@ function ThesisView({
     <div className="space-y-3.5">
       <div>
         <div className={LABEL}>Thesis</div>
-        <p className="mt-1 whitespace-pre-wrap text-[0.9rem] leading-relaxed text-slate-800">
+        <p className="mt-1 whitespace-pre-wrap text-[0.9rem] leading-relaxed text-ink">
           {thesis.summary}
         </p>
       </div>
@@ -166,7 +166,7 @@ function ThesisView({
       {thesis.invalidation_rules && (
         <div>
           <div className={LABEL}>Invalidation rule</div>
-          <p className="mt-1 whitespace-pre-wrap text-[0.88rem] leading-relaxed text-slate-600">
+          <p className="mt-1 whitespace-pre-wrap text-[0.88rem] leading-relaxed text-muted">
             {thesis.invalidation_rules}
           </p>
         </div>
@@ -176,17 +176,17 @@ function ThesisView({
         {thesis.review_date && (
           <div className="flex items-center gap-2">
             <span className={LABEL}>Review</span>
-            <span className="text-[0.82rem] font-semibold text-slate-800">
+            <span className="text-[0.82rem] font-semibold text-ink">
               {fmtDate(thesis.review_date)}
             </span>
             {thesis.review_due && (
-              <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.68rem] font-bold text-red-700">
+              <span className="rounded-full border border-neg-border bg-neg-soft px-2 py-0.5 text-[0.68rem] font-bold text-neg">
                 Review due
               </span>
             )}
           </div>
         )}
-        <span className="text-[0.72rem] text-gray-400">
+        <span className="text-[0.72rem] text-subtle">
           Updated {fmtDate(thesis.updated_at.slice(0, 10))}
         </span>
       </div>
@@ -195,14 +195,14 @@ function ThesisView({
         <button
           type="button"
           onClick={onEdit}
-          className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-[0.82rem] font-semibold text-slate-800 hover:bg-slate-50"
+          className="rounded-lg border border-line bg-surface px-3.5 py-1.5 text-[0.82rem] font-semibold text-ink hover:bg-surface-2"
         >
           Edit
         </button>
         <button
           type="button"
           onClick={() => setConfirmOpen(true)}
-          className="rounded-lg px-3 py-1.5 text-[0.82rem] font-semibold text-red-700 hover:bg-red-50"
+          className="rounded-lg px-3 py-1.5 text-[0.82rem] font-semibold text-neg hover:bg-neg-soft"
         >
           Delete
         </button>
@@ -237,11 +237,11 @@ export function ThesisPanel({ ticker }: { ticker: string }) {
   const [editing, setEditing] = useState(false)
 
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex items-center justify-between">
-        <div className="text-base font-bold text-gray-900">Investment thesis</div>
+        <div className="text-base font-bold text-ink">Investment thesis</div>
         {thesis && thesis.review_due && !editing && (
-          <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[0.7rem] font-bold text-red-700">
+          <span className="rounded-full border border-neg-border bg-neg-soft px-2.5 py-0.5 text-[0.7rem] font-bold text-neg">
             Review due
           </span>
         )}
@@ -249,7 +249,7 @@ export function ThesisPanel({ ticker }: { ticker: string }) {
 
       <div className="mt-3">
         {isPending ? (
-          <p className="text-[0.85rem] text-gray-400">Loading…</p>
+          <p className="text-[0.85rem] text-subtle">Loading…</p>
         ) : editing ? (
           <ThesisForm
             ticker={ticker}
@@ -260,18 +260,18 @@ export function ThesisPanel({ ticker }: { ticker: string }) {
         ) : thesis ? (
           <ThesisView thesis={thesis} ticker={ticker} onEdit={() => setEditing(true)} />
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-[#fafbff] p-5 text-center">
-            <p className="text-[0.85rem] font-semibold text-gray-700">
+          <div className="rounded-xl border border-dashed border-line bg-[var(--surface)] p-5 text-center">
+            <p className="text-[0.85rem] font-semibold text-ink">
               No thesis for {ticker} yet
             </p>
-            <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-gray-400">
+            <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-subtle">
               Write down why you’d own it and what would change your mind — you’ll
               get a review reminder on the date you set.
             </p>
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-indigo-700"
+              className="mt-3 inline-flex items-center rounded-lg bg-accent-solid px-4 py-1.5 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover"
             >
               Add thesis
             </button>

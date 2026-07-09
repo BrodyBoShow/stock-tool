@@ -34,14 +34,14 @@ const PREVIEW_ROWS = 5
 
 // Tint the form badge by category so the list scans at a glance.
 const CATEGORY_TINT: Record<string, string> = {
-  'Annual report': 'bg-indigo-50 text-indigo-800',
-  'Quarterly report': 'bg-blue-50 text-blue-700',
+  'Annual report': 'bg-accent-soft text-accent',
+  'Quarterly report': 'bg-accent-soft text-accent',
   'Current report': 'bg-cyan-50 text-cyan-700',
   'Proxy & governance': 'bg-violet-50 text-violet-700',
-  'Ownership & insiders': 'bg-red-50 text-red-700',
+  'Ownership & insiders': 'bg-neg-soft text-neg',
   'Tender & M&A': 'bg-orange-50 text-orange-700',
   'Offering & registration': 'bg-yellow-50 text-yellow-700',
-  'Status & other': 'bg-slate-100 text-slate-500',
+  'Status & other': 'bg-surface-3 text-muted',
 }
 
 function groupByCategory(filings: FilingRow[]): [string, FilingRow[]][] {
@@ -61,12 +61,12 @@ function Block({ label, items }: { label: string; items: string[] }) {
   if (!items.length) return null
   return (
     <div className="mt-2">
-      <div className="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+      <div className="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-subtle">
         {label}
       </div>
       <ul className="mt-0.5 space-y-1">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2 text-[0.8rem] leading-relaxed text-slate-800">
+          <li key={i} className="flex gap-2 text-[0.8rem] leading-relaxed text-ink">
             <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-slate-300" />
             <span>{it}</span>
           </li>
@@ -79,12 +79,12 @@ function Block({ label, items }: { label: string; items: string[] }) {
 function SummaryInline({ summary }: { summary: FilingSummary }) {
   const s = summary.summary
   return (
-    <div className="mt-2 rounded-lg border border-gray-200 bg-[#fafbff] p-3">
-      <p className="text-[0.82rem] leading-relaxed text-slate-700">{s.overview}</p>
+    <div className="mt-2 rounded-lg border border-line bg-[var(--surface)] p-3">
+      <p className="text-[0.82rem] leading-relaxed text-ink">{s.overview}</p>
       <Block label="Key points" items={s.what_changed} />
       <Block label="Risks / cautions" items={s.risk_factors} />
       <Block label="Key figures & terms" items={s.key_metrics} />
-      <p className="mt-2 border-t border-[#eef2f7] pt-1.5 text-[0.66rem] text-gray-400">
+      <p className="mt-2 border-t border-[var(--surface-2)] pt-1.5 text-[0.66rem] text-subtle">
         AI-generated from the filing via {summary.model ?? 'Claude'} — grounded in the
         text, not advice.
       </p>
@@ -133,13 +133,13 @@ export function FilingsListPanel({
   const groups = groupByCategory(filtered.slice(0, shown))
 
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-start gap-3">
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="mt-0.5 shrink-0 text-gray-400 hover:text-slate-500"
+            className="mt-0.5 shrink-0 text-subtle hover:text-muted"
             aria-label={collapsed ? 'Expand' : 'Collapse'}
           >
             <svg className={`h-4 w-4 transition-transform ${collapsed ? '-rotate-90' : ''}`}
@@ -148,15 +148,15 @@ export function FilingsListPanel({
             </svg>
           </button>
           <div>
-            <div className="text-base font-bold text-gray-900">All SEC filings</div>
-            <div className="mt-0.5 text-[0.78rem] text-gray-500">
+            <div className="text-base font-bold text-ink">All SEC filings</div>
+            <div className="mt-0.5 text-[0.78rem] text-muted">
               Every form on file — reports, proxies, ownership stakes, offerings.
               Hit “AI summary” on any narrative filing for a grounded read.
             </div>
           </div>
         </div>
         {filings.length > 0 && (
-          <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.78rem] font-semibold text-slate-600">
+          <span className="inline-flex items-center rounded-lg bg-surface-3 px-2.5 py-1.5 text-[0.78rem] font-semibold text-muted">
             {filings.length} filings
           </span>
         )}
@@ -167,7 +167,7 @@ export function FilingsListPanel({
           {filings.length === 0 ? (
             <div className="py-8 text-center">
               <svg
-                className="mx-auto text-slate-300"
+                className="mx-auto text-subtle"
                 width="20"
                 height="20"
                 viewBox="0 0 24 24"
@@ -183,10 +183,10 @@ export function FilingsListPanel({
                 <path d="M9 13h6" />
                 <path d="M9 17h6" />
               </svg>
-              <div className="mt-2 text-[0.82rem] font-semibold text-slate-600">
+              <div className="mt-2 text-[0.82rem] font-semibold text-muted">
                 No SEC filings on file
               </div>
-              <p className="mt-1 text-[0.72rem] text-slate-400">
+              <p className="mt-1 text-[0.72rem] text-subtle">
                 No filings in StockBud&rsquo;s catalog for this security —
                 coverage can lag for foreign issuers, non-common share classes
                 and recently added names.
@@ -195,7 +195,7 @@ export function FilingsListPanel({
                 href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${encodeURIComponent(ticker)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-2 inline-block text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+                className="mt-2 inline-block text-[0.72rem] font-semibold text-accent hover:underline"
               >
                 Search EDGAR →
               </a>
@@ -204,17 +204,17 @@ export function FilingsListPanel({
             <div className="space-y-4">
               {groups.map(([category, rows]) => (
                 <div key={category}>
-                  <div className="text-[0.66rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+                  <div className="text-[0.66rem] font-bold uppercase tracking-[0.06em] text-subtle">
                     {category}
                   </div>
-                  <ul className="mt-1 divide-y divide-gray-100">
+                  <ul className="mt-1 divide-y divide-line">
                     {rows.map((f) => {
                       const pending = gen.isPending && gen.variables === f.accession_no
                       const summary = open[f.accession_no]
                       return (
                         <li key={f.accession_no} className="py-2">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span className="text-[0.78rem] font-bold text-gray-900 tabular-nums">
+                            <span className="text-[0.78rem] font-bold text-ink tabular-nums">
                               {fmtDate(f.filed_date)}
                             </span>
                             <span
@@ -226,7 +226,7 @@ export function FilingsListPanel({
                             >
                               {f.form}
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-[0.82rem] text-slate-600">
+                            <span className="min-w-0 flex-1 truncate text-[0.82rem] text-muted">
                               {f.label ?? f.form}
                             </span>
                             {f.analyzable && !summary && (
@@ -234,7 +234,7 @@ export function FilingsListPanel({
                                 type="button"
                                 onClick={() => gen.mutate(f.accession_no)}
                                 disabled={pending}
-                                className="flex-none rounded-md border border-gray-200 bg-white px-2 py-1 text-[0.72rem] font-semibold text-indigo-600 hover:bg-slate-50 disabled:opacity-50"
+                                className="flex-none rounded-md border border-line bg-surface px-2 py-1 text-[0.72rem] font-semibold text-accent hover:bg-surface-2 disabled:opacity-50"
                               >
                                 {pending ? 'Reading…' : 'AI summary'}
                               </button>
@@ -244,7 +244,7 @@ export function FilingsListPanel({
                                 href={f.primary_doc_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-none text-[0.72rem] font-semibold text-slate-500 hover:underline"
+                                className="flex-none text-[0.72rem] font-semibold text-muted hover:underline"
                               >
                                 SEC ↗
                               </a>
@@ -258,8 +258,8 @@ export function FilingsListPanel({
                 </div>
               ))}
               {filtered.length > PREVIEW_ROWS && (
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-                  <span className="text-[0.66rem] text-slate-400 tabular-nums">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
+                  <span className="text-[0.66rem] text-subtle tabular-nums">
                     Showing the {Math.min(shown, filtered.length)} newest of {filtered.length},
                     grouped by category
                   </span>
@@ -267,7 +267,7 @@ export function FilingsListPanel({
                     <button
                       type="button"
                       onClick={() => setShown((s) => s + 10)}
-                      className="text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+                      className="text-[0.72rem] font-semibold text-accent hover:underline"
                     >
                       Load 10 more →
                     </button>

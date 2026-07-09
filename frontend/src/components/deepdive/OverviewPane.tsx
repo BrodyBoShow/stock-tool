@@ -22,9 +22,9 @@ export interface OverviewPaneProps {
 
 /** Chip colors per SEC form family. */
 function formChipClass(form: string): string {
-  if (form === '8-K') return 'bg-amber-100 text-amber-800'
-  if (form === '10-K' || form === '10-Q') return 'bg-blue-100 text-blue-700'
-  return 'bg-slate-100 text-slate-500'
+  if (form === '8-K') return 'bg-warn-soft text-warn'
+  if (form === '10-K' || form === '10-Q') return 'bg-accent-soft text-accent'
+  return 'bg-surface-3 text-muted'
 }
 
 /** Latest value for a fundamental metric (row with max as_of_date). */
@@ -54,7 +54,7 @@ const FACTOR_COLORS: Record<string, string> = {
   Growth: '#3b82f6',
   Value: '#10b981',
   Quality: '#8b5cf6',
-  Momentum: '#f59e0b',
+  Momentum: 'var(--warn)',
 }
 
 interface FactorPillProps {
@@ -70,9 +70,9 @@ function FactorPill({ label, value, onClick }: FactorPillProps) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg border border-gray-200 bg-white p-3 text-left transition-colors hover:border-indigo-400"
+      className="rounded-lg border border-line bg-surface p-3 text-left transition-colors hover:border-accent"
     >
-      <div className="flex items-center gap-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-slate-400">
+      <div className="flex items-center gap-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-subtle">
         <span
           aria-hidden
           className="h-2 w-2 flex-none rounded-[3px]"
@@ -80,10 +80,10 @@ function FactorPill({ label, value, onClick }: FactorPillProps) {
         />
         {label}
       </div>
-      <div className="mt-0.5 text-[1.15rem] font-bold tabular-nums text-gray-900">
+      <div className="mt-0.5 text-[1.15rem] font-bold tabular-nums text-ink">
         {value == null ? DASH : value.toFixed(0)}
       </div>
-      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-3">
         <div
           className="h-full rounded-full"
           style={{ width: `${width}%`, backgroundColor: color }}
@@ -179,24 +179,24 @@ export function OverviewPane({
   return (
     <div className="space-y-4">
       {/* 1. Brief teaser */}
-      <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+      <section className="rounded-card border border-line bg-surface p-5 shadow-card">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-subtle">
             Decision brief
           </div>
           <span
             title="Synthesized by the LLM from StockBud's own factor data — verify against the Data panes"
-            className="cursor-help rounded bg-slate-100 px-1.5 text-[0.6rem] font-semibold text-slate-500"
+            className="cursor-help rounded bg-surface-3 px-1.5 text-[0.6rem] font-semibold text-muted"
           >
             AI-generated
           </span>
         </div>
         {teaser ? (
-          <p className="mt-2 text-[0.85rem] leading-relaxed text-slate-700">
+          <p className="mt-2 text-[0.85rem] leading-relaxed text-ink">
             {teaser}
           </p>
         ) : (
-          <p className="mt-2 text-[0.85rem] text-gray-400">
+          <p className="mt-2 text-[0.85rem] text-subtle">
             {briefStatus?.generating
               ? 'A brief is being prepared — open the Brief pane to watch it arrive.'
               : 'No brief generated yet — open the Brief pane to create one.'}
@@ -205,7 +205,7 @@ export function OverviewPane({
         <button
           type="button"
           onClick={() => onNavigate('brief')}
-          className="mt-3 text-[0.74rem] font-semibold text-indigo-600 hover:text-indigo-800"
+          className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent"
         >
           Read the full brief →
         </button>
@@ -216,15 +216,15 @@ export function OverviewPane({
         <button
           type="button"
           onClick={() => onNavigate('factors')}
-          className="rounded-lg border border-indigo-700 bg-indigo-700 p-3 text-left transition-colors hover:border-indigo-400"
+          className="rounded-lg border border-indigo-700 bg-accent-hover p-3 text-left transition-colors hover:border-accent"
         >
-          <div className="text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-indigo-200">
+          <div className="text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-accent-ink">
             Composite
           </div>
           <div className="mt-0.5 text-[1.15rem] font-bold tabular-nums text-white">
             {header.composite == null ? DASH : header.composite.toFixed(1)}
           </div>
-          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-indigo-900/50">
+          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-accent-soft">
             <div
               className="h-full rounded-full bg-indigo-300"
               style={{ width: `${compositeWidth}%` }}
@@ -243,12 +243,12 @@ export function OverviewPane({
 
       {/* 3. Latest activity + price trend */}
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
-          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+        <section className="rounded-card border border-line bg-surface p-5 shadow-card">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-subtle">
             Latest activity
           </div>
           {recentFilings.length === 0 ? (
-            <p className="mt-2 text-[0.85rem] text-gray-400">
+            <p className="mt-2 text-[0.85rem] text-subtle">
               No filings on file.
             </p>
           ) : (
@@ -263,10 +263,10 @@ export function OverviewPane({
                   >
                     {fl.form}
                   </span>
-                  <span className="flex-none text-[0.72rem] tabular-nums text-slate-400">
+                  <span className="flex-none text-[0.72rem] tabular-nums text-subtle">
                     {fmtDate(fl.filed_date)}
                   </span>
-                  <span className="truncate text-slate-700">
+                  <span className="truncate text-ink">
                     {fl.label ?? fl.form}
                   </span>
                 </li>
@@ -276,19 +276,19 @@ export function OverviewPane({
           <button
             type="button"
             onClick={() => onNavigate('filings')}
-            className="mt-3 text-[0.74rem] font-semibold text-indigo-600 hover:text-indigo-800"
+            className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent"
           >
             All filings →
           </button>
         </section>
 
-        <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+        <section className="rounded-card border border-line bg-surface p-5 shadow-card">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+            <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-subtle">
               {windowFrom ? `Price since ${fmtDate(windowFrom)}` : 'Price trend'}
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-[1.05rem] font-bold tabular-nums text-gray-900">
+              <span className="text-[1.05rem] font-bold tabular-nums text-ink">
                 {fmtPrice(lastClose)}
               </span>
               <span
@@ -314,7 +314,7 @@ export function OverviewPane({
           <button
             type="button"
             onClick={() => onNavigate('chart')}
-            className="mt-3 text-[0.74rem] font-semibold text-indigo-600 hover:text-indigo-800"
+            className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent"
           >
             Open the chart →
           </button>
@@ -327,12 +327,12 @@ export function OverviewPane({
           {fundamentalCells.map(([label, value]) => (
             <div
               key={label}
-              className="rounded-lg border border-gray-200 bg-white p-3"
+              className="rounded-lg border border-line bg-surface p-3"
             >
-              <div className="text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-slate-400">
+              <div className="text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-subtle">
                 {label}
               </div>
-              <div className="mt-0.5 text-[0.95rem] font-bold tabular-nums text-gray-900">
+              <div className="mt-0.5 text-[0.95rem] font-bold tabular-nums text-ink">
                 {value}
               </div>
             </div>
@@ -341,7 +341,7 @@ export function OverviewPane({
         <button
           type="button"
           onClick={() => onNavigate('financials')}
-          className="mt-2 text-[0.74rem] font-semibold text-indigo-600 hover:text-indigo-800"
+          className="mt-2 text-[0.74rem] font-semibold text-accent hover:text-accent"
         >
           Financials →
         </button>

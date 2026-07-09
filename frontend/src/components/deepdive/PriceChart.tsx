@@ -215,21 +215,21 @@ export function PriceChart({
   const overlayMeta = MACRO_DISPLAY.find((m) => m.id === seriesId) ?? null
 
   return (
-    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <div className="rounded-card border border-line bg-surface p-5 shadow-card">
       {/* Header + mode toggle + range buttons */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-gray-900">
+          <div className="text-base font-bold text-ink">
             {mode === 'wyckoff' ? 'Wyckoff · volume-spread' : 'Price history'}
           </div>
-          <div className="mt-0.5 text-[0.78rem] text-gray-500">
+          <div className="mt-0.5 text-[0.78rem] text-muted">
             {mode === 'wyckoff'
               ? 'Daily candles · spread + volume · objective measures only'
               : 'Adjusted close (splits & dividends) · nightly data'}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+          <div className="flex gap-1 rounded-lg bg-surface-3 p-1">
             {(['price', 'wyckoff'] as const).map((m) => (
               <button
                 key={m}
@@ -239,15 +239,15 @@ export function PriceChart({
                 className={
                   'rounded-md px-3 py-1 text-xs font-bold capitalize transition-colors ' +
                   (mode === m
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-slate-500 hover:text-gray-900')
+                    ? 'bg-surface text-ink shadow-sm'
+                    : 'text-muted hover:text-ink')
                 }
               >
                 {m === 'wyckoff' ? 'Wyckoff' : 'Price'}
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
+          <div className="flex flex-wrap gap-1 rounded-lg bg-surface-3 p-1">
             {ranges.map((r) => (
               <button
                 key={r.label}
@@ -256,8 +256,8 @@ export function PriceChart({
                 className={
                   'rounded-md px-3 py-1 text-xs font-bold transition-colors ' +
                   (days === r.days
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-slate-500 hover:text-gray-900')
+                    ? 'bg-surface text-ink shadow-sm'
+                    : 'text-muted hover:text-ink')
                 }
               >
                 {r.label}
@@ -295,9 +295,9 @@ export function PriceChart({
             onToggle={() => setShowVolume((x) => !x)}
             label="Volume"
             color="#10b981"
-            bgOn="bg-emerald-50"
-            textOn="text-emerald-700"
-            borderOn="border-emerald-200"
+            bgOn="bg-pos-soft"
+            textOn="text-pos"
+            borderOn="border-pos-border"
           />
         )}
         <OverlayToggle
@@ -305,9 +305,9 @@ export function PriceChart({
           onToggle={() => setShowMarkers((x) => !x)}
           label="Events & filings"
           color="#f59e0b"
-          bgOn="bg-amber-50"
-          textOn="text-amber-700"
-          borderOn="border-amber-200"
+          bgOn="bg-warn-soft"
+          textOn="text-warn"
+          borderOn="border-warn"
         />
 
         {/* Divider */}
@@ -329,13 +329,13 @@ export function PriceChart({
               value={seriesId}
               onChange={(e) => setSeriesId(e.target.value)}
               aria-label="Macro overlay series"
-              className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[0.76rem] font-semibold text-slate-800 focus:border-violet-600 focus:outline-none"
+              className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[0.76rem] font-semibold text-ink focus:border-violet-600 focus:outline-none"
             >
               {MACRO_DISPLAY.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
               ))}
             </select>
-            <span className="text-[0.7rem] text-gray-400">right axis · context only</span>
+            <span className="text-[0.7rem] text-subtle">right axis · context only</span>
           </>
         )}
       </div>
@@ -344,7 +344,7 @@ export function PriceChart({
       {/* Marker category filters — each chip shows its count and toggles on/off */}
       {mode === 'price' && showMarkers && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">Show</span>
+          <span className="text-[0.68rem] font-semibold uppercase tracking-wide text-subtle">Show</span>
           {MARKER_ORDER.map((cat) => {
             const meta = MARKER_META[cat]
             const on = cats[cat]
@@ -358,15 +358,15 @@ export function PriceChart({
                 className={
                   'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.7rem] font-semibold transition-colors ' +
                   (on
-                    ? 'border-slate-300 bg-white text-slate-700'
-                    : 'border-gray-200 bg-slate-50 text-slate-400 hover:text-slate-600')
+                    ? 'border-line bg-surface text-ink'
+                    : 'border-line bg-surface-2 text-subtle hover:text-muted')
                 }
               >
                 <span aria-hidden style={{ color: on ? meta.color : '#cbd5e1' }}>
                   {meta.glyph}
                 </span>
                 {meta.label}
-                <span className="tabular-nums text-slate-400">{markers.counts[cat]}</span>
+                <span className="tabular-nums text-subtle">{markers.counts[cat]}</span>
               </button>
             )
           })}
@@ -376,23 +376,23 @@ export function PriceChart({
       {/* VSA legend — Wyckoff mode */}
       {mode === 'wyckoff' && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-[0.72rem] font-semibold text-amber-700">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-warn-soft px-2 py-0.5 text-[0.72rem] font-semibold text-warn">
             <span className="h-2 w-2 rounded-sm bg-[#ef9f27]" />
             Climax volume
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-600">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-3 px-2 py-0.5 text-[0.72rem] font-semibold text-muted">
             <span className="h-2 w-2 rounded-sm border border-slate-500" />
             Wide spread
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-600">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-3 px-2 py-0.5 text-[0.72rem] font-semibold text-muted">
             <span className="h-2 w-2 rounded-sm bg-slate-400" />
             Churn / no-demand
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 px-2 py-0.5 text-[0.72rem] font-semibold text-sky-700">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-info-soft px-2 py-0.5 text-[0.72rem] font-semibold text-info">
             <span className="h-2 w-3 rounded-sm border border-dashed border-[#378ADD] bg-[rgba(55,138,221,0.15)]" />
             Trading range
           </span>
-          <span className="mx-0.5 h-3 w-px bg-gray-200" aria-hidden="true" />
+          <span className="mx-0.5 h-3 w-px bg-surface-3" aria-hidden="true" />
           <button
             type="button"
             onClick={() => setShowSignals((x) => !x)}
@@ -402,7 +402,7 @@ export function PriceChart({
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showSignals
                 ? 'border-violet-200 bg-violet-50 text-violet-700'
-                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+                : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
             <span className="h-2 w-2 rounded-full" style={{ background: showSignals ? '#7c3aed' : '#cbd5e1' }} />
@@ -416,8 +416,8 @@ export function PriceChart({
             className={
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showPhases
-                ? 'border-slate-300 bg-slate-100 text-slate-700'
-                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+                ? 'border-line bg-surface-3 text-ink'
+                : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
             <span className="h-2 w-2 rounded-sm" style={{ background: showPhases ? '#64748b' : '#cbd5e1' }} />
@@ -431,8 +431,8 @@ export function PriceChart({
             className={
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showTarget
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+                ? 'border-pos-border bg-pos-soft text-pos'
+                : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
             <span className="h-2 w-2 rounded-full" style={{ background: showTarget ? '#15803d' : '#cbd5e1' }} />
@@ -462,10 +462,10 @@ export function PriceChart({
                   ? `Distribution · ${Math.round(wyckoff.context.confidence * 100)}%`
                   : 'No trading range'}
             </span>
-            <span className="text-slate-600">{wyckoff.summary}</span>
+            <span className="text-muted">{wyckoff.summary}</span>
           </div>
           {(!wyckoff.context || wyckoff.context.kind === 'undetermined') && (
-            <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 leading-snug text-amber-800">
+            <p className="mt-1.5 rounded-md border border-warn bg-warn-soft px-2.5 py-1.5 leading-snug text-warn">
               <span className="font-semibold">Why the schematic is empty:</span> this stock is trending, not
               basing, so there's no sideways range to anchor Wyckoff events to. The labels (spring, phases,
               target) are deliberately suppressed — drawing them without a range is how false signals creep in.
@@ -492,7 +492,7 @@ export function PriceChart({
             </span>
           )}
           {showMarkers && markers.capped.length > 0 && (
-            <span className="text-gray-400">
+            <span className="text-subtle">
               Showing the most recent {MARKER_CAP} per type —{' '}
               {markers.capped.map((c) => MARKER_META[c].label).join(', ')} capped in this range.
             </span>
@@ -514,7 +514,7 @@ export function PriceChart({
       ) : (
       <div className="mt-4 transition-opacity" style={{ opacity: isFetching ? 0.55 : 1 }}>
         {priceRows.length < 2 ? (
-          <div className="flex h-[300px] items-center justify-center text-sm text-gray-400">
+          <div className="flex h-[300px] items-center justify-center text-sm text-subtle">
             Not enough price data for this range.
           </div>
         ) : (
@@ -656,7 +656,7 @@ export function PriceChart({
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="pr-1 text-right text-[0.65rem] text-gray-400">Volume</div>
+                <div className="pr-1 text-right text-[0.65rem] text-subtle">Volume</div>
               </div>
             )}
           </>

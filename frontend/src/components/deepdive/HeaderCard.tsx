@@ -8,9 +8,9 @@ import { topDriver, type FactorPctls } from '@/lib/factorReading'
 import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
 
-const STAT_LABEL = 'text-[0.75rem] text-gray-500'
-const STAT_VALUE = 'text-[1.35rem] font-extrabold text-gray-900'
-const STAT_SUB = 'text-[0.72rem] text-gray-400'
+const STAT_LABEL = 'text-[0.75rem] text-muted'
+const STAT_VALUE = 'text-[1.35rem] font-extrabold text-ink'
+const STAT_SUB = 'text-[0.72rem] text-subtle'
 
 /** Circular 0–100 gauge, heat-colored, with the score in the center. */
 function ScoreGauge({ value }: { value: number }) {
@@ -20,23 +20,23 @@ function ScoreGauge({ value }: { value: number }) {
   const { bar } = scoreHeat(value)
   return (
     <svg viewBox="0 0 72 72" width="64" height="64" className="flex-none">
-      <circle cx="36" cy="36" r={r} fill="none" stroke="#eef2f7" strokeWidth="7" />
+      <circle cx="36" cy="36" r={r} fill="none" strokeWidth="7" style={{ stroke: 'var(--surface-2)' }} />
       <circle
         cx="36"
         cy="36"
         r={r}
         fill="none"
-        stroke={bar}
+        style={{ stroke: bar }}
         strokeWidth="7"
         strokeLinecap="round"
         strokeDasharray={c}
         strokeDashoffset={c * (1 - frac)}
         transform="rotate(-90 36 36)"
       />
-      <text x="36" y="34" textAnchor="middle" className="numeric" fontSize="18" fontWeight="800" fill="#0f172a">
+      <text x="36" y="34" textAnchor="middle" className="numeric" fontSize="18" fontWeight="800" style={{ fill: 'var(--ink)' }}>
         {value.toFixed(0)}
       </text>
-      <text x="36" y="47" textAnchor="middle" fontSize="8.5" fill="#94a3b8">
+      <text x="36" y="47" textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--subtle)' }}>
         / 100
       </text>
     </svg>
@@ -85,7 +85,7 @@ export function HeaderCard({
         `${nSub != null ? ` · ${nSub} sub-metrics scored` : ''}`
 
   return (
-    <div className="rounded-card border border-gray-200 bg-white px-[22px] py-5 shadow-card">
+    <div className="rounded-card border border-line bg-surface px-[22px] py-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-[18px]">
         <div className="flex items-center gap-3.5">
           <div
@@ -96,19 +96,19 @@ export function HeaderCard({
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[1.45rem] font-extrabold text-gray-900">
+              <span className="text-[1.45rem] font-extrabold text-ink">
                 {header.ticker}
               </span>
               {header.exchange && (
-                <span className="rounded-full bg-gray-100 px-2.5 py-[3px] text-[0.72rem] font-semibold text-gray-700">
+                <span className="rounded-full bg-surface-3 px-2.5 py-[3px] text-[0.72rem] font-semibold text-ink">
                   {header.exchange}
                 </span>
               )}
               <SectorPill sector={header.sector} />
             </div>
-            <div className="mt-px text-[0.95rem] text-gray-700">{header.name ?? DASH}</div>
+            <div className="mt-px text-[0.95rem] text-ink">{header.name ?? DASH}</div>
             {header.industry && (
-              <div className="mt-0.5 text-[0.78rem] text-gray-400">{header.industry}</div>
+              <div className="mt-0.5 text-[0.78rem] text-subtle">{header.industry}</div>
             )}
           </div>
         </div>
@@ -132,13 +132,13 @@ export function HeaderCard({
                 <div className={STAT_LABEL}>Composite</div>
                 {compDelta != null && (
                   <div className="numeric text-[0.82rem] font-bold">
-                    <Delta value={compDelta} /> <span className="font-normal text-gray-400">wk</span>
+                    <Delta value={compDelta} /> <span className="font-normal text-subtle">wk</span>
                   </div>
                 )}
                 <div className={STAT_SUB}>
                   {rank != null ? (
                     <>
-                      rank <span className="numeric font-semibold text-slate-600">#{rank}</span>
+                      rank <span className="numeric font-semibold text-muted">#{rank}</span>
                     </>
                   ) : (
                     'percentile · 100 = top'
@@ -153,12 +153,12 @@ export function HeaderCard({
 
       {/* Hero thesis one-liner (AI) — falls back to the factor-driver readout */}
       {(oneLiner || whyRanked) && (
-        <div className="mt-3.5 border-t border-gray-100 pt-3">
+        <div className="mt-3.5 border-t border-line pt-3">
           {oneLiner ? (
-            <p className="text-[0.92rem] leading-snug text-slate-700">{oneLiner}</p>
+            <p className="text-[0.92rem] leading-snug text-ink">{oneLiner}</p>
           ) : (
             <p
-              className="text-[0.78rem] text-gray-400"
+              className="text-[0.78rem] text-subtle"
               title="The factor pulling this composite up the most. Descriptive — not advice."
             >
               {whyRanked}

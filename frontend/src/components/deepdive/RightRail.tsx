@@ -45,10 +45,10 @@ function latestMetric(fundamentals: FundamentalPoint[], metric: string): number 
 function Row({ label, tipKey, value }: { label: string; tipKey?: string; value: string }) {
   return (
     <li className="flex items-center justify-between gap-3 py-1 text-[0.74rem]">
-      <span className="text-slate-500">
+      <span className="text-muted">
         {tipKey ? <Tip k={tipKey}>{label}</Tip> : label}
       </span>
-      <span className="font-semibold tabular-nums text-slate-800">{value}</span>
+      <span className="font-semibold tabular-nums text-ink">{value}</span>
     </li>
   )
 }
@@ -66,11 +66,11 @@ export function RightRail(props: RightRailProps) {
   return (
     <aside className="space-y-4 lg:sticky lg:top-14">
       {sections.length > 0 && (
-        <div className="rounded-card border border-gray-200 bg-white p-4 shadow-card">
-          <div className="mb-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-400">
+        <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+          <div className="mb-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-subtle">
             On this pane
           </div>
-          <ul className="space-y-1 text-[0.76rem] text-slate-600">
+          <ul className="space-y-1 text-[0.76rem] text-muted">
             {sections.map((s) => (
               <li key={s} className="flex items-center gap-1.5">
                 <span className="h-1 w-1 rounded-full bg-indigo-400" />
@@ -81,8 +81,8 @@ export function RightRail(props: RightRailProps) {
         </div>
       )}
 
-      <div className="rounded-card border border-gray-200 bg-white p-4 shadow-card">
-        <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-400">
+      <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+        <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-subtle">
           At a glance
         </div>
         <ul className="divide-y divide-slate-50">
@@ -113,34 +113,34 @@ export function RightRail(props: RightRailProps) {
         <button
           type="button"
           onClick={() => onNavigate('score')}
-          className="mt-2 text-[0.7rem] font-semibold text-indigo-600 hover:underline"
+          className="mt-2 text-[0.7rem] font-semibold text-accent hover:underline"
         >
           Full sub-metric breakdown →
         </button>
       </div>
 
-      <div className="rounded-card border border-gray-200 bg-white p-4 shadow-card">
-        <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-400">
+      <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+        <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-subtle">
           Compare
         </div>
-        <p className="text-[0.72rem] text-slate-500">
+        <p className="text-[0.72rem] text-muted">
           Put {header.ticker} side-by-side with up to 3 tickers — composite, factors and
           key fundamentals.
         </p>
         <button
           type="button"
           onClick={onCompare}
-          className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.74rem] font-bold text-slate-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+          className="mt-2 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.74rem] font-bold text-muted transition-colors hover:border-accent hover:text-accent"
         >
           Open compare →
         </button>
       </div>
 
-      <div className="rounded-card border border-gray-200 bg-white p-4 shadow-card">
-        <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-400">
+      <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+        <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-subtle">
           Methodology
         </div>
-        <p className="text-[0.68rem] leading-relaxed text-slate-400">
+        <p className="text-[0.68rem] leading-relaxed text-subtle">
           Scores are cross-sectional percentiles vs the US-listed universe, refreshed
           nightly (Value and Momentum live-adjust intraday). AI text is synthesized from
           StockBud&rsquo;s own factor data and can be wrong — verify against the Data

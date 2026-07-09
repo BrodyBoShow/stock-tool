@@ -33,10 +33,10 @@ function fmtUsd(v: number | null): string {
 function CodeBadge({ t }: { t: InsiderTransaction }) {
   const styles =
     t.transaction_code === 'P'
-      ? 'bg-emerald-50 text-emerald-700'
+      ? 'bg-pos-soft text-pos'
       : t.transaction_code === 'S'
-        ? 'bg-red-50 text-red-700'
-        : 'bg-slate-100 text-slate-500'
+        ? 'bg-neg-soft text-neg'
+        : 'bg-surface-3 text-muted'
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
@@ -46,7 +46,7 @@ function CodeBadge({ t }: { t: InsiderTransaction }) {
       </span>
       {t.plan_10b5_1 && (
         <span
-          className="inline-flex cursor-help rounded border border-slate-200 px-1 py-0.5 text-[0.62rem] font-semibold uppercase text-slate-400"
+          className="inline-flex cursor-help rounded border border-line px-1 py-0.5 text-[0.62rem] font-semibold uppercase text-subtle"
           title="Filed as a pre-scheduled Rule 10b5-1 plan trade — far weaker signal than a discretionary transaction."
         >
           plan
@@ -60,19 +60,19 @@ function WindowChip({ w }: { w: InsiderWindow }) {
   const planPct =
     w.sell_count > 0 ? Math.round((100 * w.sells_under_plan) / w.sell_count) : 0
   return (
-    <span className="inline-flex flex-wrap items-baseline gap-x-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.78rem] text-slate-600">
-      <span className="font-bold text-slate-700">{w.months}m</span>
-      <span className={w.buy_count > 0 ? 'font-semibold text-emerald-700' : ''}>
+    <span className="inline-flex flex-wrap items-baseline gap-x-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.78rem] text-muted">
+      <span className="font-bold text-ink">{w.months}m</span>
+      <span className={w.buy_count > 0 ? 'font-semibold text-pos' : ''}>
         {w.buy_count} buy{w.buy_count === 1 ? '' : 's'}
         {w.buy_value !== null ? ` (${fmtUsd(w.buy_value)})` : ''}
       </span>
       ·
-      <span className={w.sell_count > 0 ? 'font-semibold text-red-700' : ''}>
+      <span className={w.sell_count > 0 ? 'font-semibold text-neg' : ''}>
         {w.sell_count} sell{w.sell_count === 1 ? '' : 's'}
         {w.sell_value !== null ? ` (${fmtUsd(w.sell_value)})` : ''}
       </span>
       {w.sell_count > 0 && (
-        <span className="text-[0.7rem] text-slate-400">{planPct}% plan</span>
+        <span className="text-[0.7rem] text-subtle">{planPct}% plan</span>
       )}
     </span>
   )
@@ -87,25 +87,25 @@ function InsiderVerdict({ w }: { w: InsiderWindow }) {
   let cls: string
   if (w.buy_count === 0 && w.sell_count === 0) {
     label = 'No open-market buys or sells in 12 months'
-    cls = 'bg-slate-100 text-slate-500'
+    cls = 'bg-surface-3 text-muted'
   } else if (w.buy_count > w.sell_count && net > 0) {
     label = 'Net accumulating — insiders bought on the open market'
-    cls = 'bg-emerald-50 text-emerald-700'
+    cls = 'bg-pos-soft text-pos'
   } else if (w.sell_count > w.buy_count && net < 0) {
     label =
       planPct >= 60
         ? 'Net selling, but mostly pre-scheduled plan sales (weak signal)'
         : 'Net distributing — open-market selling, no offsetting buys'
-    cls = planPct >= 60 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
+    cls = planPct >= 60 ? 'bg-warn-soft text-warn' : 'bg-neg-soft text-neg'
   } else {
     label = 'Mixed — buys and sells roughly offsetting'
-    cls = 'bg-slate-100 text-slate-600'
+    cls = 'bg-surface-3 text-muted'
   }
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-[0.8rem]">
+    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[0.8rem]">
       <span className={`rounded px-2 py-0.5 text-[0.72rem] font-bold ${cls}`}>12-month signal</span>
-      <span className="text-slate-600">{label}.</span>
-      <span className="numeric text-[0.74rem] text-slate-400">
+      <span className="text-muted">{label}.</span>
+      <span className="numeric text-[0.74rem] text-subtle">
         {w.buy_count} buys / {w.sell_count} sells · net{' '}
         {net >= 0 ? '+' : '−'}
         {fmtUsd(Math.abs(net))}
@@ -144,13 +144,13 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
   const shown = expanded ? filteredTxns : filteredTxns.slice(0, SHOWN_DEFAULT)
 
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-base font-bold text-gray-900">
+          <div className="text-base font-bold text-ink">
             Insider activity
           </div>
-          <div className="mt-0.5 text-[0.78rem] text-gray-500">
+          <div className="mt-0.5 text-[0.78rem] text-muted">
             SEC Form 4 filings — open-market buys and sells carry the signal;
             awards and plan sales mostly don&apos;t. Context, not advice.
           </div>
@@ -161,7 +161,7 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
               {data.windows.map((w) => (
                 <WindowChip key={w.months} w={w} />
               ))}
-              <label className="ml-1 flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-600 hover:bg-slate-100">
+              <label className="ml-1 flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 py-1 text-[0.72rem] font-semibold text-muted hover:bg-surface-3">
                 <input
                   type="checkbox"
                   checked={openMarketOnly}
@@ -184,13 +184,13 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
 
       <div className="mt-3">
         {isPending ? (
-          <p className="text-[0.85rem] text-gray-400">Loading…</p>
+          <p className="text-[0.85rem] text-subtle">Loading…</p>
         ) : error ? (
-          <p className="text-[0.85rem] text-red-700">
+          <p className="text-[0.85rem] text-neg">
             Couldn’t load insider activity.
           </p>
         ) : txns.length === 0 ? (
-          <p className="text-[0.85rem] text-gray-400">
+          <p className="text-[0.85rem] text-subtle">
             No insider (Form 4) transactions on record for {ticker}. Foreign
             private issuers are exempt from Form 4; a recently-added domestic
             name may still be backfilling overnight.
@@ -200,12 +200,12 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
+                  <tr className="border-b border-line bg-surface-2">
                     {['Date', 'Insider', 'Type', 'Shares', 'Price', 'Value'].map(
                       (h) => (
                         <th
                           key={h}
-                          className={`whitespace-nowrap px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500 ${
+                          className={`whitespace-nowrap px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.06em] text-muted ${
                             h === 'Date' || h === 'Insider' || h === 'Type'
                               ? 'text-left'
                               : 'text-right'
@@ -219,16 +219,16 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
                 </thead>
                 <tbody>
                   {shown.map((t, i) => (
-                    <tr key={i} className="border-b border-gray-100">
-                      <td className="whitespace-nowrap px-3 py-2 text-[0.8rem] text-slate-600">
+                    <tr key={i} className="border-b border-line">
+                      <td className="whitespace-nowrap px-3 py-2 text-[0.8rem] text-muted">
                         {t.transaction_date ? fmtDate(t.transaction_date) : '—'}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="text-[0.82rem] font-semibold text-slate-800">
+                        <div className="text-[0.82rem] font-semibold text-ink">
                           {t.owner_name}
                         </div>
                         {role(t) && (
-                          <div className="text-[0.7rem] text-slate-400">
+                          <div className="text-[0.7rem] text-subtle">
                             {role(t)}
                           </div>
                         )}
@@ -236,13 +236,13 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
                       <td className="whitespace-nowrap px-3 py-2">
                         <CodeBadge t={t} />
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[0.8rem] tabular-nums text-gray-900">
+                      <td className="whitespace-nowrap px-3 py-2 text-right text-[0.8rem] tabular-nums text-ink">
                         {t.shares !== null ? t.shares.toLocaleString() : '—'}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[0.8rem] tabular-nums text-gray-900">
+                      <td className="whitespace-nowrap px-3 py-2 text-right text-[0.8rem] tabular-nums text-ink">
                         {t.price ? `$${t.price.toFixed(2)}` : '—'}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[0.8rem] font-semibold tabular-nums text-gray-900">
+                      <td className="whitespace-nowrap px-3 py-2 text-right text-[0.8rem] font-semibold tabular-nums text-ink">
                         {t.value ? fmtUsd(t.value) : '—'}
                       </td>
                     </tr>
@@ -255,7 +255,7 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
               <button
                 type="button"
                 onClick={() => setExpanded((x) => !x)}
-                className="mt-2.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-slate-500 hover:bg-slate-50"
+                className="mt-2.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.78rem] font-semibold text-muted hover:bg-surface-2"
               >
                 {expanded
                   ? 'Show fewer'
@@ -263,7 +263,7 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
               </button>
             )}
 
-            <p className="mt-2.5 text-[0.7rem] text-gray-400">
+            <p className="mt-2.5 text-[0.7rem] text-subtle">
               &ldquo;plan&rdquo; = filed as a pre-scheduled Rule 10b5-1 trade
               (post-2023 filings disclose this). Aggregates count open-market
               buys (P) and sells (S) only.

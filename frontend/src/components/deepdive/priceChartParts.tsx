@@ -21,9 +21,9 @@ export function PriceTooltip({
   const ma50 = payload.find((p) => p.dataKey === 'ma50')?.value
   const ma200 = payload.find((p) => p.dataKey === 'ma200')?.value
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-card">
-      <div className="font-semibold text-gray-900">{fmtDate(label)}</div>
-      <div className="mt-0.5 text-blue-600">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-card">
+      <div className="font-semibold text-ink">{fmtDate(label)}</div>
+      <div className="mt-0.5 text-accent">
         {typeof price === 'number' ? `$${price.toFixed(2)}` : '—'}
       </div>
       {showMA && (
@@ -45,9 +45,9 @@ export function VolumeTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null
   const vol = payload.find((p) => p.dataKey === 'vol')?.value
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs shadow-card">
-      <div className="font-semibold text-gray-900">{fmtDate(label)}</div>
-      <div className="text-gray-500">Vol {fmtVol(typeof vol === 'number' ? vol : null)}</div>
+    <div className="rounded-lg border border-line bg-surface px-2 py-1 text-xs shadow-card">
+      <div className="font-semibold text-ink">{fmtDate(label)}</div>
+      <div className="text-muted">Vol {fmtVol(typeof vol === 'number' ? vol : null)}</div>
     </div>
   )
 }
@@ -71,10 +71,10 @@ export function OverlayToggle({ on, onToggle, label, color, bgOn, textOn, border
       className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[0.76rem] font-semibold transition-colors ${
         on
           ? `${borderOn} ${bgOn} ${textOn}`
-          : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50'
+          : 'border-line bg-surface text-muted hover:bg-surface-2'
       }`}
     >
-      <span className="h-2 w-2 rounded-full" style={{ background: on ? color : '#cbd5e1' }} />
+      <span className="h-2 w-2 rounded-full" style={{ background: on ? color : 'var(--border-strong)' }} />
       {label}
     </button>
   )
@@ -82,10 +82,10 @@ export function OverlayToggle({ on, onToggle, label, color, bgOn, textOn, border
 
 export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-2 py-1.5">
-      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="text-[0.95rem] font-bold tabular-nums text-slate-900">{value}</div>
-      {sub && <div className="text-[0.58rem] text-gray-400">{sub}</div>}
+    <div className="rounded-lg bg-surface-2 px-2 py-1.5">
+      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-subtle">{label}</div>
+      <div className="text-[0.95rem] font-bold tabular-nums text-ink">{value}</div>
+      {sub && <div className="text-[0.58rem] text-subtle">{sub}</div>}
     </div>
   )
 }
