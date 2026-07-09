@@ -250,5 +250,6 @@ def risk_alignment(
         "holdings": holdings_out,
         "threshold_flags": threshold_flags,
         "ideas": ideas,
+        "available_sectors": available_sectors,
         "methodology": _METHODOLOGY,
     }
