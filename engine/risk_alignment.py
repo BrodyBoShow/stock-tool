@@ -74,6 +74,7 @@ def _query_ideas(
               AND fs.score_date = (SELECT max(score_date) FROM factor_scores
                                    WHERE config_version = %s)
               AND s.is_active
+              AND s.name IS NOT NULL
               AND fs.growth_pctl IS NOT NULL AND fs.value_pctl IS NOT NULL
               AND fs.quality_pctl IS NOT NULL AND fs.momentum_pctl IS NOT NULL
               AND sr.risk_band BETWEEN %s AND %s
@@ -142,7 +143,11 @@ def _idea_universe(
             )
             excluded = {r[0] for r in cur.fetchall()} | set(held_sids)
             ideas = _query_ideas(cur, excluded, ideas_min, ideas_max, sector)
-            sectors = _query_sectors(cur, excluded, ideas_min, ideas_max)
+            # available_sectors is sector-invariant and the frontend keeps the
+            # list from the initial (unfiltered) fetch, so a sector-filtered call
+            # doesn't need to re-derive it — skip that scan to halve the extra
+            # factor_scores work on each dropdown change.
+            sectors = _query_sectors(cur, excluded, ideas_min, ideas_max) if sector is None else []
             return ideas, sectors
     finally:
         release(conn)

@@ -29,13 +29,15 @@ export function AlignedIdeasPanel({
   const [sector, setSector] = useState('')
 
   // Own query so changing the sector re-fetches only the ideas — the page's
-  // (sector-agnostic) fetch seeds the default via initialData, so no extra
+  // (sector-agnostic) fetch seeds the default via initialData. staleTime keeps
+  // that seed fresh so mounting doesn't trigger a duplicate fetch: no extra
   // request happens until the user actually picks a sector.
   const q = useQuery({
     queryKey: ['portfolio', 'risk-alignment', 'ideas', benchmark, sector],
     queryFn: () => getRiskAlignment(benchmark, sector || undefined),
     initialData: sector === '' ? data : undefined,
     placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
     enabled: data.has_profile,
   })
 
@@ -45,6 +47,10 @@ export function AlignedIdeasPanel({
   const ideas = view.ideas
   const sectors = data.available_sectors ?? []
   const filtering = q.isFetching && sector !== ''
+  // A failed sector fetch must NOT leave the previous sector's rows on screen
+  // (keepPreviousData) under the new label — that would mislabel them. Show an
+  // error + a way back instead.
+  const fetchFailed = q.isError && sector !== ''
 
   return (
     <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
@@ -91,7 +97,27 @@ export function AlignedIdeasPanel({
         </div>
       )}
 
-      {ideas.length === 0 ? (
+      {fetchFailed ? (
+        <div className="mt-4 text-[0.8rem] text-amber-700">
+          Couldn’t load {sector} ideas.{' '}
+          <button
+            type="button"
+            onClick={() => q.refetch()}
+            className="font-semibold text-indigo-600 hover:underline"
+          >
+            Try again
+          </button>{' '}
+          or{' '}
+          <button
+            type="button"
+            onClick={() => setSector('')}
+            className="font-semibold text-indigo-600 hover:underline"
+          >
+            show all sectors
+          </button>
+          .
+        </div>
+      ) : ideas.length === 0 ? (
         <div className="mt-4 text-[0.8rem] text-gray-500">
           No names currently pass the filter (band range {p.ideas_min}–{p.ideas_max}
           {sector ? `, sector ${sector}` : ''}, complete factor scores, fresh risk data).
