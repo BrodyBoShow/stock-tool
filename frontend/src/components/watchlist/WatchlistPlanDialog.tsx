@@ -12,8 +12,8 @@ import { valuationSummary } from '@/lib/valuation'
 import type { WatchlistRow } from '@/types/api'
 
 const FIELD =
-  'mt-1 w-full resize-y rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none'
-const LABEL = 'text-[0.72rem] font-semibold text-slate-600'
+  'mt-1 w-full resize-y rounded-lg border border-line px-2 py-1.5 text-sm text-ink focus:border-accent focus:outline-none'
+const LABEL = 'text-[0.72rem] font-semibold text-muted'
 
 /**
  * Edit a watched name's decision plan: an entry target price (drives the row's
@@ -130,10 +130,10 @@ export function WatchlistPlanDialog({
         role="dialog"
         aria-modal="true"
         aria-label={`Plan for ${row.ticker}`}
-        className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
+        className="relative w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
       >
-        <h2 className="text-base font-bold text-gray-900">Your plan for {row.ticker}</h2>
-        <p className="mt-0.5 text-[0.78rem] text-slate-500">
+        <h2 className="text-base font-bold text-ink">Your plan for {row.ticker}</h2>
+        <p className="mt-0.5 text-[0.78rem] text-muted">
           The price you’d act on, and what would make you buy or drop it. Your private
           notes — StockBud never places orders.
         </p>
@@ -142,22 +142,22 @@ export function WatchlistPlanDialog({
           <label className="block">
             <span className={LABEL}>
               Entry target price{' '}
-              <span className="font-normal text-slate-400">
+              <span className="font-normal text-subtle">
                 (optional — drives the “% to entry” gauge)
               </span>
             </span>
             <div className="mt-1 flex items-center gap-1.5">
-              <span className="text-slate-400">$</span>
+              <span className="text-subtle">$</span>
               <input
                 inputMode="decimal"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 placeholder={row.last_price != null ? `now ${row.last_price.toFixed(2)}` : 'e.g. 100'}
-                className="w-36 rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-indigo-400 focus:outline-none"
+                className="w-36 rounded-lg border border-line px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
               />
             </div>
             {targetInvalid && (
-              <span className="mt-1 block text-[0.7rem] font-semibold text-rose-600">
+              <span className="mt-1 block text-[0.7rem] font-semibold text-neg">
                 Enter a non-negative number.
               </span>
             )}
@@ -165,24 +165,24 @@ export function WatchlistPlanDialog({
 
           {/* StockBud's valuation read — reference only, to help you place the
               target above. Not a target, not advice. */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-[0.72rem]">
-            <div className="font-semibold text-slate-600">
+          <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-[0.72rem]">
+            <div className="font-semibold text-muted">
               StockBud’s read{' '}
-              <span className="font-normal text-slate-400">— reference, not a target</span>
+              <span className="font-normal text-subtle">— reference, not a target</span>
             </div>
             {valLoading ? (
-              <div className="mt-1 text-slate-400">Loading valuation…</div>
+              <div className="mt-1 text-subtle">Loading valuation…</div>
             ) : iv && (iv.fairLow != null || iv.impliedGrowth != null) ? (
-              <div className="mt-1 space-y-0.5 text-slate-600">
+              <div className="mt-1 space-y-0.5 text-muted">
                 {iv.fairLow != null && iv.fairHigh != null && (
                   <div>
                     Peer-multiple fair value{' '}
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-ink">
                       {fmtPrice(iv.fairLow)}
                       {iv.fairHigh !== iv.fairLow ? `–${fmtPrice(iv.fairHigh)}` : ''}
                     </span>
                     {vsMid != null && (
-                      <span className={vsMid > 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                      <span className={vsMid > 0 ? 'text-neg' : 'text-pos'}>
                         {' '}
                         · price {vsMid > 0 ? '+' : ''}
                         {fmtPct(vsMid)} vs midpoint
@@ -193,19 +193,19 @@ export function WatchlistPlanDialog({
                 {iv.impliedGrowth != null && (
                   <div>
                     Reverse-DCF: the price implies{' '}
-                    <span className="font-semibold text-slate-800">{fmtPct(iv.impliedGrowth)}/yr</span>{' '}
+                    <span className="font-semibold text-ink">{fmtPct(iv.impliedGrowth)}/yr</span>{' '}
                     FCF growth
                   </div>
                 )}
                 <Link
                   to={`/securities/${row.ticker}`}
-                  className="inline-block pt-0.5 font-semibold text-indigo-600 hover:underline"
+                  className="inline-block pt-0.5 font-semibold text-accent hover:underline"
                 >
                   Full valuation on the deep dive →
                 </Link>
               </div>
             ) : (
-              <div className="mt-1 text-slate-400">
+              <div className="mt-1 text-subtle">
                 No valuation reference available for this name.
               </div>
             )}
@@ -251,36 +251,36 @@ export function WatchlistPlanDialog({
         {/* Thesis — folded in from the retired Theses tab; written/edited on the
             deep dive, surfaced here read-only so the watch row is the one place
             you see your full case. */}
-        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+        <div className="mt-3 rounded-lg border border-line bg-surface-2 p-3">
           <div className="flex items-center justify-between gap-2">
             <span className={LABEL}>Your thesis</span>
             {row.thesis_review_due && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-bold text-amber-800">
+              <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[0.6rem] font-bold text-warn">
                 review due
               </span>
             )}
           </div>
           {row.thesis_summary ? (
             <>
-              <p className="mt-1 text-[0.8rem] leading-snug text-slate-700">{row.thesis_summary}</p>
+              <p className="mt-1 text-[0.8rem] leading-snug text-ink">{row.thesis_summary}</p>
               {row.thesis_review_date && (
-                <p className="mt-1 text-[0.68rem] text-slate-400">
+                <p className="mt-1 text-[0.68rem] text-subtle">
                   Review by {fmtDate(row.thesis_review_date)}
                 </p>
               )}
               <Link
                 to={`/securities/${row.ticker}`}
-                className="mt-1.5 inline-block text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+                className="mt-1.5 inline-block text-[0.72rem] font-semibold text-accent hover:underline"
               >
                 Edit on the deep dive →
               </Link>
             </>
           ) : (
-            <p className="mt-1 text-[0.76rem] text-slate-400">
+            <p className="mt-1 text-[0.76rem] text-subtle">
               No thesis yet.{' '}
               <Link
                 to={`/securities/${row.ticker}`}
-                className="font-semibold text-indigo-600 hover:underline"
+                className="font-semibold text-accent hover:underline"
               >
                 Write one on the deep dive →
               </Link>
@@ -298,8 +298,8 @@ export function WatchlistPlanDialog({
                 disabled={updatePlan.isPending}
                 className={`rounded-lg px-2.5 py-1.5 text-[0.78rem] font-semibold transition-colors disabled:opacity-50 ${
                   confirmClear
-                    ? 'bg-rose-600 text-white hover:bg-rose-700'
-                    : 'text-rose-600 hover:bg-rose-50'
+                    ? 'bg-neg-strong text-white hover:bg-rose-700'
+                    : 'text-neg hover:bg-neg-soft'
                 }`}
                 title="Remove this name's saved plan (target + notes)"
               >
@@ -312,7 +312,7 @@ export function WatchlistPlanDialog({
               type="button"
               onClick={onClose}
               disabled={updatePlan.isPending}
-              className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-[0.82rem] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-lg border border-line bg-surface px-3.5 py-1.5 text-[0.82rem] font-semibold text-muted hover:bg-surface-2 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -320,7 +320,7 @@ export function WatchlistPlanDialog({
               type="button"
               onClick={save}
               disabled={updatePlan.isPending || targetInvalid}
-              className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-lg bg-accent-solid px-3.5 py-1.5 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-60"
             >
               {updatePlan.isPending ? 'Saving…' : 'Save plan'}
             </button>

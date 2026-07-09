@@ -32,7 +32,7 @@ export function WatchlistHero({ view }: { view: WatchlistHeroView }) {
             checking for updates…
           </span>
         ) : attention > 0 ? (
-          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-small font-semibold text-warn">
+          <span className="rounded-full bg-warn-soft px-2 py-0.5 text-small font-semibold text-warn">
             {attention} with updates
           </span>
         ) : (

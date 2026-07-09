@@ -106,19 +106,19 @@ export function WatchlistPage() {
   if (rows.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-extrabold text-slate-900">Watchlist</h1>
-        <div className="rounded-card border border-dashed border-slate-300 bg-white/60 p-10 text-center shadow-card">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-[1.3rem] text-amber-500">
+        <h1 className="text-xl font-extrabold text-ink">Watchlist</h1>
+        <div className="rounded-card border border-dashed border-line bg-surface p-10 text-center shadow-card">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warn-soft text-[1.3rem] text-warn">
             ★
           </div>
-          <p className="mt-3 text-sm font-semibold text-gray-700">No saved names yet</p>
-          <p className="mx-auto mt-1 max-w-sm text-[0.82rem] text-gray-400">
+          <p className="mt-3 text-sm font-semibold text-ink">No saved names yet</p>
+          <p className="mx-auto mt-1 max-w-sm text-[0.82rem] text-subtle">
             Tap the star on any row in the screener — or the “Add to watchlist”
             button on a deep dive — to start tracking it here.
           </p>
           <Link
             to="/"
-            className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-indigo-700"
+            className="mt-4 inline-flex items-center rounded-lg bg-accent-solid px-4 py-2 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover"
           >
             Browse the screener
           </Link>
@@ -172,7 +172,7 @@ export function WatchlistPage() {
       </div>
 
       {/* Zone C — explore next + the single disclaimer */}
-      <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+      <div className="flex flex-col gap-3 border-t border-line pt-4">
         <ExploreChips
           ariaLabel="Explore other tabs"
           chips={[

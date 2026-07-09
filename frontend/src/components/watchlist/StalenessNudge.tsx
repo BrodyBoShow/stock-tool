@@ -23,7 +23,7 @@ export function StalenessNudge({ rows }: { rows: WatchlistRow[] }) {
   const stale = rows.filter(isStale)
   if (stale.length === 0) return null
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--r-lg)] border border-amber-200 bg-amber-50/60 px-4 py-2.5 text-[0.8rem] text-amber-900">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--r-lg)] border border-warn bg-warn-soft px-4 py-2.5 text-[0.8rem] text-warn">
       <span aria-hidden="true">⏳</span>
       <span>
         {stale.length} name{stale.length > 1 ? 's have' : ' has'} sat on your radar 90+ days with
@@ -33,12 +33,12 @@ export function StalenessNudge({ rows }: { rows: WatchlistRow[] }) {
         <Link
           key={r.security_id}
           to={`/securities/${r.ticker}`}
-          className="font-semibold underline decoration-amber-300 underline-offset-2 hover:text-amber-700"
+          className="font-semibold underline decoration-amber-300 underline-offset-2 hover:text-warn"
         >
           {r.ticker}
         </Link>
       ))}
-      <span className="text-amber-700">· worth a quick review, or prune below.</span>
+      <span className="text-warn">· worth a quick review, or prune below.</span>
     </div>
   )
 }

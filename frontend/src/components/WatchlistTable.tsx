@@ -108,23 +108,23 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
   const cell = 'pointer-events-none relative z-[1]'
 
   return (
-    <section className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
+    <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
       <div className="overflow-x-auto">
         {/* header */}
         <div
-          className="grid min-w-[1116px] border-b border-gray-200 bg-gray-50"
+          className="grid min-w-[1116px] border-b border-line bg-surface-2"
           style={{ gridTemplateColumns: GRID }}
         >
-          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
+          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-muted`}>
             Company{arrow('ticker')}
           </button>
-          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-gray-500`}>
+          <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-muted`}>
             Sector{arrow('sector')}
           </button>
           <button
             type="button"
             onClick={() => toggleSort('risk_band')}
-            className={`${TH} justify-center text-gray-500`}
+            className={`${TH} justify-center text-muted`}
             title="Historical risk band (1-5) from realized volatility, beta and drawdown over the past year. A backward-looking measurement, not a recommendation — hover a chip for the full method."
           >
             Risk{arrow('risk_band')}
@@ -141,11 +141,11 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
               {arrow(FACTOR_SORT[k])}
             </button>
           ))}
-          <div className={`${TH} justify-center text-gray-400`} title="Price trend over the last ~30 trading sessions (end-of-day closes).">
+          <div className={`${TH} justify-center text-subtle`} title="Price trend over the last ~30 trading sessions (end-of-day closes).">
             1M
           </div>
           <div
-            className={`${TH} justify-center text-gray-500`}
+            className={`${TH} justify-center text-muted`}
             title="Your entry plan: a target price you'd buy at (drives the buy-zone / %-above readout) plus your buy & drop criteria. Your private notes — StockBud never acts on them."
           >
             Entry
@@ -153,7 +153,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
           <button
             type="button"
             onClick={() => toggleSort('last_price')}
-            className={`${TH} justify-end text-gray-500`}
+            className={`${TH} justify-end text-muted`}
             title="Latest end-of-day close. The % below each price is the change from the prior close — end-of-day, not live intraday."
           >
             Price{arrow('last_price')}
@@ -167,10 +167,10 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
             const day = dayChange(r)
             const dayCls =
               day == null || day === 0
-                ? 'text-gray-400'
+                ? 'text-subtle'
                 : day > 0
-                  ? 'text-emerald-600'
-                  : 'text-rose-600'
+                  ? 'text-pos'
+                  : 'text-neg'
             const target = r.target_price
             const buyZone = target != null && r.last_price != null && r.last_price <= target
             const pctAbove =
@@ -181,7 +181,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
             return (
               <div
                 key={r.security_id}
-                className="group relative grid border-b border-gray-100 transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-slate-50 hover:shadow-[inset_3px_0_0_#1e293b]"
+                className="group relative grid border-b border-line transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_#1e293b]"
                 style={{ gridTemplateColumns: GRID, height: 54 }}
               >
                 <Link
@@ -190,18 +190,18 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                   className="absolute inset-0 z-0"
                 />
                 <div className={`${cell} flex h-full min-w-0 flex-col justify-center px-3 py-2`}>
-                  <span className="flex items-center gap-1.5 text-[0.88rem] font-bold leading-[1.15] text-gray-900">
+                  <span className="flex items-center gap-1.5 text-[0.88rem] font-bold leading-[1.15] text-ink">
                     {r.ticker}
                     {r.thesis_review_due && (
                       <span
-                        className="rounded-full bg-amber-100 px-1.5 text-[0.56rem] font-bold uppercase tracking-wide text-amber-800"
+                        className="rounded-full bg-warn-soft px-1.5 text-[0.56rem] font-bold uppercase tracking-wide text-warn"
                         title="Your thesis review date has passed — open the plan or the deep dive to review it."
                       >
                         review
                       </span>
                     )}
                   </span>
-                  <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
+                  <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-subtle">
                     {r.name ?? DASH}
                   </span>
                 </div>
@@ -237,22 +237,22 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                     <button
                       type="button"
                       onClick={() => setPlanRow(r)}
-                      className="flex flex-col items-center gap-0.5 rounded-md px-1.5 py-1 hover:bg-slate-100"
+                      className="flex flex-col items-center gap-0.5 rounded-md px-1.5 py-1 hover:bg-surface-3"
                       title="Edit your entry plan"
                     >
-                      <span className="text-[0.78rem] font-semibold tabular-nums text-slate-700">
+                      <span className="text-[0.78rem] font-semibold tabular-nums text-ink">
                         {fmtPrice(target)}
                       </span>
                       {buyZone ? (
                         <span
-                          className="rounded-full bg-emerald-50 px-1.5 text-[0.6rem] font-bold text-emerald-700"
+                          className="rounded-full bg-pos-soft px-1.5 text-[0.6rem] font-bold text-pos"
                           title={`Price has reached your ${fmtPrice(target)} target — your plan, not advice`}
                         >
                           in buy zone
                         </span>
                       ) : pctAbove != null ? (
                         <span
-                          className="rounded-full bg-amber-50 px-1.5 text-[0.6rem] font-semibold text-amber-700"
+                          className="rounded-full bg-warn-soft px-1.5 text-[0.6rem] font-semibold text-warn"
                           title={`${(pctAbove * 100).toFixed(0)}% above your ${fmtPrice(target)} target — your plan, not advice`}
                         >
                           {(pctAbove * 100).toFixed(0)}% above
@@ -263,7 +263,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                     <button
                       type="button"
                       onClick={() => setPlanRow(r)}
-                      className="rounded-md border border-dashed border-gray-300 px-2 py-1 text-[0.66rem] font-semibold text-slate-400 hover:border-indigo-300 hover:text-indigo-600"
+                      className="rounded-md border border-dashed border-line px-2 py-1 text-[0.66rem] font-semibold text-subtle hover:border-accent hover:text-accent"
                       title="Set your entry plan (target price, why watching, buy/drop criteria)"
                     >
                       {hasPlan ? '✎ Plan' : '+ Plan'}
@@ -271,7 +271,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                   )}
                 </div>
                 <div className={`${cell} flex h-full flex-col items-end justify-center px-3 py-2`}>
-                  <span className="text-[0.85rem] font-semibold text-gray-900">
+                  <span className="text-[0.85rem] font-semibold text-ink">
                     {fmtPrice(r.last_price)}
                   </span>
                   <span className={`text-[0.72rem] font-semibold tabular-nums ${dayCls}`}>
@@ -282,7 +282,7 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                   <button
                     type="button"
                     onClick={() => setAlertTicker(r.ticker)}
-                    className="rounded-md px-1 py-1 text-[0.9rem] leading-none text-slate-400 hover:bg-slate-100 hover:text-indigo-600"
+                    className="rounded-md px-1 py-1 text-[0.9rem] leading-none text-subtle hover:bg-surface-3 hover:text-accent"
                     title={`Set event alerts for ${r.ticker}`}
                     aria-label={`Set alerts for ${r.ticker}`}
                   >
