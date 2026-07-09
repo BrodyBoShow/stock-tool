@@ -57,7 +57,7 @@ export function FactorCompass({ factors }: { factors: MarketFactorDay[] }) {
 
   return (
     <div>
-      <div className="mb-2 flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+      <div className="mb-2 flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-subtle">
         Style leadership by horizon
         <InfoTip text="Each style's top-quintile-minus-bottom-quintile return at three lookbacks (1 day / 1 week / 1 month). Positive = that style is outperforming; a sign flip across horizons hints at rotation. Descriptive, not predictive." />
       </div>
@@ -65,13 +65,13 @@ export function FactorCompass({ factors }: { factors: MarketFactorDay[] }) {
         <table className="w-full text-[0.82rem]">
           <thead>
             <tr>
-              <th className="py-1.5 pr-3 text-left text-[0.66rem] font-semibold uppercase tracking-[0.07em] text-slate-400">
+              <th className="py-1.5 pr-3 text-left text-[0.66rem] font-semibold uppercase tracking-[0.07em] text-subtle">
                 Factor
               </th>
               {HORIZONS.map((h) => (
                 <th
                   key={h.key}
-                  className="px-2 py-1.5 text-right text-[0.66rem] font-semibold uppercase tracking-[0.07em] text-slate-400"
+                  className="px-2 py-1.5 text-right text-[0.66rem] font-semibold uppercase tracking-[0.07em] text-subtle"
                 >
                   {h.label}
                 </th>
@@ -81,14 +81,14 @@ export function FactorCompass({ factors }: { factors: MarketFactorDay[] }) {
           <tbody>
             {rows.map((f) => (
               <tr key={f.factor} className="border-t border-slate-50">
-                <td className="py-2 pr-3 font-semibold text-slate-600">{FACTOR_LABEL[f.factor] ?? f.factor}</td>
+                <td className="py-2 pr-3 font-semibold text-muted">{FACTOR_LABEL[f.factor] ?? f.factor}</td>
                 {HORIZONS.map((h) => {
                   const v = spreadOf(f, h.key)
                   return (
                     <td
                       key={h.key}
                       className="rounded-sm px-2 py-2 text-right font-bold tabular-nums"
-                      style={v == null ? { color: '#94a3b8' } : heat(v, h.scale)}
+                      style={v == null ? { color: 'var(--subtle)' } : heat(v, h.scale)}
                     >
                       {v == null ? '—' : fmtSignedPct(v)}
                     </td>
@@ -99,8 +99,8 @@ export function FactorCompass({ factors }: { factors: MarketFactorDay[] }) {
           </tbody>
         </table>
       </div>
-      {line && <p className="mt-2.5 text-[0.78rem] leading-snug text-slate-600">{line}</p>}
-      <p className="mt-1 text-[0.72rem] text-slate-400">
+      {line && <p className="mt-2.5 text-[0.78rem] leading-snug text-muted">{line}</p>}
+      <p className="mt-1 text-[0.72rem] text-subtle">
         Top fifth minus bottom fifth by return, at three horizons — which styles are leading, not a forecast.
       </p>
     </div>

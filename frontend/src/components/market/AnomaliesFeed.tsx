@@ -25,10 +25,10 @@ export function AnomaliesFeed({ anomalies }: { anomalies: MarketAnomaly[] }) {
   if (!anomalies || anomalies.length === 0) {
     return (
       <div>
-        <p className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-6 text-center text-[0.84rem] text-slate-400">
+        <p className="rounded-lg border border-line bg-surface-2 px-4 py-6 text-center text-[0.84rem] text-subtle">
           No unusual patterns flagged this session.
         </p>
-        <p className="mt-2 text-[0.72rem] text-slate-400">
+        <p className="mt-2 text-[0.72rem] text-subtle">
           Auto-detected from this session's data — context, not advice.
         </p>
       </div>
@@ -41,22 +41,22 @@ export function AnomaliesFeed({ anomalies }: { anomalies: MarketAnomaly[] }) {
         {anomalies.map((a) => (
           <div
             key={`${a.type}:${a.title}`}
-            className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            className="rounded-xl border border-line bg-surface p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
           >
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 shrink-0 text-[1.05rem] leading-none grayscale" aria-hidden>
                 {iconFor(a.type)}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-[0.88rem] font-bold leading-snug text-slate-800">{a.title}</div>
-                <p className="mt-0.5 text-[0.78rem] leading-snug text-slate-500">{a.detail}</p>
+                <div className="text-[0.88rem] font-bold leading-snug text-ink">{a.title}</div>
+                <p className="mt-0.5 text-[0.78rem] leading-snug text-muted">{a.detail}</p>
                 {a.tickers.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {a.tickers.map((t) => (
                       <Link
                         key={t}
                         to={`/securities/${t}`}
-                        className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.64rem] font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-600"
+                        className="rounded bg-surface-3 px-1.5 py-0.5 text-[0.64rem] font-bold text-muted hover:bg-accent-soft hover:text-accent"
                       >
                         {t}
                       </Link>
@@ -68,7 +68,7 @@ export function AnomaliesFeed({ anomalies }: { anomalies: MarketAnomaly[] }) {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[0.72rem] text-slate-400">
+      <p className="mt-3 text-[0.72rem] text-subtle">
         Auto-detected from this session's data — context, not advice.
       </p>
     </div>
