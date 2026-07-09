@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts'
 
 import { InfoTip } from '@/components/ui/InfoTip'
+import { useChartTheme } from '@/lib/chartTheme'
 import { plColor, scoreHeat } from '@/lib/colors'
 import { TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtMoney, fmtSignedPct } from '@/lib/format'
@@ -46,7 +47,7 @@ export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
         </thead>
         <tbody>
           {sectors.map((s) => (
-            <tr key={s.sector} className="border-b border-slate-50">
+            <tr key={s.sector} className="border-b border-line">
               <td className="py-2 pr-4 font-bold text-ink">{s.sector}</td>
               <td className="py-2 pr-3 text-right tabular-nums text-subtle">{s.n}</td>
               {cols.map((c) => {
@@ -69,6 +70,7 @@ export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
 }
 
 export function MacroCardBox({ card }: { card: MarketMacroCard }) {
+  const ct = useChartTheme()
   const points = card.spark_values.map((v, i) => ({ i, v }))
   const hasData = Number.isFinite(card.latest)
   const trendUp = card.spark_values.length >= 2 && card.spark_values[card.spark_values.length - 1] >= card.spark_values[0]
@@ -97,7 +99,7 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={points} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                 <YAxis hide domain={['dataMin', 'dataMax']} />
-                <Line type="monotone" dataKey="v" stroke={trendUp ? 'var(--info)' : 'var(--subtle)'} strokeWidth={1.4}
+                <Line type="monotone" dataKey="v" stroke={trendUp ? ct.info : ct.muted} strokeWidth={1.4}
                   dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -158,7 +160,7 @@ function EightKChip({ ticker }: { ticker: string }) {
     <Link
       to={`/securities/${ticker}`}
       title="Filed an 8-K in the current window"
-      className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-accent hover:bg-accent-soft"
+      className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-accent hover:bg-accent hover:text-inverse"
     >
       8-K
     </Link>
@@ -621,7 +623,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
           )}
           {brief.narrative.length > 0 && (
             <details className="group mt-4">
-              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-accent hover:text-accent">
+              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-accent hover:underline">
                 <svg className="h-3.5 w-3.5 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
                 </svg>

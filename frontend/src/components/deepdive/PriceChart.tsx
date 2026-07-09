@@ -278,18 +278,18 @@ export function PriceChart({
           onToggle={() => setShowMA50((x) => !x)}
           label="50d MA"
           color={MA50_COLOR}
-          bgOn="bg-cyan-50"
-          textOn="text-cyan-700"
-          borderOn="border-cyan-200"
+          bgOn="bg-info-soft"
+          textOn="text-info"
+          borderOn="border-info"
         />
         <OverlayToggle
           on={showMA200}
           onToggle={() => setShowMA200((x) => !x)}
           label="200d MA"
           color={MA200_COLOR}
-          bgOn="bg-orange-50"
-          textOn="text-orange-700"
-          borderOn="border-orange-200"
+          bgOn="bg-warn-soft"
+          textOn="text-warn"
+          borderOn="border-warn"
         />
         {hasVolume && (
           <OverlayToggle
@@ -321,9 +321,9 @@ export function PriceChart({
           onToggle={() => setOverlayOn((x) => !x)}
           label="Macro overlay"
           color={OVERLAY_COLOR}
-          bgOn="bg-violet-50"
-          textOn="text-violet-700"
-          borderOn="border-violet-200"
+          bgOn="bg-accent-soft"
+          textOn="text-accent"
+          borderOn="border-accent"
         />
         {overlayOn && (
           <>
@@ -403,7 +403,7 @@ export function PriceChart({
             className={
               'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold transition-colors ' +
               (showSignals
-                ? 'border-violet-200 bg-violet-50 text-violet-700'
+                ? 'border-accent bg-accent-soft text-accent'
                 : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
@@ -452,10 +452,10 @@ export function PriceChart({
               className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.72rem] font-bold uppercase tracking-wide"
               style={
                 wyckoff.context?.kind === 'accumulation'
-                  ? { background: '#dcfce7', color: '#15803d' }
+                  ? { background: 'var(--pos-soft)', color: 'var(--pos)' }
                   : wyckoff.context?.kind === 'distribution'
-                    ? { background: '#fee2e2', color: '#b91c1c' }
-                    : { background: '#fef3c7', color: '#92400e' }
+                    ? { background: 'var(--neg-soft)', color: 'var(--neg)' }
+                    : { background: 'var(--warn-soft)', color: 'var(--warn)' }
               }
             >
               {wyckoff.context?.kind === 'accumulation'

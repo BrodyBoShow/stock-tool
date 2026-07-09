@@ -9,6 +9,8 @@ import {
   YAxis,
 } from 'recharts'
 
+import { useChartTheme } from '@/lib/chartTheme'
+
 import { RANGES, rangeStartIndex, rangeStats, rebase } from '../portfolioUi'
 import type { RangeKey } from '../portfolioUi'
 import { fmtDate, fmtSignedPct } from '@/lib/format'
@@ -53,6 +55,7 @@ export function PerfChart({
   const since = performance.dates[0]
     ? fmtDate(performance.dates[0]).replace(/,.*/, '')
     : ''
+  const ct = useChartTheme()
 
   return (
     <div className="rounded-[var(--r-lg)] border border-[var(--border)] bg-surface p-4 shadow-[var(--sh-sm)]">
@@ -77,15 +80,15 @@ export function PerfChart({
 
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <CartesianGrid stroke={ct.grid} vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: 'var(--subtle)' }}
+            tick={{ fontSize: 10, fill: ct.axis }}
             minTickGap={40}
             tickFormatter={(d: string) => d.slice(0, 7)}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: 'var(--subtle)' }}
+            tick={{ fontSize: 10, fill: ct.axis }}
             tickFormatter={(v: number) => `${v.toFixed(2)}×`}
             domain={['auto', 'auto']}
             width={44}
@@ -101,8 +104,8 @@ export function PerfChart({
               color: 'var(--ink)',
             }}
           />
-          <Line type="monotone" dataKey="twr" name="Your portfolio" stroke={PORT} strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="bench" name={benchmark} stroke={BENCH} strokeWidth={1.8} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="twr" name="Your portfolio" stroke={ct.accent} strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="bench" name={benchmark} stroke={ct.info} strokeWidth={1.8} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
 
