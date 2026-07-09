@@ -88,6 +88,29 @@ export function sectorPillColors(sector: string | null): [string, string] {
   return SECTOR_PILLS[sector] ?? SECTOR_PILL_DEFAULT
 }
 
+/**
+ * Theme-aware sector chip colors, derived from the sector's single hue.
+ * `bg` mixes the hue into the current `--surface` (a light tint on light, a
+ * subtle wash on dark) and `fg` mixes it toward `--ink` (a darkened hue on
+ * light for AA, a lifted hue on dark) — so one categorical hue reads in BOTH
+ * themes with no per-theme table. `hue` is the raw color for dots/rings.
+ */
+export function sectorChip(sector: string | null): {
+  hue: string
+  bg: string
+  fg: string
+} {
+  const hue = sectorPillColors(sector)[1]
+  return {
+    hue,
+    // Mix toward --ink for the text: since --ink is dark on light and light on
+    // dark, the ink share lifts contrast in BOTH themes. At 55% hue every sector
+    // clears WCAG-AA (min 4.9:1 on dark, 7.1:1 on light) while staying distinct.
+    bg: `color-mix(in srgb, ${hue} 15%, var(--surface))`,
+    fg: `color-mix(in srgb, ${hue} 55%, var(--ink))`,
+  }
+}
+
 /** Factor -> [metric key, better-when direction] (mirrors FACTOR_DEFS). */
 export const FACTOR_DEFS: Record<
   Exclude<FactorKey, 'composite'>,

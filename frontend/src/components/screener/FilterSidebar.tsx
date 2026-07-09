@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { Slider } from '@/components/ui/slider'
-import { FACTOR_TABLE, sectorPillColors, type FactorKey } from '@/lib/constants'
+import { FACTOR_TABLE, sectorChip, type FactorKey } from '@/lib/constants'
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
@@ -118,7 +118,7 @@ function Toggle({
       <span
         className={
           'relative h-[18px] w-8 shrink-0 rounded-full transition-colors ' +
-          (on ? 'bg-accent-solid' : 'bg-slate-300')
+          (on ? 'bg-accent-solid' : 'bg-surface-3')
         }
       >
         <span
@@ -195,7 +195,7 @@ export function FilterSidebar({
         <div className="flex items-center gap-2 text-sm font-bold text-ink">
           Filters
           {active > 0 && (
-            <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-slate-800 px-1 text-[0.62rem] font-extrabold text-white">
+            <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[0.62rem] font-extrabold text-inverse">
               {active}
             </span>
           )}
@@ -267,7 +267,7 @@ export function FilterSidebar({
         <div className="flex flex-wrap gap-[5px]">
           {sectors.map((s) => {
             const on = filters.sectors.includes(s)
-            const [bg, fg] = sectorPillColors(s)
+            const { hue, bg, fg } = sectorChip(s)
             return (
               <button
                 key={s}
@@ -277,12 +277,16 @@ export function FilterSidebar({
                 style={
                   on
                     ? { background: bg, color: fg, boxShadow: `inset 0 0 0 1.5px ${fg}` }
-                    : { background: '#fff', color: '#64748b', boxShadow: 'inset 0 0 0 1px #e5e7eb' }
+                    : {
+                        background: 'var(--surface)',
+                        color: 'var(--muted)',
+                        boxShadow: 'inset 0 0 0 1px var(--border)',
+                      }
                 }
               >
                 <span
                   className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: on ? fg : sectorPillColors(s)[1] }}
+                  style={{ background: hue }}
                 />
                 {s}
               </button>
