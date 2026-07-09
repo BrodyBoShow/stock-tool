@@ -205,7 +205,7 @@ export function OverviewPane({
         <button
           type="button"
           onClick={() => onNavigate('brief')}
-          className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent"
+          className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent-hover"
         >
           Read the full brief →
         </button>
@@ -216,17 +216,17 @@ export function OverviewPane({
         <button
           type="button"
           onClick={() => onNavigate('factors')}
-          className="rounded-lg border border-indigo-700 bg-accent-hover p-3 text-left transition-colors hover:border-accent"
+          className="rounded-lg border border-accent-solid bg-accent-solid p-3 text-left transition-colors hover:border-accent-hover"
         >
           <div className="text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-accent-ink">
             Composite
           </div>
-          <div className="mt-0.5 text-[1.15rem] font-bold tabular-nums text-white">
+          <div className="mt-0.5 text-[1.15rem] font-bold tabular-nums text-accent-ink">
             {header.composite == null ? DASH : header.composite.toFixed(1)}
           </div>
-          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-accent-soft">
+          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-black/20">
             <div
-              className="h-full rounded-full bg-indigo-300"
+              className="h-full rounded-full bg-accent-ink"
               style={{ width: `${compositeWidth}%` }}
             />
           </div>
@@ -276,7 +276,7 @@ export function OverviewPane({
           <button
             type="button"
             onClick={() => onNavigate('filings')}
-            className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent"
+            className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent-hover"
           >
             All filings →
           </button>
@@ -314,7 +314,7 @@ export function OverviewPane({
           <button
             type="button"
             onClick={() => onNavigate('chart')}
-            className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent"
+            className="mt-3 text-[0.74rem] font-semibold text-accent hover:text-accent-hover"
           >
             Open the chart →
           </button>
@@ -341,7 +341,7 @@ export function OverviewPane({
         <button
           type="button"
           onClick={() => onNavigate('financials')}
-          className="mt-2 text-[0.74rem] font-semibold text-accent hover:text-accent"
+          className="mt-2 text-[0.74rem] font-semibold text-accent hover:text-accent-hover"
         >
           Financials →
         </button>

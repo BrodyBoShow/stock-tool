@@ -127,7 +127,7 @@ function Slider({
             <button
               type="button"
               onClick={() => onChange(seed)}
-              className="text-[0.6rem] text-indigo-500 hover:text-accent"
+              className="text-[0.6rem] text-muted hover:text-accent"
               title={`Reset to seeded ${show(seed)}`}
             >
               ↺
@@ -578,7 +578,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         <button
           type="button"
           onClick={() => setOv({})}
-          className="mt-2 text-[0.66rem] font-medium text-accent hover:text-accent"
+          className="mt-2 text-[0.66rem] font-medium text-accent hover:text-accent-hover"
         >
           ↺ Reset all to data-seeded
         </button>

@@ -184,7 +184,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
                 style={
                   on
                     ? { background: FACTOR_TABLE[l.key].bar, color: '#fff' }
-                    : { background: '#fff', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }
+                    : { background: 'var(--surface)', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }
                 }
               >
                 <span

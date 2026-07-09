@@ -35,7 +35,7 @@ const PREVIEW_ROWS = 5
 // Tint the form badge by category so the list scans at a glance.
 const CATEGORY_TINT: Record<string, string> = {
   'Annual report': 'bg-accent-soft text-accent',
-  'Quarterly report': 'bg-accent-soft text-accent',
+  'Quarterly report': 'bg-info-soft text-info',
   'Current report': 'bg-cyan-50 text-cyan-700',
   'Proxy & governance': 'bg-violet-50 text-violet-700',
   'Ownership & insiders': 'bg-neg-soft text-neg',
