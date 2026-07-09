@@ -85,11 +85,18 @@ export function Sparkline({
         preserveAspectRatio={fluid ? 'none' : undefined}
         className="block"
       >
-        <polygon points={`1,${height - 1} ${line} ${width - 1},${height - 1}`} fill={stroke} opacity={0.1} />
+        {/* Color is applied via `style` (not the stroke=/fill= presentation
+            attribute) so the var()/color-mix() token resolves in every browser
+            — Safari/older WebKit don't substitute vars in SVG attributes. */}
+        <polygon
+          points={`1,${height - 1} ${line} ${width - 1},${height - 1}`}
+          style={{ fill: stroke }}
+          opacity={0.1}
+        />
         <polyline
           points={line}
           fill="none"
-          stroke={stroke}
+          style={{ stroke }}
           strokeWidth={1}
           strokeLinejoin="round"
           strokeLinecap="round"

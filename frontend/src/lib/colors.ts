@@ -22,7 +22,7 @@ export function plColor(x: number | null | undefined): string {
  * underlying metric is better high or low), so green = strong is unambiguous.
  */
 export function rankColor(rank: number | null): Tint {
-  if (rank === null || Number.isNaN(rank)) return { bg: 'var(--surface-2)', fg: 'var(--subtle)' }
+  if (rank === null || Number.isNaN(rank)) return { bg: 'var(--surface-2)', fg: 'var(--muted)' }
   if (rank >= 67) return { bg: 'var(--pos-soft)', fg: 'var(--pos)' } // strong
   if (rank >= 34) return { bg: 'var(--surface-2)', fg: 'var(--muted)' } // middle
   return { bg: 'var(--neg-soft)', fg: 'var(--neg)' } // weak
@@ -42,8 +42,8 @@ const HEAT_RAMP: readonly [number, string][] = [
   [80, 'var(--pos-strong)'], // top quintile
   [60, 'var(--pos)'],
   [40, 'var(--warn-strong)'], // middle — amber
-  [20, 'var(--neg)'],
-  [0, 'var(--neg-strong)'], // bottom quintile
+  [20, 'var(--neg-strong)'], // lighter red
+  [0, 'var(--neg)'], // deepest red at the worst quintile (monotonic intensity)
 ]
 
 export function scoreHeat(value: number | null): { bar: string; tint: string } {
