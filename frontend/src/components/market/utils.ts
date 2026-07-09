@@ -24,19 +24,26 @@ export const FACTOR_LABEL: Record<string, string> = {
   growth: 'Growth', value: 'Value', quality: 'Quality', momentum: 'Momentum',
 }
 
+// Theme-aware tone tokens (good/warn/bad/neutral) — flip light↔dark with the vars.
 export const TONE_C: Record<string, { border: string; bg: string; fg: string }> = {
-  good: { border: '#86efac', bg: '#f0fdf4', fg: '#047857' },
-  warn: { border: '#fde68a', bg: '#fffbeb', fg: '#b45309' },
-  bad: { border: '#fecaca', bg: '#fef2f2', fg: '#b91c1c' },
-  neutral: { border: '#e2e8f0', bg: '#f8fafc', fg: '#475569' },
+  good: { border: 'var(--pos-border)', bg: 'var(--pos-soft)', fg: 'var(--pos)' },
+  warn: {
+    border: 'color-mix(in srgb, var(--warn) 40%, transparent)',
+    bg: 'var(--warn-soft)',
+    fg: 'var(--warn)',
+  },
+  bad: { border: 'var(--neg-border)', bg: 'var(--neg-soft)', fg: 'var(--neg)' },
+  neutral: { border: 'var(--border)', bg: 'var(--surface-2)', fg: 'var(--muted)' },
 }
 
 /** Heat-cell background: green/red, intensity scaled to the column's range,
- * with a small floor so even tiny real moves are visible. */
+ * with a small floor so even tiny real moves are visible. color-mix lets one
+ * expression carry the theme-aware hue at the computed alpha; text = --ink. */
 export function heat(v: number | null, scale: number): React.CSSProperties {
   if (v == null) return {}
-  const a = (0.08 + Math.min(Math.abs(v) / scale, 1) * 0.34)
-  return { background: v >= 0 ? `rgba(16,185,129,${a})` : `rgba(239,68,68,${a})`, color: '#0f172a' }
+  const pct = ((0.08 + Math.min(Math.abs(v) / scale, 1) * 0.34) * 100).toFixed(1)
+  const base = v >= 0 ? 'var(--pos-strong)' : 'var(--neg-strong)'
+  return { background: `color-mix(in srgb, ${base} ${pct}%, transparent)`, color: 'var(--ink)' }
 }
 
 /** Newest ISO date (YYYY-MM-DD) in a list — ISO strings sort lexically. */

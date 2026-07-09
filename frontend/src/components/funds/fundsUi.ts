@@ -70,11 +70,11 @@ export function tileColor(ret: number | null | undefined): Swatch {
  * middle slate. `rank` is 1-based (1 = best), `n` the category size.
  */
 export function rankTone(rank: number | null, n: number | null): string {
-  if (!rank || !n || n < 2) return 'bg-slate-100 text-slate-500'
+  if (!rank || !n || n < 2) return 'bg-surface-2 text-muted'
   const pct = (rank - 1) / (n - 1)
-  if (pct <= 0.25) return 'bg-green-100 text-green-700'
-  if (pct >= 0.75) return 'bg-red-100 text-red-700'
-  return 'bg-slate-100 text-slate-500'
+  if (pct <= 0.25) return 'bg-pos-soft text-pos'
+  if (pct >= 0.75) return 'bg-neg-soft text-neg'
+  return 'bg-surface-2 text-muted'
 }
 
 /**
@@ -82,20 +82,21 @@ export function rankTone(rank: number | null, n: number | null): string {
  * like the mock: green ≥30%, amber ≥15%, slate below).
  */
 export function bridgeTone(pct: number): string {
-  if (pct >= 0.3) return 'bg-green-100 text-green-700'
-  if (pct >= 0.15) return 'bg-amber-100 text-amber-800'
-  return 'bg-slate-100 text-slate-500'
+  if (pct >= 0.3) return 'bg-pos-soft text-pos'
+  if (pct >= 0.15) return 'bg-warn-soft text-warn'
+  return 'bg-surface-2 text-muted'
 }
 
 /**
  * Compare-mode overlap-matrix tone — here high overlap is a REDUNDANCY warning,
  * so the scale is inverted: green (<30%, well diversified) → amber → red (>70%,
- * essentially the same exposure). Returns a faint tinted cell background.
+ * essentially the same exposure). Returns a faint tinted cell background (theme
+ * tokens so the wash reads on dark too).
  */
 export function overlapMatrixColor(j: number): Swatch {
-  if (j >= 0.7) return { bg: 'rgba(220,38,38,0.16)', fg: '#b91c1c' }
-  if (j >= 0.3) return { bg: 'rgba(245,158,11,0.16)', fg: '#92400e' }
-  return { bg: 'rgba(22,163,74,0.14)', fg: '#15803d' }
+  if (j >= 0.7) return { bg: 'var(--neg-soft)', fg: 'var(--neg)' }
+  if (j >= 0.3) return { bg: 'var(--warn-soft)', fg: 'var(--warn)' }
+  return { bg: 'var(--pos-soft)', fg: 'var(--pos)' }
 }
 
 // ── Columns / sorting ───────────────────────────────────────────────────────

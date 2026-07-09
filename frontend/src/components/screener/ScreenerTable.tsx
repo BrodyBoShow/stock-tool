@@ -767,7 +767,7 @@ export function ScreenerTable({
                       {garpScore(r) != null ? (
                         <span
                           className="numeric rounded px-1.5 py-0.5 text-[0.72rem] font-bold"
-                          style={{ background: scoreHeat(garpScore(r) as number).tint, color: '#334155' }}
+                          style={{ background: scoreHeat(garpScore(r) as number).tint, color: 'var(--ink)' }}
                           title={`Value ${r.value_pctl?.toFixed(0)} · Momentum ${r.momentum_pctl?.toFixed(0)} → worst-of ${(garpScore(r) as number).toFixed(0)}`}
                         >
                           {(garpScore(r) as number).toFixed(0)}

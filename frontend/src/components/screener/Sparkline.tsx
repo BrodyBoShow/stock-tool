@@ -69,7 +69,7 @@ export function Sparkline({
   })
   const line = pts.join(' ')
   const up = data[n - 1] >= data[0]
-  const stroke = color ?? (up ? '#16a34a' : '#dc2626')
+  const stroke = color ?? (up ? 'var(--pos-strong)' : 'var(--neg-strong)')
 
   return (
     <span
@@ -85,11 +85,18 @@ export function Sparkline({
         preserveAspectRatio={fluid ? 'none' : undefined}
         className="block"
       >
-        <polygon points={`1,${height - 1} ${line} ${width - 1},${height - 1}`} fill={stroke} opacity={0.1} />
+        {/* Color is applied via `style` (not the stroke=/fill= presentation
+            attribute) so the var()/color-mix() token resolves in every browser
+            — Safari/older WebKit don't substitute vars in SVG attributes. */}
+        <polygon
+          points={`1,${height - 1} ${line} ${width - 1},${height - 1}`}
+          style={{ fill: stroke }}
+          opacity={0.1}
+        />
         <polyline
           points={line}
           fill="none"
-          stroke={stroke}
+          style={{ stroke }}
           strokeWidth={1}
           strokeLinejoin="round"
           strokeLinecap="round"
