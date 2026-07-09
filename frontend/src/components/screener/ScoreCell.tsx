@@ -52,11 +52,11 @@ function FactorTooltip({
 
   const Item = ({ r }: { r: SubRow }) => (
     <div className="flex items-center justify-between py-[3px]">
-      <span className="text-[0.72rem] text-slate-500">{r.label}</span>
+      <span className="text-[0.72rem] text-muted">{r.label}</span>
       <span
         className={
           'numeric rounded px-1.5 py-px text-[0.66rem] font-bold ' +
-          (r.pctl >= 50 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')
+          (r.pctl >= 50 ? 'bg-pos-soft text-pos' : 'bg-neg-soft text-neg')
         }
       >
         {ordinal(Math.round(r.pctl))}
@@ -67,19 +67,19 @@ function FactorTooltip({
   return createPortal(
     <div
       style={style}
-      className="pointer-events-none rounded-lg border border-slate-200 bg-white p-3 text-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
+      className="pointer-events-none rounded-lg border border-line bg-surface p-3 text-ink shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
     >
-      <div className="mb-2 border-b border-slate-100 pb-1.5 text-[0.74rem] font-bold capitalize">
+      <div className="mb-2 border-b border-line pb-1.5 text-[0.74rem] font-bold capitalize">
         {factor}: <span className="numeric">{value.toFixed(1)}</span>{' '}
-        <span className="font-medium text-slate-400">· {ordinal(Math.round(value))} pctl</span>
+        <span className="font-medium text-subtle">· {ordinal(Math.round(value))} pctl</span>
       </div>
       {rows.length === 0 ? (
-        <div className="text-[0.7rem] text-slate-400">No sub-metric data for this factor.</div>
+        <div className="text-[0.7rem] text-subtle">No sub-metric data for this factor.</div>
       ) : (
         <>
           {weak.length > 0 && (
             <div className="mb-1.5">
-              <div className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+              <div className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-[0.05em] text-subtle">
                 Dragged down by
               </div>
               {weak.map((r) => (
@@ -89,7 +89,7 @@ function FactorTooltip({
           )}
           {strong.length > 0 && (
             <div>
-              <div className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+              <div className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-[0.05em] text-subtle">
                 Strengths
               </div>
               {strong.map((r) => (
@@ -164,18 +164,18 @@ export function ScoreCell({
       }
     >
       {shown === null ? (
-        <span className="text-[0.82rem] text-gray-400">{DASH}</span>
+        <span className="text-[0.82rem] text-subtle">{DASH}</span>
       ) : (
         <>
           <span className="flex items-center gap-1.5">
             <span
               className={
                 'numeric text-[0.82rem] font-bold ' +
-                (moved ? 'text-sky-700' : 'text-gray-900')
+                (moved ? 'text-info' : 'text-ink')
               }
             >
               {shown.toFixed(1)}
-              {moved && <span className="align-super text-[0.6em] text-sky-400">●</span>}
+              {moved && <span className="align-super text-[0.6em] text-info">●</span>}
             </span>
             {showChip && (
               <span className="numeric text-[0.66rem] font-bold">
@@ -186,7 +186,7 @@ export function ScoreCell({
           {sparkline && sparkline.length >= 2 ? (
             <Sparkline data={sparkline} />
           ) : (
-            <span className="relative mt-1 block h-1 w-12 overflow-hidden rounded-full bg-gray-200">
+            <span className="relative mt-1 block h-1 w-12 overflow-hidden rounded-full bg-surface-3">
               <span
                 className="block h-full rounded-full"
                 style={{

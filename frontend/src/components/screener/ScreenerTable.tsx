@@ -121,18 +121,18 @@ function PriceCell({ row }: { row: ScreenerRow }) {
     const chg = (last - prev) / prev
     delta =
       chg >= 0 ? (
-        <span className="text-[0.7rem] font-semibold text-green-600">
+        <span className="text-[0.7rem] font-semibold text-pos">
           ▲ {(chg * 100).toFixed(2)}%
         </span>
       ) : (
-        <span className="text-[0.7rem] font-semibold text-red-600">
+        <span className="text-[0.7rem] font-semibold text-neg">
           ▼ {(Math.abs(chg) * 100).toFixed(2)}%
         </span>
       )
   }
   return (
     <div className="flex h-full flex-col items-end justify-center px-3 py-2">
-      <span className="numeric text-[0.85rem] font-semibold text-gray-900">
+      <span className="numeric text-[0.85rem] font-semibold text-ink">
         {fmtPrice(last)}
       </span>
       {delta}
@@ -154,7 +154,7 @@ function ValueTrapMark({ row }: { row: ScreenerRow }) {
   if (!trap) return null
   return (
     <span
-      className="flex-none cursor-help text-[0.62rem] leading-none text-amber-500"
+      className="flex-none cursor-help text-[0.62rem] leading-none text-warn"
       title={
         `Cheap (Value ${row.value_pctl?.toFixed(0)}) but weak on Quality ` +
         `(${row.quality_pctl?.toFixed(0)}) and Momentum (${row.momentum_pctl?.toFixed(0)}) — ` +
@@ -211,7 +211,7 @@ function CommodityMark({
     .join(', ')
   return (
     <span
-      className="flex-none cursor-help text-[0.62rem] leading-none text-slate-400"
+      className="flex-none cursor-help text-[0.62rem] leading-none text-subtle"
       title={
         `Oil & gas producer — trailing valuation depends on the forward commodity ` +
         `curve. EIA STEO (retrieved ${fmtVintage(backdrops[0].vintage)}): ${summary}. ` +
@@ -242,7 +242,7 @@ function WhatChanged({ d }: { d: number | null }) {
     <span
       className={
         'numeric inline-flex flex-none items-center rounded px-1 py-px text-[0.56rem] font-bold leading-none ' +
-        (up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')
+        (up ? 'bg-pos-soft text-pos' : 'bg-neg-soft text-neg')
       }
       title={`Composite ${up ? '+' : ''}${d.toFixed(1)} over ~7 days`}
     >
@@ -435,12 +435,12 @@ export function ScreenerTable({
   const compareRowsData = rows.filter((r) => selected.has(r.ticker))
 
   return (
-    <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
+    <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-line bg-surface shadow-card">
       {/* card header */}
       <div className="flex items-start justify-between gap-3 px-4 pb-2.5 pt-3.5">
         <div>
-          <div className="text-base font-bold text-gray-900">US-listed companies</div>
-          <div className="mt-0.5 text-[0.78rem] text-gray-500">
+          <div className="text-base font-bold text-ink">US-listed companies</div>
+          <div className="mt-0.5 text-[0.78rem] text-muted">
             {rows.length} companies · ranked by composite factor score · scores as of{' '}
             {scoreDate ?? 'n/a'} (nightly)
           </div>
@@ -452,18 +452,18 @@ export function ScreenerTable({
               <button
                 type="button"
                 onClick={() => setColMenu((o) => !o)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[0.74rem] font-semibold text-muted transition hover:border-line hover:bg-surface-2"
               >
                 ⚙ Columns
               </button>
               {colMenu && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setColMenu(false)} />
-                  <div className="absolute right-0 z-30 mt-1 w-44 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                  <div className="absolute right-0 z-30 mt-1 w-44 rounded-lg border border-line bg-surface p-1.5 shadow-lg">
                     {OPTIONAL_COLS.map((c) => (
                       <label
                         key={c.key}
-                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[0.8rem] hover:bg-slate-50"
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[0.8rem] hover:bg-surface-2"
                       >
                         <input
                           type="checkbox"
@@ -488,8 +488,8 @@ export function ScreenerTable({
               className={
                 'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.74rem] font-semibold transition ' +
                 (compareMode
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50')
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-muted hover:border-line hover:bg-surface-2')
               }
             >
               ⊟ Compare
@@ -498,7 +498,7 @@ export function ScreenerTable({
               type="button"
               onClick={exportCsv}
               title="Download the current filtered + sorted list as CSV"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[0.74rem] font-semibold text-muted transition hover:border-line hover:bg-surface-2 hover:text-ink"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
@@ -510,10 +510,10 @@ export function ScreenerTable({
       </div>
 
       {/* legend */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-y border-gray-100 bg-gray-50 px-4 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-y border-line bg-surface-2 px-4 py-2">
         <div className="flex flex-wrap items-center gap-3.5">
           {FACTOR_ORDER.map((k) => (
-            <span key={k} className="flex items-center text-[0.73rem] text-gray-600">
+            <span key={k} className="flex items-center text-[0.73rem] text-muted">
               <span
                 className="mr-[5px] inline-block h-[9px] w-[9px] rounded-full"
                 style={{ background: FACTOR_TABLE[k].bar }}
@@ -534,17 +534,17 @@ export function ScreenerTable({
             title="Sort by biggest rank gains vs ~last week"
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[0.7rem] font-bold transition ${
               sort.key === 'rank_delta'
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-white text-slate-500 ring-1 ring-inset ring-gray-200 hover:text-slate-700'
+                ? 'bg-pos-soft text-pos'
+                : 'bg-surface text-muted ring-1 ring-inset ring-line hover:text-ink'
             }`}
           >
             ▲ Movers
           </button>
         </div>
-        <span className="whitespace-nowrap text-[0.7rem] italic text-gray-400">
+        <span className="whitespace-nowrap text-[0.7rem] italic text-subtle">
           {hasLive && (
-            <span className="not-italic text-sky-700">
-              <span className="align-super text-[0.7em] text-sky-400">●</span>{' '}
+            <span className="not-italic text-info">
+              <span className="align-super text-[0.7em] text-info">●</span>{' '}
               {liveRanked ? 'ranked on live-adjusted composite' : 'live-adjusted'} ·{' '}
             </span>
           )}
@@ -555,18 +555,18 @@ export function ScreenerTable({
       {/* virtualized grid */}
       <div ref={parentRef} className="overflow-auto" style={{ maxHeight: 640 }}>
         <div
-          className="sticky top-0 z-10 grid border-b border-gray-200 bg-gray-50"
+          className="sticky top-0 z-10 grid border-b border-line bg-surface-2"
           style={{ gridTemplateColumns: gridCols, minWidth: mw }}
         >
           {compareMode && <div className={TH} aria-hidden="true" />}
-          <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-gray-500`}>
+          <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-muted`}>
             #{arrow('rank')}
           </button>
-          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-gray-500`}>
+          <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-muted`}>
             Company{arrow('ticker')}
           </button>
           {show('sector') && (
-            <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-gray-500`}>
+            <button type="button" onClick={() => toggleSort('sector')} className={`${TH} text-muted`}>
               Sector{arrow('sector')}
             </button>
           )}
@@ -583,33 +583,33 @@ export function ScreenerTable({
             </button>
           ))}
           {show('garp') && (
-            <button type="button" onClick={() => toggleSort('garp')} className={`${TH} justify-center text-emerald-700`}>
+            <button type="button" onClick={() => toggleSort('garp')} className={`${TH} justify-center text-pos`}>
               GARP{arrow('garp')}
               <InfoTip text="Cheap & Rising: the worst-of your Value and Momentum percentiles, so a high GARP means a stock is strong on BOTH — reasonably priced AND trending. A discovery lens over existing scores; it does not change any factor score or the composite rank." />
             </button>
           )}
           {show('market_cap') && (
-            <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-gray-500`}>
+            <button type="button" onClick={() => toggleSort('market_cap')} className={`${TH} justify-end text-muted`}>
               Mkt cap{arrow('market_cap')}
             </button>
           )}
           {show('risk') && (
-            <button type="button" onClick={() => toggleSort('risk_score')} className={`${TH} justify-center text-gray-500`}>
+            <button type="button" onClick={() => toggleSort('risk_score')} className={`${TH} justify-center text-muted`}>
               Risk{arrow('risk_score')}
               <InfoTip text="Historical risk band 1-5 from realized volatility, beta and drawdown over the past year — a backward-looking measurement, not a prediction. Sorts by band, finer risk detail breaking ties." />
             </button>
           )}
-          <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-gray-500`}>
+          <button type="button" onClick={() => toggleSort('last_price')} className={`${TH} justify-end text-muted`}>
             Price{arrow('last_price')}
           </button>
           {rowAccessory && <div className={TH} aria-hidden="true" />}
         </div>
 
         {visible.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-gray-500">
+          <div className="px-4 py-10 text-center text-sm text-muted">
             No companies match the current filters.
             {emptyHint && (
-              <div className="mx-auto mt-1.5 max-w-md text-[0.8rem] text-gray-400">
+              <div className="mx-auto mt-1.5 max-w-md text-[0.8rem] text-subtle">
                 {emptyHint}
               </div>
             )}
@@ -633,7 +633,7 @@ export function ScreenerTable({
               return (
                 <div
                   key={r.security_id}
-                  className="absolute left-0 grid w-full border-b border-gray-100 transition-[box-shadow,background] duration-100 hover:bg-slate-50 hover:shadow-[inset_3px_0_0_#1e293b]"
+                  className="absolute left-0 grid w-full border-b border-line transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_#1e293b]"
                   style={{
                     gridTemplateColumns: gridCols,
                     height: vi.size,
@@ -667,7 +667,7 @@ export function ScreenerTable({
                   )}
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
                     <span
-                      className="numeric text-[0.74rem] font-semibold text-slate-600"
+                      className="numeric text-[0.74rem] font-semibold text-muted"
                       title={
                         liveRanked
                           ? 'Live-adjusted universe rank · nightly #' + r.rank
@@ -679,7 +679,7 @@ export function ScreenerTable({
                     {r.rank_delta != null && r.rank_delta !== 0 && (
                       <span
                         className={`text-[0.58rem] font-bold tabular-nums ${
-                          r.rank_delta > 0 ? 'text-emerald-600' : 'text-red-500'
+                          r.rank_delta > 0 ? 'text-pos' : 'text-neg'
                         }`}
                         title={`Rank ${r.rank_delta > 0 ? 'up' : 'down'} ${Math.abs(
                           r.rank_delta,
@@ -696,7 +696,7 @@ export function ScreenerTable({
                         <span className="flex items-center gap-1">
                           <Link
                             to={`/securities/${r.ticker}`}
-                            className="text-[0.88rem] font-bold leading-[1.15] text-gray-900 hover:text-indigo-600 hover:underline"
+                            className="text-[0.88rem] font-bold leading-[1.15] text-ink hover:text-accent hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {r.ticker}
@@ -705,7 +705,7 @@ export function ScreenerTable({
                           <CommodityMark row={r} backdrops={commodityBackdrops} />
                           <WhatChanged d={r.composite_delta_7d} />
                         </span>
-                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
+                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-subtle">
                           {r.name ?? DASH}
                         </span>
                       </>
@@ -715,14 +715,14 @@ export function ScreenerTable({
                         className="contents text-inherit no-underline"
                       >
                         <span className="flex items-center gap-1">
-                          <span className="text-[0.88rem] font-bold leading-[1.15] text-gray-900">
+                          <span className="text-[0.88rem] font-bold leading-[1.15] text-ink">
                             {r.ticker}
                           </span>
                           <ValueTrapMark row={r} />
                           <CommodityMark row={r} backdrops={commodityBackdrops} />
                           <WhatChanged d={r.composite_delta_7d} />
                         </span>
-                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-gray-400">
+                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-subtle">
                           {r.name ?? DASH}
                         </span>
                       </Link>
@@ -773,12 +773,12 @@ export function ScreenerTable({
                           {(garpScore(r) as number).toFixed(0)}
                         </span>
                       ) : (
-                        <span className="text-[0.72rem] text-gray-300">—</span>
+                        <span className="text-[0.72rem] text-subtle">—</span>
                       )}
                     </div>
                   )}
                   {show('market_cap') && (
-                    <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-slate-600">
+                    <div className="numeric flex h-full items-center justify-end px-3 text-[0.8rem] font-semibold text-muted">
                       {fmtMoney(r.market_cap)}
                     </div>
                   )}
@@ -802,17 +802,17 @@ export function ScreenerTable({
 
       {/* count indicator + expand toggle */}
       {visible.length > 0 && (
-        <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-2.5">
-          <span className="text-[0.72rem] text-slate-500">
+        <div className="flex items-center justify-between border-t border-line bg-surface-2 px-4 py-2.5">
+          <span className="text-[0.72rem] text-muted">
             Showing{' '}
-            <span className="numeric font-semibold text-slate-700">1–{visible.length}</span> of{' '}
-            <span className="numeric font-semibold text-slate-700">{rows.length}</span>
+            <span className="numeric font-semibold text-ink">1–{visible.length}</span> of{' '}
+            <span className="numeric font-semibold text-ink">{rows.length}</span>
           </span>
           {rows.length > PREVIEW_N && (
             <button
               type="button"
               onClick={() => setExpanded((e) => !e)}
-              className="text-[0.76rem] font-bold text-indigo-600 hover:underline"
+              className="text-[0.76rem] font-bold text-accent hover:underline"
             >
               {expanded ? `Show top ${PREVIEW_N}` : `Show all ${rows.length}`}
             </button>
@@ -822,16 +822,16 @@ export function ScreenerTable({
 
       {/* #15 compare floating bar */}
       {compareMode && selected.size > 0 && (
-        <div className="sticky bottom-0 z-20 flex items-center justify-between border-t border-gray-200 bg-white/95 px-4 py-2 backdrop-blur">
-          <span className="text-[0.78rem] text-slate-600">
-            <span className="numeric font-bold text-indigo-600">{selected.size}</span> selected
+        <div className="sticky bottom-0 z-20 flex items-center justify-between border-t border-line bg-surface px-4 py-2 backdrop-blur">
+          <span className="text-[0.78rem] text-muted">
+            <span className="numeric font-bold text-accent">{selected.size}</span> selected
             {selected.size >= 4 ? ' (max 4)' : ''}
           </span>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setSelected(new Set())}
-              className="rounded-lg px-3 py-1.5 text-[0.74rem] font-semibold text-slate-500 hover:text-slate-800"
+              className="rounded-lg px-3 py-1.5 text-[0.74rem] font-semibold text-muted hover:text-ink"
             >
               Clear
             </button>
@@ -839,7 +839,7 @@ export function ScreenerTable({
               type="button"
               onClick={() => setShowCompare(true)}
               disabled={selected.size < 2}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40"
+              className="rounded-lg bg-accent-solid px-3 py-1.5 text-[0.74rem] font-semibold text-accent-ink transition hover:bg-accent-hover disabled:opacity-40"
             >
               Compare ({selected.size})
             </button>
@@ -855,15 +855,15 @@ export function ScreenerTable({
             if (e.target === e.currentTarget) setShowCompare(false)
           }}
         >
-          <div className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-              <span className="text-base font-bold text-slate-900">
+          <div className="w-full max-w-3xl overflow-hidden rounded-xl bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3">
+              <span className="text-base font-bold text-ink">
                 Compare {compareRowsData.length} stocks
               </span>
               <button
                 type="button"
                 onClick={() => setShowCompare(false)}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-subtle hover:text-ink"
               >
                 ✕
               </button>
@@ -872,14 +872,14 @@ export function ScreenerTable({
               <table className="w-full text-[0.82rem]">
                 <thead>
                   <tr>
-                    <th className="px-2 py-1.5 text-left text-[0.64rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+                    <th className="px-2 py-1.5 text-left text-[0.64rem] font-bold uppercase tracking-[0.05em] text-subtle">
                       Metric
                     </th>
                     {compareRowsData.map((r) => (
                       <th key={r.ticker} className="px-2 py-1.5 text-center">
                         <Link
                           to={`/securities/${r.ticker}`}
-                          className="font-bold text-slate-900 hover:text-indigo-600"
+                          className="font-bold text-ink hover:text-accent"
                         >
                           {r.ticker}
                         </Link>
@@ -897,8 +897,8 @@ export function ScreenerTable({
                       ['momentum_pctl', 'Momentum'],
                     ] as const
                   ).map(([key, label]) => (
-                    <tr key={key} className="border-t border-slate-100">
-                      <td className="px-2 py-2 font-semibold text-slate-500">{label}</td>
+                    <tr key={key} className="border-t border-line">
+                      <td className="px-2 py-2 font-semibold text-muted">{label}</td>
                       {compareRowsData.map((r) => {
                         const v = r[key] as number | null
                         return (
@@ -914,18 +914,18 @@ export function ScreenerTable({
                       })}
                     </tr>
                   ))}
-                  <tr className="border-t border-slate-100">
-                    <td className="px-2 py-2 font-semibold text-slate-500">Price</td>
+                  <tr className="border-t border-line">
+                    <td className="px-2 py-2 font-semibold text-muted">Price</td>
                     {compareRowsData.map((r) => (
-                      <td key={r.ticker} className="numeric px-2 py-2 text-center font-semibold text-slate-700">
+                      <td key={r.ticker} className="numeric px-2 py-2 text-center font-semibold text-ink">
                         {fmtPrice(r.last_price)}
                       </td>
                     ))}
                   </tr>
-                  <tr className="border-t border-slate-100">
-                    <td className="px-2 py-2 font-semibold text-slate-500">Mkt cap</td>
+                  <tr className="border-t border-line">
+                    <td className="px-2 py-2 font-semibold text-muted">Mkt cap</td>
                     {compareRowsData.map((r) => (
-                      <td key={r.ticker} className="numeric px-2 py-2 text-center font-semibold text-slate-700">
+                      <td key={r.ticker} className="numeric px-2 py-2 text-center font-semibold text-ink">
                         {fmtMoney(r.market_cap)}
                       </td>
                     ))}

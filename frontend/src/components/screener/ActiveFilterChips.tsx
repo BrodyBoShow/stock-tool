@@ -76,7 +76,7 @@ export function ActiveFilterChips({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-slate-400">
+      <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-subtle">
         Active
       </span>
       {chips.map((c) => (
@@ -84,11 +84,11 @@ export function ActiveFilterChips({
           key={c.key}
           type="button"
           onClick={c.clear}
-          className="group inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pl-2.5 pr-2 text-[0.73rem] font-semibold text-slate-700 transition hover:bg-slate-200"
+          className="group inline-flex items-center gap-1 rounded-full bg-surface-3 py-1 pl-2.5 pr-2 text-[0.73rem] font-semibold text-ink transition hover:bg-surface-3"
         >
           {c.label}
           <svg
-            className="text-slate-400 group-hover:text-slate-700"
+            className="text-subtle group-hover:text-ink"
             width="11" height="11" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="3" strokeLinecap="round"
           >
@@ -99,7 +99,7 @@ export function ActiveFilterChips({
       <button
         type="button"
         onClick={onReset}
-        className="ml-0.5 text-[0.73rem] font-semibold text-indigo-600 hover:underline"
+        className="ml-0.5 text-[0.73rem] font-semibold text-accent hover:underline"
       >
         Clear all
       </button>

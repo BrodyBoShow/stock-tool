@@ -74,16 +74,16 @@ function StepHeader({
       <span
         className={
           'flex h-[18px] w-[18px] items-center justify-center rounded-full text-[0.62rem] font-extrabold ' +
-          (muted ? 'bg-slate-100 text-slate-400' : 'bg-indigo-600 text-white')
+          (muted ? 'bg-surface-3 text-subtle' : 'bg-accent-solid text-accent-ink')
         }
       >
         {n}
       </span>
-      <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-slate-700">
+      <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-ink">
         {title}
       </span>
       {sub && (
-        <span className="ml-auto text-[0.64rem] font-medium normal-case text-slate-400">
+        <span className="ml-auto text-[0.64rem] font-medium normal-case text-subtle">
           {sub}
         </span>
       )}
@@ -112,18 +112,18 @@ function Toggle({
       className="flex w-full items-center justify-between gap-3 py-1.5 text-left"
     >
       <span className="min-w-0">
-        <span className="block text-[0.78rem] font-semibold text-slate-700">{label}</span>
-        <span className="mt-0.5 block text-[0.66rem] leading-snug text-slate-400">{sub}</span>
+        <span className="block text-[0.78rem] font-semibold text-ink">{label}</span>
+        <span className="mt-0.5 block text-[0.66rem] leading-snug text-subtle">{sub}</span>
       </span>
       <span
         className={
           'relative h-[18px] w-8 shrink-0 rounded-full transition-colors ' +
-          (on ? 'bg-indigo-600' : 'bg-slate-300')
+          (on ? 'bg-accent-solid' : 'bg-slate-300')
         }
       >
         <span
           className={
-            'absolute top-0.5 h-[14px] w-[14px] rounded-full bg-white shadow transition-all ' +
+            'absolute top-0.5 h-[14px] w-[14px] rounded-full bg-surface shadow transition-all ' +
             (on ? 'left-[16px]' : 'left-0.5')
           }
         />
@@ -132,7 +132,7 @@ function Toggle({
   )
 }
 
-const STEP = 'border-b border-slate-100 py-4 first:pt-3.5 last:border-b-0'
+const STEP = 'border-b border-line py-4 first:pt-3.5 last:border-b-0'
 
 export function FilterSidebar({
   filters,
@@ -189,10 +189,10 @@ export function FilterSidebar({
     })
 
   return (
-    <aside className="w-full shrink-0 rounded-card border border-gray-200 bg-white px-4 pb-4 shadow-card lg:w-[270px]">
+    <aside className="w-full shrink-0 rounded-card border border-line bg-surface px-4 pb-4 shadow-card lg:w-[270px]">
       {/* header */}
-      <div className="flex items-center justify-between border-b border-slate-100 py-3.5">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+      <div className="flex items-center justify-between border-b border-line py-3.5">
+        <div className="flex items-center gap-2 text-sm font-bold text-ink">
           Filters
           {active > 0 && (
             <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-slate-800 px-1 text-[0.62rem] font-extrabold text-white">
@@ -200,8 +200,8 @@ export function FilterSidebar({
             </span>
           )}
         </div>
-        <div className="text-[0.74rem] text-slate-500">
-          <span className="numeric font-extrabold text-slate-800">{resultCount}</span> of{' '}
+        <div className="text-[0.74rem] text-muted">
+          <span className="numeric font-extrabold text-ink">{resultCount}</span> of{' '}
           <span className="numeric">{totalCount}</span>
         </div>
       </div>
@@ -214,7 +214,7 @@ export function FilterSidebar({
           value={filters.search}
           onChange={(e) => set({ search: e.target.value })}
           placeholder="Search ticker or company…  ( / )"
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[0.82rem] text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[0.82rem] text-ink placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 
@@ -234,8 +234,8 @@ export function FilterSidebar({
                 className={
                   'flex flex-col gap-0.5 rounded-lg border px-2 py-1.5 text-left transition-all ' +
                   (on
-                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                    : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/60')
+                    ? 'border-accent bg-accent-solid text-accent-ink'
+                    : 'border-line bg-surface hover:border-accent hover:bg-accent-soft')
                 }
               >
                 <span className="text-[0.82rem] leading-none">{p.emoji}</span>
@@ -243,7 +243,7 @@ export function FilterSidebar({
                 <span
                   className={
                     'text-[0.6rem] leading-tight ' +
-                    (on ? 'text-indigo-100' : 'text-slate-400')
+                    (on ? 'text-accent-ink' : 'text-subtle')
                   }
                 >
                   {p.meta}
@@ -259,10 +259,10 @@ export function FilterSidebar({
         <StepHeader n={2} title="What kind" />
 
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+          <span className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-subtle">
             Sectors
           </span>
-          <span className="text-[0.62rem] text-slate-400">empty = all</span>
+          <span className="text-[0.62rem] text-subtle">empty = all</span>
         </div>
         <div className="flex flex-wrap gap-[5px]">
           {sectors.map((s) => {
@@ -290,7 +290,7 @@ export function FilterSidebar({
           })}
         </div>
 
-        <div className="mb-1 mt-3.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+        <div className="mb-1 mt-3.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-subtle">
           Market cap
         </div>
         <div className="grid grid-cols-3 gap-1">
@@ -304,8 +304,8 @@ export function FilterSidebar({
                 className={
                   'rounded-md border px-1.5 py-1 text-center text-[0.62rem] font-semibold leading-tight transition-all ' +
                   (on
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-200 bg-white text-slate-500 hover:border-indigo-300')
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line bg-surface text-muted hover:border-accent')
                 }
               >
                 {o.label.replace(/ \(.*\)/, '').replace('Any size', 'Any')}
@@ -318,7 +318,7 @@ export function FilterSidebar({
             beta/drawdown), attached after ranking; filtering by it never changes
             any name's rank. "No band" (under 1y of history) is an explicit
             opt-in so new listings don't silently vanish. */}
-        <div className="mb-1 mt-3.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+        <div className="mb-1 mt-3.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-subtle">
           Risk band <span className="normal-case font-medium">(historical)</span>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -339,8 +339,8 @@ export function FilterSidebar({
                 className={
                   'rounded-md border px-1.5 py-1 text-center text-[0.62rem] font-semibold leading-tight transition-all ' +
                   (on
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-200 bg-white text-slate-500 hover:border-indigo-300')
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line bg-surface text-muted hover:border-accent')
                 }
               >
                 {o.label}
@@ -355,10 +355,10 @@ export function FilterSidebar({
         <StepHeader n={3} title="How good" />
         <div className="mb-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[0.78rem] font-semibold text-slate-700">
+            <span className="text-[0.78rem] font-semibold text-ink">
               Min composite score
             </span>
-            <span className="numeric text-[0.95rem] font-extrabold text-indigo-600">
+            <span className="numeric text-[0.95rem] font-extrabold text-accent">
               {filters.mins.composite === 0 ? 'Any' : filters.mins.composite}
             </span>
           </div>
@@ -371,7 +371,7 @@ export function FilterSidebar({
             onValueChange={([v]) => set({ mins: { ...filters.mins, composite: v } })}
             aria-label="Minimum composite score"
           />
-          <div className="mt-0.5 flex justify-between text-[0.6rem] text-slate-400">
+          <div className="mt-0.5 flex justify-between text-[0.6rem] text-subtle">
             <span>0 (all)</span>
             <span>100 (best)</span>
           </div>
@@ -395,10 +395,10 @@ export function FilterSidebar({
         <button
           type="button"
           onClick={() => setAdvOpen((o) => !o)}
-          className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-[0.7rem] font-bold text-slate-500 transition hover:bg-slate-100"
+          className="flex w-full items-center justify-between rounded-lg bg-surface-2 px-3 py-2 text-[0.7rem] font-bold text-muted transition hover:bg-surface-3"
         >
           <span className="flex items-center gap-2">
-            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-100 text-[0.62rem] font-extrabold text-slate-400">
+            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-surface-3 text-[0.62rem] font-extrabold text-subtle">
               4
             </span>
             Advanced — per-factor minimums
@@ -413,14 +413,14 @@ export function FilterSidebar({
               return (
                 <div key={key}>
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center text-[0.7rem] font-semibold text-slate-600">
+                    <span className="inline-flex items-center text-[0.7rem] font-semibold text-muted">
                       <span
                         className="mr-1 inline-block h-[7px] w-[7px] rounded-full"
                         style={{ background: accent }}
                       />
                       {FACTOR_LABEL[key]}
                     </span>
-                    <span className="numeric text-[0.66rem] font-extrabold text-slate-700">
+                    <span className="numeric text-[0.66rem] font-extrabold text-ink">
                       {v === 0 ? '—' : v}
                     </span>
                   </div>
@@ -442,27 +442,27 @@ export function FilterSidebar({
 
       {/* saved views */}
       {views.length > 0 && (
-        <div className="border-t border-slate-100 pt-3">
-          <div className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+        <div className="border-t border-line pt-3">
+          <div className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-subtle">
             Saved views
           </div>
           <div className="flex flex-wrap gap-1.5">
             {views.map((v) => (
               <span
                 key={v.name}
-                className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pl-2.5 pr-1.5 text-[0.7rem] font-semibold text-slate-700"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-3 py-1 pl-2.5 pr-1.5 text-[0.7rem] font-semibold text-ink"
               >
                 <button
                   type="button"
                   onClick={() => onApplyQuery(v.query)}
-                  className="hover:text-indigo-600"
+                  className="hover:text-accent"
                 >
                   {v.name}
                 </button>
                 <button
                   type="button"
                   onClick={() => setViews(deleteView(v.name))}
-                  className="leading-none text-slate-400 hover:text-red-500"
+                  className="leading-none text-subtle hover:text-neg"
                   aria-label={`Delete saved view ${v.name}`}
                 >
                   ×
@@ -474,7 +474,7 @@ export function FilterSidebar({
       )}
 
       {/* footer */}
-      <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="mt-3 border-t border-line pt-3">
         {naming ? (
           <div className="flex gap-1.5">
             <input
@@ -486,12 +486,12 @@ export function FilterSidebar({
                 if (e.key === 'Escape') setNaming(false)
               }}
               placeholder="Name this view…"
-              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[0.78rem] focus:border-indigo-500 focus:outline-none"
+              className="min-w-0 flex-1 rounded-lg border border-line px-2.5 py-1.5 text-[0.78rem] focus:border-accent focus:outline-none"
             />
             <button
               type="button"
               onClick={commitSave}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white hover:bg-indigo-700"
+              className="rounded-lg bg-accent-solid px-3 py-1.5 text-[0.74rem] font-semibold text-accent-ink hover:bg-accent-hover"
             >
               Save
             </button>
@@ -500,16 +500,16 @@ export function FilterSidebar({
           <button
             type="button"
             onClick={() => setNaming(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[0.76rem] font-semibold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50/60"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-[0.76rem] font-semibold text-muted transition hover:border-accent hover:bg-accent-soft"
           >
             💾 Save as view
           </button>
         )}
         <div className="mt-2.5 flex items-center justify-between">
-          <span className="text-[0.72rem] text-slate-500">
+          <span className="text-[0.72rem] text-muted">
             {active > 0 ? (
               <>
-                <span className="numeric font-bold text-indigo-600">{active}</span> active
+                <span className="numeric font-bold text-accent">{active}</span> active
               </>
             ) : (
               'No filters'
@@ -519,7 +519,7 @@ export function FilterSidebar({
             type="button"
             onClick={onReset}
             disabled={active === 0}
-            className="text-[0.72rem] font-semibold text-slate-400 transition hover:text-red-500 disabled:cursor-default disabled:opacity-40"
+            className="text-[0.72rem] font-semibold text-subtle transition hover:text-neg disabled:cursor-default disabled:opacity-40"
           >
             Reset all
           </button>
