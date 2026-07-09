@@ -143,7 +143,7 @@ export function ScreenerDrawer({
           <Link
             to={`/securities/${row.ticker}`}
             onClick={onClose}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-3 text-[0.88rem] font-bold text-white transition-colors hover:bg-slate-900"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent-solid px-4 py-3 text-[0.88rem] font-bold text-accent-ink transition-colors hover:bg-accent-hover"
           >
             Open full deep-dive
             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
