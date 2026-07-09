@@ -14,8 +14,8 @@ import type { RangeKey } from '../portfolioUi'
 import { fmtDate, fmtSignedPct } from '@/lib/format'
 import type { PortfolioPerformance } from '@/types/api'
 
-const PORT = 'var(--accent)'
-const BENCH = 'var(--primary)'
+const PORT = 'var(--accent)' // portfolio line — the brand accent (indigo)
+const BENCH = 'var(--info)' // benchmark — cyan, dashed, kept distinct from the accent
 
 /**
  * Growth-of-$1 vs the benchmark on a SINGLE Y-axis (spec: Show don't tell — no
@@ -55,7 +55,7 @@ export function PerfChart({
     : ''
 
   return (
-    <div className="rounded-[var(--r-lg)] border border-slate-200/70 bg-surface p-4 shadow-[var(--sh-sm)]">
+    <div className="rounded-[var(--r-lg)] border border-[var(--border)] bg-surface p-4 shadow-[var(--sh-sm)]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-h3 font-bold text-ink">Performance</h3>
         <div className="flex items-center gap-1" role="group" aria-label="Chart date range">
@@ -66,7 +66,7 @@ export function PerfChart({
               aria-pressed={r === range}
               onClick={() => onRangeChange(r)}
               className={`min-h-[28px] rounded-full px-2.5 text-[0.7rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] ${
-                r === range ? 'bg-primary text-white' : 'text-muted hover:bg-slate-100'
+                r === range ? 'bg-primary text-white' : 'text-muted hover:bg-[var(--surface-3)]'
               }`}
             >
               {r}
@@ -77,15 +77,15 @@ export function PerfChart({
 
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="#f1f5f9" vertical={false} />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: '#94a3b8' }}
+            tick={{ fontSize: 10, fill: 'var(--subtle)' }}
             minTickGap={40}
             tickFormatter={(d: string) => d.slice(0, 7)}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#94a3b8' }}
+            tick={{ fontSize: 10, fill: 'var(--subtle)' }}
             tickFormatter={(v: number) => `${v.toFixed(2)}×`}
             domain={['auto', 'auto']}
             width={44}
@@ -93,10 +93,16 @@ export function PerfChart({
           <Tooltip
             labelFormatter={(d) => fmtDate(String(d))}
             formatter={(v: number, name: string) => [`${v.toFixed(3)}×`, name]}
-            contentStyle={{ fontSize: 11, borderRadius: 8, borderColor: '#e5e7eb' }}
+            contentStyle={{
+              fontSize: 11,
+              borderRadius: 8,
+              background: 'var(--surface)',
+              borderColor: 'var(--border)',
+              color: 'var(--ink)',
+            }}
           />
           <Line type="monotone" dataKey="twr" name="Your portfolio" stroke={PORT} strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="bench" name={benchmark} stroke={BENCH} strokeWidth={1.8} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="bench" name={benchmark} stroke={BENCH} strokeWidth={1.8} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
 

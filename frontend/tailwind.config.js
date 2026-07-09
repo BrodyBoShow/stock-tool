@@ -1,24 +1,65 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  // Bind dark: variants to the SAME data-theme attribute the CSS-var overrides
+  // use (set on <html> by the anti-FOUC script + ThemeProvider). One switch drives
+  // both the token overrides and any dark: utilities used during the migration.
+  darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
     extend: {
       fontFamily: {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
-      // Portfolio-redesign token aliases (see src/index.css :root). Semantic names
-      // so redesign components use e.g. text-ink / bg-accent / text-pos instead of
-      // hard-coded hex. Additive — existing slate/indigo classes are unaffected.
+      // Semantic token aliases (see src/index.css). Components use e.g. text-ink,
+      // bg-surface, text-pos, bg-pos-soft, bg-accent-soft — never hard-coded hex —
+      // so the whole app flips light/dark by re-declaring the CSS vars.
       colors: {
+        // surfaces
+        bg: 'var(--bg)',
+        surface: 'var(--surface)',
+        'surface-2': 'var(--surface-2)',
+        'surface-3': 'var(--surface-3)',
+        // text
         ink: 'var(--ink)',
         muted: 'var(--muted)',
-        surface: 'var(--surface)',
+        subtle: 'var(--subtle)',
+        inverse: 'var(--inverse)',
+        // lines
+        line: 'var(--border)',
+        'line-strong': 'var(--border-strong)',
+        divider: 'var(--divider)',
+        // brand accent (indigo)
         primary: 'var(--primary)',
-        accent: 'var(--accent)',
-        pos: 'var(--pos)',
-        neg: 'var(--neg)',
-        warn: 'var(--warn)',
-        info: 'var(--info)',
+        accent: {
+          DEFAULT: 'var(--accent)',
+          solid: 'var(--accent-solid)',
+          hover: 'var(--accent-hover)',
+          soft: 'var(--accent-soft)',
+          ink: 'var(--accent-ink)',
+        },
+        // semantic data — gain / loss / caution / neutral (3 tiers each)
+        pos: {
+          DEFAULT: 'var(--pos)',
+          strong: 'var(--pos-strong)',
+          soft: 'var(--pos-soft)',
+          border: 'var(--pos-border)',
+        },
+        neg: {
+          DEFAULT: 'var(--neg)',
+          strong: 'var(--neg-strong)',
+          soft: 'var(--neg-soft)',
+          border: 'var(--neg-border)',
+        },
+        warn: {
+          DEFAULT: 'var(--warn)',
+          strong: 'var(--warn-strong)',
+          soft: 'var(--warn-soft)',
+        },
+        info: {
+          DEFAULT: 'var(--info)',
+          soft: 'var(--info-soft)',
+        },
+        flat: 'var(--flat)',
       },
       fontSize: {
         display: ['var(--fs-display)', { lineHeight: '1.05', fontWeight: '700' }],
@@ -31,13 +72,12 @@ export default {
       },
       // NOTE: spec radii/shadows are intentionally NOT added as sm/md/lg keys —
       // those collide with Tailwind defaults and would restyle the whole app.
-      // Redesign components use arbitrary values instead: rounded-[var(--r-md)],
-      // shadow-[var(--sh-md)]. Only genuinely-new keys are aliased below.
+      // Components use arbitrary values: rounded-[var(--r-md)], shadow-[var(--sh-md)].
       borderRadius: {
         card: '14px',
       },
       boxShadow: {
-        card: '0 1px 3px rgba(15,23,42,0.06)',
+        card: 'var(--sh-sm)',
       },
       transitionTimingFunction: {
         spec: 'var(--ease)',

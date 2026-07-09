@@ -4,26 +4,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Portfolio redesign design tokens (Jul 2026 handoff spec) ──────────────────
- * Reference these by name in Portfolio components — never hard-code hex. They are
- * additive CSS custom properties (they don't restyle the rest of the app); the
- * Portfolio tab's redesign primitives read them via var(--token) or the Tailwind
- * aliases in tailwind.config.js (e.g. text-ink, bg-accent). Values are copied
- * verbatim from the spec's "Design tokens" panel. */
+/* ── StockBud design tokens — theme-aware (light + dark) ───────────────────────
+ * Single source of truth for color. Reference by name (var(--token) or the
+ * Tailwind aliases in tailwind.config.js, e.g. text-ink / bg-surface / text-pos).
+ * NEVER hard-code hex in components — that's what breaks the theme flip.
+ *
+ * Mechanism: :root holds LIGHT defaults. A [data-theme="dark"] attribute on
+ * <html> (set by the anti-FOUC script in index.html + ThemeProvider) overrides
+ * the color tokens. A prefers-color-scheme media query covers first-visit users
+ * before JS runs; the explicit attribute always wins (manual toggle). Non-color
+ * tokens (type scale, radii, motion) are theme-independent and live only here.
+ * ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* color */
-  --bg: #f7f8fa; /* page */
-  --ink: #0f172a; /* text */
-  --muted: #64748b; /* secondary text */
-  --surface: #ffffff; /* cards */
-  --primary: #2563eb; /* links / active */
-  --accent: #7c3aed; /* the single primary CTA */
-  --pos: #16a34a; /* gains */
-  --neg: #dc2626; /* losses */
-  --warn: #d97706; /* risk / caution */
-  --info: #0891b2; /* neutral data */
+  color-scheme: light;
 
-  /* type scale (px) */
+  /* ---- surfaces ---- */
+  --bg: #f7f8fa; /* page canvas */
+  --bg-grad-1: #eff6ff; /* body gradient stops (neutral blue, no purple) */
+  --bg-grad-2: #ffffff;
+  --bg-grad-3: #f2f5fb;
+  --surface: #ffffff; /* cards, panels */
+  --surface-2: #f1f5f9; /* inputs, elevated rows */
+  --surface-3: #e9eef4; /* hover / pressed */
+  --nav-bg: rgba(255, 255, 255, 0.85); /* frosted top-nav (pre-alpha'd) */
+
+  /* ---- text ---- */
+  --ink: #0f172a; /* primary copy */
+  --muted: #64748b; /* secondary copy (AA on light) */
+  --subtle: #94a3b8; /* tertiary — LARGE text only */
+  --inverse: #ffffff; /* copy on dark fills */
+
+  /* ---- lines ---- */
+  --border: #e5e9f0;
+  --border-strong: #cbd5e1;
+  --divider: #eef1f6;
+
+  /* ---- brand accent (indigo) — the ONE brand color ---- */
+  --primary: #2563eb; /* secondary data / benchmark blue (kept distinct) */
+  --accent: #4f46e5; /* accent text / underline / icon */
+  --accent-solid: #4f46e5; /* solid button fill */
+  --accent-hover: #4338ca; /* button hover */
+  --accent-soft: rgba(79, 70, 229, 0.1); /* tinted surfaces / selected */
+  --accent-ink: #ffffff; /* copy on the solid accent */
+
+  /* ---- semantic data colors (3 tiers) — gain / loss / caution / neutral ----
+   * TEXT tier (AA on its surface): --pos/--neg/--warn/--flat
+   * SOLID/FILL tier (bars, dots, strokes): --*-strong
+   * SOFT/TINT tier (chip & cell backgrounds): --*-soft (+ optional -border) */
+  --pos: #059669;
+  --pos-strong: #16a34a;
+  --pos-soft: rgba(16, 185, 129, 0.12);
+  --pos-border: #86efac;
+  --neg: #dc2626;
+  --neg-strong: #ef4444;
+  --neg-soft: rgba(239, 68, 68, 0.11);
+  --neg-border: #fecaca;
+  --warn: #d97706;
+  --warn-strong: #f59e0b;
+  --warn-soft: rgba(245, 158, 11, 0.14);
+  --info: #0891b2;
+  --info-soft: rgba(8, 145, 178, 0.12);
+  --flat: #64748b;
+
+  /* ---- type scale (px) — theme-independent ---- */
   --fs-display: 44px;
   --fs-h1: 32px;
   --fs-h2: 22px;
@@ -32,29 +75,132 @@
   --fs-small: 12px;
   --fs-micro: 10px;
 
-  /* radii */
+  /* ---- radii ---- */
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 14px;
   --r-xl: 20px;
 
-  /* shadows */
+  /* ---- shadows ---- */
   --sh-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
   --sh-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --sh-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
 
-  /* motion */
+  /* ---- motion ---- */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 150ms;
   --dur-base: 250ms;
   --dur-slow: 400ms;
 }
 
-/* Tabular monospace for dense numeric data (scores, prices, caps) — the single
- * change that makes the screener "feel like a pro data tool". Digits are fixed-
- * width so columns align; falls back to the system mono stack if the web font
- * fails to load. font-mono is the JetBrains Mono stack from tailwind.config. */
+/* ── DARK theme ───────────────────────────────────────────────────────────────
+ * Color overrides only. Text tiers are lifted (brighter) so gain/loss and copy
+ * stay WCAG-AA on dark surfaces; tints are darkened + higher-alpha so they don't
+ * vanish. Applied both via the explicit attribute (manual toggle wins) and via
+ * prefers-color-scheme for first-visit users before the toggle is touched. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0b0f17;
+  --bg-grad-1: #0b0f17;
+  --bg-grad-2: #0d131c;
+  --bg-grad-3: #0b111b;
+  --surface: #131a24;
+  --surface-2: #1a222e;
+  --surface-3: #232c3a;
+  --nav-bg: rgba(19, 26, 36, 0.85);
+
+  --ink: #e6eaf0;
+  --muted: #9aa7b8;
+  --subtle: #6b7688;
+  --inverse: #0b0f17;
+
+  --border: #263041;
+  --border-strong: #33415a;
+  --divider: #1b2430;
+
+  --primary: #60a5fa;
+  --accent: #818cf8;
+  --accent-solid: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-soft: rgba(129, 140, 248, 0.16);
+  --accent-ink: #ffffff;
+
+  --pos: #34d399;
+  --pos-strong: #4ade80;
+  --pos-soft: rgba(52, 211, 153, 0.16);
+  --pos-border: rgba(52, 211, 153, 0.35);
+  --neg: #f87171;
+  --neg-strong: #fb7185;
+  --neg-soft: rgba(248, 113, 113, 0.18);
+  --neg-border: rgba(248, 113, 113, 0.38);
+  --warn: #fbbf24;
+  --warn-strong: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.18);
+  --info: #22d3ee;
+  --info-soft: rgba(34, 211, 238, 0.16);
+  --flat: #94a3b8;
+
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* First-visit default: honor the OS setting until the user picks a theme. The
+ * :not([data-theme]) guard means the manual toggle (which sets the attribute)
+ * always overrides this — light OR dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --bg: #0b0f17;
+    --bg-grad-1: #0b0f17;
+    --bg-grad-2: #0d131c;
+    --bg-grad-3: #0b111b;
+    --surface: #131a24;
+    --surface-2: #1a222e;
+    --surface-3: #232c3a;
+
+    --ink: #e6eaf0;
+    --muted: #9aa7b8;
+    --subtle: #6b7688;
+    --inverse: #0b0f17;
+
+    --border: #263041;
+    --border-strong: #33415a;
+    --divider: #1b2430;
+
+    --primary: #60a5fa;
+    --accent: #818cf8;
+    --accent-solid: #6366f1;
+    --accent-hover: #818cf8;
+    --accent-soft: rgba(129, 140, 248, 0.16);
+    --accent-ink: #ffffff;
+
+    --pos: #34d399;
+    --pos-strong: #4ade80;
+    --pos-soft: rgba(52, 211, 153, 0.16);
+    --pos-border: rgba(52, 211, 153, 0.35);
+    --neg: #f87171;
+    --neg-strong: #fb7185;
+    --neg-soft: rgba(248, 113, 113, 0.18);
+    --neg-border: rgba(248, 113, 113, 0.38);
+    --warn: #fbbf24;
+    --warn-strong: #fbbf24;
+    --warn-soft: rgba(251, 191, 36, 0.18);
+    --info: #22d3ee;
+    --info-soft: rgba(34, 211, 238, 0.16);
+    --flat: #94a3b8;
+
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sh-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Tabular monospace for dense numeric data (scores, prices, caps) — digits are
+ * fixed-width so columns align. Falls back to the system mono stack. */
 .numeric {
   font-family:
     'JetBrains Mono', ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
@@ -65,9 +211,14 @@
 
 body {
   min-height: 100vh;
-  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 45%, #eef2ff 100%);
+  background: linear-gradient(
+    135deg,
+    var(--bg-grad-1) 0%,
+    var(--bg-grad-2) 45%,
+    var(--bg-grad-3) 100%
+  );
   background-attachment: fixed;
-  color: #111827;
+  color: var(--ink);
   font-family:
     system-ui,
     -apple-system,
@@ -76,6 +227,17 @@ body {
     'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+
+/* Systemic keyboard-focus ring (keyboard only, so mouse users see nothing).
+ * Fixes the 41 files that had no visible focus state — one accent ring for all. */
+:where(a, button, [role='button'], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 @keyframes ckpulse {
@@ -125,5 +287,8 @@ body {
   .tk-l,
   .tk-r {
     animation: none;
+  }
+  body {
+    transition: none;
   }
 }

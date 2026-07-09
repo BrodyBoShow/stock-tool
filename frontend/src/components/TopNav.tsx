@@ -5,12 +5,53 @@ import { HeaderSearch } from '@/components/HeaderSearch'
 import { useToast } from '@/components/ui/Toast'
 import { getAlerts } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
+import { useTheme } from '@/lib/theme'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   'border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
   (isActive
-    ? 'border-indigo-600 text-slate-900'
-    : 'border-transparent text-slate-500 hover:text-slate-900')
+    ? 'border-[var(--accent)] text-ink'
+    : 'border-transparent text-muted hover:text-ink')
+
+/** Light/dark toggle. Sits in the top-nav control cluster; the actual theme
+ *  state + persistence live in the ThemeProvider (lib/theme). */
+function ThemeToggle() {
+  const { theme, toggle } = useTheme()
+  const dark = theme === 'dark'
+  const label = dark ? 'Switch to light theme' : 'Switch to dark theme'
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={label}
+      aria-label={label}
+      aria-pressed={dark}
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink"
+    >
+      {dark ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  )
+}
 
 /**
  * Pull the latest data from the API on demand — the React equivalent of the
@@ -36,7 +77,7 @@ function RefreshButton() {
       disabled={spinning}
       title="Refresh data"
       aria-label="Refresh data"
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-60"
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink disabled:opacity-60"
     >
       <svg
         width="16"
@@ -79,7 +120,7 @@ function LogoutButton() {
       onClick={() => void onClick()}
       title="Sign out"
       aria-label="Sign out"
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink"
     >
       <svg
         width="16"
@@ -114,8 +155,8 @@ function Logo() {
       <circle cx="21" cy="8.5" r="1.9" fill="#fff" />
       <defs>
         <linearGradient id="sb-logo" x1="0" y1="0" x2="28" y2="28">
-          <stop stopColor="#2563eb" />
-          <stop offset="1" stopColor="#4f46e5" />
+          <stop stopColor="var(--primary)" />
+          <stop offset="1" stopColor="var(--accent)" />
         </linearGradient>
       </defs>
     </svg>
@@ -147,7 +188,7 @@ function AlertsLink() {
 
 export function TopNav() {
   return (
-    <nav className="sticky top-0 z-30 border-b border-gray-200 bg-white/85 backdrop-blur">
+    <nav className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1760px] items-center gap-3 px-4 py-3 lg:gap-4 lg:px-8">
         <NavLink
           to="/"
@@ -155,8 +196,8 @@ export function TopNav() {
         >
           <Logo />
           <span className="text-[1.2rem] font-extrabold tracking-[-0.01em]">
-            <span className="text-slate-900">Stock</span>
-            <span className="text-indigo-600">Bud</span>
+            <span className="text-ink">Stock</span>
+            <span className="text-[var(--accent)]">Bud</span>
           </span>
         </NavLink>
         <HeaderSearch />
@@ -183,7 +224,8 @@ export function TopNav() {
             Lab
           </NavLink>
         </div>
-        <span className="h-5 w-px flex-none bg-gray-200" aria-hidden="true" />
+        <span className="h-5 w-px flex-none bg-[var(--border)]" aria-hidden="true" />
+        <ThemeToggle />
         <RefreshButton />
         <LogoutButton />
       </div>

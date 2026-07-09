@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0f17" />
+    <!-- Anti-FOUC: stamp the theme onto <html> BEFORE first paint so there is no
+         flash of the wrong theme. Explicit choice (localStorage) wins; otherwise
+         follow the OS. The ThemeProvider reads this already-applied attribute. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.setAttribute('data-theme', t)
+          document.documentElement.style.colorScheme = t
+        } catch (e) {}
+      })()
+    </script>
     <meta
       name="description"
       content="US equity factor screener — nightly percentile rankings, not investment advice."
