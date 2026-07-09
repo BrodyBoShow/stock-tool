@@ -1,13 +1,19 @@
-/** Color helpers for "good / bad" metric indicators. Green always = stronger. */
+/** Color helpers for "good / bad" metric indicators. Green always = stronger.
+ *
+ * These emit theme-aware CSS custom properties (var(--pos)/var(--neg)/…) rather
+ * than hard-coded hex, so every consumer (inline style / SVG stroke / fill) flips
+ * correctly between light and dark with ZERO call-site changes. Dynamic-alpha
+ * tints use color-mix() so a single expression works in both themes (the dark
+ * token values are brighter, so their mix reads on a dark cell). */
 
 export interface Tint {
   bg: string
   fg: string
 }
 
-/** P/L text color: green for ≥0, red for <0, slate for null. */
+/** P/L text color: green for ≥0, red for <0, neutral for null. */
 export function plColor(x: number | null | undefined): string {
-  return x == null ? '#64748b' : x >= 0 ? '#059669' : '#dc2626'
+  return x == null ? 'var(--flat)' : x >= 0 ? 'var(--pos)' : 'var(--neg)'
 }
 
 /**
@@ -16,16 +22,10 @@ export function plColor(x: number | null | undefined): string {
  * underlying metric is better high or low), so green = strong is unambiguous.
  */
 export function rankColor(rank: number | null): Tint {
-  if (rank === null || Number.isNaN(rank)) return { bg: '#f8fafc', fg: '#9ca3af' }
-  if (rank >= 67) return { bg: 'rgba(16,185,129,0.13)', fg: '#047857' } // strong
-  if (rank >= 34) return { bg: '#f1f5f9', fg: '#475569' } // middle
-  return { bg: 'rgba(239,68,68,0.11)', fg: '#b91c1c' } // weak
-}
-
-/** Hex (#rrggbb) → rgba() string at the given alpha. */
-function hexA(hex: string, alpha: number): string {
-  const n = parseInt(hex.slice(1), 16)
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+  if (rank === null || Number.isNaN(rank)) return { bg: 'var(--surface-2)', fg: 'var(--subtle)' }
+  if (rank >= 67) return { bg: 'var(--pos-soft)', fg: 'var(--pos)' } // strong
+  if (rank >= 34) return { bg: 'var(--surface-2)', fg: 'var(--muted)' } // middle
+  return { bg: 'var(--neg-soft)', fg: 'var(--neg)' } // weak
 }
 
 /**
@@ -36,20 +36,22 @@ function hexA(hex: string, alpha: number): string {
  *
  * The 5 bands are pure LEGIBILITY buckets (quintiles of the 0–100 rank), NOT
  * tuned against returns — consistent with the no-false-precision rule in
- * factorReading.ts. `bar` is the gauge fill; `tint` is the ~9%-opacity wash.
+ * factorReading.ts. `bar` is the gauge fill; `tint` is the faint cell wash.
  */
 const HEAT_RAMP: readonly [number, string][] = [
-  [80, '#16a34a'], // deep green   — top quintile
-  [60, '#84cc16'], // light green
-  [40, '#f59e0b'], // amber        — middle
-  [20, '#f87171'], // light red
-  [0, '#dc2626'], // deep red     — bottom quintile
+  [80, 'var(--pos-strong)'], // top quintile
+  [60, 'var(--pos)'],
+  [40, 'var(--warn-strong)'], // middle — amber
+  [20, 'var(--neg)'],
+  [0, 'var(--neg-strong)'], // bottom quintile
 ]
 
 export function scoreHeat(value: number | null): { bar: string; tint: string } {
-  if (value === null || Number.isNaN(value)) return { bar: '#cbd5e1', tint: 'transparent' }
-  const hex = HEAT_RAMP.find(([t]) => value >= t)?.[1] ?? '#dc2626'
-  return { bar: hex, tint: hexA(hex, 0.09) }
+  if (value === null || Number.isNaN(value)) {
+    return { bar: 'var(--border-strong)', tint: 'transparent' }
+  }
+  const bar = HEAT_RAMP.find(([t]) => value >= t)?.[1] ?? 'var(--neg-strong)'
+  return { bar, tint: `color-mix(in srgb, ${bar} 14%, transparent)` }
 }
 
 /**
@@ -66,6 +68,10 @@ export function heatBg(
   if (max - min < 1e-9) return 'transparent'
   let pos = (value - min) / (max - min)
   if (!higherIsBetter) pos = 1 - pos
-  if (pos >= 0.5) return `rgba(16,185,129,${((pos - 0.5) * 2 * 0.16).toFixed(3)})`
-  return `rgba(239,68,68,${((0.5 - pos) * 2 * 0.13).toFixed(3)})`
+  if (pos >= 0.5) {
+    const pct = ((pos - 0.5) * 2 * 16).toFixed(1)
+    return `color-mix(in srgb, var(--pos-strong) ${pct}%, transparent)`
+  }
+  const pct = ((0.5 - pos) * 2 * 13).toFixed(1)
+  return `color-mix(in srgb, var(--neg-strong) ${pct}%, transparent)`
 }

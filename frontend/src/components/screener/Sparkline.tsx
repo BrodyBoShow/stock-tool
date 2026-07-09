@@ -69,7 +69,7 @@ export function Sparkline({
   })
   const line = pts.join(' ')
   const up = data[n - 1] >= data[0]
-  const stroke = color ?? (up ? '#16a34a' : '#dc2626')
+  const stroke = color ?? (up ? 'var(--pos-strong)' : 'var(--neg-strong)')
 
   return (
     <span

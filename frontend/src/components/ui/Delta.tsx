@@ -10,11 +10,11 @@ export function Delta({
   goodWhenUp?: boolean
   zeroDash?: boolean
 }) {
-  if (value === 0) return zeroDash ? <span className="text-gray-400">·</span> : null
+  if (value === 0) return zeroDash ? <span className="text-subtle">·</span> : null
   const up = value > 0
   const good = up === goodWhenUp
   return (
-    <span className={good ? 'text-emerald-600' : 'text-red-600'}>
+    <span className={good ? 'text-pos' : 'text-neg'}>
       {up ? '▲' : '▼'}
       {Math.abs(value).toFixed(1).replace(/\.0$/, '')}
     </span>
