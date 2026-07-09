@@ -77,7 +77,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2.5">
-      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-muted">
         <span className="flex items-center">
           Type
           <InfoTip text="Buy / Sell move shares. Dividend (cash) logs income for a ticker. Deposit / Withdrawal are cash flows (used for return timing). Fee reduces returns." />
@@ -94,7 +94,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
         </select>
       </label>
       {needsTicker && (
-        <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+        <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-muted">
           Ticker
           <input
             value={form.ticker}
@@ -105,7 +105,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           />
         </label>
       )}
-      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-muted">
         Date
         <input
           type="date"
@@ -117,7 +117,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
       </label>
       {needsShares && (
         <>
-          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-muted">
             Shares
             <input
               type="number" step="any" min="0"
@@ -127,7 +127,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
               className={inputCls + ' w-24'}
             />
           </label>
-          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+          <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-muted">
             Price / share
             <input
               type="number" step="any" min="0"
@@ -139,7 +139,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           </label>
         </>
       )}
-      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+      <label className="flex flex-col gap-1 text-[0.7rem] font-semibold text-muted">
         {needsShares ? 'Total $ (optional)' : 'Amount $'}
         <input
           type="number" step="any" min="0"
@@ -150,7 +150,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
           className={inputCls + ' w-32'}
         />
       </label>
-      <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[0.7rem] font-semibold text-slate-500">
+      <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[0.7rem] font-semibold text-muted">
         Note
         <input
           value={form.note}
@@ -162,7 +162,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
       <button
         type="submit"
         disabled={mut.isPending || !canSubmit}
-        className="rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-bold text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-lg bg-accent-solid px-4 py-2 text-[0.82rem] font-bold text-accent-ink transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {mut.isPending ? 'Adding…' : 'Add'}
       </button>
@@ -240,7 +240,7 @@ export function CsvImportButton() {
         onClick={() => fileRef.current?.click()}
         disabled={mut.isPending}
         title="Header: type,date plus ticker,shares,price,amount,note as needed"
-        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+        className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.78rem] font-bold text-muted transition-colors hover:bg-surface-2 disabled:opacity-60"
       >
         {mut.isPending ? 'Importing…' : 'Import CSV'}
       </button>

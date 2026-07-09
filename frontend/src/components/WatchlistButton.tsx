@@ -108,8 +108,8 @@ export function WatchlistButton({
           className={
             'flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-40 ' +
             (inList
-              ? 'text-amber-500 hover:bg-amber-50'
-              : 'text-slate-300 hover:bg-slate-100 hover:text-slate-400')
+              ? 'text-warn hover:bg-warn-soft'
+              : 'text-subtle hover:bg-surface-3 hover:text-muted')
           }
         >
           <StarIcon filled={inList} />
@@ -127,7 +127,7 @@ export function WatchlistButton({
           onClick={handlePrimary}
           disabled={pending}
           aria-label={`Remove ${ticker} from watchlist`}
-          className="rounded-md px-2.5 py-1 text-[0.74rem] font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-40"
+          className="rounded-md px-2.5 py-1 text-[0.74rem] font-semibold text-neg transition-colors hover:bg-neg-soft disabled:opacity-40"
         >
           Remove
         </button>
@@ -147,8 +147,8 @@ export function WatchlistButton({
         className={
           'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors disabled:opacity-50 ' +
           (inList
-            ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
-            : 'border-gray-200 bg-white text-slate-800 hover:bg-slate-50')
+            ? 'border-warn bg-warn-soft text-warn hover:bg-warn-soft'
+            : 'border-line bg-surface text-ink hover:bg-surface-2')
         }
       >
         <StarIcon filled={inList} />

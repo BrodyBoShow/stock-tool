@@ -94,16 +94,16 @@ export function RiskQuizModal({
         role="dialog"
         aria-modal="true"
         aria-label="Risk preference quiz"
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
       >
         {result?.has_profile ? (
           /* ── result screen: disclose the mapping ── */
           <div>
-            <h2 className="text-base font-bold text-gray-900">Your risk preference is saved</h2>
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm font-bold capitalize text-indigo-700">
+            <h2 className="text-base font-bold text-ink">Your risk preference is saved</h2>
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-sm font-bold capitalize text-accent">
               {result.profile}
             </div>
-            <p className="mt-2 text-[0.8rem] leading-relaxed text-slate-500">
+            <p className="mt-2 text-[0.8rem] leading-relaxed text-muted">
               StockBud compares your holdings against historical risk bands{' '}
               {result.band_min}–{result.band_max} on the Portfolio page and flags positions
               above {Math.round((result.guardrails?.max_position_pct ?? 0) * 100)}% or sectors
@@ -111,13 +111,13 @@ export function RiskQuizModal({
               alert thresholds, not limits StockBud enforces. This is a preference you set —
               not advice — and you can change it anytime.
             </p>
-            <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
-              <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+            <div className="mt-3 rounded-lg border border-line bg-surface-2 p-3">
+              <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-muted">
                 How we mapped your answers ({points} points)
               </div>
               <table className="mt-1.5 w-full text-[0.72rem]">
                 <thead>
-                  <tr className="text-left text-slate-400">
+                  <tr className="text-left text-muted">
                     <th className="py-0.5 font-semibold">Points</th>
                     <th className="font-semibold">Profile</th>
                     <th className="font-semibold">Compared bands</th>
@@ -132,8 +132,8 @@ export function RiskQuizModal({
                       key={r.profile}
                       className={
                         r.profile.toLowerCase() === result.profile
-                          ? 'font-bold text-indigo-700'
-                          : 'text-slate-600'
+                          ? 'font-bold text-accent'
+                          : 'text-muted'
                       }
                     >
                       <td className="py-0.5">{r.range}</td>
@@ -151,7 +151,7 @@ export function RiskQuizModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="rounded-lg bg-accent-solid px-4 py-2 text-sm font-semibold text-accent-ink transition hover:bg-accent-hover"
               >
                 Done
               </button>
@@ -160,15 +160,15 @@ export function RiskQuizModal({
         ) : (
           /* ── quiz screen ── */
           <div>
-            <h2 className="text-base font-bold text-gray-900">How much risk do you want?</h2>
-            <p className="mt-1 text-[0.78rem] leading-relaxed text-slate-500">
+            <h2 className="text-base font-bold text-ink">How much risk do you want?</h2>
+            <p className="mt-1 text-[0.78rem] leading-relaxed text-muted">
               Five quick questions set a risk preference StockBud will compare your
               portfolio against. It’s a setting, not advice — you can change it anytime.
             </p>
             <div className="mt-4 space-y-4">
               {QUIZ_QUESTIONS.map((q, qi) => (
                 <fieldset key={q.key}>
-                  <legend className="text-[0.82rem] font-semibold text-slate-800">
+                  <legend className="text-[0.82rem] font-semibold text-ink">
                     {qi + 1}. {q.question}
                   </legend>
                   <div className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-3">
@@ -183,8 +183,8 @@ export function RiskQuizModal({
                           className={
                             'rounded-lg border px-2 py-1.5 text-[0.72rem] font-semibold leading-tight transition-all ' +
                             (on
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                              : 'border-gray-200 bg-white text-slate-500 hover:border-indigo-300')
+                              ? 'border-accent bg-accent-soft text-accent'
+                              : 'border-line bg-surface text-muted hover:border-accent')
                           }
                         >
                           {label}
@@ -196,7 +196,7 @@ export function RiskQuizModal({
               ))}
             </div>
             {error && (
-              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[0.74rem] font-semibold text-rose-700">
+              <div className="mt-3 rounded-lg border border-neg-border bg-neg-soft px-3 py-2 text-[0.74rem] font-semibold text-neg">
                 Couldn’t save your preference — the server may be waking up. Your answers
                 are still here; please try again.
               </div>
@@ -206,7 +206,7 @@ export function RiskQuizModal({
                 type="button"
                 onClick={onClose}
                 disabled={pending}
-                className="text-[0.8rem] font-semibold text-slate-400 hover:text-slate-600"
+                className="text-[0.8rem] font-semibold text-muted hover:text-muted"
               >
                 Cancel
               </button>
@@ -214,7 +214,7 @@ export function RiskQuizModal({
                 type="button"
                 disabled={!complete || pending}
                 onClick={() => onSubmit(answers)}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition enabled:hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg bg-accent-solid px-4 py-2 text-sm font-semibold text-accent-ink transition enabled:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {pending ? 'Saving…' : 'Save my preference'}
               </button>

@@ -69,10 +69,10 @@ export function HeaderSearch() {
         onKeyDown={onKey}
         placeholder="Search ticker…"
         aria-label="Search ticker or company"
-        className="w-32 rounded-lg border border-gray-200 bg-slate-50 px-3 py-1.5 text-[0.82rem] text-slate-800 placeholder:text-slate-400 focus:border-indigo-600 focus:bg-white focus:outline-none lg:w-56"
+        className="w-32 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[0.82rem] text-ink placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-none lg:w-56"
       />
       {open && q.trim() && rows.length > 0 && (
-        <div className="absolute right-0 z-50 mt-1 max-h-[360px] w-72 overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_28px_rgba(15,23,42,0.12)]">
+        <div className="absolute right-0 z-50 mt-1 max-h-[360px] w-72 overflow-auto rounded-xl border border-line bg-surface py-1 shadow-[0_8px_28px_rgba(15,23,42,0.12)]">
           {rows.map((r, i) => (
             <button
               key={r.ticker}
@@ -81,22 +81,22 @@ export function HeaderSearch() {
               onClick={() => go(r.ticker)}
               className={
                 'flex w-full items-baseline gap-2 px-3 py-1.5 text-left ' +
-                (i === sel ? 'bg-indigo-50' : 'hover:bg-slate-50')
+                (i === sel ? 'bg-accent-soft' : 'hover:bg-surface-2')
               }
             >
-              <span className="w-14 flex-none font-bold text-gray-900">{r.ticker}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.8rem] text-slate-500">
+              <span className="w-14 flex-none font-bold text-ink">{r.ticker}</span>
+              <span className="min-w-0 flex-1 truncate text-[0.8rem] text-muted">
                 {r.name}
               </span>
               {r.sector && (
-                <span className="flex-none text-[0.66rem] text-slate-300">{r.sector}</span>
+                <span className="flex-none text-[0.66rem] text-subtle">{r.sector}</span>
               )}
             </button>
           ))}
         </div>
       )}
       {open && q.trim().length >= 1 && rows.length === 0 && (
-        <div className="absolute right-0 z-50 mt-1 w-72 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[0.8rem] text-gray-400 shadow-[0_8px_28px_rgba(15,23,42,0.12)]">
+        <div className="absolute right-0 z-50 mt-1 w-72 rounded-xl border border-line bg-surface px-3 py-2.5 text-[0.8rem] text-muted shadow-[0_8px_28px_rgba(15,23,42,0.12)]">
           No matches for “{q.trim()}”.
         </div>
       )}

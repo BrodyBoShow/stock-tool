@@ -15,7 +15,7 @@ import type { RiskProfileResponse } from '@/types/api'
 
 const PROFILE_STYLES: Record<string, string> = {
   conservative: 'bg-sky-50 text-sky-700 border-sky-200',
-  balanced: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  balanced: 'bg-accent-soft text-accent border-accent',
   aggressive: 'bg-orange-50 text-orange-700 border-orange-200',
 }
 
@@ -56,9 +56,9 @@ export function RiskProfileCard() {
   return (
     <>
       {profile ? (
-        <section className="rounded-card border border-gray-200 bg-white px-4 py-3 shadow-card">
+        <section className="rounded-card border border-line bg-surface px-4 py-3 shadow-card">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+            <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-muted">
               Your risk preference
             </div>
             <span
@@ -68,7 +68,7 @@ export function RiskProfileCard() {
             >
               {profile.profile}
             </span>
-            <span className="text-[0.74rem] text-slate-500">
+            <span className="text-[0.74rem] text-muted">
               Holdings are compared to risk bands {profile.band_min}–{profile.band_max} below;
               positions above {Math.round((profile.guardrails?.max_position_pct ?? 0) * 100)}%
               / sectors above {Math.round((profile.guardrails?.max_sector_pct ?? 0) * 100)}%
@@ -81,7 +81,7 @@ export function RiskProfileCard() {
                   type="button"
                   disabled={save.isPending}
                   onClick={() => save.mutate({ profile: p })}
-                  className="rounded-md border border-gray-200 px-2 py-1 text-[0.68rem] font-semibold capitalize text-slate-500 transition hover:border-indigo-300 hover:text-indigo-600"
+                  className="rounded-md border border-line px-2 py-1 text-[0.68rem] font-semibold capitalize text-muted transition hover:border-accent hover:text-accent"
                   title={`Switch directly to ${p} (no quiz)`}
                 >
                   {p}
@@ -101,23 +101,23 @@ export function RiskProfileCard() {
             </div>
           </div>
           {save.isError && (
-            <div className="mt-1.5 text-[0.72rem] font-semibold text-rose-600">
+            <div className="mt-1.5 text-[0.72rem] font-semibold text-neg">
               Couldn’t save your preference — the server may be waking up. Please try again.
             </div>
           )}
-          <div className="mt-1 text-[0.64rem] text-gray-400">
+          <div className="mt-1 text-[0.64rem] text-muted">
             A preference you set — not advice. Bands are historical measurements (realized
             volatility over the past year), not predictions.
           </div>
         </section>
       ) : (
-        <section className="rounded-card border border-indigo-200 bg-indigo-50/50 px-4 py-3 shadow-card">
+        <section className="rounded-card border border-accent bg-accent-soft/50 px-4 py-3 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="text-[0.9rem] font-bold text-gray-900">
+              <div className="text-[0.9rem] font-bold text-ink">
                 How much risk do you want?
               </div>
-              <div className="mt-0.5 text-[0.76rem] text-slate-500">
+              <div className="mt-0.5 text-[0.76rem] text-muted">
                 Answer 5 quick questions to set a risk preference. StockBud then shows which
                 of your holdings — and which screener names — fall inside the historical
                 risk bands you chose.
@@ -131,7 +131,7 @@ export function RiskProfileCard() {
                 setQuizKey((k) => k + 1)
                 setQuizOpen(true)
               }}
-              className="rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="rounded-lg bg-accent-solid px-3.5 py-2 text-sm font-semibold text-accent-ink transition hover:bg-accent-hover"
             >
               Set my risk preference
             </button>
