@@ -703,6 +703,8 @@ class WatchlistChange(BaseModel):
     new_events: int
     latest_event_label: str | None
     latest_event_date: str | None
+    # Direct SEC EDGAR link to the most recent high-signal 8-K's primary doc.
+    latest_event_url: str | None = None
     # open-market insider buys, trailing 3 months
     insider_buy_count: int
     insider_buy_value: float | None

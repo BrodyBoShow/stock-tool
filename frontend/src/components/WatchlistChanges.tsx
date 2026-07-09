@@ -175,15 +175,39 @@ function ChangeCard({
             <Chip tone="review">⏰ Thesis review due</Chip>
           </Link>
         )}
-        {c.new_events > 0 && (
-          <Chip tone="event">
-            ▾ {c.new_events} new 8-K
-            {c.latest_event_label ? ` · ${c.latest_event_label}` : ''}
-            {c.latest_event_date ? (
-              <span className="text-amber-500"> ({fmtDate(c.latest_event_date)})</span>
-            ) : null}
-          </Chip>
-        )}
+        {c.new_events > 0 &&
+          (() => {
+            const chip = (
+              <Chip tone="event">
+                ▾ {c.new_events} new 8-K
+                {c.latest_event_label ? ` · ${c.latest_event_label}` : ''}
+                {c.latest_event_date ? (
+                  <span className="text-amber-500"> ({fmtDate(c.latest_event_date)})</span>
+                ) : null}
+                {c.latest_event_url ? <span className="ml-0.5">↗</span> : null}
+              </Chip>
+            )
+            // Link straight to the most recent 8-K's primary document on SEC
+            // EDGAR when we have it. With >1 new filing the chip names the latest
+            // one, so the link opens that; the deep dive lists them all.
+            return c.latest_event_url ? (
+              <a
+                href={c.latest_event_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex rounded-lg hover:brightness-95"
+                title={
+                  c.new_events > 1
+                    ? `Open the most recent 8-K on SEC EDGAR — ${c.new_events} recent filings; see the deep dive for all`
+                    : 'Open this 8-K filing on SEC EDGAR'
+                }
+              >
+                {chip}
+              </a>
+            ) : (
+              chip
+            )
+          })()}
         {c.insider_buy_count > 0 && (
           <Chip tone="insider">
             ▴ Insider {c.insider_buy_count} buy{c.insider_buy_count === 1 ? '' : 's'}
@@ -246,7 +270,13 @@ function ChangeCard({
         )}
       </div>
 
-      {tier !== 'quiet' && <WhatsChangedButton ticker={c.ticker} />}
+      {tier !== 'quiet' && (
+        <WhatsChangedButton
+          ticker={c.ticker}
+          filingUrl={c.latest_event_url}
+          filingLabel={c.latest_event_label}
+        />
+      )}
     </div>
   )
 }
