@@ -68,11 +68,11 @@
 
   /* risk-band INTENSITY scale (cool→warm) — deliberately NOT good/bad; the chip
    * derives its bg/border via color-mix so one hue per band covers both themes. */
-  --band-1: #0ea5e9;
-  --band-2: #14b8a6;
-  --band-3: #f59e0b;
-  --band-4: #f97316;
-  --band-5: #f43f5e;
+  --band-1: #0369a1;
+  --band-2: #0f766e;
+  --band-3: #b45309;
+  --band-4: #c2410c;
+  --band-5: #be123c;
 
   /* ---- type scale (px) — theme-independent ---- */
   --fs-display: 44px;

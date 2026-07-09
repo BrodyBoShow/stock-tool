@@ -84,7 +84,7 @@ export function ActiveFilterChips({
           key={c.key}
           type="button"
           onClick={c.clear}
-          className="group inline-flex items-center gap-1 rounded-full bg-surface-3 py-1 pl-2.5 pr-2 text-[0.73rem] font-semibold text-ink transition hover:bg-surface-3"
+          className="group inline-flex items-center gap-1 rounded-full bg-surface-2 py-1 pl-2.5 pr-2 text-[0.73rem] font-semibold text-ink transition hover:bg-surface-3"
         >
           {c.label}
           <svg
