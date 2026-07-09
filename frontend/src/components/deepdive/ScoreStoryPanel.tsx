@@ -51,26 +51,26 @@ function StoryTooltip({
   const r = payload[0].payload
   const evs = eventsByDate.get(r.date)
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-[0.72rem] shadow-lg">
-      <div className="mb-1 font-bold text-slate-700">{fmtShortDate(r.date)}</div>
+    <div className="rounded-lg border border-line bg-surface p-2.5 text-[0.72rem] shadow-lg">
+      <div className="mb-1 font-bold text-ink">{fmtShortDate(r.date)}</div>
       {LINES.filter((l) => l.key === 'composite' || shown.has(l.key)).map((l) => (
         <div key={l.key} className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-slate-500">
+          <span className="flex items-center gap-1.5 text-muted">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: FACTOR_TABLE[l.key].bar }} />
             {l.label}
           </span>
-          <span className="numeric font-semibold text-slate-800">
+          <span className="numeric font-semibold text-ink">
             {r[l.key] == null ? '—' : (r[l.key] as number).toFixed(1)}
           </span>
         </div>
       ))}
       {r.rank != null && (
-        <div className="mt-1 border-t border-slate-100 pt-1 text-slate-400">
-          Universe rank <span className="numeric font-semibold text-slate-600">#{r.rank}</span>
+        <div className="mt-1 border-t border-line pt-1 text-subtle">
+          Universe rank <span className="numeric font-semibold text-muted">#{r.rank}</span>
         </div>
       )}
       {evs && (
-        <div className="mt-1 max-w-[200px] text-[0.66rem] text-amber-600">▪ {evs.join(' · ')}</div>
+        <div className="mt-1 max-w-[200px] text-[0.66rem] text-warn">▪ {evs.join(' · ')}</div>
       )}
     </div>
   )
@@ -122,15 +122,15 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
   }
 
   const card =
-    'overflow-hidden rounded-card border border-gray-200 bg-white shadow-card'
+    'overflow-hidden rounded-card border border-line bg-surface shadow-card'
 
   if (rows.length < 3) {
     return (
       <section className={card}>
         <div className="px-4 pb-2.5 pt-3.5">
-          <div className="text-base font-bold text-gray-900">Score story</div>
+          <div className="text-base font-bold text-ink">Score story</div>
         </div>
-        <div className="px-4 pb-5 text-[0.82rem] text-gray-500">
+        <div className="px-4 pb-5 text-[0.82rem] text-muted">
           Score history is still building — only{' '}
           <span className="numeric font-semibold">{rows.length}</span> nightly snapshot
           {rows.length === 1 ? '' : 's'} so far. The timeline fills in as the nightly
@@ -166,8 +166,8 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
     <section className={card}>
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 pb-2 pt-3.5">
         <div>
-          <div className="text-base font-bold text-gray-900">Score story</div>
-          <div className="mt-0.5 text-[0.78rem] text-gray-500">
+          <div className="text-base font-bold text-ink">Score story</div>
+          <div className="mt-0.5 text-[0.78rem] text-muted">
             Nightly composite + factor percentiles, {fmtShortDate(first.date)} →{' '}
             {fmtShortDate(last.date)} · {rows.length} snapshots
           </div>
@@ -184,7 +184,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
                 style={
                   on
                     ? { background: FACTOR_TABLE[l.key].bar, color: '#fff' }
-                    : { background: '#fff', color: '#64748b', boxShadow: 'inset 0 0 0 1px #e5e7eb' }
+                    : { background: '#fff', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }
                 }
               >
                 <span
@@ -199,7 +199,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
       </div>
 
       {insight && (
-        <div className="mx-4 mb-2 rounded-lg bg-slate-50 px-3 py-2 text-[0.8rem] text-slate-600">
+        <div className="mx-4 mb-2 rounded-lg bg-surface-2 px-3 py-2 text-[0.8rem] text-muted">
           {insight}
         </div>
       )}
@@ -207,18 +207,18 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
       <div className="px-2 pb-1" style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
-            <CartesianGrid stroke="#f1f5f9" vertical={false} />
+            <CartesianGrid stroke="var(--surface-2)" vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={fmtShortDate}
-              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              tick={{ fontSize: 10, fill: 'var(--subtle)' }}
               minTickGap={36}
-              axisLine={{ stroke: '#e2e8f0' }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickLine={false}
             />
             <YAxis
               domain={[0, 100]}
-              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              tick={{ fontSize: 10, fill: 'var(--subtle)' }}
               width={34}
               axisLine={false}
               tickLine={false}
@@ -234,7 +234,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
               )}
             />
             {[...eventsByDate.keys()].map((d) => (
-              <ReferenceLine key={d} x={d} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6} />
+              <ReferenceLine key={d} x={d} stroke="var(--warn)" strokeDasharray="3 3" strokeOpacity={0.6} />
             ))}
             {LINES.filter((l) => l.key === 'composite' || shown.has(l.key)).map((l) => (
               <Line
@@ -253,7 +253,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
         </ResponsiveContainer>
       </div>
 
-      <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-[0.7rem] text-gray-400">
+      <div className="border-t border-line bg-surface-2 px-4 py-2 text-[0.7rem] text-subtle">
         Toggle factor lines above · dashed amber = high-signal 8-K · interpretation of
         our own nightly percentiles, not advice.
       </div>

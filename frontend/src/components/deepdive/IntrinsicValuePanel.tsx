@@ -61,9 +61,9 @@ function valOf(v: ValuationResponse, key: string): number | null {
 // ── tiny presentational helpers ────────────────────────────────────────────
 function QualityDot({ status }: { status: string }) {
   const map: Record<string, string> = {
-    ok: 'bg-emerald-500',
-    proxied: 'bg-amber-500',
-    stale: 'bg-amber-500',
+    ok: 'bg-pos-strong',
+    proxied: 'bg-warn-strong',
+    stale: 'bg-warn-strong',
     missing: 'bg-gray-300',
   }
   return <span className={`inline-block h-1.5 w-1.5 rounded-full ${map[status] ?? 'bg-gray-300'}`} />
@@ -86,10 +86,10 @@ function fmtStep(step: number, unit: string): string {
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
-      <div className="text-[0.62rem] uppercase tracking-wide text-gray-400">{label}</div>
-      <div className="mt-0.5 text-[0.95rem] font-bold text-gray-900 tabular-nums">{value}</div>
-      {sub && <div className="text-[0.62rem] text-gray-400">{sub}</div>}
+    <div className="rounded-lg bg-surface-2 px-3 py-2">
+      <div className="text-[0.62rem] uppercase tracking-wide text-subtle">{label}</div>
+      <div className="mt-0.5 text-[0.95rem] font-bold text-ink tabular-nums">{value}</div>
+      {sub && <div className="text-[0.62rem] text-subtle">{sub}</div>}
     </div>
   )
 }
@@ -120,14 +120,14 @@ function Slider({
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="text-[0.72rem] font-medium text-gray-700">{label}</span>
-        <span className="flex items-center gap-1.5 text-[0.72rem] tabular-nums text-gray-900">
+        <span className="text-[0.72rem] font-medium text-ink">{label}</span>
+        <span className="flex items-center gap-1.5 text-[0.72rem] tabular-nums text-ink">
           {show(value)}
           {changed && (
             <button
               type="button"
               onClick={() => onChange(seed)}
-              className="text-[0.6rem] text-indigo-500 hover:text-indigo-700"
+              className="text-[0.6rem] text-indigo-500 hover:text-accent"
               title={`Reset to seeded ${show(seed)}`}
             >
               ↺
@@ -144,7 +144,7 @@ function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-1 w-full accent-indigo-600"
       />
-      <div className="text-[0.6rem] text-gray-400">
+      <div className="text-[0.6rem] text-subtle">
         {changed ? 'you set this · ' : 'seeded · '}
         {source}
       </div>
@@ -176,10 +176,10 @@ function ComparisonGrid({
   price: number | null
 }) {
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+    <div className="mt-3 overflow-x-auto rounded-lg border border-line">
       <table className="w-full text-[0.7rem]">
         <thead>
-          <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-400">
+          <tr className="border-b border-line bg-surface-2 text-left text-subtle">
             <th className="px-2.5 py-1.5 font-semibold">Scenario</th>
             {CMP_DRIVERS.map((d) => (
               <th key={d.key} className="px-2 py-1.5 text-right font-semibold">
@@ -198,29 +198,29 @@ function ComparisonGrid({
               <tr
                 key={row.id}
                 className={
-                  'border-b border-gray-100 last:border-0 ' +
-                  (row.focal ? 'bg-indigo-50/50' : '')
+                  'border-b border-line last:border-0 ' +
+                  (row.focal ? 'bg-accent-soft' : '')
                 }
               >
-                <td className="px-2.5 py-1.5 font-semibold text-slate-700">{row.name}</td>
+                <td className="px-2.5 py-1.5 font-semibold text-ink">{row.name}</td>
                 {CMP_DRIVERS.map((d) => {
                   const v = effOf(row.ov, seeds, d.key)
                   return (
                     <td
                       key={d.key}
-                      className="px-2 py-1.5 text-right tabular-nums text-slate-600"
+                      className="px-2 py-1.5 text-right tabular-nums text-muted"
                     >
                       {d.key === 'horizon' ? `${Math.round(v)}y` : fmtPct(v)}
                     </td>
                   )
                 })}
-                <td className="px-2.5 py-1.5 text-right font-bold tabular-nums text-gray-900">
+                <td className="px-2.5 py-1.5 text-right font-bold tabular-nums text-ink">
                   {fmtPrice(ps)}
                 </td>
                 <td
                   className={
                     'px-2.5 py-1.5 text-right tabular-nums ' +
-                    (mos != null && mos >= 0 ? 'text-emerald-600' : 'text-rose-600')
+                    (mos != null && mos >= 0 ? 'text-pos' : 'text-neg')
                   }
                 >
                   {mos != null ? fmtPct(mos) : '—'}
@@ -399,15 +399,15 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
   }, [data, ov]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
-      <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
-      <div className="mt-3 h-20 animate-pulse rounded bg-gray-100" />
+    return <section className="rounded-card border border-line bg-surface p-5 shadow-card">
+      <div className="h-4 w-40 animate-pulse rounded bg-surface-3" />
+      <div className="mt-3 h-20 animate-pulse rounded bg-surface-3" />
     </section>
   }
   if (error || !data || !computed) {
-    return <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
-      <h3 className="text-sm font-bold text-gray-900">Intrinsic value</h3>
-      <p className="mt-2 text-[0.8rem] text-gray-500">Valuation inputs are unavailable for this name.</p>
+    return <section className="rounded-card border border-line bg-surface p-5 shadow-card">
+      <h3 className="text-sm font-bold text-ink">Intrinsic value</h3>
+      <p className="mt-2 text-[0.8rem] text-muted">Valuation inputs are unavailable for this name.</p>
     </section>
   }
 
@@ -425,14 +425,14 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
     x == null || hi === lo ? 50 : ((x - lo) / (hi - lo)) * 100
 
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-gray-900">Intrinsic value</h3>
-        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-amber-700">
+        <h3 className="text-sm font-bold text-ink">Intrinsic value</h3>
+        <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-warn">
           Not investment advice
         </span>
       </div>
-      <p className="mt-1 text-[0.72rem] text-gray-500">
+      <p className="mt-1 text-[0.72rem] text-muted">
         Your assumptions, transparent math — every input below shows its filing source and date.
         {' '}
         {data.peer_context.n > 0 && `Peers: ${data.peer_context.n} ${data.sector} names.`}
@@ -441,15 +441,15 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
       {/* Foreign filer: financials were converted to USD. Disclose the currency,
           rate, and rate date HERE, next to the figures — not buried in the reasons. */}
       {data.fx && data.currency !== 'USD' && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[0.68rem] text-sky-800">
+        <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-info bg-info-soft px-2.5 py-1.5 text-[0.68rem] text-sky-800">
           <span className="font-semibold">Reports in {data.currency}</span>
-          <span className="text-sky-400">·</span>
+          <span className="text-info">·</span>
           <span>
             figures shown in USD, converted at 1 {data.currency} = {data.fx.usd_per_unit} USD
           </span>
           {data.fx.rate_date && (
             <>
-              <span className="text-sky-400">·</span>
+              <span className="text-info">·</span>
               <span>FRED daily rate {data.fx.rate_date}</span>
             </>
           )}
@@ -458,13 +458,13 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
 
       {/* ── Headline: reverse-DCF (market-implied growth vs history) ── */}
       {active.has('reverse_dcf') && (
-        <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
-          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-indigo-600">
+        <div className="mt-4 rounded-lg border border-accent bg-accent-soft p-3">
+          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-accent">
             What growth is priced in?
           </div>
           <div className="mt-1.5 grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[1.4rem] font-extrabold leading-none text-indigo-700 tabular-nums">
+              <div className="text-[1.4rem] font-extrabold leading-none text-accent tabular-nums">
                 {c.implied == null
                   ? '—'
                   : c.implied <= -0.2
@@ -472,21 +472,21 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                     : c.implied >= 0.4
                       ? '≥ +40%'
                       : fmtPct(c.implied)}
-                <span className="text-[0.7rem] font-medium text-indigo-400"> /yr</span>
+                <span className="text-[0.7rem] font-medium text-accent"> /yr</span>
               </div>
-              <div className="text-[0.62rem] text-gray-500">market-implied FCF growth ({c.horizon}y)</div>
+              <div className="text-[0.62rem] text-muted">market-implied FCF growth ({c.horizon}y)</div>
             </div>
             <div>
-              <div className="text-[1.4rem] font-extrabold leading-none text-gray-700 tabular-nums">
+              <div className="text-[1.4rem] font-extrabold leading-none text-ink tabular-nums">
                 {c.histFcf != null ? fmtPct(c.histFcf) : c.revCagr != null ? fmtPct(c.revCagr) : '—'}
-                <span className="text-[0.7rem] font-medium text-gray-400"> /yr</span>
+                <span className="text-[0.7rem] font-medium text-subtle"> /yr</span>
               </div>
-              <div className="text-[0.62rem] text-gray-500">
+              <div className="text-[0.62rem] text-muted">
                 {c.histFcf != null ? 'its actual FCF growth (history)' : 'its revenue growth (proxy)'}
               </div>
             </div>
           </div>
-          <p className="mt-2 text-[0.72rem] leading-relaxed text-gray-600">
+          <p className="mt-2 text-[0.72rem] leading-relaxed text-muted">
             At {fmtPrice(price)}, the price assumes free cash flow compounds{' '}
             {c.implied != null ? `about ${fmtPct(c.implied)}/yr` : 'at a rate we can’t solve'} for {c.horizon} years.
             {c.histFcf != null && c.implied != null && c.histFcf > 0 && (
@@ -500,8 +500,8 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
       {active.has('forward_dcf') && c.base?.perShare != null && (
         <div className="mt-4">
           <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-[0.7rem] font-semibold text-gray-700">Scenario value per share</span>
-            <span className="text-[0.62rem] text-gray-400">
+            <span className="text-[0.7rem] font-semibold text-ink">Scenario value per share</span>
+            <span className="text-[0.62rem] text-subtle">
               base {fmtPrice(c.base.perShare)} · price {fmtPrice(price)}
               {marginOfSafety(c.base.perShare, price) != null &&
                 ` · ${fmtPct(marginOfSafety(c.base.perShare, price))} margin`}
@@ -521,24 +521,24 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                   style={{ left: `${pos(x as number)}%` }}
                 >
                   <span className="block h-3 w-px bg-slate-400" />
-                  <span className="text-[0.58rem] text-gray-400">{k}</span>
+                  <span className="text-[0.58rem] text-subtle">{k}</span>
                 </div>
               ),
             )}
             {/* price marker */}
             {price != null && (
               <div className="absolute top-0 -translate-x-1/2" style={{ left: `${pos(price)}%` }}>
-                <span className="block h-5 w-0.5 bg-indigo-600" />
-                <span className="text-[0.58rem] font-semibold text-indigo-600">price</span>
+                <span className="block h-5 w-0.5 bg-accent-solid" />
+                <span className="text-[0.58rem] font-semibold text-accent">price</span>
               </div>
             )}
           </div>
-          <div className="mt-1 flex justify-between text-[0.6rem] tabular-nums text-gray-400">
+          <div className="mt-1 flex justify-between text-[0.6rem] tabular-nums text-subtle">
             <span>{fmtPrice(c.bear?.perShare)}</span>
             <span>{fmtPrice(c.bull?.perShare)}</span>
           </div>
           {c.base.tvShareOfPv > 0.75 && (
-            <p className="mt-1 text-[0.62rem] text-amber-600">
+            <p className="mt-1 text-[0.62rem] text-warn">
               ⚠ {fmtPct(c.base.tvShareOfPv)} of value is the terminal value — the result leans heavily
               on assumptions about the distant future.
             </p>
@@ -578,7 +578,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         <button
           type="button"
           onClick={() => setOv({})}
-          className="mt-2 text-[0.66rem] font-medium text-indigo-600 hover:text-indigo-800"
+          className="mt-2 text-[0.66rem] font-medium text-accent hover:text-accent"
         >
           ↺ Reset all to data-seeded
         </button>
@@ -586,26 +586,26 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
 
       {/* ── Scenarios: save / compare (≤3) / share the current assumptions ── */}
       {active.has('forward_dcf') && (
-        <div className="mt-3 rounded-lg border border-gray-100 bg-white p-3">
+        <div className="mt-3 rounded-lg border border-line bg-surface p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[0.62rem] font-semibold uppercase tracking-wide text-gray-500">
+            <span className="text-[0.62rem] font-semibold uppercase tracking-wide text-muted">
               Scenarios
             </span>
             <button
               type="button"
               onClick={doSave}
-              className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-md border border-line bg-surface px-2.5 py-1 text-[0.7rem] font-semibold text-muted hover:bg-surface-2"
             >
               ＋ Save current
             </button>
             <button
               type="button"
               onClick={doShare}
-              className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-md border border-line bg-surface px-2.5 py-1 text-[0.7rem] font-semibold text-muted hover:bg-surface-2"
             >
               🔗 Share link
             </button>
-            <span className="text-[0.6rem] text-gray-400">
+            <span className="text-[0.6rem] text-subtle">
               saved on this device · share encodes your sliders in the URL
             </span>
           </div>
@@ -621,8 +621,8 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                     className={
                       'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.68rem] ' +
                       (on
-                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-white text-slate-600')
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line bg-surface text-muted')
                     }
                   >
                     <button
@@ -633,13 +633,13 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                     >
                       {s.name}
                     </button>
-                    <span className="tabular-nums text-gray-400">{fmtPrice(ps)}</span>
+                    <span className="tabular-nums text-subtle">{fmtPrice(ps)}</span>
                     <button
                       type="button"
                       onClick={() => toggleCompare(s.id)}
                       className={
                         'rounded px-1 text-[0.56rem] font-bold uppercase tracking-wide ' +
-                        (on ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500')
+                        (on ? 'bg-indigo-200 text-accent' : 'bg-surface-3 text-muted')
                       }
                       title="Add to the comparison table (up to 3)"
                     >
@@ -648,7 +648,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                     <button
                       type="button"
                       onClick={() => removeSaved(s.id)}
-                      className="text-slate-300 hover:text-rose-500"
+                      className="text-subtle hover:text-neg"
                       title="Delete scenario"
                     >
                       ✕
@@ -679,8 +679,8 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
 
       {/* ── Sensitivity: which lever moves fair value most ── */}
       {c.sensitivity.length > 0 && c.base?.perShare != null && (
-        <div className="mt-4 rounded-lg border border-gray-100 bg-slate-50/70 p-3">
-          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-gray-500">
+        <div className="mt-4 rounded-lg border border-line bg-surface-2 p-3">
+          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-muted">
             Sensitivity — one step off base {fmtPrice(c.base.perShare)}/sh
           </div>
           <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
@@ -690,19 +690,19 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
               return (
                 <div
                   key={s.key}
-                  className="flex items-baseline justify-between gap-2 rounded-md bg-white px-2.5 py-1.5"
+                  className="flex items-baseline justify-between gap-2 rounded-md bg-surface px-2.5 py-1.5"
                 >
-                  <span className="text-[0.7rem] text-gray-600">
+                  <span className="text-[0.7rem] text-muted">
                     {s.label}{' '}
-                    <span className="text-[0.62rem] text-gray-400">{fmtStep(s.step, s.unit)}</span>
+                    <span className="text-[0.62rem] text-subtle">{fmtStep(s.step, s.unit)}</span>
                   </span>
                   <span
-                    className={`text-[0.72rem] font-semibold tabular-nums ${up ? 'text-emerald-600' : 'text-rose-600'}`}
+                    className={`text-[0.72rem] font-semibold tabular-nums ${up ? 'text-pos' : 'text-neg'}`}
                   >
                     {up ? '+' : '−'}
                     {fmtPrice(Math.abs(s.delta))}
                     {pct != null && (
-                      <span className="ml-1 text-[0.6rem] font-normal text-gray-400">
+                      <span className="ml-1 text-[0.6rem] font-normal text-subtle">
                         ({up ? '+' : '−'}
                         {fmtPct(Math.abs(pct))})
                       </span>
@@ -712,7 +712,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
               )
             })}
           </div>
-          <p className="mt-1.5 text-[0.6rem] text-gray-400">
+          <p className="mt-1.5 text-[0.6rem] text-subtle">
             Each row holds the other levers fixed and nudges one by a single slider step — biggest
             mover first. A local read, not a full re-solve.
           </p>
@@ -721,9 +721,9 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
 
       {/* ── suppression reasons ── */}
       {data.applicability.reasons.length > 0 && (
-        <div className="mt-4 rounded-lg bg-slate-50 p-3">
+        <div className="mt-4 rounded-lg bg-surface-2 p-3">
           {data.applicability.reasons.map((rsn, i) => (
-            <p key={i} className="text-[0.68rem] leading-relaxed text-gray-500">
+            <p key={i} className="text-[0.68rem] leading-relaxed text-muted">
               • {rsn}
             </p>
           ))}
@@ -734,7 +734,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
       <button
         type="button"
         onClick={() => setShowWork((s) => !s)}
-        className="mt-4 text-[0.7rem] font-semibold text-gray-600 hover:text-gray-900"
+        className="mt-4 text-[0.7rem] font-semibold text-muted hover:text-ink"
       >
         {showWork ? '▾' : '▸'} Inputs & sources ({data.inputs.length})
       </button>
@@ -742,7 +742,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-[0.68rem]">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-400">
+              <tr className="border-b border-line text-left text-subtle">
                 <th className="py-1 pr-2 font-medium">Input</th>
                 <th className="py-1 pr-2 text-right font-medium">Value</th>
                 <th className="py-1 pr-2 font-medium">Source</th>
@@ -751,15 +751,15 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
             </thead>
             <tbody>
               {data.inputs.map((i) => (
-                <tr key={i.key} className="border-b border-gray-100 align-top">
-                  <td className="py-1 pr-2 text-gray-700">
+                <tr key={i.key} className="border-b border-line align-top">
+                  <td className="py-1 pr-2 text-ink">
                     <span className="mr-1 inline-block"><QualityDot status={i.quality.status} /></span>
                     {i.label}
                     {i.quality.flags.length > 0 && (
-                      <div className="text-[0.58rem] text-amber-600">{i.quality.flags[0]}</div>
+                      <div className="text-[0.58rem] text-warn">{i.quality.flags[0]}</div>
                     )}
                   </td>
-                  <td className="py-1 pr-2 text-right tabular-nums text-gray-900">
+                  <td className="py-1 pr-2 text-right tabular-nums text-ink">
                     {i.value == null
                       ? '—'
                       : i.unit === 'ratio'
@@ -770,8 +770,8 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                             ? fmtPrice(i.value)
                             : fmtMoney(i.value)}
                   </td>
-                  <td className="py-1 pr-2 text-gray-400">{sourceText(i)}</td>
-                  <td className="py-1 text-gray-400">{i.as_of_date ? fmtDate(i.as_of_date) : '—'}</td>
+                  <td className="py-1 pr-2 text-subtle">{sourceText(i)}</td>
+                  <td className="py-1 text-subtle">{i.as_of_date ? fmtDate(i.as_of_date) : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -779,7 +779,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         </div>
       )}
 
-      <p className="mt-4 text-[0.62rem] leading-relaxed text-gray-400">{data.disclaimer}</p>
+      <p className="mt-4 text-[0.62rem] leading-relaxed text-subtle">{data.disclaimer}</p>
     </section>
   )
 }

@@ -170,22 +170,22 @@ export function DeepDivePage() {
   // Breadcrumb + pager strip (always rendered, even while loading).
   const crumb = (
     <div className="flex flex-wrap items-center gap-2 text-[0.78rem]">
-      <Link to="/" className="font-semibold text-slate-500 hover:text-indigo-600">
+      <Link to="/" className="font-semibold text-muted hover:text-accent">
         ← Screener
       </Link>
-      <span className="text-gray-300">/</span>
-      <span className="text-slate-400">Securities</span>
-      <span className="text-gray-300">/</span>
-      <span className="font-semibold text-slate-800">{ticker.toUpperCase()}</span>
+      <span className="text-subtle">/</span>
+      <span className="text-subtle">Securities</span>
+      <span className="text-subtle">/</span>
+      <span className="font-semibold text-ink">{ticker.toUpperCase()}</span>
       {pager && (
-        <span className="ml-auto flex items-center gap-1.5 text-[0.7rem] text-slate-400">
+        <span className="ml-auto flex items-center gap-1.5 text-[0.7rem] text-subtle">
           Screener result {pager.index} of {pager.total}
           <button
             type="button"
             disabled={!pager.prev}
             onClick={() => pager.prev && navigate(`/securities/${pager.prev}${window.location.search}`)}
             title="Previous ticker (K)"
-            className="rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[0.68rem] text-slate-500 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40"
+            className="rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[0.68rem] text-muted hover:border-accent hover:text-accent disabled:opacity-40"
           >
             ← K
           </button>
@@ -194,7 +194,7 @@ export function DeepDivePage() {
             disabled={!pager.next}
             onClick={() => pager.next && navigate(`/securities/${pager.next}${window.location.search}`)}
             title="Next ticker (J)"
-            className="rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[0.68rem] text-slate-500 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40"
+            className="rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[0.68rem] text-muted hover:border-accent hover:text-accent disabled:opacity-40"
           >
             J →
           </button>
@@ -204,7 +204,7 @@ export function DeepDivePage() {
         type="button"
         onClick={() => setShortcutsOpen(true)}
         title="Keyboard shortcuts (?)"
-        className={`rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[0.68rem] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 ${pager ? '' : 'ml-auto'}`}
+        className={`rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[0.68rem] text-subtle hover:border-accent hover:text-accent ${pager ? '' : 'ml-auto'}`}
       >
         ?
       </button>
@@ -282,7 +282,7 @@ export function DeepDivePage() {
       {pane === 'factors' && (
         <>
           <FactorCards header={header} ticker={header.ticker} prices={prices} />
-          <p className="text-[0.72rem] text-gray-400">
+          <p className="text-[0.72rem] text-subtle">
             Cross-sectional percentile ranks within the US-listed universe (100 = top),
             as of {header.score_date ?? 'n/a'} (nightly)
             {weightStr ? ` · Weights: ${weightStr}` : ''}.
@@ -337,7 +337,7 @@ export function DeepDivePage() {
             <button
               type="button"
               onClick={() => setCompareOpen(true)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-bold text-slate-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+              className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.78rem] font-bold text-muted transition-colors hover:border-accent hover:text-accent"
             >
               Compare
             </button>
@@ -349,12 +349,12 @@ export function DeepDivePage() {
       {/* grouped pane nav — Summary | Analysis | Data | Activity */}
       <nav
         aria-label="Deep-dive sections"
-        className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-gray-200 bg-white/95 px-4 backdrop-blur-sm"
+        className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-line bg-surface px-4 backdrop-blur-sm"
       >
         <div className="flex items-center gap-4">
           {PANE_GROUPS.map((g) => (
             <div key={g.label} className="flex items-center gap-1.5">
-              <span className="mr-1 flex h-5 items-center rounded bg-slate-100 px-1.5 text-[0.66rem] font-bold uppercase tracking-[0.08em] text-slate-500">
+              <span className="mr-1 flex h-5 items-center rounded bg-surface-3 px-1.5 text-[0.66rem] font-bold uppercase tracking-[0.08em] text-muted">
                 {g.label}
               </span>
               {g.panes.map((p) => (
@@ -365,8 +365,8 @@ export function DeepDivePage() {
                   onClick={() => setPane(p.id)}
                   className={`whitespace-nowrap border-b-2 px-2.5 py-2 text-[0.78rem] transition-colors ${
                     pane === p.id
-                      ? 'border-indigo-600 font-semibold text-slate-900'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                      ? 'border-accent font-semibold text-ink'
+                      : 'border-transparent text-muted hover:text-ink'
                   }`}
                 >
                   {p.label}

@@ -64,10 +64,10 @@ export function ScoreForensicsPanel({ ticker }: { ticker: string }) {
   const noMove = movers.length === 0 && (compDelta == null || Math.abs(compDelta) < 0.3)
 
   return (
-    <section className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
+    <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
       <div className="px-4 pb-1.5 pt-3.5">
-        <div className="text-base font-bold text-gray-900">What changed</div>
-        <div className="mt-0.5 text-[0.78rem] text-gray-500">
+        <div className="text-base font-bold text-ink">What changed</div>
+        <div className="mt-0.5 text-[0.78rem] text-muted">
           {fmtShortDate(prior.score_date)} → {fmtShortDate(last.score_date)} (last two nightly
           snapshots)
         </div>
@@ -78,9 +78,9 @@ export function ScoreForensicsPanel({ ticker }: { ticker: string }) {
         {factorDeltas.map((f) => (
           <span key={f.key} className="flex items-center gap-1.5 text-[0.78rem]">
             <span className="h-2 w-2 rounded-full" style={{ background: FACTOR_TABLE[f.key].bar }} />
-            <span className="text-slate-500">{f.label}</span>
+            <span className="text-muted">{f.label}</span>
             {f.delta == null ? (
-              <span className="text-gray-300">—</span>
+              <span className="text-subtle">—</span>
             ) : (
               <span className="numeric font-bold">
                 <Delta value={f.delta} zeroDash />
@@ -91,24 +91,24 @@ export function ScoreForensicsPanel({ ticker }: { ticker: string }) {
       </div>
 
       {noMove ? (
-        <div className="border-t border-gray-100 px-4 py-3 text-[0.8rem] text-gray-500">
+        <div className="border-t border-line px-4 py-3 text-[0.8rem] text-muted">
           Scores were essentially flat between these two snapshots — no sub-metric moved
           more than a percentile.
         </div>
       ) : (
-        <div className="border-t border-gray-100 px-4 py-2.5">
-          <div className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-slate-400">
+        <div className="border-t border-line px-4 py-2.5">
+          <div className="mb-1.5 text-[0.66rem] font-bold uppercase tracking-[0.05em] text-subtle">
             Biggest sub-metric moves
           </div>
           {movers.length === 0 ? (
-            <div className="text-[0.78rem] text-gray-400">
+            <div className="text-[0.78rem] text-subtle">
               Sub-metric detail isn't available for these snapshots.
             </div>
           ) : (
             <div className="space-y-1">
               {movers.map((m) => (
                 <div key={m.key} className="flex items-center justify-between gap-3 text-[0.8rem]">
-                  <span className="flex items-center gap-1.5 text-slate-600">
+                  <span className="flex items-center gap-1.5 text-muted">
                     <span
                       className="h-1.5 w-1.5 rounded-full"
                       style={{ background: FACTOR_TABLE[m.factor].bar }}
@@ -116,7 +116,7 @@ export function ScoreForensicsPanel({ ticker }: { ticker: string }) {
                     {m.label}
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className="numeric text-[0.72rem] text-gray-400">
+                    <span className="numeric text-[0.72rem] text-subtle">
                       {m.from?.toFixed(0)} → {m.to?.toFixed(0)} pctl
                     </span>
                     <span className="numeric w-10 text-right font-bold">
@@ -129,7 +129,7 @@ export function ScoreForensicsPanel({ ticker }: { ticker: string }) {
           )}
         </div>
       )}
-      <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-[0.7rem] text-gray-400">
+      <div className="border-t border-line bg-surface-2 px-4 py-2 text-[0.7rem] text-subtle">
         Movement in our own nightly percentile ranks between runs — not a price or news
         attribution.
       </div>

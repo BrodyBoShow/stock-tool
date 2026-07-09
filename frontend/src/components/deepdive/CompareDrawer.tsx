@@ -63,13 +63,13 @@ function CompareColumn({ ticker, open, onRemove }: CompareColumnProps): JSX.Elem
   const inputs = header?.details?.inputs ?? null
 
   const tickerCell = (
-    <div className={`${CELL} gap-1 font-bold text-slate-800`}>
+    <div className={`${CELL} gap-1 font-bold text-ink`}>
       <span className="truncate">{upper}</span>
       {onRemove && (
         <button
           type="button"
           onClick={onRemove}
-          className="shrink-0 rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="shrink-0 rounded px-1 text-subtle hover:bg-surface-3 hover:text-muted"
           aria-label={`Remove ${upper}`}
         >
           ×
@@ -84,7 +84,7 @@ function CompareColumn({ ticker, open, onRemove }: CompareColumnProps): JSX.Elem
         {tickerCell}
         {ROW_LABELS.slice(1).map((label) => (
           <div key={label} className={CELL}>
-            <span className="h-5 w-12 animate-pulse rounded bg-slate-100" />
+            <span className="h-5 w-12 animate-pulse rounded bg-surface-3" />
           </div>
         ))}
       </>
@@ -96,7 +96,7 @@ function CompareColumn({ ticker, open, onRemove }: CompareColumnProps): JSX.Elem
       <>
         {tickerCell}
         {ROW_LABELS.slice(1).map((label) => (
-          <div key={label} className={`${CELL} text-slate-400`}>
+          <div key={label} className={`${CELL} text-subtle`}>
             {DASH}
           </div>
         ))}
@@ -107,7 +107,7 @@ function CompareColumn({ ticker, open, onRemove }: CompareColumnProps): JSX.Elem
   return (
     <>
       {tickerCell}
-      <div className={`${CELL} text-slate-700`}>{fmtPrice(header.last_price)}</div>
+      <div className={`${CELL} text-ink`}>{fmtPrice(header.last_price)}</div>
       <div className={CELL}>
         <RankPill value={header.composite} />
       </div>
@@ -123,9 +123,9 @@ function CompareColumn({ ticker, open, onRemove }: CompareColumnProps): JSX.Elem
       <div className={CELL}>
         <RankPill value={header.momentum_pctl} />
       </div>
-      <div className={`${CELL} text-slate-700`}>{fmtInput('pe', inputs?.pe)}</div>
-      <div className={`${CELL} text-slate-700`}>{fmtInput('fcf_yield', inputs?.fcf_yield)}</div>
-      <div className={`${CELL} text-slate-700`}>{fmtInput('debt_to_equity', inputs?.debt_to_equity)}</div>
+      <div className={`${CELL} text-ink`}>{fmtInput('pe', inputs?.pe)}</div>
+      <div className={`${CELL} text-ink`}>{fmtInput('fcf_yield', inputs?.fcf_yield)}</div>
+      <div className={`${CELL} text-ink`}>{fmtInput('debt_to_equity', inputs?.debt_to_equity)}</div>
     </>
   )
 }
@@ -182,24 +182,24 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
 
       {/* Panel */}
       <div
-        className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-[480px] overflow-y-auto bg-white shadow-2xl transition-transform duration-300"
+        className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-[480px] overflow-y-auto bg-surface shadow-2xl transition-transform duration-300"
         style={{ transform: open ? 'translateX(0)' : 'translateX(100%)' }}
         role="dialog"
         aria-modal="true"
         aria-label="Compare securities"
       >
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-white p-4">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-surface p-4">
           <div>
-            <div className="text-sm font-semibold text-slate-800">Compare</div>
-            <div className="text-[0.7rem] text-slate-500">
+            <div className="text-sm font-semibold text-ink">Compare</div>
+            <div className="text-[0.7rem] text-muted">
               Composite, factors and key fundamentals side-by-side
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-2 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded px-2 py-0.5 text-subtle hover:bg-surface-3 hover:text-muted"
             aria-label="Close compare drawer"
           >
             ✕
@@ -217,13 +217,13 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
             }}
             disabled={full}
             placeholder="Add ticker (max 3)…"
-            className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-[0.78rem] disabled:bg-slate-50 disabled:text-slate-400"
+            className="w-full rounded-lg border border-line px-3 py-1.5 text-[0.78rem] disabled:bg-surface-2 disabled:text-subtle"
           />
           {full && (
-            <div className="mt-1 text-[0.66rem] text-slate-400">Max 3 comparisons</div>
+            <div className="mt-1 text-[0.66rem] text-subtle">Max 3 comparisons</div>
           )}
           {!full && q.length >= 1 && results && results.rows.length > 0 && (
-            <div className="mt-2 overflow-hidden rounded-lg border border-slate-100">
+            <div className="mt-2 overflow-hidden rounded-lg border border-line">
               {results.rows.slice(0, 6).map((row) => {
                 const t = row.ticker.toUpperCase()
                 const taken = t === base || added.includes(t)
@@ -233,10 +233,10 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
                     type="button"
                     onClick={() => addTicker(row.ticker)}
                     disabled={taken}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[0.74rem] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[0.74rem] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <span className="font-semibold text-slate-800">{t}</span>
-                    <span className="min-w-0 flex-1 truncate text-slate-500">
+                    <span className="font-semibold text-ink">{t}</span>
+                    <span className="min-w-0 flex-1 truncate text-muted">
                       {row.name ?? ''}
                     </span>
                   </button>
@@ -254,7 +254,7 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
               {ROW_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="flex h-9 items-center border-t border-slate-50 pr-2 text-[0.72rem] font-medium text-slate-500"
+                  className="flex h-9 items-center border-t border-slate-50 pr-2 text-[0.72rem] font-medium text-muted"
                 >
                   {label}
                 </div>
@@ -276,14 +276,14 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
             ))}
           </div>
           {added.length === 0 && (
-            <div className="mt-3 text-[0.72rem] text-slate-400">
+            <div className="mt-3 text-[0.72rem] text-subtle">
               Search above to add up to 3 tickers.
             </div>
           )}
         </div>
 
         {/* Footer note */}
-        <div className="p-4 text-[0.66rem] text-slate-400">
+        <div className="p-4 text-[0.66rem] text-subtle">
           Factors are universe percentiles (100 = top). Fundamentals from the latest nightly
           snapshot.
         </div>

@@ -30,7 +30,7 @@ function BulletList({ items }: { items: string[] }) {
   return (
     <ul className="mt-1 space-y-1.5">
       {items.map((it, i) => (
-        <li key={i} className="flex gap-2 text-[0.86rem] leading-relaxed text-slate-800">
+        <li key={i} className="flex gap-2 text-[0.86rem] leading-relaxed text-ink">
           <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-slate-400" />
           <span>{it}</span>
         </li>
@@ -43,7 +43,7 @@ function SummaryBody({ summary, docUrl }: { summary: FilingSummary; docUrl: stri
   const s = summary.summary
   return (
     <div className="space-y-4">
-      <p className="text-[0.9rem] leading-relaxed text-slate-700">{s.overview}</p>
+      <p className="text-[0.9rem] leading-relaxed text-ink">{s.overview}</p>
       <div>
         <div className={LABEL}>What changed this year</div>
         <BulletList items={s.what_changed} />
@@ -56,14 +56,14 @@ function SummaryBody({ summary, docUrl }: { summary: FilingSummary; docUrl: stri
         <div className={LABEL}>Key metrics</div>
         <BulletList items={s.key_metrics} />
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-3 text-[0.7rem] text-gray-400">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3 text-[0.7rem] text-subtle">
         <span>
           AI-generated from the {summary.form} ({summary.accession_no}) via{' '}
           {summary.model ?? 'Claude'} · {fmtDate(summary.generated_at.slice(0, 10))}
         </span>
         {docUrl && (
           <a href={docUrl} target="_blank" rel="noopener noreferrer"
-            className="font-semibold text-indigo-600 hover:underline">
+            className="font-semibold text-accent hover:underline">
             View filing on SEC ↗
           </a>
         )}
@@ -76,22 +76,22 @@ function TopicCard({ t }: { t: FilingTopicAnswer }) {
   return (
     <div
       className={`rounded-xl border p-3.5 ${
-        t.disclosed ? 'border-gray-200 bg-white' : 'border-dashed border-gray-200 bg-zinc-50'
+        t.disclosed ? 'border-line bg-surface' : 'border-dashed border-line bg-zinc-50'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="text-[0.82rem] font-bold text-gray-900">{t.topic}</div>
+        <div className="text-[0.82rem] font-bold text-ink">{t.topic}</div>
         <span
           className={`flex-none rounded-full px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em] ${
-            t.disclosed ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
+            t.disclosed ? 'bg-pos-soft text-pos' : 'bg-surface-3 text-subtle'
           }`}
         >
           {t.disclosed ? 'disclosed' : 'not disclosed'}
         </span>
       </div>
-      <p className="mt-1.5 text-[0.85rem] leading-relaxed text-slate-800">{t.finding}</p>
+      <p className="mt-1.5 text-[0.85rem] leading-relaxed text-ink">{t.finding}</p>
       {t.evidence && (
-        <p className="mt-2 border-l-2 border-indigo-200 pl-2.5 text-[0.76rem] italic leading-relaxed text-slate-500">
+        <p className="mt-2 border-l-2 border-accent pl-2.5 text-[0.76rem] italic leading-relaxed text-muted">
           {t.evidence}
         </p>
       )}
@@ -103,7 +103,7 @@ function AnswersBody({ data }: { data: FilingAnswers }) {
   const a = data.answers
   return (
     <div className="space-y-4">
-      <p className="text-[0.9rem] font-medium leading-relaxed text-gray-900">
+      <p className="text-[0.9rem] font-medium leading-relaxed text-ink">
         {a.executive_read}
       </p>
       <div className="grid gap-3 md:grid-cols-2">
@@ -116,7 +116,7 @@ function AnswersBody({ data }: { data: FilingAnswers }) {
           <div className={LABEL}>Notable disclosures</div>
           <ul className="mt-1 space-y-1.5">
             {a.notable_disclosures.map((n, i) => (
-              <li key={i} className="flex gap-2 text-[0.85rem] leading-relaxed text-slate-800">
+              <li key={i} className="flex gap-2 text-[0.85rem] leading-relaxed text-ink">
                 <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-slate-400" />
                 <span>{n}</span>
               </li>
@@ -125,8 +125,8 @@ function AnswersBody({ data }: { data: FilingAnswers }) {
         </div>
       )}
       {a.unanswered.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5">
-          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-amber-700">
+        <div className="rounded-xl border border-warn bg-warn-soft p-3.5">
+          <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-warn">
             Not answerable from the filings
           </div>
           <ul className="mt-1 space-y-1.5">
@@ -139,7 +139,7 @@ function AnswersBody({ data }: { data: FilingAnswers }) {
           </ul>
         </div>
       )}
-      <p className="border-t border-slate-100 pt-3 text-[0.7rem] text-gray-400">
+      <p className="border-t border-line pt-3 text-[0.7rem] text-subtle">
         Answered strictly from the {data.form} ({data.accession_no}) — business, risk
         factors, MD&A, market risk{data.form === '20-F' ? '' : ' + latest 10-Q'} — via{' '}
         {data.model ?? 'Claude'} · {fmtDate(data.generated_at.slice(0, 10))} — grounded
@@ -160,7 +160,7 @@ function NoFiling({
 }) {
   if (context === 'diligence') {
     return (
-      <p className="text-[0.85rem] text-gray-400">
+      <p className="text-[0.85rem] text-subtle">
         {form
           ? `Deep diligence reads full 10-K / 20-F annual reports; ${ticker} files ${form}. Use “All SEC filings” below to AI-summarize a specific filing.`
           : `No 10-K or 20-F annual report on file for ${ticker} to analyze.`}
@@ -168,7 +168,7 @@ function NoFiling({
     )
   }
   return (
-    <p className="text-[0.85rem] text-gray-400">
+    <p className="text-[0.85rem] text-subtle">
       No annual report on file for {ticker} to summarize — browse “All SEC filings”
       below to read a specific filing.
     </p>
@@ -195,7 +195,7 @@ function TabButton({ active, onClick, children }: {
       onClick={onClick}
       className={
         'rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ' +
-        (active ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100')
+        (active ? 'bg-slate-800 text-white' : 'text-muted hover:bg-surface-3')
       }
     >
       {children}
@@ -273,13 +273,13 @@ export function FilingIntelligencePanel({
         : null
 
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-start gap-3">
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="mt-0.5 shrink-0 text-gray-400 hover:text-slate-500"
+            className="mt-0.5 shrink-0 text-subtle hover:text-muted"
             aria-label={collapsed ? 'Expand' : 'Collapse'}
           >
             <svg className={`h-4 w-4 transition-transform ${collapsed ? '-rotate-90' : ''}`}
@@ -288,9 +288,9 @@ export function FilingIntelligencePanel({
             </svg>
           </button>
           <div>
-            <div className="text-base font-bold text-gray-900">Filing intelligence</div>
+            <div className="text-base font-bold text-ink">Filing intelligence</div>
             {!collapsed && (
-              <div className="mt-0.5 text-[0.78rem] text-gray-500">
+              <div className="mt-0.5 text-[0.78rem] text-muted">
                 {tab === 'overview'
                   ? `Fast AI summary of the latest ${summaryForm} (MD&A + risk factors) — context, not advice.`
                   : `Analyst diligence from the latest ${qaForm} (business, risk, MD&A, market risk)${qaForm === '20-F' ? '' : ' + 10-Q'} — hedging, debt, commitments, concentration. Context, not advice.`}
@@ -303,7 +303,7 @@ export function FilingIntelligencePanel({
             type="button"
             onClick={regen.onClick}
             disabled={regen.disabled}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.78rem] font-semibold text-muted hover:bg-surface-2 disabled:opacity-50"
           >
             {regen.label}
           </button>
@@ -312,7 +312,7 @@ export function FilingIntelligencePanel({
 
       {!collapsed && (
         <>
-          <div className="mt-3 inline-flex gap-1 rounded-xl bg-slate-50 p-1">
+          <div className="mt-3 inline-flex gap-1 rounded-xl bg-surface-2 p-1">
             <TabButton active={tab === 'overview'} onClick={() => setTab('overview')}>Overview</TabButton>
             <TabButton active={tab === 'diligence'} onClick={() => setTab('diligence')}>Diligence</TabButton>
           </div>
@@ -320,32 +320,32 @@ export function FilingIntelligencePanel({
           <div className="mt-4">
             {tab === 'overview' ? (
               sum.isPending ? (
-                <p className="text-[0.85rem] text-gray-400">Loading…</p>
+                <p className="text-[0.85rem] text-subtle">Loading…</p>
               ) : sum.error ? (
-                <p className="text-[0.85rem] text-red-700">Couldn’t load summary status.</p>
+                <p className="text-[0.85rem] text-neg">Couldn’t load summary status.</p>
               ) : !sum.data?.has_filing ? (
                 <NoFiling ticker={ticker} context="overview" />
               ) : sum.data.summary ? (
                 <SummaryBody summary={sum.data.summary} docUrl={docUrl} />
               ) : sumGen.isError ? (
-                <div className="rounded-xl border border-dashed border-red-200 bg-[#fff7f7] p-5 text-center">
-                  <p className="text-[0.85rem] font-semibold text-red-700">
+                <div className="rounded-xl border border-dashed border-neg-border bg-[var(--neg-soft)] p-5 text-center">
+                  <p className="text-[0.85rem] font-semibold text-neg">
                     Couldn’t generate the summary
                   </p>
-                  <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-gray-400">
+                  <p className="mx-auto mt-1 max-w-md text-[0.8rem] text-subtle">
                     {sumGen.error instanceof ApiError
                       ? sumGen.error.message
                       : 'Something went wrong reaching the model or the filing.'}
                   </p>
                   <button type="button" onClick={() => sumGen.mutate()} disabled={sumGen.isPending}
-                    className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-1.5 text-[0.82rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                    className="mt-3 inline-flex items-center rounded-lg bg-accent-solid px-4 py-1.5 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-60">
                     {sumGen.isPending ? 'Generating…' : 'Try again'}
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-[#fafbff] p-5">
-                  <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-                  <p className="text-[0.85rem] text-slate-600">
+                <div className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)] p-5">
+                  <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                  <p className="text-[0.85rem] text-muted">
                     Reading {ticker}’s latest {summaryForm}
                     {sum.data.latest_filed_date ? ` (filed ${fmtDate(sum.data.latest_filed_date)})` : ''}{' '}
                     and writing the summary — up to a minute.
@@ -353,38 +353,38 @@ export function FilingIntelligencePanel({
                 </div>
               )
             ) : qa.isPending ? (
-              <p className="text-[0.85rem] text-gray-400">Loading…</p>
+              <p className="text-[0.85rem] text-subtle">Loading…</p>
             ) : qa.error ? (
-              <p className="text-[0.85rem] text-red-700">Couldn’t load filing-analysis status.</p>
+              <p className="text-[0.85rem] text-neg">Couldn’t load filing-analysis status.</p>
             ) : !qa.data.has_filing ? (
               <NoFiling ticker={ticker} context="diligence" form={qa.data.latest_form} />
             ) : qa.data.answers ? (
               <AnswersBody data={qa.data.answers} />
             ) : qaGen.isPending ? (
-              <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-[#fafbff] p-5">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-                <p className="text-[0.85rem] text-slate-600">
+              <div className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)] p-5">
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                <p className="text-[0.85rem] text-muted">
                   Reading {ticker}’s {qaForm}
                   {qaForm === '20-F' ? '' : ' and 10-Q'} and working through the diligence
                   framework — this is the deep one, give it up to a minute.
                 </p>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-indigo-200 bg-[#fafbff] p-5 text-center">
-                <p className="text-[0.88rem] font-semibold text-slate-800">
+              <div className="rounded-xl border border-dashed border-accent bg-[var(--surface)] p-5 text-center">
+                <p className="text-[0.88rem] font-semibold text-ink">
                   Answer the open questions from the filings
                 </p>
-                <p className="mx-auto mt-1 max-w-lg text-[0.8rem] text-slate-500">
+                <p className="mx-auto mt-1 max-w-lg text-[0.8rem] text-muted">
                   Runs a deep, citation-grounded read of {ticker}’s latest {qaForm}
                   {qaForm === '20-F' ? '' : ' and 10-Q'} across nine diligence topics — the
                   things the factor score can’t see. Cached after the first run.
                 </p>
                 <button type="button" onClick={() => qaGen.mutate()} disabled={qaGen.isPending}
-                  className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                  className="mt-3 inline-flex items-center rounded-lg bg-accent-solid px-4 py-2 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-60">
                   Run deep filing analysis
                 </button>
                 {qaGen.isError && (
-                  <p className="mt-2 text-[0.78rem] text-red-700">
+                  <p className="mt-2 text-[0.78rem] text-neg">
                     {qaGen.error instanceof ApiError
                       ? qaGen.error.message
                       : 'Something went wrong reaching the model or the filing.'}

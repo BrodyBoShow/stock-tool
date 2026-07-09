@@ -30,16 +30,16 @@ export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: ()
       aria-label="Keyboard shortcuts"
     >
       <div
-        className="w-[420px] max-w-[92vw] rounded-xl bg-white p-5 shadow-2xl"
+        className="w-[420px] max-w-[92vw] rounded-xl bg-surface p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-[0.9rem] font-bold text-slate-900">Keyboard shortcuts</h3>
+          <h3 className="text-[0.9rem] font-bold text-ink">Keyboard shortcuts</h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded px-1.5 text-slate-400 hover:text-slate-700"
+            className="rounded px-1.5 text-subtle hover:text-ink"
           >
             ✕
           </button>
@@ -48,15 +48,15 @@ export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: ()
           {rows.map(([keys, desc]) => (
             <li key={keys} className="flex items-center gap-3 text-[0.78rem]">
               <span className="w-28 shrink-0">
-                <kbd className="rounded border border-gray-300 border-b-2 bg-white px-1.5 py-0.5 font-mono text-[0.66rem] text-slate-600">
+                <kbd className="rounded border border-line border-b-2 bg-surface px-1.5 py-0.5 font-mono text-[0.66rem] text-muted">
                   {keys}
                 </kbd>
               </span>
-              <span className="text-slate-600">{desc}</span>
+              <span className="text-muted">{desc}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-[0.66rem] text-slate-400">
+        <p className="mt-3 text-[0.66rem] text-subtle">
           Shortcuts are suppressed while typing in a field.
         </p>
       </div>

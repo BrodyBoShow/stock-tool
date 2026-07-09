@@ -45,53 +45,53 @@ export function WyckoffReadPanel({
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-2">
       {/* evidence rows */}
-      <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
-        <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-slate-600">
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
+        <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-muted">
           Wyckoff read · evidence
         </div>
         {narration.rows.length === 0 ? (
-          <p className="mt-2 text-[0.8rem] text-slate-500">{analysis.summary}</p>
+          <p className="mt-2 text-[0.8rem] text-muted">{analysis.summary}</p>
         ) : (
           <table className="mt-2 w-full text-[0.78rem]">
             <tbody>
               {narration.rows.map((r, i) => (
                 <tr key={i} className="border-b border-[#eef1f6] last:border-0">
-                  <td className="whitespace-nowrap py-1 pr-3 align-top font-semibold text-slate-800">{r.term}</td>
-                  <td className="py-1 pr-3 align-top text-slate-500">{r.meaning}</td>
-                  <td className="whitespace-nowrap py-1 text-right align-top font-medium tabular-nums text-slate-900">{r.value}</td>
+                  <td className="whitespace-nowrap py-1 pr-3 align-top font-semibold text-ink">{r.term}</td>
+                  <td className="py-1 pr-3 align-top text-muted">{r.meaning}</td>
+                  <td className="whitespace-nowrap py-1 text-right align-top font-medium tabular-nums text-ink">{r.value}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-[0.7rem] text-gray-400">{narration.caveat}</p>
-        <p className="mt-1 text-[0.72rem] text-slate-600">
+        <p className="mt-2 text-[0.7rem] text-subtle">{narration.caveat}</p>
+        <p className="mt-1 text-[0.72rem] text-muted">
           <span className="font-semibold">Watch:</span> {narration.watch}
         </p>
       </div>
 
       {/* walk-forward grader */}
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="rounded-xl border border-line bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-slate-600">
+          <div className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-muted">
             Signal track record · walk-forward
           </div>
           <button
             type="button"
             onClick={runGrade}
             disabled={grading}
-            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[0.72rem] font-semibold text-indigo-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+            className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[0.72rem] font-semibold text-accent transition-colors hover:bg-surface-2 disabled:opacity-60"
           >
             {grading ? 'Grading…' : grade ? 'Re-run' : 'Grade signals'}
           </button>
         </div>
         {!grade ? (
-          <p className="mt-2 text-[0.78rem] text-slate-500">
+          <p className="mt-2 text-[0.78rem] text-muted">
             Replays each bar using only prior data, fires the Wyckoff signals point-in-time, then
             grades them on what happened next — no look-ahead. This name only, small sample.
           </p>
         ) : grade.overall.signals === 0 ? (
-          <p className="mt-2 text-[0.78rem] text-slate-500">
+          <p className="mt-2 text-[0.78rem] text-muted">
             No gradeable signals fired across this history.
           </p>
         ) : (
@@ -105,7 +105,7 @@ export function WyckoffReadPanel({
               />
               <Stat label="Avg fwd return" value={fmtSignedPct(grade.overall.avgFwdReturn)} />
             </div>
-            <div className="mt-2 text-[0.72rem] text-slate-500">
+            <div className="mt-2 text-[0.72rem] text-muted">
               Target-before-stop:{' '}
               {grade.overall.tbsResolved
                 ? `${Math.round(grade.overall.tbsRate * 100)}% of ${grade.overall.tbsResolved} resolved`
@@ -113,7 +113,7 @@ export function WyckoffReadPanel({
             </div>
             <table className="mt-2 w-full text-[0.74rem]">
               <thead>
-                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-slate-400">
+                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-subtle">
                   <th className="py-1">Signal</th>
                   <th className="py-1">N</th>
                   <th className="py-1">Hit</th>
@@ -123,7 +123,7 @@ export function WyckoffReadPanel({
               <tbody>
                 {Object.entries(grade.byType).map(([t, s]) => (
                   <tr key={t} className="border-t border-slate-50">
-                    <td className="py-1 font-semibold text-slate-800">{t}</td>
+                    <td className="py-1 font-semibold text-ink">{t}</td>
                     <td className="py-1 tabular-nums">{s.signals}</td>
                     <td className="py-1 tabular-nums">{Math.round(s.fwdRate * 100)}%</td>
                     <td className="py-1 tabular-nums">{fmtSignedPct(s.avgFwdReturn)}</td>
@@ -131,7 +131,7 @@ export function WyckoffReadPanel({
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-[0.68rem] text-gray-400">
+            <p className="mt-2 text-[0.68rem] text-subtle">
               Walk-forward, no look-ahead · one ticker, small sample — directional, not proof.
             </p>
           </div>

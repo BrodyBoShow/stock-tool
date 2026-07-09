@@ -13,7 +13,7 @@ type FactorEntry = {
 function WaterfallBar({ entry, maxContrib }: { entry: FactorEntry; maxContrib: number }) {
   const { bg, fg } = rankColor(entry.pctl)
   const barPct = maxContrib > 0 ? (entry.contribution / maxContrib) * 100 : 0
-  const color = FACTOR_TABLE[entry.key as keyof typeof FACTOR_TABLE]?.bar ?? '#64748b'
+  const color = FACTOR_TABLE[entry.key as keyof typeof FACTOR_TABLE]?.bar ?? 'var(--muted)'
 
   return (
     <div className="flex items-center gap-3">
@@ -29,7 +29,7 @@ function WaterfallBar({ entry, maxContrib }: { entry: FactorEntry; maxContrib: n
           />
           {entry.label}
         </span>
-        <span className="ml-1 text-[0.7rem] text-gray-400">
+        <span className="ml-1 text-[0.7rem] text-subtle">
           {(entry.weight * 100).toFixed(0)}%
         </span>
       </div>
@@ -44,13 +44,13 @@ function WaterfallBar({ entry, maxContrib }: { entry: FactorEntry; maxContrib: n
 
       {/* Contribution bar */}
       <div className="flex flex-1 items-center gap-2">
-        <div className="relative flex-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="relative flex-1 h-2.5 overflow-hidden rounded-full bg-surface-3">
           <div
             className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
             style={{ width: `${barPct}%`, background: color, opacity: 0.8 }}
           />
         </div>
-        <span className="w-10 shrink-0 text-right text-[0.78rem] font-bold tabular-nums text-gray-700">
+        <span className="w-10 shrink-0 text-right text-[0.78rem] font-bold tabular-nums text-ink">
           +{entry.contribution.toFixed(1)}
         </span>
       </div>
@@ -91,16 +91,16 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
   if (composite === null && entries.every((e) => e.pctl === null)) return null
 
   return (
-    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <div className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-gray-900">Score breakdown</div>
-          <div className="mt-0.5 text-[0.78rem] text-gray-500">
+          <div className="text-base font-bold text-ink">Score breakdown</div>
+          <div className="mt-0.5 text-[0.78rem] text-muted">
             Composite = Σ (factor weight × percentile rank)
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[0.78rem] text-gray-400">Composite</span>
+          <span className="text-[0.78rem] text-subtle">Composite</span>
           <span
             className="rounded-lg px-3 py-1 text-[1.1rem] font-extrabold tabular-nums"
             style={{ background: compBg, color: compFg }}
@@ -117,9 +117,9 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
       </div>
 
       {/* Sum check */}
-      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
-        <div className="flex-1 border-t-2 border-dashed border-gray-200" />
-        <span className="text-[0.72rem] text-gray-400">
+      <div className="mt-4 flex items-center gap-2 border-t border-line pt-3">
+        <div className="flex-1 border-t-2 border-dashed border-line" />
+        <span className="text-[0.72rem] text-subtle">
           {entries.map((e) => `${e.label.slice(0, 1)} ${(e.weight * 100).toFixed(0)}%`).join(' · ')} ·{' '}
           bar = weighted contribution
         </span>

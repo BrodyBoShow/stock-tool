@@ -80,11 +80,11 @@ export function FundamentalsTable({
 
   if (fundamentals.length === 0) {
     return (
-      <div className="rounded-card border border-blue-200 bg-blue-50 p-5 shadow-card">
-        <div className="text-sm font-bold text-blue-700">
+      <div className="rounded-card border border-accent bg-accent-soft p-5 shadow-card">
+        <div className="text-sm font-bold text-accent">
           No fundamental data available for {ticker}
         </div>
-        <p className="mt-1 text-[0.82rem] text-blue-800">
+        <p className="mt-1 text-[0.82rem] text-accent">
           This security has no XBRL filings yet (likely a recent spinoff or IPO).
           Metrics will populate automatically once filings are ingested by the
           weekly pipeline.
@@ -94,11 +94,11 @@ export function FundamentalsTable({
   }
 
   return (
-    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-gray-900">
+    <div className="rounded-card border border-line bg-surface p-5 shadow-card">
+      <div className="text-base font-bold text-ink">
         Fundamental metrics — point-in-time history
       </div>
-      <div className="mt-0.5 text-[0.78rem] text-gray-500">
+      <div className="mt-0.5 text-[0.78rem] text-muted">
         Values as known at each filing date (point-in-time correct — restatements
         apply forward only, never backward). TTM = trailing twelve months. Showing
         the eight most recent filing dates, oldest → newest.
@@ -107,22 +107,22 @@ export function FundamentalsTable({
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500">
+            <tr className="border-b border-line bg-surface-2">
+              <th className="whitespace-nowrap px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-muted">
                 Metric
               </th>
               {dates.map((d) => (
                 <th
                   key={d}
                   title={fmtDate(d)}
-                  className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500"
+                  className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-muted"
                 >
                   {fmtMonthYear(d)}
                 </th>
               ))}
               <th
                 title="Per-metric trend across the shown periods (oldest → newest)"
-                className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500"
+                className="whitespace-nowrap px-3 py-2 text-right text-[0.68rem] font-bold uppercase tracking-[0.06em] text-muted"
               >
                 Trend
               </th>
@@ -143,10 +143,10 @@ export function FundamentalsTable({
                   const last = series[series.length - 1]
                   sparkColor =
                     last === first
-                      ? '#94a3b8'
+                      ? 'var(--subtle)'
                       : last > first === higher
-                        ? '#16a34a'
-                        : '#dc2626'
+                        ? 'var(--pos-strong)'
+                        : 'var(--neg)'
                 }
                 const label = METRIC_LABELS[metric] ?? metric
                 const sparkTitle =
@@ -154,8 +154,8 @@ export function FundamentalsTable({
                     ? `${label}: ${fmtMetric(metric, series[0])} → ${fmtMetric(metric, series[series.length - 1])}`
                     : `${label}: oldest → newest filing`
                 return (
-                <tr key={metric} className="border-b border-gray-100">
-                  <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-gray-700">
+                <tr key={metric} className="border-b border-line">
+                  <td className="whitespace-nowrap px-3 py-2 text-[0.82rem] font-semibold text-ink">
                     {label}
                     {metric === 'roic' && roicIsProxy && (
                       <InfoTip text="For issuers without an operating structure (e.g. preferreds), ROIC is reported as ROA (net income ÷ total assets)." />
@@ -185,7 +185,7 @@ export function FundamentalsTable({
                     return (
                       <td
                         key={d}
-                        className="whitespace-nowrap px-3 py-2 text-right text-[0.82rem] text-gray-900 tabular-nums"
+                        className="whitespace-nowrap px-3 py-2 text-right text-[0.82rem] text-ink tabular-nums"
                         style={tint ? { background: tint } : undefined}
                       >
                         {cell}
@@ -211,7 +211,7 @@ export function FundamentalsTable({
         </table>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-gray-500">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-muted">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(16,185,129,0.5)' }} />
           stronger
@@ -220,7 +220,7 @@ export function FundamentalsTable({
           <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(239,68,68,0.45)' }} />
           weaker
         </span>
-        <span className="text-gray-400">
+        <span className="text-subtle">
           — each cell shaded against that metric’s own range over these periods
           (green = the better direction for the metric); a quick read of each
           metric’s trajectory, not a cross-company score. The <b>Trend</b>{' '}
@@ -230,7 +230,7 @@ export function FundamentalsTable({
       </div>
 
       {showFinancialNa && (
-        <div className="mt-3 space-y-1 text-[0.72rem] text-gray-400">
+        <div className="mt-3 space-y-1 text-[0.72rem] text-subtle">
           <p>
             * Not meaningful for banks / insurers / REITs — these metrics assume a
             non-financial operating model.

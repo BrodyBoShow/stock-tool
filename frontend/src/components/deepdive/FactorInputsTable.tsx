@@ -71,7 +71,7 @@ const VALUE_NA_REASON =
   'and absent from the XBRL companyfacts API.'
 
 const TH =
-  'px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-gray-500'
+  'px-3 py-2 text-left text-[0.68rem] font-bold uppercase tracking-[0.06em] text-muted'
 const TD = 'px-3 py-2 text-[0.82rem]'
 
 function pctlOf(header: SecurityHeader, key: FactorKey): number | null {
@@ -100,24 +100,24 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
   const factors = Object.keys(FACTOR_DEFS) as Array<keyof typeof FACTOR_DEFS>
 
   return (
-    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-gray-900">Sub-metric detail</div>
-      <div className="mt-0.5 text-[0.78rem] text-gray-500">
+    <div className="rounded-card border border-line bg-surface p-5 shadow-card">
+      <div className="text-base font-bold text-ink">Sub-metric detail</div>
+      <div className="mt-0.5 text-[0.78rem] text-muted">
         The raw inputs behind each factor, with their own percentile ranks within
         the universe.
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-gray-500">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.68rem] text-muted">
         <span className="flex items-center gap-1.5">
           <Swatch color="rgba(16,185,129,0.5)" /> Strong (rank ≥ 67)
         </span>
         <span className="flex items-center gap-1.5">
-          <Swatch color="#e2e8f0" /> Middle
+          <Swatch color="var(--border)" /> Middle
         </span>
         <span className="flex items-center gap-1.5">
           <Swatch color="rgba(239,68,68,0.45)" /> Weak (rank ≤ 33)
         </span>
-        <span className="text-gray-400">
+        <span className="text-subtle">
           — direction-adjusted percentile within the US-listed universe, so green is always good
         </span>
       </div>
@@ -125,7 +125,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
+            <tr className="border-b border-line bg-surface-2">
               <th className={TH}>Factor</th>
               <th className={TH}>Metric</th>
               <th className={`${TH} text-right`}>Value</th>
@@ -138,7 +138,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
               const factorV = pctlOf(header, factor)
               const color = FACTOR_TABLE[factor].bar
               const dot = (
-                <span className="inline-flex items-center text-[0.78rem] font-bold text-gray-700">
+                <span className="inline-flex items-center text-[0.78rem] font-bold text-ink">
                   <span
                     className="mr-1.5 inline-block h-2 w-2 rounded-full"
                     style={{ background: color }}
@@ -151,12 +151,12 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                 const reason =
                   factor === 'value' ? VALUE_NA_REASON : 'Factor data unavailable.'
                 return (
-                  <tr key={factor} className="border-b border-gray-100 align-top">
+                  <tr key={factor} className="border-b border-line align-top">
                     <td className={TD}>{dot}</td>
-                    <td className={`${TD} italic text-gray-400`}>
+                    <td className={`${TD} italic text-subtle`}>
                       {factor.charAt(0).toUpperCase() + factor.slice(1)} factor n/a
                     </td>
-                    <td className={`${TD} text-[0.75rem] text-gray-400`} colSpan={3}>
+                    <td className={`${TD} text-[0.75rem] text-subtle`} colSpan={3}>
                       {reason}
                     </td>
                   </tr>
@@ -176,7 +176,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                   {dot}
                   {cov.present <= 1 && (
                     <div
-                      className="text-[0.64rem] font-semibold uppercase tracking-wide text-amber-600"
+                      className="text-[0.64rem] font-semibold uppercase tracking-wide text-warn"
                       title={
                         `This factor rests on ${cov.present} core sub-metric` +
                         `${cov.present === 1 ? '' : 's'} in this snapshot — read the rank as ` +
@@ -188,7 +188,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                   )}
                   {caption && (
                     <div
-                      className="text-[0.66rem] font-normal leading-snug text-gray-400"
+                      className="text-[0.66rem] font-normal leading-snug text-subtle"
                       title="Relative to this factor's other metrics — what moved the score, not the price."
                     >
                       {caption}
@@ -200,21 +200,21 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                 const raw = inputs[metricKey]
                 const missing = raw === null || raw === undefined
                 return (
-                  <tr key={`${factor}-${metricKey}`} className="border-b border-gray-100">
+                  <tr key={`${factor}-${metricKey}`} className="border-b border-line">
                     <td className={`${TD} align-top`}>{i === 0 ? factorMeta : null}</td>
-                    <td className={`${TD} text-gray-700`}>
+                    <td className={`${TD} text-ink`}>
                       {INPUT_LABELS[metricKey] ?? metricKey}
                     </td>
                     <td className={`${TD} text-right font-semibold tabular-nums`}>
                       {missing ? (
                         <span
-                          className="cursor-help font-medium text-gray-400 underline decoration-dotted decoration-slate-300 underline-offset-2"
+                          className="cursor-help font-medium text-subtle underline decoration-dotted decoration-slate-300 underline-offset-2"
                           title={METRIC_NA_REASON[metricKey] ?? METRIC_NA_REASON_FALLBACK}
                         >
                           n/a
                         </span>
                       ) : (
-                        <span className="text-gray-900">
+                        <span className="text-ink">
                           {fmtInput(metricKey, raw, metricKey === 'roic' && roicIsProxy)}
                         </span>
                       )}
@@ -222,7 +222,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
                     <td className={`${TD} text-right`}>
                       <RankPill rank={subPctls[metricKey]} />
                     </td>
-                    <td className={`${TD} text-gray-500`}>
+                    <td className={`${TD} text-muted`}>
                       {direction === 'higher' ? '↑ higher' : '↓ lower'}
                     </td>
                   </tr>
@@ -234,7 +234,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
       </div>
 
       {(roicIsProxy || momentumBasis) && (
-        <div className="mt-3 space-y-1 text-[0.72rem] text-gray-400">
+        <div className="mt-3 space-y-1 text-[0.72rem] text-subtle">
           {roicIsProxy && (
             <p>
               * ROIC shown as ROA proxy (net income ÷ total assets) — this company
@@ -252,7 +252,7 @@ export function FactorInputsTable({ header }: { header: SecurityHeader }) {
         </div>
       )}
       {Object.keys(inputs).length === 0 && (
-        <p className="mt-3 text-[0.78rem] text-gray-400">
+        <p className="mt-3 text-[0.78rem] text-subtle">
           No factor input detail available for this security. {DASH}
         </p>
       )}

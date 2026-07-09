@@ -28,10 +28,10 @@ function fmtMonth(iso: string): string {
 }
 
 const DIRECTION_STYLE: Record<string, { color: string; verb: string }> = {
-  declining: { color: '#dc2626', verb: 'forecast to fall' },
-  rising: { color: '#16a34a', verb: 'forecast to rise' },
-  flat: { color: '#64748b', verb: 'forecast roughly flat' },
-  unknown: { color: '#64748b', verb: 'forecast' },
+  declining: { color: 'var(--neg)', verb: 'forecast to fall' },
+  rising: { color: 'var(--pos-strong)', verb: 'forecast to rise' },
+  flat: { color: 'var(--muted)', verb: 'forecast roughly flat' },
+  unknown: { color: 'var(--muted)', verb: 'forecast' },
 }
 
 function BackdropRow({ b }: { b: CommodityBackdrop }) {
@@ -39,7 +39,7 @@ function BackdropRow({ b }: { b: CommodityBackdrop }) {
   const values = b.path.map((p) => p.value)
   return (
     <div className="border-t border-black/[0.06] pt-2.5 first:border-t-0 first:pt-0">
-      <p className="text-[0.85rem] leading-relaxed text-slate-800">
+      <p className="text-[0.85rem] leading-relaxed text-ink">
         <span className="font-semibold">
           {b.label} {s.verb}
         </span>
@@ -52,7 +52,7 @@ function BackdropRow({ b }: { b: CommodityBackdrop }) {
             </span>
           </>
         )}{' '}
-        <span className="text-slate-500">
+        <span className="text-muted">
           — near-term {b.unit} {b.near_price.toFixed(2)} ({fmtMonth(b.near_period)}) →{' '}
           {b.forward_price.toFixed(2)} forecast ({fmtMonth(b.forward_period)})
         </span>
@@ -76,23 +76,23 @@ export function CommodityBackdropCard({ backdrops }: { backdrops: CommodityBackd
   if (backdrops.length === 0) return null
   const anyDeclining = backdrops.some((b) => b.direction === 'declining')
   const vintage = backdrops[0].vintage
-  const tone = anyDeclining ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white'
+  const tone = anyDeclining ? 'border-warn bg-warn-soft' : 'border-line bg-surface'
 
   return (
     <section className={`rounded-card border p-5 shadow-card ${tone}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+        <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-muted">
           Forward commodity backdrop
         </div>
         <span
           title="Context only — never feeds the factor score"
-          className="cursor-help rounded bg-slate-100 px-1.5 text-[0.6rem] font-semibold text-slate-500"
+          className="cursor-help rounded bg-surface-3 px-1.5 text-[0.6rem] font-semibold text-muted"
         >
           CONTEXT
         </span>
       </div>
 
-      <p className="mt-1.5 text-[0.75rem] leading-relaxed text-slate-500">
+      <p className="mt-1.5 text-[0.75rem] leading-relaxed text-muted">
         This producer&rsquo;s realized earnings track oil and/or gas prices — apply
         whichever matches its production mix.
       </p>
@@ -104,7 +104,7 @@ export function CommodityBackdropCard({ backdrops }: { backdrops: CommodityBackd
       </div>
 
       {anyDeclining && (
-        <p className="mt-3 text-[0.8rem] leading-relaxed text-slate-600">
+        <p className="mt-3 text-[0.8rem] leading-relaxed text-muted">
           A declining forecast for a commodity this name sells means today&rsquo;s
           cheap trailing multiples (low EV/EBITDA, high FCF yield on realized
           high-price earnings) may not persist — a forward factor the
@@ -112,7 +112,7 @@ export function CommodityBackdropCard({ backdrops }: { backdrops: CommodityBackd
         </p>
       )}
 
-      <p className="mt-2 text-[0.65rem] leading-relaxed text-slate-400">
+      <p className="mt-2 text-[0.65rem] leading-relaxed text-subtle">
         Source: EIA Short-Term Energy Outlook, retrieved {fmtMonth(vintage)}. Forward
         months are forecasts, not guarantees. Not investment advice.
       </p>

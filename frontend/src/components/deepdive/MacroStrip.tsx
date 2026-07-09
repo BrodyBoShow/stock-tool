@@ -48,23 +48,23 @@ function MacroTile({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
-      <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-gray-500">
+    <div className="rounded-xl border border-line bg-surface p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+      <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-muted">
         {label}
       </div>
-      <div className="mt-0.5 text-[1.3rem] font-extrabold leading-tight text-gray-900">
+      <div className="mt-0.5 text-[1.3rem] font-extrabold leading-tight text-ink">
         {fmtVal(latest?.value ?? null, unit, dec)}
       </div>
       {delta && prior ? (
         <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
-          <span className="text-[0.74rem] font-bold text-slate-600">
+          <span className="text-[0.74rem] font-bold text-muted">
             {delta.arrow}
             {delta.mag}
           </span>
-          <span className="text-[0.66rem] text-gray-400">vs {fmtShortDate(prior.date)}</span>
+          <span className="text-[0.66rem] text-subtle">vs {fmtShortDate(prior.date)}</span>
         </div>
       ) : (
-        <div className="mt-0.5 text-[0.72rem] text-gray-400">no prior reading</div>
+        <div className="mt-0.5 text-[0.72rem] text-subtle">no prior reading</div>
       )}
       {spark && spark.length >= 2 && (
         <div className="mt-1.5">
@@ -72,7 +72,7 @@ function MacroTile({
               Fluid so it fits the narrow 2-col mobile tile without overflow. */}
           <Sparkline
             data={spark}
-            color="#94a3b8"
+            color="var(--subtle)"
             width={132}
             height={22}
             fluid
@@ -81,7 +81,7 @@ function MacroTile({
         </div>
       )}
       {latest && (
-        <div className="mt-1 text-[0.63rem] text-slate-300">as of {fmtShortDate(latest.date)}</div>
+        <div className="mt-1 text-[0.63rem] text-subtle">as of {fmtShortDate(latest.date)}</div>
       )}
     </div>
   )
@@ -126,9 +126,9 @@ export function MacroStrip() {
   )
 
   return (
-    <section className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
-      <div className="text-base font-bold text-gray-900">Macro backdrop</div>
-      <div className="mt-0.5 text-[0.78rem] text-gray-500">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
+      <div className="text-base font-bold text-ink">Macro backdrop</div>
+      <div className="mt-0.5 text-[0.78rem] text-muted">
         Where rates, inflation and volatility sit — broad market context, not a
         per-stock signal. Latest nightly readings from FRED.
       </div>
@@ -138,7 +138,7 @@ export function MacroStrip() {
           ? MACRO_DISPLAY.map((m) => (
               <div
                 key={m.id}
-                className="h-[92px] animate-pulse rounded-xl border border-gray-200 bg-slate-100"
+                className="h-[92px] animate-pulse rounded-xl border border-line bg-surface-3"
               />
             ))
           : MACRO_DISPLAY.map((m) => (

@@ -3,14 +3,14 @@ import { useMemo, useRef, useState } from 'react'
 import { fmtDate, fmtVol, tickLabel } from '@/lib/format'
 import type { VsaBar, WyckoffAnalysis, WyckoffEventType } from '@/lib/wyckoff'
 
-const UP = '#16a34a'
-const DOWN = '#dc2626'
-const CLIMAX = '#ef9f27'
-const WIDE = '#64748b'
-const CHURN = '#94a3b8'
+const UP = 'var(--pos-strong)'
+const DOWN = 'var(--neg)'
+const CLIMAX = 'var(--warn)'
+const WIDE = 'var(--muted)'
+const CHURN = 'var(--subtle)'
 const RANGE = '#378ADD'
-const EV_BULL = '#15803d'
-const EV_BEAR = '#b91c1c'
+const EV_BULL = 'var(--pos)'
+const EV_BEAR = 'var(--neg)'
 
 const VB_W = 1000
 const VB_H = 400
@@ -120,7 +120,7 @@ export function WyckoffChart({
 
   if (!layout) {
     return (
-      <div className="flex h-[300px] items-center justify-center text-sm text-gray-400">
+      <div className="flex h-[300px] items-center justify-center text-sm text-subtle">
         Not enough price data for this range.
       </div>
     )
@@ -173,7 +173,7 @@ export function WyckoffChart({
                   height={VOL_BOT - PRICE_TOP}
                   fill={i % 2 === 0 ? PHASE_TINT : PHASE_TINT_ALT}
                 />
-                <text x={(Math.max(PLOT_L, x0) + Math.min(PLOT_R, x1)) / 2} y={PRICE_TOP + 11} fontSize={11} fontWeight={700} fill="#94a3b8" textAnchor="middle">
+                <text x={(Math.max(PLOT_L, x0) + Math.min(PLOT_R, x1)) / 2} y={PRICE_TOP + 11} fontSize={11} fontWeight={700} fill="var(--subtle)" textAnchor="middle">
                   {ph.id}
                 </text>
               </g>
@@ -204,8 +204,8 @@ export function WyckoffChart({
         {/* price grid + y labels */}
         {priceTicks.map((t, i) => (
           <g key={i}>
-            <line x1={PLOT_L} y1={t.y} x2={PLOT_R} y2={t.y} stroke="#f1f5f9" strokeWidth={1} />
-            <text x={PLOT_L - 4} y={t.y + 3} fontSize={10} fill="#9ca3af" textAnchor="end">
+            <line x1={PLOT_L} y1={t.y} x2={PLOT_R} y2={t.y} stroke="var(--surface-2)" strokeWidth={1} />
+            <text x={PLOT_L - 4} y={t.y + 3} fontSize={10} fill="var(--subtle)" textAnchor="end">
               ${t.p.toFixed(t.p < 10 ? 1 : 0)}
             </text>
           </g>
@@ -255,7 +255,7 @@ export function WyckoffChart({
           })}
 
         {/* volume panel */}
-        <line x1={PLOT_L} y1={VOL_BOT} x2={PLOT_R} y2={VOL_BOT} stroke="#e5e7eb" strokeWidth={0.5} />
+        <line x1={PLOT_L} y1={VOL_BOT} x2={PLOT_R} y2={VOL_BOT} stroke="var(--border)" strokeWidth={0.5} />
         {bars.map((b, i) => {
           if (b.vol == null) return null
           const x = cx(i)
@@ -265,33 +265,33 @@ export function WyckoffChart({
             <rect key={`v${i}`} x={x - candleW / 2} y={y} width={candleW} height={Math.max(VOL_BOT - y, 0)} fill={fill} fillOpacity={b.cls === 'climax' ? 1 : 0.5} />
           )
         })}
-        <text x={PLOT_L - 4} y={VOL_TOP + 8} fontSize={10} fill="#9ca3af" textAnchor="end">Vol</text>
+        <text x={PLOT_L - 4} y={VOL_TOP + 8} fontSize={10} fill="var(--subtle)" textAnchor="end">Vol</text>
 
         {/* x month labels */}
         {monthTicks.map((t, i) => (
-          <text key={i} x={t.x} y={VB_H - 4} fontSize={10} fill="#9ca3af" textAnchor="middle">
+          <text key={i} x={t.x} y={VB_H - 4} fontSize={10} fill="var(--subtle)" textAnchor="middle">
             {t.label}
           </text>
         ))}
 
         {/* crosshair */}
-        {hb && <line x1={cx(hover!.idx)} y1={PRICE_TOP} x2={cx(hover!.idx)} y2={VOL_BOT} stroke="#cbd5e1" strokeWidth={1} strokeDasharray="2 2" />}
+        {hb && <line x1={cx(hover!.idx)} y1={PRICE_TOP} x2={cx(hover!.idx)} y2={VOL_BOT} stroke="var(--border-strong)" strokeWidth={1} strokeDasharray="2 2" />}
       </svg>
 
       {/* tooltip */}
       {hb && (
         <div
-          className="pointer-events-none absolute top-1 z-10 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-card"
+          className="pointer-events-none absolute top-1 z-10 rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-card"
           style={{ left: `${(hover!.frac * 100).toFixed(2)}%`, transform: hover!.frac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)' }}
         >
-          <div className="font-semibold text-gray-900">{fmtDate(hb.date)}</div>
-          <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-700">
+          <div className="font-semibold text-ink">{fmtDate(hb.date)}</div>
+          <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-ink">
             <span>O ${hb.o.toFixed(2)}</span>
             <span>H ${hb.h.toFixed(2)}</span>
             <span>L ${hb.l.toFixed(2)}</span>
             <span style={{ color: hb.up ? UP : DOWN }}>C ${hb.c.toFixed(2)}</span>
           </div>
-          <div className="mt-1 border-t border-slate-100 pt-1 text-gray-500">
+          <div className="mt-1 border-t border-line pt-1 text-muted">
             <div>Vol {fmtVol(hb.vol)}{hb.relVol != null && ` · ${hb.relVol.toFixed(1)}× avg`}</div>
             {hb.spreadRel != null && <div>Spread {hb.spreadRel.toFixed(1)}× avg</div>}
             {hb.closeLoc != null && <div>Close {Math.round(hb.closeLoc * 100)}% up the bar</div>}
@@ -299,17 +299,17 @@ export function WyckoffChart({
           {hb.cls !== 'normal' && (
             <div
               className="mt-1 inline-block rounded px-1.5 py-0.5 text-[0.68rem] font-semibold"
-              style={{ color: hb.cls === 'climax' ? '#854F0B' : '#334155', background: hb.cls === 'climax' ? '#FAEEDA' : '#f1f5f9' }}
+              style={{ color: hb.cls === 'climax' ? '#854F0B' : '#334155', background: hb.cls === 'climax' ? '#FAEEDA' : 'var(--surface-2)' }}
             >
               {CLS_LABEL[hb.cls]}
             </div>
           )}
           {hev && (
-            <div className="mt-1.5 max-w-[220px] border-t border-slate-100 pt-1.5">
+            <div className="mt-1.5 max-w-[220px] border-t border-line pt-1.5">
               <span className="font-semibold" style={{ color: hev.bullish ? EV_BULL : EV_BEAR }}>
                 {hev.label} · candidate · {Math.round(hev.confidence * 100)}%
               </span>
-              <div className="mt-0.5 text-[0.68rem] leading-snug text-gray-500">{hev.note}</div>
+              <div className="mt-0.5 text-[0.68rem] leading-snug text-muted">{hev.note}</div>
             </div>
           )}
         </div>

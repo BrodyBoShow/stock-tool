@@ -104,7 +104,7 @@ export function FactorCards({
     <div>
       {commodity && (
         <div
-          className="mb-2.5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-800"
+          className="mb-2.5 flex items-start gap-2 rounded-xl border border-warn bg-warn-soft px-3 py-2 text-[0.78rem] text-warn"
           title={
             `${header.sector} names are commodity-price-driven: Value, Momentum and ` +
             `even Quality move with the underlying commodity (e.g. oil). A high rank ` +
@@ -121,7 +121,7 @@ export function FactorCards({
       )}
       {trap && (
         <div
-          className="mb-2.5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-800"
+          className="mb-2.5 flex items-start gap-2 rounded-xl border border-warn bg-warn-soft px-3 py-2 text-[0.78rem] text-warn"
           title={
             `Value ${header.value_pctl?.toFixed(0)} · Quality ${header.quality_pctl?.toFixed(0)} · ` +
             `Momentum ${header.momentum_pctl?.toFixed(0)}. A cheap valuation paired with weak quality ` +
@@ -140,7 +140,7 @@ export function FactorCards({
       {isLive && (
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
           <span
-            className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-sky-700"
+            className="inline-flex items-center gap-1.5 rounded-full border border-info bg-info-soft px-2.5 py-0.5 text-[0.72rem] font-semibold text-info"
             title={
               `Value & Momentum (and the composite) are recomputed from the ` +
               `latest price (~15-min delayed) against last night's cross-section. ` +
@@ -148,19 +148,19 @@ export function FactorCards({
             }
           >
             <span
-              className="h-1.5 w-1.5 rounded-full bg-sky-500"
+              className="h-1.5 w-1.5 rounded-full bg-info"
               style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
             />
             Live-adjusted scores
           </span>
           {data?.price != null && (
-            <span className="text-[0.72rem] text-slate-400">
+            <span className="text-[0.72rem] text-subtle">
               from ${data.price.toFixed(2)}
               {changePct != null && changePct !== 0 && (
                 <span
                   className={
                     'ml-1 font-semibold ' +
-                    (changePct > 0 ? 'text-emerald-600' : 'text-red-600')
+                    (changePct > 0 ? 'text-pos' : 'text-neg')
                   }
                 >
                   {changePct > 0 ? '▲' : '▼'}
@@ -172,7 +172,7 @@ export function FactorCards({
           )}
           {clock && (
             <span
-              className="text-[0.72rem] text-slate-400"
+              className="text-[0.72rem] text-subtle"
               title="When StockBud last fetched the quote — the price itself is ~15-min delayed."
             >
               checked {clock}
@@ -180,7 +180,7 @@ export function FactorCards({
           )}
           {recentPx.length >= 2 && (
             <span
-              className="inline-flex items-center gap-1 text-[0.66rem] text-slate-400"
+              className="inline-flex items-center gap-1 text-[0.66rem] text-subtle"
               title="Adjusted close over the last 20 sessions — the price trend behind the live Momentum adjustment, not the momentum percentile itself."
             >
               <Sparkline data={recentPx} width={60} height={16} />
@@ -209,11 +209,11 @@ export function FactorCards({
               key={key}
               className={
                 'rounded-card border p-4 shadow-card ' +
-                (dark ? 'border-slate-900' : 'border-gray-200 bg-white')
+                (dark ? 'border-slate-900' : 'border-line bg-surface')
               }
               style={
                 dark
-                  ? { background: 'linear-gradient(135deg, #0f172a, #1e293b)' }
+                  ? { background: 'linear-gradient(135deg, var(--ink), #1e293b)' }
                   : undefined
               }
             >
@@ -221,7 +221,7 @@ export function FactorCards({
                 <div
                   className={
                     'text-[0.78rem] font-bold uppercase tracking-[0.04em] ' +
-                    (dark ? 'text-slate-400' : 'text-gray-500')
+                    (dark ? 'text-subtle' : 'text-muted')
                   }
                 >
                   {label}
@@ -230,7 +230,7 @@ export function FactorCards({
                   <span
                     className={
                       'rounded px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide ' +
-                      (dark ? 'bg-sky-400/20 text-sky-300' : 'bg-sky-50 text-sky-600')
+                      (dark ? 'bg-sky-400/20 text-sky-300' : 'bg-info-soft text-info')
                     }
                     title="Adjusted from the latest price"
                   >
@@ -243,11 +243,11 @@ export function FactorCards({
                   'mb-2 mt-1 text-[1.8rem] font-extrabold ' +
                   (v === null
                     ? dark
-                      ? 'text-slate-500'
-                      : 'text-gray-400'
+                      ? 'text-muted'
+                      : 'text-subtle'
                     : dark
                       ? 'text-white'
-                      : 'text-gray-900')
+                      : 'text-ink')
                 }
               >
                 {v === null ? DASH : v.toFixed(1)}
@@ -255,7 +255,7 @@ export function FactorCards({
               <div
                 className={
                   'h-[7px] overflow-hidden rounded-full ' +
-                  (dark ? 'bg-white/15' : 'bg-gray-100')
+                  (dark ? 'bg-surface' : 'bg-surface-3')
                 }
               >
                 {v !== null && (
@@ -272,12 +272,12 @@ export function FactorCards({
                 <div
                   className={
                     'mt-[7px] text-[0.72rem] ' +
-                    (dark ? 'text-slate-400' : 'text-gray-400')
+                    (dark ? 'text-subtle' : 'text-subtle')
                   }
                 >
                   <span
                     className={
-                      live > nightly ? 'text-emerald-600' : 'text-red-600'
+                      live > nightly ? 'text-pos' : 'text-neg'
                     }
                   >
                     {live > nightly ? '▲' : '▼'}
@@ -289,7 +289,7 @@ export function FactorCards({
                 <div
                   className={
                     'mt-[7px] text-[0.72rem] ' +
-                    (dark ? 'text-slate-400' : 'text-gray-400')
+                    (dark ? 'text-subtle' : 'text-subtle')
                   }
                 >
                   {v === null ? 'n/a' : `Top ${Math.max(1, Math.round(100 - v))}%`}
@@ -301,13 +301,13 @@ export function FactorCards({
       </div>
 
       {header.composite != null && contrib.parts.length > 0 && (
-        <div className="mt-3 rounded-card border border-gray-200 bg-white p-3.5 shadow-card">
+        <div className="mt-3 rounded-card border border-line bg-surface p-3.5 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-gray-500">
+            <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em] text-muted">
               What drives the composite
             </span>
             <span
-              className="text-[0.7rem] text-gray-400"
+              className="text-[0.7rem] text-subtle"
               title={
                 `${agree.strong} of ${agree.total} scored factors sit at or above the ` +
                 `${agree.threshold}th percentile. Descriptive only — broad agreement is not a ` +
@@ -319,7 +319,7 @@ export function FactorCards({
               {agree.strongNames.length > 0 ? ` · ${agree.strongNames.join(' + ')}` : ''}
             </span>
           </div>
-          <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-gray-100">
+          <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-surface-3">
             {contrib.parts.map((p) => (
               <div
                 key={p.key}
@@ -333,23 +333,23 @@ export function FactorCards({
           </div>
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
             {contrib.parts.map((p) => (
-              <span key={p.key} className="flex items-center text-[0.68rem] text-gray-500">
+              <span key={p.key} className="flex items-center text-[0.68rem] text-muted">
                 <span
                   className="mr-1 inline-block h-2 w-2 rounded-sm"
                   style={{ background: FACTOR_TABLE[p.key].bar }}
                 />
                 {p.label} {(p.share * 100).toFixed(0)}%{' '}
-                <span className="ml-0.5 text-gray-400">({p.pctl.toFixed(0)})</span>
+                <span className="ml-0.5 text-subtle">({p.pctl.toFixed(0)})</span>
               </span>
             ))}
           </div>
           {contrib.absent.length > 0 && (
-            <div className="mt-1.5 text-[0.68rem] text-gray-400">
+            <div className="mt-1.5 text-[0.68rem] text-subtle">
               {contrib.absent.map((a) => a.label).join(', ')} absent — its weight was
               redistributed across the scored factors.
             </div>
           )}
-          <div className="mt-1 text-[0.66rem] text-gray-400">
+          <div className="mt-1 text-[0.66rem] text-subtle">
             Weighted blend of the percentile ranks — segments are each factor&rsquo;s share of the
             renormalized weight; the number in parentheses is its percentile.
           </div>
