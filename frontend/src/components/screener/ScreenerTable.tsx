@@ -68,14 +68,9 @@ const OPTIONAL_COLS: { key: string; label: string }[] = [
 const TH =
   'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
 
-/** GARP = worst-of the value & momentum percentiles — rewards names strong on
- *  BOTH (cheap AND rising), the value×momentum sweet spot. null when either
- *  factor is missing. Display/discovery only — never affects the composite. */
-function garpScore(r: ScreenerRow): number | null {
-  return r.value_pctl != null && r.momentum_pctl != null
-    ? Math.min(r.value_pctl, r.momentum_pctl)
-    : null
-}
+// GARP ("worst-of Value & Momentum") is display/discovery only and is computed
+// live-aware inside the component (see liveGarp) so it tracks the live-adjusted
+// Value/Momentum shown in those columns; the 'garp' sort is handled there too.
 
 function compareRows(
   a: ScreenerRow,
@@ -83,14 +78,7 @@ function compareRows(
   key: ScreenerSortKey,
   dir: 1 | -1,
 ): number {
-  if (key === 'garp') {
-    const av = garpScore(a)
-    const bv = garpScore(b)
-    if (av === null && bv === null) return 0
-    if (av === null) return 1 // missing-factor rows sink
-    if (bv === null) return -1
-    return (av - bv) * dir
-  }
+  if (key === 'garp') return 0 // handled live-aware in the sort memo; never reached here
   // Risk sorts by the DISPLAYED band first (so the digit column reads
   // monotone), with the finer risk_score only breaking ties within a band —
   // never reordering across bands the user can't see the reason for.
@@ -337,6 +325,22 @@ export function ScreenerTable({
     : false
   const liveComposite = (r: ScreenerRow): number | null =>
     liveByTicker?.[r.ticker]?.composite_live ?? r.composite
+  // GARP mirrors the DISPLAYED Value/Momentum cells: prefer each factor's
+  // live-adjusted percentile (falling back to nightly) so "worst-of" stays
+  // consistent with the live numbers shown in those columns — otherwise GARP
+  // reads the nightly basis and can sit above a factor's live value.
+  const garpParts = (r: ScreenerRow): [number | null, number | null] => {
+    const q = liveByTicker?.[r.ticker]
+    return [q?.value_live ?? r.value_pctl, q?.momentum_live ?? r.momentum_pctl]
+  }
+  const liveGarp = (r: ScreenerRow): number | null => {
+    const [v, m] = garpParts(r)
+    return v != null && m != null ? Math.min(v, m) : null
+  }
+  const garpIsLive = (r: ScreenerRow): boolean => {
+    const q = liveByTicker?.[r.ticker]
+    return q?.value_live != null || q?.momentum_live != null
+  }
   const liveRanked = sort.key === 'composite' && hasLive
 
   const sorted = useMemo(() => {
@@ -344,6 +348,16 @@ export function ScreenerTable({
       return [...rows].sort((a, b) => {
         const av = liveComposite(a)
         const bv = liveComposite(b)
+        if (av === null && bv === null) return 0
+        if (av === null) return 1
+        if (bv === null) return -1
+        return (av - bv) * sort.dir
+      })
+    }
+    if (sort.key === 'garp') {
+      return [...rows].sort((a, b) => {
+        const av = liveGarp(a)
+        const bv = liveGarp(b)
         if (av === null && bv === null) return 0
         if (av === null) return 1
         if (bv === null) return -1
@@ -376,7 +390,7 @@ export function ScreenerTable({
       lines.push(
         [
           r.rank, r.ticker, r.name, r.sector, r.composite, r.growth_pctl,
-          r.value_pctl, r.quality_pctl, r.momentum_pctl, garpScore(r),
+          r.value_pctl, r.quality_pctl, r.momentum_pctl, liveGarp(r),
           r.market_cap, r.risk_band, r.last_price, r.rank_delta,
         ]
           .map(esc)
@@ -585,7 +599,7 @@ export function ScreenerTable({
           {show('garp') && (
             <button type="button" onClick={() => toggleSort('garp')} className={`${TH} justify-center text-pos`}>
               GARP{arrow('garp')}
-              <InfoTip text="Cheap & Rising: the worst-of your Value and Momentum percentiles, so a high GARP means a stock is strong on BOTH — reasonably priced AND trending. A discovery lens over existing scores; it does not change any factor score or the composite rank." />
+              <InfoTip text="Cheap & Rising: the worst-of your Value and Momentum percentiles, so a high GARP means a stock is strong on BOTH — reasonably priced AND trending. It uses the same live-adjusted Value & Momentum shown in those columns (a * means a live price was applied), so it always stays consistent with them. A discovery lens over existing scores; it does not change any factor score or the composite rank." />
             </button>
           )}
           {show('market_cap') && (
@@ -764,13 +778,16 @@ export function ScreenerTable({
                   )}
                   {show('garp') && (
                     <div className="flex h-full items-center justify-center px-2">
-                      {garpScore(r) != null ? (
+                      {liveGarp(r) != null ? (
                         <span
                           className="numeric rounded px-1.5 py-0.5 text-[0.72rem] font-bold"
-                          style={{ background: scoreHeat(garpScore(r) as number).tint, color: 'var(--ink)' }}
-                          title={`Value ${r.value_pctl?.toFixed(0)} · Momentum ${r.momentum_pctl?.toFixed(0)} → worst-of ${(garpScore(r) as number).toFixed(0)}`}
+                          style={{ background: scoreHeat(liveGarp(r) as number).tint, color: 'var(--ink)' }}
+                          title={`Value ${garpParts(r)[0]?.toFixed(0)} · Momentum ${garpParts(r)[1]?.toFixed(0)} → worst-of ${(liveGarp(r) as number).toFixed(0)}${garpIsLive(r) ? ' · live-adjusted' : ''}`}
                         >
-                          {(garpScore(r) as number).toFixed(0)}
+                          {(liveGarp(r) as number).toFixed(0)}
+                          {garpIsLive(r) && (
+                            <span className="align-super text-[0.6rem] font-semibold text-accent">*</span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-[0.72rem] text-subtle">—</span>
