@@ -66,6 +66,14 @@
   --info-soft: rgba(8, 145, 178, 0.12);
   --flat: #64748b;
 
+  /* risk-band INTENSITY scale (cool→warm) — deliberately NOT good/bad; the chip
+   * derives its bg/border via color-mix so one hue per band covers both themes. */
+  --band-1: #0ea5e9;
+  --band-2: #14b8a6;
+  --band-3: #f59e0b;
+  --band-4: #f97316;
+  --band-5: #f43f5e;
+
   /* ---- type scale (px) — theme-independent ---- */
   --fs-display: 44px;
   --fs-h1: 32px;
@@ -144,6 +152,11 @@
   --info: #22d3ee;
   --info-soft: rgba(34, 211, 238, 0.16);
   --flat: #94a3b8;
+  --band-1: #38bdf8;
+  --band-2: #2dd4bf;
+  --band-3: #fbbf24;
+  --band-4: #fb923c;
+  --band-5: #fb7185;
 
   --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --sh-md: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -196,6 +209,11 @@
     --info: #22d3ee;
     --info-soft: rgba(34, 211, 238, 0.16);
     --flat: #94a3b8;
+    --band-1: #38bdf8;
+    --band-2: #2dd4bf;
+    --band-3: #fbbf24;
+    --band-4: #fb923c;
+    --band-5: #fb7185;
 
     --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --sh-md: 0 4px 12px rgba(0, 0, 0, 0.5);

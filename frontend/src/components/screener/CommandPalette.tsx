@@ -129,9 +129,9 @@ export function CommandPalette({
         if (e.target === e.currentTarget) close()
       }}
     >
-      <div className="w-[560px] max-w-[92vw] overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-          <span className="text-slate-400">🔍</span>
+      <div className="w-[560px] max-w-[92vw] overflow-hidden rounded-xl bg-surface shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+          <span className="text-subtle">🔍</span>
           <input
             ref={inputRef}
             value={q}
@@ -141,13 +141,13 @@ export function CommandPalette({
             }}
             onKeyDown={onKeyDown}
             placeholder="Search tickers, saved views, sectors…"
-            className="flex-1 text-[0.95rem] outline-none placeholder:text-slate-400"
+            className="flex-1 text-[0.95rem] outline-none placeholder:text-subtle"
           />
-          <span className="text-[0.66rem] text-slate-400">esc</span>
+          <span className="text-[0.66rem] text-subtle">esc</span>
         </div>
         <div className="max-h-[360px] overflow-y-auto py-1">
           {items.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[0.82rem] text-slate-400">
+            <div className="px-4 py-6 text-center text-[0.82rem] text-subtle">
               No matches{q ? ` for “${q}”` : ''}.
             </div>
           ) : (
@@ -159,20 +159,20 @@ export function CommandPalette({
                 onClick={() => activate(i)}
                 className={
                   'flex w-full items-center gap-3 px-4 py-2 text-left ' +
-                  (i === sel ? 'bg-indigo-50' : 'hover:bg-slate-50')
+                  (i === sel ? 'bg-accent-soft' : 'hover:bg-surface-2')
                 }
               >
                 <span className="w-5 text-center text-[0.9rem]">{ICON[it.kind]}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.85rem] font-medium text-slate-800">
+                  <span className="block truncate text-[0.85rem] font-medium text-ink">
                     {it.label}
                   </span>
                   {it.sub && (
-                    <span className="block truncate text-[0.7rem] text-slate-400">{it.sub}</span>
+                    <span className="block truncate text-[0.7rem] text-subtle">{it.sub}</span>
                   )}
                 </span>
                 {it.score != null && (
-                  <span className="numeric rounded bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-bold text-emerald-700">
+                  <span className="numeric rounded bg-pos-soft px-2 py-0.5 text-[0.7rem] font-bold text-pos">
                     {it.score.toFixed(0)}
                   </span>
                 )}
@@ -180,7 +180,7 @@ export function CommandPalette({
             ))
           )}
         </div>
-        <div className="flex gap-4 border-t border-slate-100 px-4 py-2 text-[0.68rem] text-slate-400">
+        <div className="flex gap-4 border-t border-line px-4 py-2 text-[0.68rem] text-subtle">
           <span>↑↓ navigate</span>
           <span>↵ select</span>
           <span>esc close</span>

@@ -10,12 +10,14 @@ import { createPortal } from 'react-dom'
  * estimated. Colors read as intensity (cool → warm), not good/bad.
  */
 
-const BAND_META: Record<number, { label: string; vol: string; cls: string }> = {
-  1: { label: 'Very Low', vol: '< 18%', cls: 'bg-sky-50 text-sky-700 border-sky-200' },
-  2: { label: 'Low', vol: '18–28%', cls: 'bg-teal-50 text-teal-700 border-teal-200' },
-  3: { label: 'Moderate', vol: '28–40%', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  4: { label: 'High', vol: '40–60%', cls: 'bg-orange-50 text-orange-700 border-orange-200' },
-  5: { label: 'Speculative', vol: '≥ 60%', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+// Intensity, not good/bad — each band is one hue (--band-1..5, cool→warm), and
+// the chip derives its bg/border via color-mix so it reads in both themes.
+const BAND_META: Record<number, { label: string; vol: string }> = {
+  1: { label: 'Very Low', vol: '< 18%' },
+  2: { label: 'Low', vol: '18–28%' },
+  3: { label: 'Moderate', vol: '28–40%' },
+  4: { label: 'High', vol: '40–60%' },
+  5: { label: 'Speculative', vol: '≥ 60%' },
 }
 
 const METHODOLOGY =
@@ -74,7 +76,16 @@ export function RiskBandChip({
       <span
         className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold tabular-nums ${
           compact ? 'text-[0.6rem]' : 'text-[0.66rem]'
-        } ${meta ? meta.cls : 'border-gray-200 bg-gray-50 text-gray-400'}`}
+        } ${meta ? '' : 'border-line bg-surface-2 text-subtle'}`}
+        style={
+          meta
+            ? {
+                color: `var(--band-${band})`,
+                background: `color-mix(in srgb, var(--band-${band}) 15%, transparent)`,
+                borderColor: `color-mix(in srgb, var(--band-${band}) 40%, transparent)`,
+              }
+            : undefined
+        }
       >
         {band != null ? band : '—'}
         {!compact && <span className="font-medium">{meta ? meta.label : 'No band'}</span>}

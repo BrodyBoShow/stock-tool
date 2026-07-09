@@ -38,7 +38,7 @@ function Stat({
 }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400">
+      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-subtle">
         {label}
       </span>
       <span
@@ -47,7 +47,7 @@ function Stat({
       >
         {value}
       </span>
-      {hint && <span className="mt-0.5 text-[0.65rem] text-slate-300">{hint}</span>}
+      {hint && <span className="mt-0.5 text-[0.65rem] text-subtle">{hint}</span>}
     </div>
   )
 }
@@ -164,28 +164,28 @@ export function ScreenerHeader({
     ratioNum != null && ratioNum > 1.5 && vixLatest != null && vixLatest < 18
       ? {
           label: 'Bullish',
-          cls: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-          dot: 'bg-emerald-500',
+          cls: 'border-pos-border bg-pos-soft text-pos',
+          dot: 'bg-pos-strong',
           why: 'Broad advance (Adv/Dec > 1.5) with calm volatility (VIX < 18).',
         }
       : (ratioNum != null && ratioNum < 0.7) || (vixLatest != null && vixLatest > 25)
         ? {
             label: 'Bearish',
-            cls: 'border-red-200 bg-red-50 text-red-700',
-            dot: 'bg-red-500',
+            cls: 'border-neg-border bg-neg-soft text-neg',
+            dot: 'bg-neg-strong',
             why: 'Broad decline (Adv/Dec < 0.7) or elevated fear (VIX > 25).',
           }
         : {
             label: 'Neutral',
-            cls: 'border-amber-200 bg-amber-50 text-amber-700',
-            dot: 'bg-amber-500',
+            cls: 'border-warn bg-warn-soft text-warn',
+            dot: 'bg-warn-strong',
             why: 'Mixed breadth and moderate volatility — no clear regime.',
           }
 
   return (
-    <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+    <header className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
       {/* brand accent strip */}
-      <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
+      <div className="h-1 bg-gradient-to-r from-[var(--accent)] to-transparent" />
 
       <div
         className="px-7 pb-5 pt-6"
@@ -195,24 +195,24 @@ export function ScreenerHeader({
           {/* identity */}
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-              <span className="text-indigo-600">StockBud</span>
-              <span className="text-gray-300">/</span>
-              <span className="text-slate-400">Equity Screener</span>
+              <span className="text-accent">StockBud</span>
+              <span className="text-subtle">/</span>
+              <span className="text-subtle">Equity Screener</span>
             </div>
-            <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
+            <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
               US Equity Factor Screener
             </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-slate-500">
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-muted">
               <span>
                 Factor rankings across {rows.length} companies
               </span>
               {liveNow && (
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[0.72rem] font-semibold text-sky-700"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-info bg-info-soft px-2.5 py-0.5 text-[0.72rem] font-semibold text-info"
                   title="Prices are ~15-min delayed. Factor scores are official nightly closes."
                 >
                   <span
-                    className="h-1.5 w-1.5 rounded-full bg-sky-500"
+                    className="h-1.5 w-1.5 rounded-full bg-info"
                     style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
                   />
                   Live prices · {liveDate}, {liveStamp} ET
@@ -227,23 +227,23 @@ export function ScreenerHeader({
               className={
                 'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.78rem] font-semibold ' +
                 (open
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 bg-slate-50 text-slate-500')
+                  ? 'border-pos-border bg-pos-soft text-pos'
+                  : 'border-line bg-surface-2 text-muted')
               }
             >
               <span
                 className={
                   'h-2 w-2 rounded-full ' +
-                  (open ? 'bg-emerald-500' : 'bg-slate-400')
+                  (open ? 'bg-pos-strong' : 'bg-slate-400')
                 }
               />
               {open ? 'Markets open' : 'Markets closed'}
             </span>
             <div className="text-right">
-              <div className="font-mono text-[1.1rem] font-semibold tabular-nums text-slate-700">
+              <div className="font-mono text-[1.1rem] font-semibold tabular-nums text-ink">
                 {clock}
               </div>
-              <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+              <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-subtle">
                 {etDateLabel} · New York · ET
               </div>
             </div>

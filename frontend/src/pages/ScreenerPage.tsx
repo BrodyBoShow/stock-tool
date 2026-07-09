@@ -38,7 +38,7 @@ function ScreenerSkeleton() {
       <Skeleton className="h-[210px] w-full rounded-2xl" />
       <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start">
         <Skeleton className="h-[480px] w-[270px] shrink-0 rounded-card" />
-        <div className="min-w-0 flex-1 space-y-0 overflow-hidden rounded-card border border-gray-200 bg-white p-4 shadow-card">
+        <div className="min-w-0 flex-1 space-y-0 overflow-hidden rounded-card border border-line bg-surface p-4 shadow-card">
           <Skeleton className="mb-4 h-5 w-56" />
           {Array.from({ length: 10 }, (_, i) => (
             <Skeleton key={i} className="mb-2 h-10 w-full" />
@@ -181,13 +181,13 @@ export function ScreenerPage() {
         const recent = getRecent()
         if (recent.length === 0) return null
         return (
-          <div className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[0.74rem] text-slate-400">
+          <div className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[0.74rem] text-subtle">
             <span className="font-semibold uppercase tracking-[0.06em]">Recently viewed</span>
             {recent.map((t) => (
               <Link
                 key={t}
                 to={`/securities/${t}`}
-                className="numeric rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="numeric rounded bg-surface-3 px-1.5 py-0.5 font-semibold text-muted transition hover:bg-accent-soft hover:text-accent"
               >
                 {t}
               </Link>
@@ -224,7 +224,7 @@ export function ScreenerPage() {
           />
         </div>
       </div>
-      <p className="pb-2 text-center text-xs text-gray-400">
+      <p className="pb-2 text-center text-xs text-subtle">
         Factor scores are cross-sectional percentile rankings within the US-listed
         (NYSE/Nasdaq) universe, refreshed nightly — not investment advice.
         Click a row to preview score breakdown · click the ticker to open the full deep-dive.

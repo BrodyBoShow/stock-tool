@@ -43,9 +43,9 @@ export function ScreenerDrawer({
       />
 
       {/* Drawer panel */}
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[420px] flex-col bg-white shadow-2xl">
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[420px] flex-col bg-surface shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <div className="flex items-center gap-3">
             <div
               className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-[0.9rem] font-extrabold text-white"
@@ -55,12 +55,12 @@ export function ScreenerDrawer({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[1.1rem] font-extrabold text-gray-900">
+                <span className="text-[1.1rem] font-extrabold text-ink">
                   {row.ticker}
                 </span>
                 <SectorPill sector={row.sector} />
               </div>
-              <div className="text-[0.78rem] text-gray-500">
+              <div className="text-[0.78rem] text-muted">
                 {row.name ?? DASH}
               </div>
             </div>
@@ -70,7 +70,7 @@ export function ScreenerDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-slate-100 hover:text-gray-700"
+              className="rounded-lg p-1.5 text-subtle hover:bg-surface-3 hover:text-ink"
               aria-label="Close"
             >
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -81,12 +81,12 @@ export function ScreenerDrawer({
         </div>
 
         {/* Price strip */}
-        <div className="flex items-center gap-6 border-b border-slate-100 px-5 py-3">
+        <div className="flex items-center gap-6 border-b border-line px-5 py-3">
           <div>
-            <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-gray-400">
+            <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-subtle">
               Price
             </div>
-            <div className="text-[1.05rem] font-extrabold tabular-nums text-slate-900">
+            <div className="text-[1.05rem] font-extrabold tabular-nums text-ink">
               {fmtPrice(row.last_price)}
             </div>
             {row.last_price != null && row.prev_close != null && row.prev_close !== 0 && (
@@ -107,10 +107,10 @@ export function ScreenerDrawer({
           </div>
           {header && (
             <div>
-              <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-gray-400">
+              <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-subtle">
                 Scores as of
               </div>
-              <div className="text-[0.88rem] font-semibold text-gray-700">
+              <div className="text-[0.88rem] font-semibold text-ink">
                 {fmtDate(header.score_date)}
               </div>
             </div>
@@ -124,7 +124,7 @@ export function ScreenerDrawer({
               {[80, 60, 75, 55].map((w, i) => (
                 <div
                   key={i}
-                  className="h-4 animate-pulse rounded bg-slate-100"
+                  className="h-4 animate-pulse rounded bg-surface-3"
                   style={{ width: `${w}%` }}
                 />
               ))}
@@ -132,14 +132,14 @@ export function ScreenerDrawer({
           ) : header ? (
             <ScoreWaterfall header={header} />
           ) : (
-            <p className="text-[0.85rem] text-gray-400">
+            <p className="text-[0.85rem] text-subtle">
               Could not load score detail.
             </p>
           )}
         </div>
 
         {/* Footer CTA */}
-        <div className="border-t border-slate-100 px-5 py-4">
+        <div className="border-t border-line px-5 py-4">
           <Link
             to={`/securities/${row.ticker}`}
             onClick={onClose}
