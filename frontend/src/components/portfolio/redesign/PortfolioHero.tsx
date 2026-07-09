@@ -29,7 +29,7 @@ export function PortfolioHero({
   const s = sentimentFromNumber(dayChange)
   const stale = status === 'stale'
   return (
-    <div className="rounded-[var(--r-xl)] border border-slate-200/70 bg-surface p-5 shadow-[var(--sh-sm)]">
+    <div className="rounded-[var(--r-xl)] border border-line bg-surface p-5 shadow-[var(--sh-sm)]">
       <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
         <div className="numeric text-h1 font-bold leading-none text-ink sm:text-display">
           {fmtPrice(value)}

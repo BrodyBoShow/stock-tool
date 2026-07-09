@@ -40,7 +40,7 @@ export function ActivityTab({
   return (
     <div className="space-y-5">
       {/* Zone A */}
-      <div className="rounded-[var(--r-xl)] border border-slate-200/70 bg-surface p-5 shadow-[var(--sh-sm)]">
+      <div className="rounded-[var(--r-xl)] border border-line bg-surface p-5 shadow-[var(--sh-sm)]">
         <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
           <div>
             <div className="text-micro font-semibold uppercase tracking-wide text-muted">
@@ -61,7 +61,7 @@ export function ActivityTab({
               <span
                 key={i}
                 className={`flex h-6 w-5 items-center justify-center rounded-[var(--r-xs)] text-[0.6rem] font-semibold ${
-                  paidMonths.has(i) ? 'bg-green-100 text-pos' : 'bg-slate-100 text-slate-400'
+                  paidMonths.has(i) ? 'bg-green-100 text-pos' : 'bg-surface-3 text-subtle'
                 }`}
               >
                 {m}
@@ -113,7 +113,7 @@ export function ActivityTab({
       <BrokerageCard />
 
       {/* Zone C */}
-      <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+      <div className="flex flex-col gap-3 border-t border-line pt-4">
         <ExploreChips
           chips={[
             { label: 'See Holdings', onClick: () => onExplore('holdings') },

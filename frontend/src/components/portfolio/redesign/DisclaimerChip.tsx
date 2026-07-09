@@ -21,7 +21,7 @@ export function DisclaimerChip({
 }) {
   if (variant === 'inline') {
     return (
-      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-muted">
+      <span className="inline-flex items-center rounded-full border border-line bg-surface-2 px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-muted">
         Not advice
       </span>
     )

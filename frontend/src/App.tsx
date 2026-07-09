@@ -61,7 +61,7 @@ export default function App() {
               <Route
                 path="*"
                 element={
-                  <div className="mt-16 text-center text-sm text-gray-500">
+                  <div className="mt-16 text-center text-sm text-muted">
                     Page not found.
                   </div>
                 }

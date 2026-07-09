@@ -121,11 +121,14 @@
   --divider: #1b2430;
 
   --primary: #60a5fa;
+  /* Dark accent buttons use a BRIGHT fill + DARK ink (the modern dark pattern) —
+   * this both stands out from the dark surface and clears WCAG-AA, unlike a
+   * mid-indigo fill with white text (~4.47:1). */
   --accent: #818cf8;
-  --accent-solid: #6366f1;
-  --accent-hover: #818cf8;
+  --accent-solid: #818cf8;
+  --accent-hover: #a5b4fc;
   --accent-soft: rgba(129, 140, 248, 0.16);
-  --accent-ink: #ffffff;
+  --accent-ink: #0b0f17;
 
   --pos: #34d399;
   --pos-strong: #4ade80;
@@ -161,6 +164,7 @@
     --surface: #131a24;
     --surface-2: #1a222e;
     --surface-3: #232c3a;
+    --nav-bg: rgba(19, 26, 36, 0.85);
 
     --ink: #e6eaf0;
     --muted: #9aa7b8;
@@ -173,10 +177,10 @@
 
     --primary: #60a5fa;
     --accent: #818cf8;
-    --accent-solid: #6366f1;
-    --accent-hover: #818cf8;
+    --accent-solid: #818cf8;
+    --accent-hover: #a5b4fc;
     --accent-soft: rgba(129, 140, 248, 0.16);
-    --accent-ink: #ffffff;
+    --accent-ink: #0b0f17;
 
     --pos: #34d399;
     --pos-strong: #4ade80;

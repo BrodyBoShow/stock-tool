@@ -22,6 +22,11 @@ function apply(theme: Theme): void {
   const el = document.documentElement
   el.setAttribute('data-theme', theme)
   el.style.colorScheme = theme
+  // Keep the mobile browser-chrome color in step with the resolved theme
+  // (the meta is a single element, updated here + by the anti-FOUC script).
+  document
+    .getElementById('theme-color')
+    ?.setAttribute('content', theme === 'dark' ? '#0b0f17' : '#f7f8fa')
 }
 
 function initial(): Theme {
