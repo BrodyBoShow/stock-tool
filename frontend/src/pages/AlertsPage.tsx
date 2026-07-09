@@ -110,29 +110,29 @@ function rowStyle(tier: AlertTier, kind: AlertKind) {
         ? 'border-l-amber-400'
         : 'border-l-slate-300'
   const stat = positive
-    ? 'text-emerald-600'
+    ? 'text-pos'
     : tier === 'critical'
-      ? 'text-red-700'
+      ? 'text-neg'
       : tier === 'elevated'
-        ? 'text-amber-700'
-        : 'text-slate-500'
+        ? 'text-warn'
+        : 'text-muted'
   const iconBox = positive
-    ? 'bg-emerald-100 text-emerald-600'
+    ? 'bg-pos-soft text-pos'
     : tier === 'critical'
-      ? 'bg-red-100 text-red-600'
+      ? 'bg-neg-soft text-neg'
       : tier === 'elevated'
-        ? 'bg-amber-100 text-amber-700'
-        : 'bg-slate-100 text-slate-500'
+        ? 'bg-warn-soft text-warn'
+        : 'bg-surface-3 text-muted'
   const chip =
     kind === 'factor_rise'
-      ? 'bg-sky-100 text-sky-700'
+      ? 'bg-info-soft text-info'
       : kind === 'insider'
-        ? 'bg-emerald-100 text-emerald-700'
+        ? 'bg-pos-soft text-pos'
         : tier === 'critical'
-          ? 'bg-red-100 text-red-700'
+          ? 'bg-neg-soft text-neg'
           : tier === 'elevated'
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-slate-100 text-slate-600'
+            ? 'bg-warn-soft text-warn'
+            : 'bg-surface-3 text-muted'
   return { accent, stat, iconBox, chip }
 }
 
@@ -208,7 +208,7 @@ function AlertRow({
   const headline = a.item_label ?? a.message
   return (
     <div
-      className={`group relative flex items-center gap-3 rounded-xl border border-gray-100 border-l-4 bg-white px-3 py-2 hover:bg-slate-50 ${st.accent}`}
+      className={`group relative flex items-center gap-3 rounded-xl border border-line border-l-4 bg-surface px-3 py-2 hover:bg-surface-2 ${st.accent}`}
     >
       <span className={`flex-none rounded-md p-1 ${st.iconBox}`}>
         <KindIcon kind={a.kind} />
@@ -216,9 +216,9 @@ function AlertRow({
 
       <Link
         to={`/securities/${a.ticker}`}
-        className="flex w-[4.2rem] flex-none items-center gap-0.5 font-bold text-[0.9rem] text-gray-900 hover:text-indigo-600"
+        className="flex w-[4.2rem] flex-none items-center gap-0.5 font-bold text-[0.9rem] text-ink hover:text-accent"
       >
-        {watched && <span className="text-amber-400">★</span>}
+        {watched && <span className="text-warn">★</span>}
         <span className="truncate">{a.ticker}</span>
       </Link>
 
@@ -229,9 +229,9 @@ function AlertRow({
           >
             {KIND_LABEL[a.kind]}
           </span>
-          <span className="truncate text-[0.83rem] font-medium text-slate-800">{headline}</span>
+          <span className="truncate text-[0.83rem] font-medium text-ink">{headline}</span>
         </div>
-        <div className="truncate text-[0.7rem] text-slate-400">
+        <div className="truncate text-[0.7rem] text-subtle">
           {a.name ?? a.ticker}
           {a.sector ? ` · ${a.sector}` : ''}
         </div>
@@ -242,7 +242,7 @@ function AlertRow({
           {a.magnitude_label || '—'}
         </div>
         {a.observed_date && (
-          <div className="text-[0.62rem] text-slate-400">{fmtShortDate(a.observed_date)}</div>
+          <div className="text-[0.62rem] text-subtle">{fmtShortDate(a.observed_date)}</div>
         )}
       </div>
 
@@ -253,7 +253,7 @@ function AlertRow({
             type="button"
             onClick={() => onWatch(a.ticker)}
             title="Add to watchlist"
-            className="rounded-md p-1 text-slate-400 hover:bg-amber-50 hover:text-amber-500"
+            className="rounded-md p-1 text-subtle hover:bg-warn-soft hover:text-warn"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
               <path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.8l6.5-.9z" />
@@ -264,7 +264,7 @@ function AlertRow({
           type="button"
           onClick={() => onDismiss(a)}
           title="Dismiss"
-          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-md p-1 text-subtle hover:bg-surface-3 hover:text-ink"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -303,12 +303,12 @@ function AddRuleForm() {
 
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-slate-500">
+      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-muted">
         Condition
         <select
           value={ruleType}
           onChange={(e) => setRuleType(e.target.value as AlertRuleType)}
-          className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] font-medium text-slate-800"
+          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.82rem] font-medium text-ink"
         >
           {Object.entries(RULE_LABELS).map(([k, label]) => (
             <option key={k} value={k}>{label}</option>
@@ -317,25 +317,25 @@ function AddRuleForm() {
       </label>
 
       {THRESHOLD_TYPES.has(ruleType) && (
-        <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-slate-500">
+        <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-muted">
           Threshold
           <input
             type="number"
             value={threshold}
             onChange={(e) => setThreshold(e.target.value)}
-            className="w-24 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] text-slate-800"
+            className="w-24 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.82rem] text-ink"
           />
         </label>
       )}
 
-      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-slate-500">
+      <label className="flex flex-col gap-1 text-[0.72rem] font-semibold text-muted">
         Ticker (optional)
         <input
           type="text"
           value={ticker}
           placeholder="whole market"
           onChange={(e) => setTicker(e.target.value)}
-          className="w-32 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] uppercase text-slate-800 placeholder:normal-case placeholder:text-slate-300"
+          className="w-32 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.82rem] uppercase text-ink placeholder:normal-case placeholder:text-subtle"
         />
       </label>
 
@@ -343,7 +343,7 @@ function AddRuleForm() {
         type="button"
         onClick={() => create.mutate()}
         disabled={create.isPending}
-        className="rounded-lg bg-indigo-600 px-4 py-2 text-[0.82rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+        className="rounded-lg bg-accent-solid px-4 py-2 text-[0.82rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
       >
         {create.isPending ? 'Adding…' : 'Add rule'}
       </button>
@@ -354,9 +354,9 @@ function AddRuleForm() {
 // ── triage strip + filter bar ─────────────────────────────────────────────────
 
 const TIER_TILE: Record<AlertTier, { label: string; on: string }> = {
-  critical: { label: 'Critical', on: 'bg-red-100 text-red-700 ring-red-400' },
-  elevated: { label: 'Elevated', on: 'bg-amber-100 text-amber-800 ring-amber-400' },
-  routine: { label: 'Routine', on: 'bg-slate-100 text-slate-600 ring-slate-400' },
+  critical: { label: 'Critical', on: 'bg-neg-soft text-neg ring-red-400' },
+  elevated: { label: 'Elevated', on: 'bg-warn-soft text-warn ring-amber-400' },
+  routine: { label: 'Routine', on: 'bg-surface-3 text-muted ring-slate-400' },
 }
 
 function TriageStrip({
@@ -380,7 +380,7 @@ function TriageStrip({
           return (
             <span
               key={t}
-              className="rounded-full bg-emerald-50 px-3 py-1 text-[0.75rem] font-semibold text-emerald-700"
+              className="rounded-full bg-pos-soft px-3 py-1 text-[0.75rem] font-semibold text-pos"
             >
               ✓ Quiet today
             </span>
@@ -397,7 +397,7 @@ function TriageStrip({
           </button>
         )
       })}
-      <span className="ml-auto text-[0.74rem] text-slate-400">{total} signals</span>
+      <span className="ml-auto text-[0.74rem] text-subtle">{total} signals</span>
     </div>
   )
 }
@@ -428,12 +428,12 @@ function FilterBar({
             onClick={() => toggleGroup(g.key)}
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold transition ${
               active
-                ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-accent-solid text-accent-ink'
+                : 'bg-surface-2 text-muted hover:bg-surface-3'
             } ${n === 0 ? 'cursor-not-allowed opacity-40' : ''}`}
           >
             {g.chip}
-            <span className={active ? 'text-white/70' : 'text-slate-400'}>{n}</span>
+            <span className={active ? 'text-accent-ink' : 'text-subtle'}>{n}</span>
           </button>
         )
       })}
@@ -443,7 +443,7 @@ function FilterBar({
         placeholder="ticker or name"
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
-        className="ml-auto w-44 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.78rem] text-slate-800 placeholder:text-slate-300"
+        className="ml-auto w-44 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.78rem] text-ink placeholder:text-subtle"
       />
     </div>
   )
@@ -471,7 +471,7 @@ function KindGroup({
     return saved === null ? hasElevated : saved === '1'
   })
   const [showAll, setShowAll] = useState(false)
-  const dot = rows.some((r) => r.tier === 'elevated') ? 'bg-amber-400' : 'bg-slate-300'
+  const dot = rows.some((r) => r.tier === 'elevated') ? 'bg-warn-strong' : 'bg-slate-300'
   const shown = showAll ? rows : rows.slice(0, 8)
 
   return (
@@ -482,16 +482,16 @@ function KindGroup({
         setOpen(o)
         localStorage.setItem(lsKey, o ? '1' : '0')
       }}
-      className="rounded-card border border-gray-200 bg-white shadow-card"
+      className="rounded-card border border-line bg-surface shadow-card"
     >
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3">
         <span className={`h-2 w-2 flex-none rounded-full ${dot}`} />
-        <span className="text-[0.92rem] font-bold text-gray-900">{group.title}</span>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-500">
+        <span className="text-[0.92rem] font-bold text-ink">{group.title}</span>
+        <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[0.68rem] font-semibold text-muted">
           {rows.length}
         </span>
         <svg
-          className={`ml-auto h-4 w-4 text-slate-400 transition ${open ? 'rotate-180' : ''}`}
+          className={`ml-auto h-4 w-4 text-subtle transition ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
         >
           <path d="m6 9 6 6 6-6" />
@@ -511,7 +511,7 @@ function KindGroup({
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
-            className="w-full rounded-lg py-1.5 text-[0.76rem] font-semibold text-indigo-600 hover:bg-indigo-50"
+            className="w-full rounded-lg py-1.5 text-[0.76rem] font-semibold text-accent hover:bg-accent-soft"
           >
             {showAll ? 'Show less' : `Show all ${rows.length}`}
           </button>
@@ -653,7 +653,7 @@ export function AlertsPage() {
           watchlist&apos;s own changes live on the Watchlist tab.
         </PageHeader>
         {as_of && (
-          <span className="mt-1 flex-none rounded-full bg-sky-100 px-2.5 py-1 text-[0.68rem] font-semibold text-sky-700">
+          <span className="mt-1 flex-none rounded-full bg-info-soft px-2.5 py-1 text-[0.68rem] font-semibold text-info">
             as of {fmtShortDate(as_of)} · nightly
           </span>
         )}
@@ -661,7 +661,7 @@ export function AlertsPage() {
 
       {triggered.length === 0 ? (
         <SectionCard title="Triggered now (0)">
-          <p className="text-[0.85rem] text-gray-400">
+          <p className="text-[0.85rem] text-subtle">
             All clear — nothing tripped your rules from the prior session. Add or adjust rules below.
           </p>
         </SectionCard>
@@ -682,22 +682,22 @@ export function AlertsPage() {
           />
 
           {/* Needs attention — the loud, capped critical cluster */}
-          <section className="rounded-card border border-red-200 bg-red-50/40 p-4 shadow-card">
+          <section className="rounded-card border border-neg-border bg-neg-soft p-4 shadow-card">
             <div className="mb-2 flex items-center gap-2">
-              <h2 className="text-base font-bold text-gray-900">Needs attention</h2>
+              <h2 className="text-base font-bold text-ink">Needs attention</h2>
               {criticals.length > 0 && (
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[0.68rem] font-bold text-red-700">
+                <span className="rounded-full bg-neg-soft px-2 py-0.5 text-[0.68rem] font-bold text-neg">
                   {criticals.length}
                 </span>
               )}
             </div>
             {criticals.length === 0 ? (
               summary.critical === 0 ? (
-                <p className="text-[0.83rem] font-medium text-emerald-700">
+                <p className="text-[0.83rem] font-medium text-pos">
                   ✓ No critical signals — nothing demands action today.
                 </p>
               ) : (
-                <p className="text-[0.82rem] text-slate-400">No critical signals match your filters.</p>
+                <p className="text-[0.82rem] text-subtle">No critical signals match your filters.</p>
               )
             ) : (
               <div className="space-y-1.5">
@@ -714,7 +714,7 @@ export function AlertsPage() {
                   <button
                     type="button"
                     onClick={() => setShowCritAll((v) => !v)}
-                    className="w-full rounded-lg py-1.5 text-[0.76rem] font-semibold text-red-700 hover:bg-red-100/60"
+                    className="w-full rounded-lg py-1.5 text-[0.76rem] font-semibold text-neg hover:bg-neg-soft"
                   >
                     {showCritAll ? 'Show less' : `+${criticals.length - CRIT_CAP} more critical`}
                   </button>
@@ -740,7 +740,7 @@ export function AlertsPage() {
           ) : (
             visibleCount === 0 &&
             criticals.length === 0 && (
-              <p className="px-1 text-[0.84rem] text-gray-400">No matching signals.</p>
+              <p className="px-1 text-[0.84rem] text-subtle">No matching signals.</p>
             )
           )}
 
@@ -751,7 +751,7 @@ export function AlertsPage() {
                 if (showDismissed) persistDismissed(new Set())
                 setShowDismissed((v) => !v)
               }}
-              className="text-[0.76rem] font-medium text-slate-400 hover:text-slate-600"
+              className="text-[0.76rem] font-medium text-subtle hover:text-muted"
             >
               {showDismissed ? 'Hide & clear dismissed' : `${dismissedCount} dismissed · show`}
             </button>
@@ -764,7 +764,7 @@ export function AlertsPage() {
           {rules.map((r) => (
             <div
               key={r.id}
-              className="flex items-center gap-3 rounded-lg border border-[#eef1f6] px-3 py-2"
+              className="flex items-center gap-3 rounded-lg border border-[var(--divider)] px-3 py-2"
             >
               <button
                 type="button"
@@ -772,30 +772,30 @@ export function AlertsPage() {
                 className={
                   'flex-none rounded-full px-2 py-0.5 text-[0.66rem] font-bold uppercase tracking-wide ' +
                   (r.enabled
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-slate-100 text-slate-400')
+                    ? 'bg-pos-soft text-pos'
+                    : 'bg-surface-3 text-subtle')
                 }
               >
                 {r.enabled ? 'On' : 'Off'}
               </button>
-              <span className="min-w-0 flex-1 text-[0.84rem] text-slate-700">
-                <span className="font-semibold text-gray-900">{RULE_LABELS[r.rule_type]}</span>
-                <span className="text-gray-400"> — {ruleDescription(r)}</span>
+              <span className="min-w-0 flex-1 text-[0.84rem] text-ink">
+                <span className="font-semibold text-ink">{RULE_LABELS[r.rule_type]}</span>
+                <span className="text-subtle"> — {ruleDescription(r)}</span>
               </span>
               <button
                 type="button"
                 onClick={() => remove.mutate(r.id)}
-                className="flex-none text-[0.78rem] font-semibold text-red-600 hover:underline"
+                className="flex-none text-[0.78rem] font-semibold text-neg hover:underline"
               >
                 Remove
               </button>
             </div>
           ))}
           {rules.length === 0 && (
-            <p className="text-[0.85rem] text-gray-400">No rules yet — add one below.</p>
+            <p className="text-[0.85rem] text-subtle">No rules yet — add one below.</p>
           )}
         </div>
-        <div className="mt-4 border-t border-slate-100 pt-4">
+        <div className="mt-4 border-t border-line pt-4">
           <AddRuleForm />
         </div>
       </SectionCard>
