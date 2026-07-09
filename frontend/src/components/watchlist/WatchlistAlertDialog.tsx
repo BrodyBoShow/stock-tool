@@ -80,10 +80,10 @@ export function WatchlistAlertDialog({
         role="dialog"
         aria-modal="true"
         aria-label={`Alerts for ${ticker}`}
-        className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
+        className="relative w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
       >
-        <h2 className="text-base font-bold text-gray-900">Alert me on {ticker}</h2>
-        <p className="mt-0.5 text-[0.78rem] text-slate-500">
+        <h2 className="text-base font-bold text-ink">Alert me on {ticker}</h2>
+        <p className="mt-0.5 text-[0.78rem] text-muted">
           Get notified when something material happens on this name. StockBud flags it — it
           never trades.
         </p>
@@ -98,15 +98,15 @@ export function WatchlistAlertDialog({
                 disabled={pending}
                 aria-pressed={on}
                 className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50 ${
-                  on ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                  on ? 'border-accent bg-accent-soft' : 'border-line hover:border-line'
                 }`}
               >
                 <span className="min-w-0">
-                  <span className="block text-[0.82rem] font-semibold text-slate-800">{label}</span>
-                  <span className="block text-[0.7rem] text-slate-400">when {hint}</span>
+                  <span className="block text-[0.82rem] font-semibold text-ink">{label}</span>
+                  <span className="block text-[0.7rem] text-subtle">when {hint}</span>
                 </span>
                 <span
-                  className={`flex-none text-[0.72rem] font-bold ${on ? 'text-indigo-600' : 'text-slate-400'}`}
+                  className={`flex-none text-[0.72rem] font-bold ${on ? 'text-accent' : 'text-subtle'}`}
                 >
                   {on ? 'ON' : 'OFF'}
                 </span>
@@ -115,13 +115,13 @@ export function WatchlistAlertDialog({
           })}
         </div>
         <div className="mt-4 flex items-center justify-between gap-3">
-          <Link to="/alerts" className="text-[0.72rem] font-semibold text-indigo-600 hover:underline">
+          <Link to="/alerts" className="text-[0.72rem] font-semibold text-accent hover:underline">
             More alert options →
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-[0.82rem] font-semibold text-slate-600 hover:bg-slate-50"
+            className="rounded-lg border border-line bg-surface px-3.5 py-1.5 text-[0.82rem] font-semibold text-muted hover:bg-surface-2"
           >
             Done
           </button>
