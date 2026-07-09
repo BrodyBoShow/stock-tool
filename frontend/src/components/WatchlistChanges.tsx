@@ -51,12 +51,12 @@ function Chip({
   children: React.ReactNode
 }) {
   const styles: Record<string, string> = {
-    rank: 'border-gray-200 bg-slate-50 text-slate-700',
-    live: 'border-sky-200 bg-sky-50 text-sky-700',
-    event: 'border-amber-200 bg-amber-50 text-amber-700',
-    insider: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    review: 'border-amber-300 bg-amber-100 text-amber-800',
-    quiet: 'border-[#eef1f6] bg-[#fafbfc] text-gray-400',
+    rank: 'border-line bg-surface-2 text-ink',
+    live: 'border-info bg-info-soft text-info',
+    event: 'border-warn bg-warn-soft text-warn',
+    insider: 'border-pos-border bg-pos-soft text-pos',
+    review: 'border-warn bg-warn-soft text-warn',
+    quiet: 'border-[var(--divider)] bg-[var(--surface-2)] text-subtle',
     news: 'border-violet-200 bg-violet-50 text-violet-700',
   }
   return (
@@ -71,14 +71,14 @@ function Chip({
 function TierTag({ tier }: { tier: Tier }) {
   if (tier === 'act') {
     return (
-      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-amber-800">
+      <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-warn">
         Needs a look
       </span>
     )
   }
   if (tier === 'fyi') {
     return (
-      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-slate-500">
+      <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-muted">
         FYI
       </span>
     )
@@ -98,15 +98,15 @@ function ChangeCard({
   // Snoozed: a compact muted card that only offers "unsnooze" — no chips nagging.
   if (snoozedTs != null) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-card border border-[#eef1f6] bg-[#fafbfc] px-4 py-3 shadow-card">
+      <div className="flex items-center justify-between gap-3 rounded-card border border-[var(--divider)] bg-[var(--surface-2)] px-4 py-3 shadow-card">
         <div className="flex min-w-0 items-center gap-2">
           <Link
             to={`/securities/${c.ticker}`}
-            className="text-[0.9rem] font-bold text-slate-500 hover:text-indigo-600 hover:underline"
+            className="text-[0.9rem] font-bold text-muted hover:text-accent hover:underline"
           >
             {c.ticker}
           </Link>
-          <span className="text-[0.7rem] text-slate-400">
+          <span className="text-[0.7rem] text-subtle">
             Snoozed · resumes{' '}
             {new Date(snoozedTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
@@ -114,7 +114,7 @@ function ChangeCard({
         <button
           type="button"
           onClick={() => onSnooze(c.ticker, 0)}
-          className="flex-none text-[0.72rem] font-semibold text-indigo-600 hover:underline"
+          className="flex-none text-[0.72rem] font-semibold text-accent hover:underline"
         >
           Unsnooze
         </button>
@@ -134,12 +134,12 @@ function ChangeCard({
   return (
     <div
       className={
-        'rounded-card border bg-white p-4 shadow-card ' +
+        'rounded-card border bg-surface p-4 shadow-card ' +
         (tier === 'act'
-          ? 'border-l-4 border-l-amber-400 border-amber-200'
+          ? 'border-l-4 border-l-[var(--warn-strong)] border-warn'
           : tier === 'quiet'
-            ? 'border-[#eef1f6]'
-            : 'border-gray-200')
+            ? 'border-[var(--divider)]'
+            : 'border-line')
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -147,7 +147,7 @@ function ChangeCard({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               to={`/securities/${c.ticker}`}
-              className="text-[0.95rem] font-bold text-gray-900 hover:text-indigo-600 hover:underline"
+              className="text-[0.95rem] font-bold text-ink hover:text-accent hover:underline"
             >
               {c.ticker}
             </Link>
@@ -155,14 +155,14 @@ function ChangeCard({
             <TierTag tier={tier} />
           </div>
           {c.name && (
-            <div className="mt-0.5 truncate text-[0.75rem] text-gray-400">{c.name}</div>
+            <div className="mt-0.5 truncate text-[0.75rem] text-subtle">{c.name}</div>
           )}
         </div>
         <div className="flex-none text-right">
-          <div className="text-[1.15rem] font-extrabold tabular-nums text-gray-900">
+          <div className="text-[1.15rem] font-extrabold tabular-nums text-ink">
             {c.composite != null ? c.composite.toFixed(1) : '—'}
           </div>
-          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">
+          <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-subtle">
             Composite
           </div>
         </div>
@@ -182,7 +182,7 @@ function ChangeCard({
                 ▾ {c.new_events} new 8-K
                 {c.latest_event_label ? ` · ${c.latest_event_label}` : ''}
                 {c.latest_event_date ? (
-                  <span className="text-amber-500"> ({fmtDate(c.latest_event_date)})</span>
+                  <span className="text-warn"> ({fmtDate(c.latest_event_date)})</span>
                 ) : null}
                 {c.latest_event_url ? <span className="ml-0.5">↗</span> : null}
               </Chip>
@@ -223,7 +223,7 @@ function ChangeCard({
               <>
                 {' '}
                 <Delta value={rankMove} />
-                <span className="text-gray-400">
+                <span className="text-subtle">
                   {c.baseline_date ? ` vs ${fmtDate(c.baseline_date)}` : ''}
                 </span>
               </>
@@ -233,13 +233,13 @@ function ChangeCard({
                 <Delta value={compMove} />
               </>
             ) : (
-              <span className="text-slate-300"> · trend builds nightly</span>
+              <span className="text-subtle"> · trend builds nightly</span>
             )}
           </Chip>
         )}
         {liveShown && (
           <Chip tone="live">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+            <span className="h-1.5 w-1.5 rounded-full bg-info" />
             Live {c.composite_live!.toFixed(1)} <Delta value={liveMove!} />
           </Chip>
         )}
@@ -262,7 +262,7 @@ function ChangeCard({
           <button
             type="button"
             onClick={() => onSnooze(c.ticker, SNOOZE_DAYS)}
-            className="ml-auto text-[0.7rem] font-medium text-slate-400 hover:text-slate-600"
+            className="ml-auto text-[0.7rem] font-medium text-subtle hover:text-muted"
             title={`Quiet ${c.ticker}'s updates for ${SNOOZE_DAYS} days`}
           >
             🔕 Snooze {SNOOZE_DAYS}d
@@ -326,8 +326,8 @@ export function WatchlistChanges({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-[0.95rem] font-bold text-gray-900">What&apos;s changed</h2>
-        <span className="text-right text-[0.74rem] text-gray-400">
+        <h2 className="text-[0.95rem] font-bold text-ink">What&apos;s changed</h2>
+        <span className="text-right text-[0.74rem] text-subtle">
           {summary} · rank/score vs ~1mo ago · 8-Ks &amp; insider buys recent
         </span>
       </div>
