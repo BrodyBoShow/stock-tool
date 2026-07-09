@@ -16,17 +16,17 @@ export function CategoryHeatmap(props: CategoryHeatmapProps): JSX.Element {
   const largestKey = sorted.length > 0 ? sorted[0].key : null;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-line bg-surface p-4">
       <div className="flex items-center gap-1.5">
-        <span className="text-[0.82rem] font-bold text-slate-800">Category Heatmap</span>
+        <span className="text-[0.82rem] font-bold text-ink">Category Heatmap</span>
         <InfoTip text="Tiles sized by total AUM, colored by today's average return across the category. Click a tile to drill in." />
       </div>
-      <div className="text-[0.68rem] text-slate-400">
+      <div className="text-[0.68rem] text-subtle">
         Sized by AUM · colored by today's avg return · click to drill in
       </div>
 
       {sorted.length === 0 ? (
-        <div className="mt-3 flex h-[200px] items-center justify-center rounded border border-dashed border-slate-200 text-[0.7rem] text-slate-400">
+        <div className="mt-3 flex h-[200px] items-center justify-center rounded border border-dashed border-line text-[0.7rem] text-subtle">
           No categories to display
         </div>
       ) : (

@@ -30,10 +30,10 @@ function extremeIndex(
   return bestIdx;
 }
 
-const CELL = 'text-center tabular-nums text-[0.7rem] py-1.5 border-t border-slate-100';
-const LABEL = 'uppercase text-[0.55rem] font-bold text-slate-400 py-1.5 border-t border-slate-100';
+const CELL = 'text-center tabular-nums text-[0.7rem] py-1.5 border-t border-line';
+const LABEL = 'uppercase text-[0.55rem] font-bold text-subtle py-1.5 border-t border-line';
 const BTN =
-  'rounded border border-slate-200 px-2.5 py-1 text-[0.62rem] font-semibold text-slate-500 hover:border-blue-400 hover:text-blue-600';
+  'rounded border border-line px-2.5 py-1 text-[0.62rem] font-semibold text-muted hover:border-accent hover:text-accent';
 
 export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
   const { cluster, fundsByTicker, onOpen, onCompare } = props;
@@ -60,12 +60,12 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
   const gridCols = `110px repeat(${members.length}, minmax(0,1fr))`;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3.5" style={{ borderLeft: `4px solid ${accent}` }}>
+    <div className="rounded-lg border border-line bg-surface p-3.5" style={{ borderLeft: `4px solid ${accent}` }}>
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-baseline gap-1.5">
           <span>{cluster.icon}</span>
-          <span className="font-bold text-[0.85rem] text-slate-800">{cluster.label}</span>
-          <span className="text-[0.68rem] text-slate-400">
+          <span className="font-bold text-[0.85rem] text-ink">{cluster.label}</span>
+          <span className="text-[0.68rem] text-subtle">
             · {members.length} funds · {fmtAum(totalAum)} total AUM
           </span>
         </div>
@@ -94,7 +94,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
             key={m.ticker}
             type="button"
             onClick={() => onOpen(m.ticker)}
-            className={`${CELL} font-semibold text-slate-800 cursor-pointer hover:text-blue-600`}
+            className={`${CELL} font-semibold text-ink cursor-pointer hover:text-accent`}
           >
             {m.ticker}
           </button>
@@ -102,7 +102,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
 
         <div className={LABEL}>Issuer</div>
         {members.map((m) => (
-          <div key={m.ticker} className={`${CELL} text-slate-500`}>
+          <div key={m.ticker} className={`${CELL} text-muted`}>
             {m.issuer ?? DASH}
           </div>
         ))}
@@ -111,7 +111,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
         {members.map((m, i) => (
           <div
             key={m.ticker}
-            className={`${CELL} ${i === aumMax ? 'text-green-700 font-bold' : i === aumMin ? 'text-red-600' : 'text-slate-600'}`}
+            className={`${CELL} ${i === aumMax ? 'text-pos font-bold' : i === aumMin ? 'text-neg' : 'text-muted'}`}
           >
             {fmtAum(m.aum)}
           </div>
@@ -121,7 +121,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
         {members.map((m, i) => (
           <div
             key={m.ticker}
-            className={`${CELL} ${i === volMax ? 'text-green-700 font-bold' : i === volMin ? 'text-red-600' : 'text-slate-600'}`}
+            className={`${CELL} ${i === volMax ? 'text-pos font-bold' : i === volMin ? 'text-neg' : 'text-muted'}`}
           >
             {fmtVol(m.avg_volume)}
           </div>
@@ -131,7 +131,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
         {members.map((m, i) => (
           <div
             key={m.ticker}
-            className={`${CELL} ${i === pdBest ? 'text-green-700 font-bold' : i === pdWorst ? 'text-red-600' : 'text-slate-600'}`}
+            className={`${CELL} ${i === pdBest ? 'text-pos font-bold' : i === pdWorst ? 'text-neg' : 'text-muted'}`}
           >
             {fmtSignedPct(m.premium_discount, 2)}
           </div>
@@ -147,7 +147,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
 
       <div className="mt-2.5 flex gap-1.5 items-center">
         {cluster.best_access_ticker && (
-          <span className="rounded bg-green-600 px-2 py-0.5 text-[0.6rem] font-bold text-white">
+          <span className="rounded bg-pos-strong px-2 py-0.5 text-[0.6rem] font-bold text-white">
             ★ BEST ACCESS: {cluster.best_access_ticker}
           </span>
         )}
@@ -156,7 +156,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
             ≡ MOST LIQUID: {cluster.most_liquid_ticker}
           </span>
         )}
-        <span className="text-[0.6rem] text-slate-400 ml-2">
+        <span className="text-[0.6rem] text-subtle ml-2">
           Best Access = highest AUM × liquidity × tight premium/discount. (Expense ratio & tracking error aren&apos;t in our
           free data.)
         </span>

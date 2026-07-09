@@ -35,15 +35,15 @@ function bool(p: Record<string, unknown>, key: string): boolean {
 function Skeleton(): JSX.Element {
   return (
     <div className="space-y-4 p-5">
-      <div className="h-8 w-32 animate-pulse rounded bg-slate-100" />
-      <div className="h-44 animate-pulse rounded bg-slate-100" />
+      <div className="h-8 w-32 animate-pulse rounded bg-surface-3" />
+      <div className="h-44 animate-pulse rounded bg-surface-3" />
       <div className="grid grid-cols-4 gap-2">
-        <div className="h-14 animate-pulse rounded bg-slate-100" />
-        <div className="h-14 animate-pulse rounded bg-slate-100" />
-        <div className="h-14 animate-pulse rounded bg-slate-100" />
-        <div className="h-14 animate-pulse rounded bg-slate-100" />
+        <div className="h-14 animate-pulse rounded bg-surface-3" />
+        <div className="h-14 animate-pulse rounded bg-surface-3" />
+        <div className="h-14 animate-pulse rounded bg-surface-3" />
+        <div className="h-14 animate-pulse rounded bg-surface-3" />
       </div>
-      <div className="h-40 animate-pulse rounded bg-slate-100" />
+      <div className="h-40 animate-pulse rounded bg-surface-3" />
     </div>
   );
 }
@@ -80,7 +80,7 @@ export function FundDetailDrawer(props: FundDetailDrawerProps): JSX.Element {
         onClick={props.onClose}
       />
       <div
-        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[900px] overflow-y-auto bg-white shadow-2xl transition-transform duration-200 md:w-[60%]"
+        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[900px] overflow-y-auto bg-surface shadow-2xl transition-transform duration-200 md:w-[60%]"
         style={{ transform: open ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {q.isPending && open ? <Skeleton /> : null}
@@ -148,28 +148,28 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
   return (
     <div className="flex min-h-full flex-col">
       {/* HEADER */}
-      <div className="sticky top-0 z-10 flex items-start justify-between border-b border-slate-200 bg-white p-4">
+      <div className="sticky top-0 z-10 flex items-start justify-between border-b border-line bg-surface p-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[1.25rem] font-bold tabular-nums text-slate-800">{fund.ticker}</span>
+            <span className="text-[1.25rem] font-bold tabular-nums text-ink">{fund.ticker}</span>
             <span className={'rounded px-1.5 py-0.5 text-[0.58rem] font-bold ' + meta.badge}>
               {meta.short}
             </span>
             {fund.best_access ? (
-              <span className="text-[0.6rem] font-semibold text-amber-600">★ Best Access</span>
+              <span className="text-[0.6rem] font-semibold text-warn">★ Best Access</span>
             ) : null}
             {fund.most_liquid ? (
-              <span className="text-[0.6rem] font-semibold text-sky-600">≡ Most Liquid</span>
+              <span className="text-[0.6rem] font-semibold text-info">≡ Most Liquid</span>
             ) : null}
           </div>
-          <div className="mt-0.5 text-[0.7rem] text-slate-500">
+          <div className="mt-0.5 text-[0.7rem] text-muted">
             {[fund.name, fund.issuer, fund.category_name].filter(Boolean).join(' · ')}
           </div>
         </div>
         <button
           type="button"
           onClick={props.onClose}
-          className="-mt-1 rounded px-2 text-[1.4rem] leading-none text-slate-400 hover:text-slate-700"
+          className="-mt-1 rounded px-2 text-[1.4rem] leading-none text-subtle hover:text-ink"
           aria-label="Close"
         >
           ×
@@ -181,7 +181,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
         {/* 1. PRICE + CHART */}
         <div>
           <div className="flex items-baseline gap-3">
-            <span className="text-[1.6rem] font-bold tabular-nums text-slate-800">
+            <span className="text-[1.6rem] font-bold tabular-nums text-ink">
               {fmtPrice(fund.last_close)}
             </span>
             <span className="text-[0.9rem] font-semibold tabular-nums" style={{ color: plColor(fund.r1d) }}>
@@ -192,14 +192,14 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
           <div className="mt-2">
             <MiniAreaChart height={180} showBaseline area series={series} />
           </div>
-          <div className="mt-1 text-[0.6rem] text-slate-400">
+          <div className="mt-1 text-[0.6rem] text-subtle">
             ~90-day · normalized to 100{spyFund ? ' · dashed = SPY benchmark' : ''}
           </div>
         </div>
 
         {/* 2. LEVERAGE WARNING */}
         {isLeveraged(fund.category) ? (
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-[0.7rem] text-amber-800">
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-[0.7rem] text-warn">
             ⚠ Leveraged/inverse fund — daily reset means multi-day returns compound and decay; not a
             long-term hold.
           </div>
@@ -207,7 +207,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
 
         {/* 3. KEY STATS */}
         <div>
-          <h3 className="mb-2 text-[0.82rem] font-bold text-slate-800">Key Stats</h3>
+          <h3 className="mb-2 text-[0.82rem] font-bold text-ink">Key Stats</h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <StatCard label="AUM" value={fmtAum(fund.aum)} />
             <StatCard label="Avg Vol" value={fmtVol(fund.avg_volume)} />
@@ -223,37 +223,37 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
         {/* 4. PEERS */}
         {d.cluster && d.peers.length ? (
           <div>
-            <h3 className="mb-2 text-[0.82rem] font-bold text-slate-800">
+            <h3 className="mb-2 text-[0.82rem] font-bold text-ink">
               Same-Underlying Peers — {d.cluster.label}
             </h3>
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="px-2 py-1.5 text-left text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+                  <tr className="border-b border-line">
+                    <th className="px-2 py-1.5 text-left text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                       Fund
                     </th>
-                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                       AUM
                     </th>
-                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                       Vol
                     </th>
-                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                       P/D
                     </th>
-                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                       β
                     </th>
-                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-slate-400">
+                    <th className="px-2 py-1.5 text-right text-[0.58rem] font-bold uppercase tracking-wide text-subtle">
                       YTD
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className={'border-b border-slate-50 ' + (fund.best_access ? 'bg-blue-50' : '')}>
-                    <td className="px-2 py-1.5 text-[0.7rem] font-semibold tabular-nums text-slate-800">
-                      {fund.ticker} <span className="text-[0.55rem] text-slate-400">(this)</span>
+                  <tr className={'border-b border-slate-50 ' + (fund.best_access ? 'bg-accent-soft' : '')}>
+                    <td className="px-2 py-1.5 text-[0.7rem] font-semibold tabular-nums text-ink">
+                      {fund.ticker} <span className="text-[0.55rem] text-subtle">(this)</span>
                     </td>
                     <td className="px-2 py-1.5 text-right text-[0.7rem] tabular-nums">{fmtAum(fund.aum)}</td>
                     <td className="px-2 py-1.5 text-right text-[0.7rem] tabular-nums">{fmtPct(fund.vol)}</td>
@@ -270,9 +270,9 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
                     return (
                       <tr
                         key={t || i}
-                        className={'border-b border-slate-50 hover:bg-slate-50 ' + (bool(p, 'best_access') ? 'bg-blue-50' : '')}
+                        className={'border-b border-slate-50 hover:bg-surface-2 ' + (bool(p, 'best_access') ? 'bg-accent-soft' : '')}
                       >
-                        <td className="px-2 py-1.5 text-[0.7rem] font-semibold tabular-nums text-slate-800">
+                        <td className="px-2 py-1.5 text-[0.7rem] font-semibold tabular-nums text-ink">
                           {t || '—'}
                         </td>
                         <td className="px-2 py-1.5 text-right text-[0.7rem] tabular-nums">{fmtAum(num(p, 'aum'))}</td>
@@ -292,7 +292,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
                 </tbody>
               </table>
             </div>
-            <div className="mt-1.5 text-[0.6rem] text-slate-400">
+            <div className="mt-1.5 text-[0.6rem] text-subtle">
               Returns track the same underlying — differentiate on AUM, liquidity, and
               premium/discount. (Expense ratio &amp; tracking error aren&apos;t in our free data.)
             </div>
@@ -301,11 +301,11 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
 
         {/* 5. HOLDINGS */}
         <div>
-          <h3 className="mb-2 text-[0.82rem] font-bold text-slate-800">Top Holdings</h3>
+          <h3 className="mb-2 text-[0.82rem] font-bold text-ink">Top Holdings</h3>
           {fund.has_holdings && d.holdings.length ? (
             <>
               {wlHoldings.length ? (
-                <div className="mb-2 rounded-md border border-blue-200 bg-blue-50 p-2 text-[0.7rem] text-blue-800">
+                <div className="mb-2 rounded-md border border-accent bg-accent-soft p-2 text-[0.7rem] text-accent">
                   {wlHoldings.length} of your watchlist stocks are in this ETF: {wlHoldings.join(', ')}
                 </div>
               ) : null}
@@ -317,15 +317,15 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
                       key={h.symbol}
                       onClick={() => props.onOpenStock(h.symbol)}
                       className={
-                        'grid cursor-pointer grid-cols-[64px_1fr_auto] items-center gap-2 py-1 text-[0.7rem] hover:bg-slate-50 ' +
-                        (onWl ? 'bg-blue-50' : '')
+                        'grid cursor-pointer grid-cols-[64px_1fr_auto] items-center gap-2 py-1 text-[0.7rem] hover:bg-surface-2 ' +
+                        (onWl ? 'bg-accent-soft' : '')
                       }
                     >
-                      <span className="font-semibold tabular-nums text-slate-800">{h.symbol}</span>
-                      <span className="truncate text-slate-500">{h.name ?? ''}</span>
-                      <span className="flex items-center justify-end gap-1 tabular-nums text-slate-700">
+                      <span className="font-semibold tabular-nums text-ink">{h.symbol}</span>
+                      <span className="truncate text-muted">{h.name ?? ''}</span>
+                      <span className="flex items-center justify-end gap-1 tabular-nums text-ink">
                         {h.weight != null ? (h.weight * 100).toFixed(1) + '%' : '—'}
-                        {onWl ? <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> : null}
+                        {onWl ? <span className="h-1.5 w-1.5 rounded-full bg-accent-soft" /> : null}
                       </span>
                     </div>
                   );
@@ -333,7 +333,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
               </div>
             </>
           ) : (
-            <div className="rounded-md border border-slate-100 bg-slate-50 p-2.5 text-[0.7rem] text-slate-500">
+            <div className="rounded-md border border-line bg-surface-2 p-2.5 text-[0.7rem] text-muted">
               This fund holds its underlying asset directly (commodity/crypto) — no equity holdings
               to display.
             </div>
@@ -342,7 +342,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
       </div>
 
       {/* 6. ACTIONS */}
-      <div className="sticky bottom-0 z-10 flex gap-2 border-t border-slate-200 bg-white p-4">
+      <div className="sticky bottom-0 z-10 flex gap-2 border-t border-line bg-surface p-4">
         <button
           type="button"
           disabled={onWatchlist}
@@ -350,8 +350,8 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
           className={
             'rounded-md px-3 py-1.5 text-[0.75rem] font-semibold ' +
             (onWatchlist
-              ? 'cursor-default bg-slate-100 text-slate-500'
-              : 'bg-blue-600 text-white hover:bg-blue-700')
+              ? 'cursor-default bg-surface-3 text-muted'
+              : 'bg-accent-solid text-accent-ink hover:bg-accent-hover')
           }
         >
           {onWatchlist ? 'On Watchlist ✓' : '+ Add to Watchlist'}
@@ -360,7 +360,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
           <button
             type="button"
             onClick={() => props.onCompareCluster(peerCompareTickers)}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-[0.75rem] font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-md border border-line px-3 py-1.5 text-[0.75rem] font-semibold text-ink hover:bg-surface-2"
           >
             Compare peers ⚔
           </button>
@@ -372,9 +372,9 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
 
 function StatCard(props: { label: string; value: string }): JSX.Element {
   return (
-    <div className="rounded-md border border-slate-100 bg-slate-50 p-2">
-      <div className="text-[0.55rem] uppercase text-slate-400">{props.label}</div>
-      <div className="text-[0.85rem] font-bold tabular-nums text-slate-800">{props.value}</div>
+    <div className="rounded-md border border-line bg-surface-2 p-2">
+      <div className="text-[0.55rem] uppercase text-subtle">{props.label}</div>
+      <div className="text-[0.85rem] font-bold tabular-nums text-ink">{props.value}</div>
     </div>
   );
 }

@@ -14,12 +14,12 @@ export function WatchlistBridge(props: WatchlistBridgeProps): JSX.Element {
   const { bridge, isLoading, onOpenFund, onOpenStock } = props;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-line bg-surface p-4">
       <div className="flex items-center gap-1">
-        <h3 className="text-[0.82rem] font-bold text-slate-800">Watchlist Bridge</h3>
+        <h3 className="text-[0.82rem] font-bold text-ink">Watchlist Bridge</h3>
         <InfoTip text="Sector/broad-market ETFs that hold stocks on your watchlist. Overlap% = summed weight of the held tickers. Click a stock chip to open its Screener deep-dive." />
       </div>
-      <p className="text-[0.68rem] text-slate-400">
+      <p className="text-[0.68rem] text-subtle">
         ETFs holding your watchlist stocks — click a stock to open its deep-dive
       </p>
 
@@ -67,17 +67,17 @@ function WatchlistBridgeBody(props: WatchlistBridgeProps): JSX.Element {
       {etfs.map((etf) => (
         <div
           key={etf.ticker}
-          className="rounded-md border border-slate-200 p-2.5 hover:border-slate-300 hover:shadow-sm"
+          className="rounded-md border border-line p-2.5 hover:border-line hover:shadow-sm"
         >
           <div className="flex items-center justify-between">
             <div className="min-w-0">
               <span
-                className="cursor-pointer font-semibold tabular-nums text-[0.8rem] text-slate-800 hover:text-blue-600"
+                className="cursor-pointer font-semibold tabular-nums text-[0.8rem] text-ink hover:text-accent"
                 onClick={() => onOpenFund(etf.ticker)}
               >
                 {etf.ticker}
               </span>
-              {etf.name ? <span className="ml-1.5 text-[0.66rem] text-slate-500">{etf.name}</span> : null}
+              {etf.name ? <span className="ml-1.5 text-[0.66rem] text-muted">{etf.name}</span> : null}
             </div>
             <span
               className={
@@ -88,7 +88,7 @@ function WatchlistBridgeBody(props: WatchlistBridgeProps): JSX.Element {
             </span>
           </div>
 
-          <p className="my-1.5 text-[0.66rem] text-slate-500">
+          <p className="my-1.5 text-[0.66rem] text-muted">
             This ETF holds {etf.held_count} of your watchlist stocks.
           </p>
 
@@ -97,7 +97,7 @@ function WatchlistBridgeBody(props: WatchlistBridgeProps): JSX.Element {
               <button
                 key={t}
                 onClick={() => onOpenStock(t)}
-                className="rounded bg-blue-600 px-1.5 py-0.5 text-[0.6rem] font-bold text-white hover:bg-blue-700"
+                className="rounded bg-accent-solid px-1.5 py-0.5 text-[0.6rem] font-bold text-accent-ink hover:bg-accent-hover"
               >
                 {t}
               </button>
@@ -111,7 +111,7 @@ function WatchlistBridgeBody(props: WatchlistBridgeProps): JSX.Element {
 
 function MutedCard(props: { text: string }): JSX.Element {
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-[0.7rem] text-slate-500">
+    <div className="rounded-md border border-line bg-surface-2 p-4 text-[0.7rem] text-muted">
       {props.text}
     </div>
   );
