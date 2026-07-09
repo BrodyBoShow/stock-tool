@@ -49,6 +49,7 @@ import type {
   WatchlistPlanResponse,
   WatchlistPlanUpdate,
   WatchlistResponse,
+  WhatsChangedResponse,
 } from '@/types/api'
 
 import { supabase } from '@/lib/supabase'
@@ -187,10 +188,13 @@ export function getRiskProfile(): Promise<RiskProfileResponse> {
   return getJson<RiskProfileResponse>('/settings/risk-profile')
 }
 
-export function getRiskAlignment(benchmark = 'SPY'): Promise<RiskAlignmentResponse> {
-  return getJson<RiskAlignmentResponse>(
-    `/portfolio/risk-alignment?benchmark=${encodeURIComponent(benchmark)}`,
-  )
+export function getRiskAlignment(
+  benchmark = 'SPY',
+  sector?: string,
+): Promise<RiskAlignmentResponse> {
+  const q = new URLSearchParams({ benchmark })
+  if (sector) q.set('sector', sector)
+  return getJson<RiskAlignmentResponse>(`/portfolio/risk-alignment?${q.toString()}`)
 }
 
 /** Set the risk profile from quiz answers OR a direct manual pick. The server
@@ -371,6 +375,14 @@ export function updateWatchlistPlan(
     'PATCH',
     `/watchlist/${encodeURIComponent(ticker)}/plan`,
     body,
+  )
+}
+
+/** On-demand AI "what changed" narrative for a watched name (Haiku, cached). */
+export function getWhatsChanged(ticker: string): Promise<WhatsChangedResponse> {
+  return sendJson<WhatsChangedResponse>(
+    'POST',
+    `/watchlist/${encodeURIComponent(ticker)}/whats-changed`,
   )
 }
 

@@ -107,13 +107,18 @@ def get_analytics(
 def get_risk_alignment(
     user: CurrentUser,
     benchmark: str = Query("SPY", min_length=1, max_length=10),
+    sector: str | None = Query(None, max_length=64),
 ) -> RiskAlignmentResponse:
     """Portfolio vs the user's stated risk preference: per-holding band fit,
     in-band weight share, profile-aware threshold flags, and idea discovery
     inside the chosen bands. Descriptive only — historical measurements
-    compared against a range the user chose; never advice."""
+    compared against a range the user chose; never advice.
+
+    ``sector`` optionally restricts the idea list to one sector; the rest of the
+    payload is sector-agnostic."""
     return RiskAlignmentResponse(
-        **risk_alignment.risk_alignment(owner_id=user.id, benchmark=benchmark))
+        **risk_alignment.risk_alignment(
+            owner_id=user.id, benchmark=benchmark, sector=sector))
 
 
 @router.get("/transactions", response_model=PortfolioTransactionsResponse)

@@ -131,6 +131,10 @@ class RiskAlignmentResponse(BaseModel):
     holdings: list[RiskAlignmentHolding]
     threshold_flags: list[dict[str, Any]]  # profile-aware concentration/sector flags
     ideas: list[RiskAlignmentIdea]
+    # Sectors with at least one qualifying idea in the band range — powers the
+    # panel's sector filter (so "show me Healthcare" isn't crowded out by the
+    # globally top-scored names). Independent of any selected sector.
+    available_sectors: list[str] = []
     methodology: str
 
 
@@ -668,6 +672,15 @@ class WatchlistPlanUpdate(BaseModel):
 class WatchlistPlanResponse(BaseModel):
     ticker: str
     status: str  # "updated"
+
+
+class WhatsChangedResponse(BaseModel):
+    """On-demand AI "what changed" narrative for a watched name (redesign P4)."""
+    ticker: str
+    narrative: str
+    model: str | None = None
+    generated_at: datetime | None = None
+    cached: bool = False
 
 
 class WatchlistChange(BaseModel):

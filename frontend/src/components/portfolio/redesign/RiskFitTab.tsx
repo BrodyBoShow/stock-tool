@@ -96,7 +96,7 @@ export function RiskFitTab({
         holdings={holdings}
         suggestedWeights={suggestedWeights}
       />
-      {riskAlignment && <AlignedIdeasPanel data={riskAlignment} />}
+      {riskAlignment && <AlignedIdeasPanel data={riskAlignment} benchmark={benchmark} />}
 
       {/* Zone C */}
       <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">

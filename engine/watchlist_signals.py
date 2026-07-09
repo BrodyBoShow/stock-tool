@@ -15,13 +15,20 @@ from engine import events as events_engine
 from engine import queries
 
 
-def compute(owner_id: str | None = None) -> list[dict[str, Any]]:
+def compute(
+    owner_id: str | None = None, only: frozenset[str] | None = None
+) -> list[dict[str, Any]]:
     """One signal record per watchlist name (most recently added first).
 
     owner_id (default None) preserves legacy global behavior; when set, only
     that user's watchlist names are scanned (passed through to the core query).
+    only (default None) restricts the per-name work to those tickers — used by
+    the on-demand what-changed narrative so a single-name request doesn't run
+    8-K/insider/news lookups for the whole watchlist.
     """
     core = queries.watchlist_change_core(owner_id=owner_id)
+    if only is not None:
+        core = [c for c in core if c["ticker"] in only]
     today = str(date.today())
     # GDELT coverage-volume spike per name (Slice 3.1) — one bulk lookup.
     news = queries.news_signals_for([c["security_id"] for c in core])
