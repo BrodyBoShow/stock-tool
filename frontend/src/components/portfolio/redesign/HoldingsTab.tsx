@@ -112,7 +112,7 @@ export function HoldingsTab({
       </div>
 
       {/* Zone C */}
-      <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+      <div className="flex flex-col gap-3 border-t border-line pt-4">
         <ExploreChips
           chips={[
             { label: 'Open Risk & Fit', onClick: () => onExplore('risk') },

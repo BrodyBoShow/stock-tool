@@ -99,7 +99,7 @@ export function RiskFitTab({
       {riskAlignment && <AlignedIdeasPanel data={riskAlignment} benchmark={benchmark} />}
 
       {/* Zone C */}
-      <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+      <div className="flex flex-col gap-3 border-t border-line pt-4">
         <ExploreChips
           chips={[
             { label: 'See Holdings', onClick: () => onExplore('holdings') },

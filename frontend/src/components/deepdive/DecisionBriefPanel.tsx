@@ -224,7 +224,7 @@ function sourceHost(url: string): string {
  * drop, attached to the brief only when the move was large. */
 function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
   return (
-    <div className="rounded-xl border border-warn bg-[#fffdf5] p-3.5">
+    <div className="rounded-xl border border-warn bg-warn-soft p-3.5">
       <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-warn">
         What’s behind the move
       </div>
@@ -240,7 +240,7 @@ function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
               target="_blank"
               rel="noopener noreferrer"
               title={s.title}
-              className="text-[0.72rem] font-medium text-accent hover:text-accent hover:underline"
+              className="text-[0.72rem] font-medium text-accent hover:underline"
             >
               ↗ {sourceHost(s.url)}
             </a>
@@ -265,7 +265,7 @@ function BriefBody({ cached, header }: { cached: DecisionBrief; header: Security
       {b.price_move_context && <MoveContext ctx={b.price_move_context} />}
 
       {b.score_read && (
-        <div className="rounded-xl border border-accent bg-[#f5f7ff] p-3.5">
+        <div className="rounded-xl border border-accent bg-accent-soft p-3.5">
           <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-accent">
             How to read this score
           </div>
@@ -285,14 +285,14 @@ function BriefBody({ cached, header }: { cached: DecisionBrief; header: Security
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-emerald-100 bg-[#f7fefb] p-3.5">
+        <div className="rounded-xl border border-pos-border bg-pos-soft p-3.5">
           <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-pos">
             Bull case
           </div>
           <CaseList items={b.bull_case} tone="bull" />
           <QuantChips header={header} tone="bull" />
         </div>
-        <div className="rounded-xl border border-red-100 bg-[#fffafa] p-3.5">
+        <div className="rounded-xl border border-neg-border bg-neg-soft p-3.5">
           <div className="text-[0.67rem] font-bold uppercase tracking-[0.06em] text-neg">
             Bear case
           </div>

@@ -68,7 +68,7 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
             <div
               key={`c-${i}-${j}`}
               className="flex items-center justify-center rounded p-1 text-[0.62rem] tabular-nums text-subtle"
-              style={{ background: '#f1f5f9' }}
+              style={{ background: 'var(--surface-2)' }}
             >
               {DASH}
             </div>,
@@ -176,7 +176,7 @@ export function ComparePanel(props: ComparePanelProps): JSX.Element {
                 {funds.map((f) => (
                   <tr
                     key={f.ticker}
-                    className="border-b border-slate-50 hover:bg-surface-2"
+                    className="border-b border-line hover:bg-surface-2"
                     style={{ borderLeft: '3px solid ' + catMeta(f.category).accent }}
                   >
                     <td className="py-1.5 pl-2 pr-2 text-left">

@@ -160,14 +160,14 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
         onClick={onClose}
       />
       <div
-        className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-[860px] overflow-y-auto bg-white shadow-2xl transition-transform duration-300 md:w-[60%]"
+        className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-[860px] overflow-y-auto bg-surface shadow-2xl transition-transform duration-300 md:w-[60%]"
         style={{ transform: open ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* header */}
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-line bg-surface px-6 py-4">
           <div>
-            <div className="text-[1rem] font-bold text-slate-900">What-If Rebalance Simulator</div>
-            <div className="mt-0.5 text-[0.72rem] text-slate-400">
+            <div className="text-[1rem] font-bold text-ink">What-If Rebalance Simulator</div>
+            <div className="mt-0.5 text-[0.72rem] text-muted">
               Model trades before you make them — compared to a do-nothing baseline. Estimates
               from trailing history; not advice, and nothing is executed here.
             </div>
@@ -176,7 +176,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded px-2 text-[1.3rem] leading-none text-slate-400 hover:text-slate-700"
+            className="rounded px-2 text-[1.3rem] leading-none text-muted hover:text-ink"
           >
             ✕
           </button>
@@ -185,14 +185,14 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
         <div className="space-y-6 px-6 py-5">
           {/* trades editor */}
           <section>
-            <div className="mb-2 text-[0.68rem] font-bold uppercase tracking-wide text-slate-400">
+            <div className="mb-2 text-[0.68rem] font-bold uppercase tracking-wide text-muted">
               Proposed trades
             </div>
             <div className="space-y-1.5">
               {trades.map((t, i) => (
                 <div
                   key={i}
-                  className="grid grid-cols-[80px_110px_1fr_110px_110px_32px] items-center gap-2 rounded-lg bg-slate-50 p-2"
+                  className="grid grid-cols-[80px_110px_1fr_110px_110px_32px] items-center gap-2 rounded-lg bg-surface-2 p-2"
                 >
                   <select
                     value={t.side}
@@ -225,14 +225,14 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                     onChange={(e) => setTrade(i, { price: Number(e.target.value) || 0 })}
                     className={FORM_INPUT + ' text-[0.74rem]'}
                   />
-                  <span className="text-right text-[0.74rem] tabular-nums text-slate-500">
+                  <span className="text-right text-[0.74rem] tabular-nums text-muted">
                     {tradeTotal(t) > 0 ? fmtPrice(tradeTotal(t)) : DASH}
                   </span>
                   <button
                     type="button"
                     onClick={() => setTrades((ts) => ts.filter((_, j) => j !== i))}
                     aria-label="Remove trade"
-                    className="text-slate-400 hover:text-red-600"
+                    className="text-muted hover:text-neg"
                   >
                     ✕
                   </button>
@@ -252,12 +252,12 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                   },
                 ])
               }
-              className="mt-1.5 w-full rounded-lg border border-dashed border-gray-300 py-2 text-[0.74rem] text-slate-400 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600"
+              className="mt-1.5 w-full rounded-lg border border-dashed border-line py-2 text-[0.74rem] text-muted hover:border-accent hover:bg-accent-soft hover:text-accent"
             >
               + Add trade
             </button>
             {(sells > 0 || buys > 0) && (
-              <p className="mt-1.5 text-[0.68rem] text-slate-400">
+              <p className="mt-1.5 text-[0.68rem] text-muted">
                 Selling ≈ {fmtPrice(sells)} · buying ≈ {fmtPrice(buys)}
                 {sells > buys + 0.5 &&
                   ` · note: the stats and Monte Carlo below describe only the remaining INVESTED positions, fully re-scaled — the ${fmtPrice(sells - buys)} of unspent sale value (cash) is not modeled`}
@@ -269,11 +269,11 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
 
           {/* impact grid */}
           <section>
-            <div className="mb-2 text-[0.68rem] font-bold uppercase tracking-wide text-slate-400">
+            <div className="mb-2 text-[0.68rem] font-bold uppercase tracking-wide text-muted">
               Projected impact (vs do-nothing baseline)
             </div>
             {!derived ? (
-              <p className="text-[0.76rem] text-slate-400">
+              <p className="text-[0.76rem] text-muted">
                 Loading the returns matrix… (analytics unavailable — impact preview needs it)
               </p>
             ) : (
@@ -285,16 +285,16 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                   const improved =
                     delta == null ? null : goodWhenLower ? delta < 0 : delta > 0
                   return (
-                    <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                      <div className="text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400">
+                    <div key={key} className="rounded-lg border border-line bg-surface-2 p-3">
+                      <div className="text-[0.6rem] font-semibold uppercase tracking-wide text-muted">
                         {label}
                       </div>
                       <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-[0.78rem] tabular-nums text-slate-400 line-through">
+                        <span className="text-[0.78rem] tabular-nums text-muted line-through">
                           {fmt(b)}
                         </span>
-                        <span className="text-slate-300">→</span>
-                        <span className="text-[1rem] font-bold tabular-nums text-slate-900">
+                        <span className="text-subtle">→</span>
+                        <span className="text-[1rem] font-bold tabular-nums text-ink">
                           {fmt(a)}
                         </span>
                         {delta != null && Math.abs(delta) > 1e-4 && (
@@ -313,13 +313,13 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                   )
                 })}
                 {/* tax impact */}
-                <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400">
+                <div className="rounded-lg border border-line bg-surface-2 p-3">
+                  <div className="text-[0.6rem] font-semibold uppercase tracking-wide text-muted">
                     Realized P/L (these sells, FIFO) — not the tax owed
                   </div>
                   <div className="mt-1 flex flex-wrap items-baseline gap-2 text-[0.85rem] font-bold tabular-nums">
                     {tax.lt === 0 && tax.st === 0 ? (
-                      <span className="text-slate-400">no sells / no realized P/L</span>
+                      <span className="text-muted">no sells / no realized P/L</span>
                     ) : (
                       <>
                         <span style={{ color: plColor(tax.lt) }}>LT {fmtSignedMoney(tax.lt)}</span>
@@ -327,7 +327,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                       </>
                     )}
                     {tax.washRisk && (
-                      <span className="rounded bg-red-50 px-1.5 py-0.5 text-[0.64rem] font-bold text-red-700">
+                      <span className="rounded bg-neg-soft px-1.5 py-0.5 text-[0.64rem] font-bold text-neg">
                         ⚠ wash-sale risk (bought &lt;30d ago, selling at a loss)
                       </span>
                     )}
@@ -335,7 +335,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                 </div>
               </div>
             )}
-            <p className="mt-1.5 text-[0.66rem] text-slate-400">
+            <p className="mt-1.5 text-[0.66rem] text-muted">
               Before/after both computed from your holdings&rsquo; trailing-1Y daily returns
               (same matrix, so the comparison is fair). Expected return is shrunk toward a
               ~8%/yr market prior — an estimate, not a forecast.
@@ -345,14 +345,14 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
           {/* Monte Carlo rerun */}
           <section>
             <div className="mb-2 flex items-center justify-between">
-              <div className="text-[0.68rem] font-bold uppercase tracking-wide text-slate-400">
+              <div className="text-[0.68rem] font-bold uppercase tracking-wide text-muted">
                 Monte Carlo — rerun with new weights (10y)
               </div>
               <button
                 type="button"
                 onClick={() => mcMut.mutate()}
                 disabled={mcMut.isPending}
-                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.72rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                className="rounded-lg bg-accent-solid px-3 py-1.5 text-[0.72rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-60"
               >
                 {mcMut.isPending ? 'Running…' : 'Run cone'}
               </button>
@@ -381,7 +381,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                     sub={mc.base.benchmark ? `vs ${Math.round(mc.base.benchmark.prob_beat * 100)}% do-nothing` : undefined}
                   />
                 </div>
-                <p className="mt-1.5 text-[0.66rem] text-slate-400">
+                <p className="mt-1.5 text-[0.66rem] text-muted">
                   {mc.what.excluded && mc.what.excluded.length > 0 &&
                     `Excluded (no data): ${mc.what.excluded.join(', ')}. `}
                   Classic risk-return tradeoff: compare the medians AND the drawdowns —
@@ -389,7 +389,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                 </p>
               </>
             ) : (
-              <p className="text-[0.72rem] text-slate-400">
+              <p className="text-[0.72rem] text-muted">
                 Run the cone to compare 10-year outcome distributions (current vs rebalanced).
               </p>
             )}
@@ -397,11 +397,11 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
         </div>
 
         {/* footer */}
-        <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-gray-200 bg-white px-6 py-3.5">
+        <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-line bg-surface px-6 py-3.5">
           <button
             type="button"
             onClick={() => setTrades([])}
-            className="rounded-lg border border-gray-200 px-3.5 py-2 text-[0.74rem] font-semibold text-slate-500 hover:bg-slate-50"
+            className="rounded-lg border border-line px-3.5 py-2 text-[0.74rem] font-semibold text-muted hover:bg-surface-2"
           >
             Clear trades
           </button>
@@ -409,7 +409,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
             type="button"
             onClick={copyTrades}
             disabled={!trades.some((t) => t.shares > 0)}
-            className="rounded-lg bg-indigo-600 px-3.5 py-2 text-[0.74rem] font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-lg bg-accent-solid px-3.5 py-2 text-[0.74rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50"
             title="StockBud never places orders — copy the list and place them at your broker"
           >
             Copy trade list
@@ -427,12 +427,12 @@ function fmtK(v: number | null | undefined): string {
 
 function McStat(props: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5">
-      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-slate-400">
+    <div className="rounded-lg border border-line bg-surface-2 p-2.5">
+      <div className="text-[0.58rem] font-semibold uppercase tracking-wide text-muted">
         {props.label}
       </div>
-      <div className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-slate-900">{props.value}</div>
-      {props.sub && <div className="text-[0.62rem] tabular-nums text-slate-400">{props.sub}</div>}
+      <div className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-ink">{props.value}</div>
+      {props.sub && <div className="text-[0.62rem] tabular-nums text-muted">{props.sub}</div>}
     </div>
   )
 }

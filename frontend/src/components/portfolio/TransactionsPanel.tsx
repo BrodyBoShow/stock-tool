@@ -23,12 +23,12 @@ const TXN_TYPES: PortfolioTxnType[] = [
 ]
 
 const TYPE_CHIP: Record<PortfolioTxnType, string> = {
-  buy: 'bg-green-100 text-green-700',
-  sell: 'bg-red-100 text-red-700',
+  buy: 'bg-pos-soft text-pos',
+  sell: 'bg-neg-soft text-neg',
   dividend: 'bg-purple-100 text-purple-700',
-  deposit: 'bg-slate-100 text-slate-600',
-  withdrawal: 'bg-slate-100 text-slate-600',
-  fee: 'bg-slate-100 text-slate-600',
+  deposit: 'bg-surface-3 text-muted',
+  withdrawal: 'bg-surface-3 text-muted',
+  fee: 'bg-surface-3 text-muted',
 }
 
 const NEEDS_TICKER: PortfolioTxnType[] = ['buy', 'sell', 'dividend']
@@ -272,22 +272,22 @@ function ImportWizard({
 
   const effStep = mut.isPending ? 4 : step
   const chipCls = (idx: number) => {
-    if (idx < effStep) return 'bg-green-100 text-green-700'
-    if (idx === effStep) return 'bg-indigo-600 text-white'
-    return 'bg-slate-100 text-slate-400'
+    if (idx < effStep) return 'bg-pos-soft text-pos'
+    if (idx === effStep) return 'bg-accent-solid text-accent-ink'
+    return 'bg-surface-3 text-muted'
   }
 
   const canContinueMap = mapping.type >= 0 && mapping.date >= 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40">
-      <div className="max-h-[85vh] w-[680px] overflow-auto rounded-xl bg-white p-6">
+      <div className="max-h-[85vh] w-[680px] overflow-auto rounded-xl bg-surface p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-[0.95rem] font-bold text-gray-900">Import CSV</h3>
+          <h3 className="text-[0.95rem] font-bold text-ink">Import CSV</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2 py-0.5 text-[0.78rem] font-bold text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+            className="rounded-md px-2 py-0.5 text-[0.78rem] font-bold text-muted hover:bg-surface-2 hover:text-muted"
           >
             ✕
           </button>
@@ -306,7 +306,7 @@ function ImportWizard({
 
         {step === 1 && (
           <div className="mt-4 space-y-3">
-            <label className="block cursor-pointer rounded-lg border-2 border-dashed border-gray-200 p-8 text-center text-[0.78rem] text-slate-400 transition-colors hover:border-indigo-300 hover:text-slate-500">
+            <label className="block cursor-pointer rounded-lg border-2 border-dashed border-line p-8 text-center text-[0.78rem] text-muted transition-colors hover:border-accent hover:text-muted">
               Click to choose a .csv file
               <input
                 type="file"
@@ -316,7 +316,7 @@ function ImportWizard({
               />
             </label>
             <div>
-              <div className="mb-1 text-[0.7rem] font-semibold text-slate-500">
+              <div className="mb-1 text-[0.7rem] font-semibold text-muted">
                 or paste CSV text
               </div>
               <textarea
@@ -329,7 +329,7 @@ function ImportWizard({
                 type="button"
                 disabled={pasted.trim() === ''}
                 onClick={() => handleContent(pasted)}
-                className="mt-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-1.5 rounded-lg bg-accent-solid px-3 py-1.5 text-[0.74rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Use pasted text →
               </button>
@@ -339,7 +339,7 @@ function ImportWizard({
 
         {step === 2 && (
           <div className="mt-4">
-            <p className="text-[0.72rem] text-slate-500">
+            <p className="text-[0.72rem] text-muted">
               Match your CSV columns to fields. Type and Date are required — the rest
               are optional depending on the transaction type.
             </p>
@@ -347,11 +347,11 @@ function ImportWizard({
               {FIELDS.map((f) => (
                 <label
                   key={f.key}
-                  className="flex items-center justify-between gap-3 text-[0.72rem] font-semibold text-slate-500"
+                  className="flex items-center justify-between gap-3 text-[0.72rem] font-semibold text-muted"
                 >
                   <span>
                     {f.label}
-                    {f.required && <span className="text-red-500"> *</span>}
+                    {f.required && <span className="text-neg"> *</span>}
                   </span>
                   <select
                     value={mapping[f.key]}
@@ -371,7 +371,7 @@ function ImportWizard({
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.74rem] font-semibold text-muted hover:bg-surface-2"
               >
                 ← Back
               </button>
@@ -379,7 +379,7 @@ function ImportWizard({
                 type="button"
                 disabled={!canContinueMap}
                 onClick={() => setStep(3)}
-                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-accent-solid px-3 py-1.5 text-[0.74rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Preview {dataRows.length} rows →
               </button>
@@ -407,15 +407,15 @@ function ImportWizard({
                     <tr
                       key={`${i}-${p.txn.trade_date}-${p.txn.ticker ?? ''}`}
                       className={
-                        'border-b border-slate-50 ' +
+                        'border-b border-line ' +
                         (p.status === 'duplicate'
-                          ? 'bg-red-50'
+                          ? 'bg-neg-soft'
                           : WARN_STATUSES.includes(p.status)
-                            ? 'bg-amber-50'
+                            ? 'bg-warn-soft'
                             : '')
                       }
                     >
-                      <td className="py-1.5 pr-3 font-semibold text-slate-600">{p.status}</td>
+                      <td className="py-1.5 pr-3 font-semibold text-muted">{p.status}</td>
                       <td className="py-1.5 pr-3 capitalize">{p.txn.txn_type || '—'}</td>
                       <td className="py-1.5 pr-3 tabular-nums">{p.txn.trade_date || '—'}</td>
                       <td className="py-1.5 pr-3 font-bold">{p.txn.ticker ?? '—'}</td>
@@ -431,20 +431,20 @@ function ImportWizard({
                 </tbody>
               </table>
               {preview.length > 12 && (
-                <div className="py-1.5 text-[0.68rem] text-slate-400">
+                <div className="py-1.5 text-[0.68rem] text-muted">
                   … {preview.length - 12} more
                 </div>
               )}
             </div>
 
-            <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[0.72rem] text-slate-600">
-              <span className="font-semibold text-slate-800">{clean}</span> clean rows
+            <div className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-[0.72rem] text-muted">
+              <span className="font-semibold text-ink">{clean}</span> clean rows
               will be committed · <span className="font-semibold">{warn}</span> skipped
               (fix and re-import) · <span className="font-semibold">{dup}</span> duplicates
             </div>
 
             {dup > 0 && (
-              <div className="mt-2 flex gap-4 text-[0.72rem] text-slate-600">
+              <div className="mt-2 flex gap-4 text-[0.72rem] text-muted">
                 <label className="flex cursor-pointer items-center gap-1.5">
                   <input
                     type="radio"
@@ -470,7 +470,7 @@ function ImportWizard({
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.74rem] font-semibold text-muted hover:bg-surface-2"
               >
                 ← Back
               </button>
@@ -478,7 +478,7 @@ function ImportWizard({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-slate-600 hover:bg-slate-50"
+                  className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.74rem] font-semibold text-muted hover:bg-surface-2"
                 >
                   Cancel
                 </button>
@@ -486,7 +486,7 @@ function ImportWizard({
                   type="button"
                   disabled={commitCount === 0 || mut.isPending}
                   onClick={commit}
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-accent-solid px-3 py-1.5 text-[0.74rem] font-semibold text-accent-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {mut.isPending ? 'Committing…' : `Commit ${commitCount} rows →`}
                 </button>
@@ -579,11 +579,11 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
   }
 
   return (
-    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <div className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[0.95rem] font-bold text-gray-900">Transactions</h2>
-          <p className="mt-0.5 text-[0.72rem] text-slate-400">
+          <h2 className="text-[0.95rem] font-bold text-ink">Transactions</h2>
+          <p className="mt-0.5 text-[0.72rem] text-muted">
             The ledger everything above is computed from — splits are applied
             automatically.
           </p>
@@ -610,14 +610,14 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
           <button
             type="button"
             onClick={() => setShowAdd((v) => !v)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.74rem] font-semibold text-muted transition-colors hover:bg-surface-2"
           >
             {showAdd ? '− Close' : '+ Add'}
           </button>
           <button
             type="button"
             onClick={() => setWizardOpen(true)}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.74rem] font-semibold text-white transition-colors hover:bg-indigo-700"
+            className="rounded-lg bg-accent-solid px-3 py-1.5 text-[0.74rem] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
           >
             Import CSV
           </button>
@@ -625,12 +625,12 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
       </div>
 
       {showAdd && (
-        <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+        <div className="mt-4 rounded-lg border border-line bg-surface-2/60 p-3">
           <AddTransactionForm onDone={() => setShowAdd(false)} />
         </div>
       )}
 
-      <div className="mt-3 text-[0.66rem] text-slate-400">
+      <div className="mt-3 text-[0.66rem] text-muted">
         Showing {filtered.length} of {rows.length}
       </div>
 
@@ -647,7 +647,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="rounded px-2 py-1 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded px-2 py-1 text-subtle transition-colors hover:bg-surface/10 hover:text-white"
           >
             Clear
           </button>
@@ -656,7 +656,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
 
       <div className="mt-2 max-h-[420px] overflow-auto">
         <table className="w-full text-[0.82rem]">
-          <thead className="sticky top-0 z-10 bg-white">
+          <thead className="sticky top-0 z-10 bg-surface">
             <tr className={TABLE_HEAD_ROW}>
               <th className="w-8 py-2 pr-2">
                 <input
@@ -678,7 +678,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
           </thead>
           <tbody>
             {filtered.map((r) => (
-              <tr key={r.id} className="border-b border-slate-50">
+              <tr key={r.id} className="border-b border-line">
                 <td className="py-2 pr-2">
                   <input
                     type="checkbox"
@@ -687,7 +687,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
                     aria-label={`Select ${r.txn_type} ${r.ticker ?? ''} ${r.trade_date}`}
                   />
                 </td>
-                <td className="py-2 pr-4 tabular-nums text-slate-600">
+                <td className="py-2 pr-4 tabular-nums text-muted">
                   {fmtDate(r.trade_date)}
                 </td>
                 <td className="py-2 pr-4">
@@ -697,7 +697,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
                     {r.txn_type}
                   </span>
                 </td>
-                <td className="py-2 pr-4 font-bold text-slate-800">{r.ticker ?? '—'}</td>
+                <td className="py-2 pr-4 font-bold text-ink">{r.ticker ?? '—'}</td>
                 <td className="py-2 pr-4 text-right tabular-nums">{r.shares ?? '—'}</td>
                 <td className="py-2 pr-4 text-right tabular-nums">
                   {r.price != null ? fmtPrice(r.price) : '—'}
@@ -705,14 +705,14 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
                 <td className="py-2 pr-4 text-right tabular-nums">
                   {r.amount != null ? fmtPrice(r.amount) : '—'}
                 </td>
-                <td className="max-w-[220px] truncate py-2 pr-4 text-slate-400">
+                <td className="max-w-[220px] truncate py-2 pr-4 text-muted">
                   {r.note ?? ''}
                 </td>
                 <td className="py-2 text-right">
                   <button
                     type="button"
                     onClick={() => setToDelete(r)}
-                    className="rounded-md px-2 py-0.5 text-[0.72rem] font-bold text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40"
+                    className="rounded-md px-2 py-0.5 text-[0.72rem] font-bold text-muted transition-colors hover:bg-neg-soft hover:text-neg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40"
                   >
                     Delete
                   </button>
@@ -722,7 +722,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="py-4 text-center text-[0.78rem] text-slate-400">
+          <p className="py-4 text-center text-[0.78rem] text-muted">
             {rows.length === 0
               ? 'No transactions yet — add one above or import a CSV.'
               : 'No transactions match the current filter.'}
@@ -731,12 +731,12 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
       </div>
 
       {warnings.length > 0 && (
-        <details className="mt-3 border-t border-slate-100 pt-2.5">
-          <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-gray-400 hover:text-slate-500">
+        <details className="mt-3 border-t border-line pt-2.5">
+          <summary className="cursor-pointer select-none text-[0.72rem] font-semibold text-muted hover:text-muted">
             Data notes ({warnings.length}) — minor ledger gaps, e.g. broker reinvest
             rows not imported
           </summary>
-          <ul className="mt-1.5 space-y-1 pl-4 text-[0.72rem] text-gray-400">
+          <ul className="mt-1.5 space-y-1 pl-4 text-[0.72rem] text-muted">
             {warnings.map((w, i) => (
               <li key={`${i}-${w}`} className="list-disc">{w}</li>
             ))}
@@ -744,7 +744,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
         </details>
       )}
 
-      <p className="mt-3 text-[0.66rem] text-slate-400">
+      <p className="mt-3 text-[0.66rem] text-muted">
         CSV header: type, date (+ ticker, shares, price, amount, note) · type = buy /
         sell / dividend / deposit / withdrawal / fee · column order free.
       </p>
