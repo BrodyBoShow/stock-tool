@@ -43,7 +43,7 @@ function Stat({
       </span>
       <span
         className="mt-0.5 text-[1.15rem] font-bold tabular-nums leading-tight"
-        style={{ color: accent ?? '#1e293b' }}
+        style={{ color: accent ?? 'var(--ink)' }}
       >
         {value}
       </span>
@@ -189,7 +189,7 @@ export function ScreenerHeader({
 
       <div
         className="px-7 pb-5 pt-6"
-        style={{ background: 'linear-gradient(180deg, #fbfcfe 0%, #ffffff 62%)' }}
+        style={{ background: 'linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 62%)' }}
       >
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
           {/* identity */}
@@ -251,7 +251,7 @@ export function ScreenerHeader({
         </div>
 
         {/* divider */}
-        <div className="my-4 h-px bg-[#eef1f6]" />
+        <div className="my-4 h-px bg-divider" />
 
         {/* market pulse — one contextual read, with the raw breadth beside it */}
         <div className="flex flex-wrap items-center gap-x-9 gap-y-3">

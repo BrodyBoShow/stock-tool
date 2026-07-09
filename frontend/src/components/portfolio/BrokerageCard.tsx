@@ -30,9 +30,9 @@ function relTime(iso: string): string {
 }
 
 function statusDotClass(status: string): string {
-  if (status === 'active') return 'bg-green-500 ring-2 ring-green-200'
-  if (status === 'error') return 'bg-red-500'
-  return 'bg-amber-400'
+  if (status === 'active') return 'bg-pos-strong ring-2 ring-pos-soft'
+  if (status === 'error') return 'bg-neg-strong'
+  return 'bg-warn-strong'
 }
 
 /** Brokerage connection card — restyle of LinkedAccountsSection with identical
@@ -126,8 +126,8 @@ export function BrokerageCard(): JSX.Element | null {
                 className={
                   'rounded-lg border p-4 flex flex-wrap items-center gap-4 ' +
                   (connected
-                    ? 'bg-gradient-to-r from-green-50 to-white border-green-200'
-                    : 'border-gray-200 bg-white')
+                    ? 'bg-gradient-to-r from-pos-soft to-surface border-pos-border'
+                    : 'border-line bg-surface')
                 }
               >
                 <span className="flex items-center gap-2">
@@ -135,18 +135,18 @@ export function BrokerageCard(): JSX.Element | null {
                     className={`h-2.5 w-2.5 rounded-full ${statusDotClass(a.status)}`}
                     aria-hidden="true"
                   />
-                  <span className="font-semibold text-[0.8rem] text-slate-800">
+                  <span className="font-semibold text-[0.8rem] text-ink">
                     Connected to {a.display_name ?? a.provider}
                   </span>
                 </span>
-                <span className="flex-1 min-w-[220px] text-[0.72rem] text-slate-500">
+                <span className="flex-1 min-w-[220px] text-[0.72rem] text-muted">
                   <span className="block">
                     last sync{' '}
                     {a.last_synced_at ? relTime(a.last_synced_at) : 'never'}
                   </span>
                   <span className="block">status: {a.status}</span>
                   {a.last_error && (
-                    <span className="block text-[0.68rem] text-red-600">{a.last_error}</span>
+                    <span className="block text-[0.68rem] text-neg">{a.last_error}</span>
                   )}
                 </span>
                 <span className="flex gap-2">
@@ -154,7 +154,7 @@ export function BrokerageCard(): JSX.Element | null {
                     type="button"
                     disabled={busy}
                     onClick={() => syncM.mutate(a.id)}
-                    className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-[0.74rem] font-semibold text-white transition-shadow hover:shadow-[0_2px_10px_rgba(79,70,229,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:opacity-50"
+                    className="rounded-lg bg-accent-solid px-3.5 py-1.5 text-[0.74rem] font-semibold text-accent-ink transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
                   >
                     {syncM.isPending ? 'Syncing…' : 'Sync now'}
                   </button>
@@ -162,7 +162,7 @@ export function BrokerageCard(): JSX.Element | null {
                     type="button"
                     disabled={busy}
                     onClick={() => setConfirmId(a.id)}
-                    className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-[0.74rem] font-semibold text-slate-500 transition-colors hover:border-red-200 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 disabled:opacity-50"
+                    className="rounded-lg border border-line bg-surface px-3.5 py-1.5 text-[0.74rem] font-semibold text-muted transition-colors hover:border-neg-border hover:text-neg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neg disabled:opacity-50"
                   >
                     Disconnect
                   </button>
@@ -183,11 +183,11 @@ export function BrokerageCard(): JSX.Element | null {
             return (
               <div
                 key={p.key}
-                className="flex items-center justify-between rounded-xl border border-gray-200 bg-[#fafbff] px-4 py-3"
+                className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-4 py-3"
               >
                 <div>
-                  <div className="text-[0.9rem] font-bold text-slate-800">{p.label}</div>
-                  <div className="flex items-center text-[0.72rem] text-slate-400">
+                  <div className="text-[0.9rem] font-bold text-ink">{p.label}</div>
+                  <div className="flex items-center text-[0.72rem] text-muted">
                     {label}
                     {label === 'Add API keys to .env' && (
                       <InfoTip text="These credentials live in the backend .env — add this provider's API keys there and restart the API to enable Connect. Read-only: your password is entered at the broker, never here." />
@@ -199,10 +199,10 @@ export function BrokerageCard(): JSX.Element | null {
                   disabled={!ready || busy}
                   onClick={() => connectM.mutate(p.key)}
                   className={
-                    'rounded-full px-3.5 py-1.5 text-[0.74rem] font-semibold transition-shadow ' +
+                    'rounded-full px-3.5 py-1.5 text-[0.74rem] font-semibold transition-colors ' +
                     (ready
-                      ? 'bg-indigo-600 text-white hover:shadow-[0_2px_10px_rgba(79,70,229,0.4)] disabled:opacity-50'
-                      : 'cursor-not-allowed bg-slate-100 text-gray-400')
+                      ? 'bg-accent-solid text-accent-ink hover:bg-accent-hover disabled:opacity-50'
+                      : 'cursor-not-allowed bg-surface-2 text-muted')
                   }
                 >
                   {!p.implemented ? 'Soon' : connectM.isPending ? 'Opening…' : 'Connect'}
@@ -214,11 +214,11 @@ export function BrokerageCard(): JSX.Element | null {
       )}
 
       {data && !data.ready && (
-        <p className="mt-3 text-[0.72rem] text-gray-400">
+        <p className="mt-3 text-[0.72rem] text-muted">
           Setup pending — apply migration 0021_linked_accounts to enable account linking.
         </p>
       )}
-      <p className="mt-2 text-[0.66rem] text-slate-400">
+      <p className="mt-2 text-[0.66rem] text-muted">
         Auto-sync runs with the nightly data job when configured.
       </p>
 

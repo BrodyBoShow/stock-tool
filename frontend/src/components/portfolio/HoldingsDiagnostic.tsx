@@ -137,9 +137,9 @@ function corrBadges(
 
 function corrTone(c: number): string {
   const a = Math.abs(c)
-  if (a >= 0.6) return 'bg-red-50 text-red-700'
-  if (a >= 0.35) return 'bg-amber-50 text-amber-800'
-  return 'bg-green-50 text-green-700'
+  if (a >= 0.6) return 'bg-neg-soft text-neg'
+  if (a >= 0.35) return 'bg-warn-soft text-warn'
+  return 'bg-pos-soft text-pos'
 }
 
 function warnFor(
@@ -202,10 +202,10 @@ const SCORE_FACTORS: Array<
 
 /** Composite value with a hover popover listing the four factor percentiles. */
 function ScorePopover({ h }: { h: PortfolioHolding }) {
-  if (h.composite == null) return <span className="text-slate-300">{DASH}</span>
+  if (h.composite == null) return <span className="text-subtle">{DASH}</span>
   return (
     <span className="group relative inline-block cursor-default">
-      <span className="font-semibold tabular-nums text-slate-700">
+      <span className="font-semibold tabular-nums text-ink">
         {h.composite.toFixed(0)}
       </span>
       <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 w-44 -translate-x-1/2 rounded-lg bg-slate-900 p-2 text-left text-[0.66rem] font-normal text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
@@ -253,7 +253,7 @@ function SortHeader({
         {children}
         <span
           aria-hidden
-          className={active ? 'text-indigo-600' : 'text-slate-300'}
+          className={active ? 'text-accent' : 'text-subtle'}
         >
           {active ? (sort.dir === -1 ? '▼' : '▲') : '↕'}
         </span>
@@ -376,7 +376,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
 
   // ── Render ──
   return (
-    <div className="rounded-card border border-gray-200 bg-white p-5 shadow-card">
+    <div className="rounded-card border border-line bg-surface p-5 shadow-card">
       {/* Toolbar */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <select
@@ -467,7 +467,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
               <tr>
                 <td
                   colSpan={N_COLS}
-                  className="px-2 py-6 text-center text-slate-400"
+                  className="px-2 py-6 text-center text-muted"
                 >
                   No holdings match this filter.
                 </td>
@@ -492,7 +492,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
         </table>
       </div>
 
-      <p className="mt-2 text-[0.66rem] text-slate-400">
+      <p className="mt-2 text-[0.66rem] text-muted">
         Score = composite factor percentile. Correlations are trailing-1Y daily
         returns. Price/day use live quotes when available (~15m delayed).
       </p>
@@ -533,7 +533,7 @@ function GroupRows({
         <tr>
           <td
             colSpan={N_COLS}
-            className="bg-slate-50 px-2 py-1 text-[0.66rem] font-bold uppercase text-slate-400"
+            className="bg-surface-2 px-2 py-1 text-[0.66rem] font-bold uppercase text-muted"
           >
             {group.label}
           </td>
@@ -590,7 +590,7 @@ function HoldingRow({
   return (
     <>
       <tr
-        className={`border-b border-[#f3f4f6] ${interactive ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+        className={`border-b border-line ${interactive ? 'cursor-pointer hover:bg-surface-2' : ''}`}
         onClick={interactive ? () => onToggleExpanded(h.security_id) : undefined}
       >
         <td className="px-2 py-2">
@@ -603,7 +603,7 @@ function HoldingRow({
             onChange={() => onToggleSelected(h.security_id)}
           />
         </td>
-        <td className="px-2 py-2 font-bold text-slate-800">
+        <td className="px-2 py-2 font-bold text-ink">
           <span className="inline-flex items-center gap-1.5">
             {h.ticker ?? DASH}
             <RiskBandChip band={h.risk_band} compact />
@@ -636,7 +636,7 @@ function HoldingRow({
           {fmtPrice(price)}
           {live && (
             <span
-              className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-green-500"
+              className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-pos"
               title="Live quote (~15m delayed)"
             />
           )}
@@ -666,8 +666,8 @@ function HoldingRow({
               title={warn.title}
               className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[0.62rem] font-bold ${
                 warn.tone === 'red'
-                  ? 'bg-red-100 text-red-600'
-                  : 'bg-amber-100 text-amber-700'
+                  ? 'bg-neg-soft text-neg'
+                  : 'bg-warn-soft text-warn'
               }`}
             >
               !
@@ -700,24 +700,24 @@ function SubRow({
   const hasSt = h.lots.some((l) => !isLongTerm(l.acquired, asOf))
 
   return (
-    <tr className="bg-slate-50">
-      <td colSpan={N_COLS} className="px-9 py-2 text-[0.7rem] text-slate-500">
+    <tr className="bg-surface-2">
+      <td colSpan={N_COLS} className="px-9 py-2 text-[0.7rem] text-muted">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {/* Tax lots */}
           {h.lt_unrealized != null && hasLt && (
-            <span className="rounded bg-green-100 px-1.5 text-[0.62rem] font-semibold text-green-700">
+            <span className="rounded bg-pos-soft px-1.5 text-[0.62rem] font-semibold text-pos">
               LT {fmtSignedMoney(h.lt_unrealized)}
             </span>
           )}
           {h.st_unrealized != null && hasSt && (
-            <span className="rounded bg-amber-100 px-1.5 text-[0.62rem] font-semibold text-amber-800">
+            <span className="rounded bg-warn-soft px-1.5 text-[0.62rem] font-semibold text-warn">
               ST {fmtSignedMoney(h.st_unrealized)}
             </span>
           )}
           {h.oldest_acquired && <span>since {fmtDate(h.oldest_acquired)}</span>}
           {h.wash_sale_risk && (
             <span
-              className="rounded bg-red-100 px-1.5 text-[0.62rem] font-semibold text-red-700"
+              className="rounded bg-neg-soft px-1.5 text-[0.62rem] font-semibold text-neg"
               title="Bought within the last 30 days while at a loss — selling now may disallow the loss"
             >
               wash-sale risk
@@ -728,12 +728,12 @@ function SubRow({
           {h.thesis ? (
             <span>
               Thesis:{' '}
-              <Link to={`/securities/${h.ticker}`} className="text-indigo-600 hover:underline">
+              <Link to={`/securities/${h.ticker}`} className="text-accent hover:underline">
                 &quot;{truncate(h.thesis.summary ?? 'View thesis', 60)}&quot;
               </Link>
             </span>
           ) : (
-            <Link to={`/securities/${h.ticker}`} className="text-slate-400 hover:text-indigo-600">
+            <Link to={`/securities/${h.ticker}`} className="text-muted hover:text-accent">
               + add thesis
             </Link>
           )}
@@ -751,7 +751,7 @@ function SubRow({
                 </span>
               ))}
               {diversifier && (
-                <span className="text-[0.62rem] font-semibold text-green-700">
+                <span className="text-[0.62rem] font-semibold text-pos">
                   diversifier ✓
                 </span>
               )}
@@ -762,7 +762,7 @@ function SubRow({
           <span className="flex gap-1.5">
             <button
               type="button"
-              className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[0.66rem] hover:border-indigo-400 hover:text-indigo-600"
+              className="rounded border border-line bg-surface px-2 py-0.5 text-[0.66rem] hover:border-accent hover:text-accent"
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenSimulator(ticker)
@@ -772,7 +772,7 @@ function SubRow({
             </button>
             <Link
               to={`/securities/${ticker}`}
-              className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[0.66rem] hover:border-indigo-400 hover:text-indigo-600"
+              className="rounded border border-line bg-surface px-2 py-0.5 text-[0.66rem] hover:border-accent hover:text-accent"
               onClick={(e) => e.stopPropagation()}
             >
               Deep-dive →

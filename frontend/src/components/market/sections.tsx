@@ -97,7 +97,7 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={points} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                 <YAxis hide domain={['dataMin', 'dataMax']} />
-                <Line type="monotone" dataKey="v" stroke={trendUp ? '#0ea5e9' : 'var(--subtle)'} strokeWidth={1.4}
+                <Line type="monotone" dataKey="v" stroke={trendUp ? 'var(--info)' : 'var(--subtle)'} strokeWidth={1.4}
                   dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -418,7 +418,7 @@ export function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
   }
   const styles = {
     calm: 'border-line bg-surface-2 text-muted',
-    info: 'border-blue-200 bg-blue-50 text-blue-700',
+    info: 'border-info bg-info-soft text-info',
     warn: 'border-warn bg-warn-soft text-warn',
   }[tone]
   return (
@@ -545,7 +545,7 @@ export function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
             <div key={row.k} className="flex items-center gap-2">
               <span className="w-[3.6rem] shrink-0 text-[0.66rem] font-semibold text-muted">{row.k}</span>
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-3">
-                <div className="h-full rounded-full" style={{ width: `${barW(row.v)}%`, background: (row.v ?? 0) >= 0 ? '#34d399' : '#f87171' }} />
+                <div className="h-full rounded-full" style={{ width: `${barW(row.v)}%`, background: (row.v ?? 0) >= 0 ? 'var(--pos-strong)' : 'var(--neg)' }} />
               </div>
               <span className="w-12 shrink-0 text-right text-[0.72rem] font-bold tabular-nums" style={{ color: plColor(row.v) }}>{fmtSignedPct(row.v)}</span>
             </div>
@@ -582,7 +582,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
           <ul className="space-y-2">
             {computed.map((s) => (
               <li key={s} className="flex items-start gap-2.5 text-[0.9rem] leading-relaxed text-ink">
-                <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-subtle" />
                 {s}
               </li>
             ))}
@@ -612,7 +612,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
               <div className="text-[0.66rem] font-bold uppercase tracking-[0.09em] text-subtle">What to watch next</div>
               <div className="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {brief.watch.map((w) => (
-                  <div key={w} className="rounded-xl border border-[#eef1f6] bg-surface-2 p-3 text-[0.82rem] leading-relaxed text-muted">
+                  <div key={w} className="rounded-xl border border-line bg-surface-2 p-3 text-[0.82rem] leading-relaxed text-muted">
                     <span className="mr-1.5 font-bold text-accent">→</span>{w}
                   </div>
                 ))}
@@ -641,7 +641,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
             <ul className="mt-1.5 space-y-1 pl-1">
               {computed.map((s) => (
                 <li key={s} className="flex items-start gap-2 text-[0.78rem] text-muted">
-                  <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+                  <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-subtle" />
                   {s}
                 </li>
               ))}

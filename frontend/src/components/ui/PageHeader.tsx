@@ -8,8 +8,8 @@ import type { ReactNode } from 'react'
 export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-gray-900">{title}</h1>
-      {children != null && <p className="mt-0.5 text-[0.82rem] text-gray-500">{children}</p>}
+      <h1 className="text-xl font-extrabold text-ink">{title}</h1>
+      {children != null && <p className="mt-0.5 text-[0.82rem] text-muted">{children}</p>}
     </div>
   )
 }

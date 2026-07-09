@@ -27,16 +27,16 @@ function MonthCell({
   return (
     <div
       className={`rounded-md border p-1.5 text-center ${
-        peak ? 'border-green-300 bg-green-50' : 'border-slate-100 bg-white'
+        peak ? 'border-pos bg-pos-soft' : 'border-line bg-surface'
       }`}
     >
-      <div className="text-[0.6rem] font-semibold text-slate-400">{fmtMonthKey(month)}</div>
+      <div className="text-[0.6rem] font-semibold text-muted">{fmtMonthKey(month)}</div>
       {total === 0 ? (
-        <div className="text-[0.7rem] font-bold tabular-nums text-slate-300">{DASH}</div>
+        <div className="text-[0.7rem] font-bold tabular-nums text-subtle">{DASH}</div>
       ) : (
         <div className="text-[0.7rem] font-bold tabular-nums">{`$${total.toFixed(2)}`}</div>
       )}
-      <div className="text-[0.55rem] leading-tight text-slate-400">
+      <div className="text-[0.55rem] leading-tight text-muted">
         {shown.join(' ')}
         {extra > 0 ? ` +${extra}` : ''}
       </div>
@@ -85,12 +85,12 @@ export function DividendsPanel({ income, benchmark }: DividendsPanelProps): JSX.
         />
       </div>
 
-      <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-4">
+      <div className="mt-4 rounded-lg border border-line bg-surface-2 p-4">
         <div className="flex items-baseline justify-between gap-3">
           <div className="text-[0.78rem] font-semibold">
             Forward income — projected, next 12 months
           </div>
-          <div className="text-[0.7rem] text-slate-400 tabular-nums">
+          <div className="text-[0.7rem] text-muted tabular-nums">
             Total: {fmtPrice(income.forward_12m)}
           </div>
         </div>
@@ -105,7 +105,7 @@ export function DividendsPanel({ income, benchmark }: DividendsPanelProps): JSX.
             />
           ))}
         </div>
-        <div className="mt-2 text-[0.66rem] text-slate-400">
+        <div className="mt-2 text-[0.66rem] text-muted">
           Peak months: {peakLabels || DASH} · projected from each holding's trailing ex-date
           cadence — labeled estimates, not declared dividends.
         </div>
@@ -116,24 +116,24 @@ export function DividendsPanel({ income, benchmark }: DividendsPanelProps): JSX.
           Upcoming ex-dividend dates — next ~31 days (projected)
         </div>
         {income.upcoming.length === 0 ? (
-          <div className="text-[0.74rem] text-slate-400">
+          <div className="text-[0.74rem] text-muted">
             No projected ex-dividend dates in the next month.
           </div>
         ) : (
           income.upcoming.map((u, i) => (
             <div
               key={`${u.ticker}-${u.projected_date}-${i}`}
-              className="flex items-center gap-3 border-b border-slate-100 py-1.5 text-[0.74rem] last:border-0"
+              className="flex items-center gap-3 border-b border-line py-1.5 text-[0.74rem] last:border-0"
             >
-              <span className="w-28 text-slate-400">
+              <span className="w-28 text-muted">
                 {fmtDate(u.projected_date)}{' '}
-                <span className="rounded bg-amber-100 px-1 text-[0.56rem] font-bold text-amber-800">
+                <span className="rounded bg-warn-soft px-1 text-[0.56rem] font-bold text-warn">
                   projected
                 </span>
               </span>
               <span className="w-14 font-bold">{u.ticker}</span>
-              <span className="text-slate-400">{fmtPrice(u.per_share)}/share</span>
-              <span className="text-slate-400">× {u.shares} sh</span>
+              <span className="text-muted">{fmtPrice(u.per_share)}/share</span>
+              <span className="text-muted">× {u.shares} sh</span>
               <span className="ml-auto font-semibold tabular-nums">
                 +{fmtPrice(u.est_amount)}
               </span>

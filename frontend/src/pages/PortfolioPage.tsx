@@ -222,9 +222,9 @@ export function PortfolioPage() {
   if (!data.has_transactions) {
     return (
       <div className="space-y-5">
-        <div className="rounded-card border border-gray-200 bg-white p-10 text-center shadow-card">
-          <h1 className="text-xl font-extrabold text-slate-900">Portfolio</h1>
-          <p className="mx-auto mt-3 max-w-[560px] text-sm text-slate-500">
+        <div className="rounded-card border border-line bg-surface p-10 text-center shadow-card">
+          <h1 className="text-xl font-extrabold text-ink">Portfolio</h1>
+          <p className="mx-auto mt-3 max-w-[560px] text-sm text-muted">
             Log your real buys and sells and StockBud derives everything else from its
             own nightly price, dividend, and factor data: returns vs a benchmark you
             choose, risk stats, tax lots, stress tests, a what-if rebalance simulator,
@@ -237,9 +237,9 @@ export function PortfolioPage() {
           hint="Enter the shares and price as they were on the trade date — later splits are applied automatically."
         >
           <AddTransactionForm />
-          <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
+          <div className="mt-4 flex items-center gap-3 border-t border-line pt-4">
             <CsvImportButton />
-            <span className="text-[0.74rem] text-gray-400">
+            <span className="text-[0.74rem] text-muted">
               or bulk-import a CSV with header columns: type, date, ticker, shares,
               price, amount, note
             </span>
@@ -295,17 +295,17 @@ export function PortfolioPage() {
       {/* sub-header: breadcrumb + global benchmark picker */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-          <span className="text-indigo-600">StockBud</span>
-          <span className="text-gray-300">/</span>
-          <span className="text-slate-400">Portfolio</span>
+          <span className="text-accent">StockBud</span>
+          <span className="text-subtle">/</span>
+          <span className="text-muted">Portfolio</span>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-500">
+          <label className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-muted">
             Benchmark
             <select
               value={benchmark}
               onChange={(e) => setBenchmark(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[0.74rem] font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none"
+              className="rounded-lg border border-line bg-surface px-2 py-1 text-[0.74rem] font-semibold text-ink focus:border-accent focus:outline-none"
             >
               {BENCHMARK_OPTIONS.map((b) => (
                 <option key={b} value={b}>{b}</option>
@@ -319,7 +319,7 @@ export function PortfolioPage() {
           Each pane carries its own Zone-A hero and Zone-C disclaimer. */}
       <nav
         aria-label="Portfolio sections"
-        className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-gray-200 bg-white/95 px-4 backdrop-blur-sm"
+        className="sticky top-0 z-30 -mx-4 overflow-x-auto border-b border-line bg-[var(--surface)]/95 px-4 backdrop-blur-sm"
       >
         <div className="flex items-center gap-1.5">
           {PANES.map((p) => (
@@ -330,8 +330,8 @@ export function PortfolioPage() {
               onClick={() => setPane(p.id)}
               className={`whitespace-nowrap border-b-2 px-2.5 py-2 text-[0.78rem] transition-colors ${
                 pane === p.id
-                  ? 'border-indigo-600 font-semibold text-slate-900'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  ? 'border-accent font-semibold text-ink'
+                  : 'border-transparent text-muted hover:text-ink'
               }`}
             >
               {p.label}

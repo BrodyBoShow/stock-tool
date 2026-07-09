@@ -17,7 +17,20 @@ import {
   YAxis,
 } from 'recharts'
 
+import { useChartTheme } from '@/lib/chartTheme'
 import type { BacktestICBlock, BacktestKeyResult, BacktestRunResponse } from '@/types/api'
+
+/** Shared Recharts tooltip style — themed surface/border/text (fixes the
+ * default WHITE tooltip box that stayed white in dark mode). */
+function tipStyle(ct: ReturnType<typeof useChartTheme>) {
+  return {
+    fontSize: 12,
+    borderRadius: 8,
+    background: ct.tooltipBg,
+    borderColor: ct.tooltipBorder,
+    color: ct.tooltipText,
+  }
+}
 
 /** Equity curves: selected factor's top quintile (+ optional long-short) vs SPY
  * vs universe EW. Linear or log Y so a flat-looking line isn't hiding the action. */
@@ -41,14 +54,15 @@ export function EquityChart({ data, sel, factorLabel, showLongShort, logScale }:
       universe: bench.universe_ew[i] ?? null,
     }))
   }, [data, sel])
+  const ct = useChartTheme()
 
   return (
     <ResponsiveContainer width="100%" height={320}>
       <LineChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#f1f5f9" vertical={false} />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
+        <CartesianGrid stroke={ct.grid} vertical={false} />
+        <XAxis dataKey="date" tick={{ fontSize: 11, fill: ct.axis }} minTickGap={28} />
         <YAxis
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: ct.axis }}
           tickFormatter={(v: number) => `${v.toFixed(logScale ? 0 : 1)}x`}
           scale={logScale ? 'log' : 'linear'}
           domain={logScale ? [0.5, 'auto'] : ['auto', 'auto']}
@@ -57,22 +71,22 @@ export function EquityChart({ data, sel, factorLabel, showLongShort, logScale }:
         />
         <Tooltip
           formatter={(v: number, name: string) => [`${v?.toFixed(2)}x`, name]}
-          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+          contentStyle={tipStyle(ct)}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Line type="monotone" dataKey="strategy" name={`Top quintile (${factorLabel})`}
-          stroke="#4f46e5" strokeWidth={2.2} dot={false} connectNulls />
+          stroke={ct.accent} strokeWidth={2.2} dot={false} connectNulls />
         {/* Long-short growth can cross zero; a log axis can't plot <=0 (it would
             silently drop those points and bridge the gap), so it shows on the
             linear axis only. */}
         {showLongShort && !logScale && (
           <Line type="monotone" dataKey="longshort" name="Long-short (top − bottom)"
-            stroke="#16a34a" strokeWidth={1.8} strokeDasharray="5 3" dot={false} connectNulls />
+            stroke={ct.pos} strokeWidth={1.8} strokeDasharray="5 3" dot={false} connectNulls />
         )}
         <Line type="monotone" dataKey="spy" name="S&P 500 (SPY)"
-          stroke="#0ea5e9" strokeWidth={1.8} dot={false} connectNulls />
+          stroke={ct.info} strokeWidth={1.8} dot={false} connectNulls />
         <Line type="monotone" dataKey="universe" name="Universe equal-weight"
-          stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
+          stroke={ct.muted} strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -87,18 +101,19 @@ export function DrawdownChart({ comp }: { comp: BacktestKeyResult }) {
       return { date: d.slice(0, 7), dd: (top[i] / peak - 1) * 100 }
     })
   }, [comp])
+  const ct = useChartTheme()
 
   return (
     <ResponsiveContainer width="100%" height={180}>
       <AreaChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#f1f5f9" vertical={false} />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
-        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} width={44} />
+        <CartesianGrid stroke={ct.grid} vertical={false} />
+        <XAxis dataKey="date" tick={{ fontSize: 11, fill: ct.axis }} minTickGap={28} />
+        <YAxis tick={{ fontSize: 11, fill: ct.axis }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} width={44} />
         <Tooltip
           formatter={(v: number) => [`${v.toFixed(1)}%`, 'Drawdown']}
-          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+          contentStyle={tipStyle(ct)}
         />
-        <Area type="monotone" dataKey="dd" stroke="#dc2626" fill="#fee2e2" strokeWidth={1.5} />
+        <Area type="monotone" dataKey="dd" stroke={ct.neg} fill={ct.neg} fillOpacity={0.18} strokeWidth={1.5} />
       </AreaChart>
     </ResponsiveContainer>
   )
@@ -113,20 +128,21 @@ export function QuintileChart({ res }: { res: BacktestKeyResult }) {
       top: Number(b) === 5,
       cagr: cagr == null ? null : cagr * 100,
     }))
+  const ct = useChartTheme()
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#f1f5f9" vertical={false} />
-        <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} width={44} />
+        <CartesianGrid stroke={ct.grid} vertical={false} />
+        <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: ct.axis }} />
+        <YAxis tick={{ fontSize: 11, fill: ct.axis }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} width={44} />
         <Tooltip
           formatter={(v: number) => [`${v?.toFixed(1)}% CAGR`, '']}
-          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+          contentStyle={tipStyle(ct)}
         />
-        <ReferenceLine y={0} stroke="#cbd5e1" />
+        <ReferenceLine y={0} stroke={ct.axis} />
         <Bar dataKey="cagr" radius={[5, 5, 0, 0]} maxBarSize={56}>
           {points.map((p, i) => (
-            <Cell key={i} fill={p.top ? '#4f46e5' : '#c7d2fe'} />
+            <Cell key={i} fill={ct.accent} fillOpacity={p.top ? 1 : 0.4} />
           ))}
         </Bar>
       </BarChart>
@@ -153,23 +169,24 @@ export function ICChart({ ic }: { ic: BacktestICBlock }) {
       }
     })
   }, [ic])
+  const ct = useChartTheme()
   return (
     <ResponsiveContainer width="100%" height={210}>
       <ComposedChart data={points} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#f1f5f9" vertical={false} />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={28} />
-        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} width={44} tickFormatter={(v: number) => v.toFixed(2)} />
+        <CartesianGrid stroke={ct.grid} vertical={false} />
+        <XAxis dataKey="date" tick={{ fontSize: 11, fill: ct.axis }} minTickGap={28} />
+        <YAxis tick={{ fontSize: 11, fill: ct.axis }} width={44} tickFormatter={(v: number) => v.toFixed(2)} />
         <Tooltip
           formatter={(v: number, n: string) => [v?.toFixed(3), n === 'trail' ? '6-mo avg IC' : 'rank IC']}
-          contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: '#e5e7eb' }}
+          contentStyle={tipStyle(ct)}
         />
-        <ReferenceLine y={0} stroke="#cbd5e1" />
+        <ReferenceLine y={0} stroke={ct.axis} />
         <Bar dataKey="ic" radius={[2, 2, 0, 0]} maxBarSize={14}>
           {points.map((p, i) => (
-            <Cell key={i} fill={(p.ic ?? 0) >= 0 ? '#86efac' : '#fecaca'} />
+            <Cell key={i} fill={(p.ic ?? 0) >= 0 ? ct.pos : ct.neg} fillOpacity={0.85} />
           ))}
         </Bar>
-        <Line type="monotone" dataKey="trail" name="trail" stroke="#4f46e5" strokeWidth={2} dot={false} connectNulls />
+        <Line type="monotone" dataKey="trail" name="trail" stroke={ct.accent} strokeWidth={2} dot={false} connectNulls />
       </ComposedChart>
     </ResponsiveContainer>
   )

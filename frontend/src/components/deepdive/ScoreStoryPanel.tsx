@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 
 import { getBriefStatus, getEvents } from '@/lib/api'
+import { useChartTheme } from '@/lib/chartTheme'
 import { FACTOR_TABLE, type FactorKey } from '@/lib/constants'
 import { fmtShortDate } from '@/lib/format'
 import type { FactorTrendPoint } from '@/types/api'
@@ -96,6 +97,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
     queryFn: () => getEvents(ticker),
     staleTime: 10 * 60 * 1000,
   })
+  const ct = useChartTheme()
 
   const trend: FactorTrendPoint[] = brief?.trend ?? []
   const rows: Row[] = trend.map((t) => ({
@@ -207,18 +209,18 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
       <div className="px-2 pb-1" style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
-            <CartesianGrid stroke="var(--surface-2)" vertical={false} />
+            <CartesianGrid stroke={ct.grid} vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={fmtShortDate}
-              tick={{ fontSize: 10, fill: 'var(--subtle)' }}
+              tick={{ fontSize: 10, fill: ct.axis }}
               minTickGap={36}
-              axisLine={{ stroke: 'var(--border)' }}
+              axisLine={{ stroke: ct.grid }}
               tickLine={false}
             />
             <YAxis
               domain={[0, 100]}
-              tick={{ fontSize: 10, fill: 'var(--subtle)' }}
+              tick={{ fontSize: 10, fill: ct.axis }}
               width={34}
               axisLine={false}
               tickLine={false}
@@ -234,14 +236,14 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
               )}
             />
             {[...eventsByDate.keys()].map((d) => (
-              <ReferenceLine key={d} x={d} stroke="var(--warn)" strokeDasharray="3 3" strokeOpacity={0.6} />
+              <ReferenceLine key={d} x={d} stroke={ct.warn} strokeDasharray="3 3" strokeOpacity={0.6} />
             ))}
             {LINES.filter((l) => l.key === 'composite' || shown.has(l.key)).map((l) => (
               <Line
                 key={l.key}
                 type="monotone"
                 dataKey={l.key}
-                stroke={FACTOR_TABLE[l.key].bar}
+                stroke={l.key === 'composite' ? ct.ink : FACTOR_TABLE[l.key].bar}
                 strokeWidth={l.key === 'composite' ? 2.4 : 1.4}
                 strokeOpacity={l.key === 'composite' ? 1 : 0.7}
                 dot={false}

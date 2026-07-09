@@ -16,6 +16,7 @@ import {
 
 import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
 import { getEvents, getInsiders, getMacroSeries } from '@/lib/api'
+import { useChartTheme } from '@/lib/chartTheme'
 import { MACRO_DISPLAY } from '@/lib/constants'
 import { tickLabel } from '@/lib/format'
 import { analyzeWyckoff } from '@/lib/wyckoff'
@@ -84,6 +85,7 @@ export function PriceChart({
     earnings: false, k8_high: true, k8_routine: false, other_filing: false, buy: true, sell: false,
   })
   const ranges = useMemo(() => buildRanges(), [])
+  const ct = useChartTheme()
 
   const wyckoff = useMemo(() => analyzeWyckoff(prices), [prices])
 
@@ -311,7 +313,7 @@ export function PriceChart({
         />
 
         {/* Divider */}
-        <span className="text-gray-200">|</span>
+        <span className="text-subtle">|</span>
 
         {/* Macro overlay */}
         <OverlayToggle
@@ -534,7 +536,7 @@ export function PriceChart({
                   minTickGap={56}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  tick={{ fontSize: 11, fill: ct.axis }}
                 />
                 <YAxis
                   yAxisId="price"
@@ -543,7 +545,7 @@ export function PriceChart({
                   width={56}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  tick={{ fontSize: 11, fill: ct.axis }}
                 />
                 {overlayOn && (
                   <YAxis
@@ -558,7 +560,7 @@ export function PriceChart({
                   />
                 )}
                 <Tooltip
-                  cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  cursor={{ stroke: ct.axis, strokeWidth: 1, strokeDasharray: '3 3' }}
                   content={
                     <PriceTooltip
                       overlayMeta={overlayOn ? overlayMeta : null}
