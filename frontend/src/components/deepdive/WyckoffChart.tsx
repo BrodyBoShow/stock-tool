@@ -173,7 +173,7 @@ export function WyckoffChart({
                   height={VOL_BOT - PRICE_TOP}
                   fill={i % 2 === 0 ? PHASE_TINT : PHASE_TINT_ALT}
                 />
-                <text x={(Math.max(PLOT_L, x0) + Math.min(PLOT_R, x1)) / 2} y={PRICE_TOP + 11} fontSize={11} fontWeight={700} fill="var(--subtle)" textAnchor="middle">
+                <text x={(Math.max(PLOT_L, x0) + Math.min(PLOT_R, x1)) / 2} y={PRICE_TOP + 11} fontSize={11} fontWeight={700} style={{ fill: 'var(--subtle)' }} textAnchor="middle">
                   {ph.id}
                 </text>
               </g>
@@ -194,8 +194,8 @@ export function WyckoffChart({
         {/* target line */}
         {targetY != null && target && (
           <>
-            <line x1={PLOT_L} y1={targetY} x2={PLOT_R} y2={targetY} stroke={target.direction === 'up' ? EV_BULL : EV_BEAR} strokeWidth={1} strokeDasharray="2 3" />
-            <text x={PLOT_L + 2} y={targetY - 3} fontSize={10} fontWeight={600} fill={target.direction === 'up' ? EV_BULL : EV_BEAR}>
+            <line x1={PLOT_L} y1={targetY} x2={PLOT_R} y2={targetY} strokeWidth={1} strokeDasharray="2 3" style={{ stroke: target.direction === 'up' ? EV_BULL : EV_BEAR }} />
+            <text x={PLOT_L + 2} y={targetY - 3} fontSize={10} fontWeight={600} style={{ fill: target.direction === 'up' ? EV_BULL : EV_BEAR }}>
               Target ≈ ${target.price.toFixed(2)}
             </text>
           </>
@@ -204,8 +204,8 @@ export function WyckoffChart({
         {/* price grid + y labels */}
         {priceTicks.map((t, i) => (
           <g key={i}>
-            <line x1={PLOT_L} y1={t.y} x2={PLOT_R} y2={t.y} stroke="var(--surface-2)" strokeWidth={1} />
-            <text x={PLOT_L - 4} y={t.y + 3} fontSize={10} fill="var(--subtle)" textAnchor="end">
+            <line x1={PLOT_L} y1={t.y} x2={PLOT_R} y2={t.y} style={{ stroke: 'var(--surface-2)' }} strokeWidth={1} />
+            <text x={PLOT_L - 4} y={t.y + 3} fontSize={10} style={{ fill: 'var(--subtle)' }} textAnchor="end">
               ${t.p.toFixed(t.p < 10 ? 1 : 0)}
             </text>
           </g>
@@ -220,15 +220,14 @@ export function WyckoffChart({
           const border = borderFor(b.cls)
           return (
             <g key={i}>
-              <line x1={x} y1={yP(b.h)} x2={x} y2={yP(b.l)} stroke={color} strokeWidth={Math.min(candleW * 0.18, 1.4)} />
+              <line x1={x} y1={yP(b.h)} x2={x} y2={yP(b.l)} strokeWidth={Math.min(candleW * 0.18, 1.4)} style={{ stroke: color }} />
               <rect
                 x={x - candleW / 2}
                 y={top}
                 width={candleW}
                 height={Math.max(bottom - top, 1)}
-                fill={color}
-                stroke={border ?? 'none'}
                 strokeWidth={border ? Math.min(candleW * 0.22, 1.6) : 0}
+                style={{ fill: color, stroke: border ?? 'none' }}
               />
             </g>
           )
@@ -246,8 +245,8 @@ export function WyckoffChart({
             return (
               <g key={`e${i}`} opacity={0.55 + 0.45 * e.confidence}>
                 <title>{`${e.label} (candidate, ${Math.round(e.confidence * 100)}%) — ${fmtDate(e.date)}`}</title>
-                <polygon points={tri} fill={color} />
-                <text x={x} y={atTop ? y - 7 : y + 13} fontSize={9} fill={color} textAnchor="middle" fontWeight={600}>
+                <polygon points={tri} style={{ fill: color }} />
+                <text x={x} y={atTop ? y - 7 : y + 13} fontSize={9} textAnchor="middle" fontWeight={600} style={{ fill: color }}>
                   {e.label}
                 </text>
               </g>
@@ -255,27 +254,27 @@ export function WyckoffChart({
           })}
 
         {/* volume panel */}
-        <line x1={PLOT_L} y1={VOL_BOT} x2={PLOT_R} y2={VOL_BOT} stroke="var(--border)" strokeWidth={0.5} />
+        <line x1={PLOT_L} y1={VOL_BOT} x2={PLOT_R} y2={VOL_BOT} style={{ stroke: 'var(--border)' }} strokeWidth={0.5} />
         {bars.map((b, i) => {
           if (b.vol == null) return null
           const x = cx(i)
           const y = yV(b.vol)
           const fill = b.cls === 'climax' ? CLIMAX : b.up ? UP : DOWN
           return (
-            <rect key={`v${i}`} x={x - candleW / 2} y={y} width={candleW} height={Math.max(VOL_BOT - y, 0)} fill={fill} fillOpacity={b.cls === 'climax' ? 1 : 0.5} />
+            <rect key={`v${i}`} x={x - candleW / 2} y={y} width={candleW} height={Math.max(VOL_BOT - y, 0)} fillOpacity={b.cls === 'climax' ? 1 : 0.5} style={{ fill }} />
           )
         })}
-        <text x={PLOT_L - 4} y={VOL_TOP + 8} fontSize={10} fill="var(--subtle)" textAnchor="end">Vol</text>
+        <text x={PLOT_L - 4} y={VOL_TOP + 8} fontSize={10} style={{ fill: 'var(--subtle)' }} textAnchor="end">Vol</text>
 
         {/* x month labels */}
         {monthTicks.map((t, i) => (
-          <text key={i} x={t.x} y={VB_H - 4} fontSize={10} fill="var(--subtle)" textAnchor="middle">
+          <text key={i} x={t.x} y={VB_H - 4} fontSize={10} style={{ fill: 'var(--subtle)' }} textAnchor="middle">
             {t.label}
           </text>
         ))}
 
         {/* crosshair */}
-        {hb && <line x1={cx(hover!.idx)} y1={PRICE_TOP} x2={cx(hover!.idx)} y2={VOL_BOT} stroke="var(--border-strong)" strokeWidth={1} strokeDasharray="2 2" />}
+        {hb && <line x1={cx(hover!.idx)} y1={PRICE_TOP} x2={cx(hover!.idx)} y2={VOL_BOT} style={{ stroke: 'var(--border-strong)' }} strokeWidth={1} strokeDasharray="2 2" />}
       </svg>
 
       {/* tooltip */}
@@ -299,7 +298,7 @@ export function WyckoffChart({
           {hb.cls !== 'normal' && (
             <div
               className="mt-1 inline-block rounded px-1.5 py-0.5 text-[0.68rem] font-semibold"
-              style={{ color: hb.cls === 'climax' ? '#854F0B' : '#334155', background: hb.cls === 'climax' ? '#FAEEDA' : 'var(--surface-2)' }}
+              style={{ color: hb.cls === 'climax' ? '#854F0B' : 'var(--muted)', background: hb.cls === 'climax' ? '#FAEEDA' : 'var(--surface-2)' }}
             >
               {CLS_LABEL[hb.cls]}
             </div>
