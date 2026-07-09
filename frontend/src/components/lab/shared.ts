@@ -18,14 +18,15 @@ export const ciSharpe = (ci?: BacktestCI | null) => (ci ? `${fmtSharpe(ci.lo)} �
 
 // ── traffic-light tones ───────────────────────────────────────────────────────
 export type Tone = 'good' | 'warn' | 'bad' | 'neutral'
-// Darkened to clear WCAG AA (4.5:1) for the small table text + CI captions, not
-// just the large bold KPI numbers. good #047857=5.5:1, warn #b45309=5.0:1,
-// bad #b91c1c=5.9:1 on white (and >=4.5:1 on the selected-row tint).
+// Theme-aware semantic tokens (var() resolves in inline style{} in both themes).
+// Each token is tuned per theme in index.css to clear WCAG-AA on its surface —
+// e.g. neutral = --ink flips from near-black on light to near-white on dark, so
+// the big KPI numbers stay legible instead of vanishing on a dark card.
 export const TONE_HEX: Record<Tone, string> = {
-  good: '#047857',
-  warn: '#b45309',
-  bad: '#b91c1c',
-  neutral: '#0f172a',
+  good: 'var(--pos)',
+  warn: 'var(--warn)',
+  bad: 'var(--neg)',
+  neutral: 'var(--ink)',
 }
 // Pass/fail thresholds, one place so the KPIs, table and verdict all agree.
 export const icTone = (t?: number | null): Tone =>

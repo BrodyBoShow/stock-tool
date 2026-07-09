@@ -30,10 +30,10 @@ import type { BacktestKeyResult, SubmetricVerdict } from '@/types/api'
 
 /** Verdict badge for the per-sub-metric IC panel. */
 const VERDICT_META: Record<SubmetricVerdict, { label: string; bg: string; fg: string }> = {
-  predictive: { label: 'predictive', bg: '#dcfce7', fg: '#15803d' },
-  no_significant_ic: { label: 'no signal', bg: '#f1f5f9', fg: '#64748b' },
-  predictive_wrong_sign: { label: 'wrong-signed', bg: '#fee2e2', fg: '#b91c1c' },
-  insufficient_data: { label: 'insufficient data', bg: '#fef3c7', fg: '#b45309' },
+  predictive: { label: 'predictive', bg: 'var(--pos-soft)', fg: 'var(--pos)' },
+  no_significant_ic: { label: 'no signal', bg: 'var(--surface-2)', fg: 'var(--muted)' },
+  predictive_wrong_sign: { label: 'wrong-signed', bg: 'var(--neg-soft)', fg: 'var(--neg)' },
+  insufficient_data: { label: 'insufficient data', bg: 'var(--warn-soft)', fg: 'var(--warn)' },
 }
 
 /** Per-sub-metric IC attribution table — the Phase-0 evidence made legible. */
@@ -60,8 +60,8 @@ function SubmetricPanel({ submetrics }: { submetrics: Record<string, BacktestKey
             const meta = v ? VERDICT_META[v] : null
             const t = ic?.t_stat
             return (
-              <tr key={key} className="border-b border-slate-50">
-                <td className="py-2.5 pr-4 font-semibold text-slate-800">
+              <tr key={key} className="border-b border-line">
+                <td className="py-2.5 pr-4 font-semibold text-ink">
                   {INPUT_LABELS[key] ?? key}
                 </td>
                 <td className="py-2.5 pr-4 text-right tabular-nums">
@@ -69,14 +69,14 @@ function SubmetricPanel({ submetrics }: { submetrics: Record<string, BacktestKey
                 </td>
                 <td
                   className="py-2.5 pr-4 text-right font-semibold tabular-nums"
-                  style={{ color: t != null && Math.abs(t) > 2.7 ? (t > 0 ? '#15803d' : '#b91c1c') : '#64748b' }}
+                  style={{ color: t != null && Math.abs(t) > 2.7 ? (t > 0 ? 'var(--pos)' : 'var(--neg)') : 'var(--muted)' }}
                 >
                   {t != null ? (t >= 0 ? '+' : '') + t.toFixed(2) : '—'}
                 </td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-slate-500">
+                <td className="py-2.5 pr-4 text-right tabular-nums text-muted">
                   {cov?.n_periods ?? '—'}
                 </td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-slate-500">
+                <td className="py-2.5 pr-4 text-right tabular-nums text-muted">
                   {cov?.median_valid_names ?? '—'}
                 </td>
                 <td className="py-2.5">
@@ -107,8 +107,8 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
   tip?: string
 }) {
   return (
-    <div className="rounded-card border border-gray-200 bg-white px-3 py-2.5 shadow-card">
-      <div className="flex items-center text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+    <div className="rounded-card border border-line bg-surface px-3 py-2.5 shadow-card">
+      <div className="flex items-center text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-muted">
         <span>{label}</span>
         {tip && <InfoTip text={tip} />}
       </div>
@@ -118,7 +118,7 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[0.64rem] leading-tight text-gray-400">{sub}</div>}
+      {sub && <div className="mt-0.5 text-[0.64rem] leading-tight text-muted">{sub}</div>}
     </div>
   )
 }
@@ -130,7 +130,7 @@ function Segmented<T extends string>({ options, value, onChange }: {
   onChange: (v: T) => void
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-gray-200 bg-slate-50 p-0.5">
+    <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5">
       {options.map((o) => {
         const on = o.value === value
         return (
@@ -140,7 +140,7 @@ function Segmented<T extends string>({ options, value, onChange }: {
             onClick={() => onChange(o.value)}
             aria-pressed={on}
             className="rounded-md px-2.5 py-1 text-[0.72rem] font-semibold transition-colors"
-            style={on ? { background: '#ffffff', color: '#4f46e5', boxShadow: '0 1px 2px rgba(15,23,42,0.08)' } : { color: '#64748b' }}
+            style={on ? { background: 'var(--surface)', color: 'var(--accent)', boxShadow: '0 1px 2px rgba(15,23,42,0.08)' } : { color: 'var(--muted)' }}
           >
             {o.label}
           </button>
@@ -175,13 +175,13 @@ export function LabPage() {
 
   if (!data.has_results || !data.results) {
     return (
-      <div className="rounded-card border border-gray-200 bg-white p-10 text-center shadow-card">
-        <h1 className="text-xl font-extrabold text-slate-900">Factor Lab</h1>
-        <p className="mx-auto mt-3 max-w-[520px] text-sm text-slate-500">
+      <div className="rounded-card border border-line bg-surface p-10 text-center shadow-card">
+        <h1 className="text-xl font-extrabold text-ink">Factor Lab</h1>
+        <p className="mx-auto mt-3 max-w-[520px] text-sm text-muted">
           No backtest stored yet. The monthly workflow
-          (<code className="rounded bg-slate-100 px-1">backtest.yml</code>) computes and stores
+          (<code className="rounded bg-surface-2 px-1">backtest.yml</code>) computes and stores
           one automatically on the 2nd of each month — or run it once now with{' '}
-          <code className="rounded bg-slate-100 px-1">python scripts/run_backtest.py --store</code>.
+          <code className="rounded bg-surface-2 px-1">python scripts/run_backtest.py --store</code>.
         </p>
       </div>
     )
@@ -210,8 +210,8 @@ export function LabPage() {
             className="rounded-full px-[11px] py-[3px] text-[0.72rem] font-semibold transition-shadow"
             style={
               selected
-                ? { background: '#eef2ff', color: '#4f46e5', boxShadow: 'inset 0 0 0 1.5px #4f46e5' }
-                : { background: '#ffffff', color: '#334155', boxShadow: 'inset 0 0 0 1px #cbd5e1' }
+                ? { background: 'var(--accent-soft)', color: 'var(--accent)', boxShadow: 'inset 0 0 0 1.5px var(--accent)' }
+                : { background: 'var(--surface)', color: 'var(--ink)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' }
             }
           >
             {KEY_LABELS[k] ?? k}
@@ -224,24 +224,24 @@ export function LabPage() {
   return (
     <div className="space-y-5">
       {/* header */}
-      <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+      <header className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
         <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-            <span className="text-indigo-600">StockBud</span>
-            <span className="text-gray-300">/</span>
-            <span className="text-slate-400">Factor Lab</span>
+            <span className="text-accent">StockBud</span>
+            <span className="text-subtle">/</span>
+            <span className="text-muted">Factor Lab</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
+          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
             Does the model actually work?
           </h1>
-          <p className="mt-2 text-[0.9rem] text-slate-500">
+          <p className="mt-2 text-[0.9rem] text-muted">
             Point-in-time backtest of <code>{data.config_version}</code> · {data.start_date} →{' '}
             {data.end_date} · {data.params?.rebalances} monthly rebalances · quintiles, equal-weight,{' '}
             {data.params?.cost_bps}bps/side · sub-$1 names dropped, returns winsorized
           </p>
           {data.generated_at && (
-            <p className="mt-1 text-[0.74rem] text-slate-400">
+            <p className="mt-1 text-[0.74rem] text-muted">
               Computed {fmtDate(data.generated_at.slice(0, 10))} · served from store · refreshes monthly
             </p>
           )}
@@ -251,12 +251,12 @@ export function LabPage() {
       {/* config A/B selector + factor selector — drive the verdict and charts below */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
         {data.available_configs && data.available_configs.length > 1 && (
-          <label className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
+          <label className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-muted">
             Config
             <select
               value={data.config_version ?? ''}
               onChange={(e) => setConfig(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[0.78rem] font-semibold normal-case tracking-normal text-slate-800"
+              className="rounded-lg border border-line bg-surface px-2 py-1 text-[0.78rem] font-semibold normal-case tracking-normal text-ink"
             >
               {data.available_configs.map((c, i) => (
                 <option key={c} value={c}>
@@ -267,7 +267,7 @@ export function LabPage() {
             </select>
           </label>
         )}
-        <span className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
+        <span className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-muted">
           Ranking
         </span>
         {FactorPills}
@@ -335,8 +335,8 @@ export function LabPage() {
               className="rounded-lg border px-2.5 py-1 text-[0.72rem] font-semibold transition-colors"
               style={
                 showLongShort
-                  ? { borderColor: '#16a34a', background: '#f0fdf4', color: '#16a34a' }
-                  : { borderColor: '#e5e7eb', background: '#ffffff', color: '#64748b' }
+                  ? { borderColor: 'var(--pos)', background: 'var(--pos-soft)', color: 'var(--pos)' }
+                  : { borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--muted)' }
               }
             >
               {showLongShort ? '✓ ' : ''}Long-short
@@ -353,7 +353,7 @@ export function LabPage() {
         }
       >
         {showLongShort && logScale && (
-          <p className="mb-2 text-[0.72rem] text-amber-700">
+          <p className="mb-2 text-[0.72rem] text-warn">
             Long-short is hidden on the log axis (its growth-of-$1 can cross zero, which a log scale
             can't plot). Switch to Linear to see it.
           </p>
@@ -410,12 +410,12 @@ export function LabPage() {
           </div>
 
           {rp && (
-            <div className="mt-4 rounded-card border border-gray-200 bg-slate-50 px-4 py-3">
-              <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
+            <div className="mt-4 rounded-card border border-line bg-surface-2 px-4 py-3">
+              <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.09em] text-muted">
                 Random-portfolio null (composite top quintile)
                 <InfoTip text="The 'monkey' test: 1,000 random equal-weight baskets of the same size, chained over the same window. Where the real strategy's CAGR lands tells you how much is skill vs market beta." />
               </div>
-              <p className="mt-1 text-[0.86rem] text-slate-700">
+              <p className="mt-1 text-[0.86rem] text-ink">
                 The composite top quintile beat{' '}
                 <strong style={{ color: TONE_HEX[pctileTone(rp.percentile)] }}>
                   {(rp.percentile * 100).toFixed(0)}%
@@ -429,7 +429,7 @@ export function LabPage() {
 
           {sel.ic && (
             <div className="mt-4">
-              <div className="mb-1 flex items-center text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-slate-600">
+              <div className="mb-1 flex items-center text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-muted">
                 Information Coefficient over time — {selLabel}
                 <InfoTip text="Green/red bars are each month's rank IC; the indigo line is the trailing 6-month average. A line drifting toward zero is a factor losing its edge." />
               </div>
@@ -442,9 +442,9 @@ export function LabPage() {
           title="Is the edge real, or luck?"
           hint="Significance & robustness (IC, bootstrap CIs, random-portfolio null)."
         >
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             Significance stats populate on the next backtest run — the monthly workflow, or{' '}
-            <code className="rounded bg-slate-100 px-1">python scripts/run_backtest.py --store</code>.
+            <code className="rounded bg-surface-2 px-1">python scripts/run_backtest.py --store</code>.
             The currently stored run predates this feature.
           </p>
         </SectionCard>
@@ -480,12 +480,12 @@ export function LabPage() {
                     key={k}
                     onClick={() => setFactorKey(k)}
                     className={
-                      'cursor-pointer border-b border-slate-50 transition-colors hover:bg-slate-50 ' +
-                      (isSel ? 'bg-indigo-50' : '')
+                      'cursor-pointer border-b border-line transition-colors hover:bg-surface-2 ' +
+                      (isSel ? 'bg-accent-soft' : '')
                     }
                   >
-                    <td className="py-2.5 pr-4 font-bold text-slate-800">
-                      {isSel && <span className="mr-1 text-indigo-600">▸</span>}
+                    <td className="py-2.5 pr-4 font-bold text-ink">
+                      {isSel && <span className="mr-1 text-accent">▸</span>}
                       {KEY_LABELS[k] ?? k}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(top?.cagr)}</td>
@@ -497,7 +497,7 @@ export function LabPage() {
                       {r.ic?.t_stat != null ? r.ic.t_stat.toFixed(2) : '—'}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.win_rate_top, false)}</td>
-                    <td className="py-2.5 pr-4 tabular-nums text-red-600">
+                    <td className="py-2.5 pr-4 tabular-nums text-neg">
                       {fmtPct(top?.max_drawdown, false)}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{fmtPct(r.long_short.cagr)}</td>
@@ -513,12 +513,12 @@ export function LabPage() {
               })}
               {data.benchmarks && (
                 <tr>
-                  <td className="py-2.5 pr-4 font-bold text-slate-500">S&amp;P 500 (SPY)</td>
+                  <td className="py-2.5 pr-4 font-bold text-muted">S&amp;P 500 (SPY)</td>
                   <td className="py-2.5 pr-4 tabular-nums">{fmtPct(data.benchmarks.spy_stats.cagr)}</td>
                   <td className="py-2.5 pr-4 tabular-nums">{fmtSharpe(data.benchmarks.spy_stats.sharpe)}</td>
                   <td className="py-2.5 pr-4">—</td>
                   <td className="py-2.5 pr-4">—</td>
-                  <td className="py-2.5 pr-4 tabular-nums text-red-600">
+                  <td className="py-2.5 pr-4 tabular-nums text-neg">
                     {fmtPct(data.benchmarks.spy_stats.max_drawdown, false)}
                   </td>
                   <td className="py-2.5 pr-4">—</td>
@@ -540,7 +540,7 @@ export function LabPage() {
         {data.submetrics && Object.keys(data.submetrics).length > 0 ? (
           <>
             <SubmetricPanel submetrics={data.submetrics} />
-            <p className="mt-3 text-[0.72rem] leading-relaxed text-slate-400">
+            <p className="mt-3 text-[0.72rem] leading-relaxed text-muted">
               Verdict bar is <strong>|t| &gt; 2.7</strong> (Bonferroni for ~14 tests), stricter than the
               usual 2.0. Each IC is measured on the complete-4-factor universe and is
               survivorship-inflated — read sign and magnitude, not the level. Dropping a wrong-signed or
@@ -548,7 +548,7 @@ export function LabPage() {
             </p>
           </>
         ) : (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             Sub-metric IC populates on the next backtest run for this config (this stored run predates
             the feature).
           </p>
@@ -556,7 +556,7 @@ export function LabPage() {
       </SectionCard>
 
       {/* honesty footer — accurate, no contradictory claims */}
-      <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-[0.8rem] leading-relaxed text-amber-800">
+      <div className="rounded-card border border-warn bg-warn-soft px-4 py-3 text-[0.8rem] leading-relaxed text-ink">
         <strong>How to read this honestly.</strong> Two caveats remain: (1){' '}
         <strong>survivorship</strong> — the universe is today's listed names, so absolute returns run
         optimistic; lean on the <em>spread</em> across quintiles, not the headline CAGR. (2) It's an{' '}
@@ -567,7 +567,7 @@ export function LabPage() {
         investment advice.
       </div>
 
-      <p className="pb-2 text-center text-xs text-gray-400">
+      <p className="pb-2 text-center text-xs text-muted">
         Backtest recomputed monthly by GitHub Actions (point-in-time data, no look-ahead).
       </p>
     </div>

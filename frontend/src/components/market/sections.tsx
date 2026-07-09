@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts'
 
 import { InfoTip } from '@/components/ui/InfoTip'
+import { useChartTheme } from '@/lib/chartTheme'
 import { plColor, scoreHeat } from '@/lib/colors'
 import { TABLE_HEAD_ROW } from '@/lib/constants'
 import { fmtDate, fmtMoney, fmtSignedPct } from '@/lib/format'
@@ -46,7 +47,7 @@ export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
         </thead>
         <tbody>
           {sectors.map((s) => (
-            <tr key={s.sector} className="border-b border-slate-50">
+            <tr key={s.sector} className="border-b border-line">
               <td className="py-2 pr-4 font-bold text-ink">{s.sector}</td>
               <td className="py-2 pr-3 text-right tabular-nums text-subtle">{s.n}</td>
               {cols.map((c) => {
@@ -69,6 +70,7 @@ export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
 }
 
 export function MacroCardBox({ card }: { card: MarketMacroCard }) {
+  const ct = useChartTheme()
   const points = card.spark_values.map((v, i) => ({ i, v }))
   const hasData = Number.isFinite(card.latest)
   const trendUp = card.spark_values.length >= 2 && card.spark_values[card.spark_values.length - 1] >= card.spark_values[0]
@@ -97,7 +99,7 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={points} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                 <YAxis hide domain={['dataMin', 'dataMax']} />
-                <Line type="monotone" dataKey="v" stroke={trendUp ? '#0ea5e9' : 'var(--subtle)'} strokeWidth={1.4}
+                <Line type="monotone" dataKey="v" stroke={trendUp ? ct.info : ct.muted} strokeWidth={1.4}
                   dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -158,7 +160,7 @@ function EightKChip({ ticker }: { ticker: string }) {
     <Link
       to={`/securities/${ticker}`}
       title="Filed an 8-K in the current window"
-      className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-accent hover:bg-accent-soft"
+      className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-accent hover:bg-accent hover:text-inverse"
     >
       8-K
     </Link>
@@ -418,7 +420,7 @@ export function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
   }
   const styles = {
     calm: 'border-line bg-surface-2 text-muted',
-    info: 'border-blue-200 bg-blue-50 text-blue-700',
+    info: 'border-info bg-info-soft text-info',
     warn: 'border-warn bg-warn-soft text-warn',
   }[tone]
   return (
@@ -545,7 +547,7 @@ export function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
             <div key={row.k} className="flex items-center gap-2">
               <span className="w-[3.6rem] shrink-0 text-[0.66rem] font-semibold text-muted">{row.k}</span>
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-3">
-                <div className="h-full rounded-full" style={{ width: `${barW(row.v)}%`, background: (row.v ?? 0) >= 0 ? '#34d399' : '#f87171' }} />
+                <div className="h-full rounded-full" style={{ width: `${barW(row.v)}%`, background: (row.v ?? 0) >= 0 ? 'var(--pos-strong)' : 'var(--neg)' }} />
               </div>
               <span className="w-12 shrink-0 text-right text-[0.72rem] font-bold tabular-nums" style={{ color: plColor(row.v) }}>{fmtSignedPct(row.v)}</span>
             </div>
@@ -582,7 +584,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
           <ul className="space-y-2">
             {computed.map((s) => (
               <li key={s} className="flex items-start gap-2.5 text-[0.9rem] leading-relaxed text-ink">
-                <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-subtle" />
                 {s}
               </li>
             ))}
@@ -612,7 +614,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
               <div className="text-[0.66rem] font-bold uppercase tracking-[0.09em] text-subtle">What to watch next</div>
               <div className="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {brief.watch.map((w) => (
-                  <div key={w} className="rounded-xl border border-[#eef1f6] bg-surface-2 p-3 text-[0.82rem] leading-relaxed text-muted">
+                  <div key={w} className="rounded-xl border border-line bg-surface-2 p-3 text-[0.82rem] leading-relaxed text-muted">
                     <span className="mr-1.5 font-bold text-accent">→</span>{w}
                   </div>
                 ))}
@@ -621,7 +623,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
           )}
           {brief.narrative.length > 0 && (
             <details className="group mt-4">
-              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-accent hover:text-accent">
+              <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[0.8rem] font-semibold text-accent hover:underline">
                 <svg className="h-3.5 w-3.5 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
                 </svg>
@@ -641,7 +643,7 @@ export function AiBrief({ brief, computed, generating, asOf, stale }: {
             <ul className="mt-1.5 space-y-1 pl-1">
               {computed.map((s) => (
                 <li key={s} className="flex items-start gap-2 text-[0.78rem] text-muted">
-                  <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+                  <span className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-subtle" />
                   {s}
                 </li>
               ))}

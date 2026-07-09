@@ -15,6 +15,7 @@ import { InfoTip } from '@/components/ui/InfoTip'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { runProjection } from '@/lib/api'
+import { useChartTheme } from '@/lib/chartTheme'
 import {
   CHART_LABEL_SIZE,
   CHART_TICK_SIZE,
@@ -31,7 +32,7 @@ export interface MonteCarloPanelProps {
 }
 
 const PRESET_CHIP =
-  'rounded-lg border border-gray-200 bg-slate-50 px-2.5 py-1 text-[0.7rem] text-slate-500 transition-colors hover:border-indigo-400 hover:text-indigo-600'
+  'rounded-lg border border-line bg-surface-2 px-2.5 py-1 text-[0.7rem] text-muted transition-colors hover:border-accent hover:text-accent'
 
 const CHECK_PILL =
   'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors '
@@ -102,6 +103,8 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
     if (s != null) setStress(s)
   }
 
+  const ct = useChartTheme()
+
   return (
     <SectionCard
       title="Projection — Monte Carlo cone"
@@ -160,7 +163,7 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
             type="button" onClick={() => setStress((s) => !s)} aria-pressed={stress}
             className={
               'rounded-lg border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors ' +
-              (stress ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+              (stress ? 'border-neg-border bg-neg-soft text-neg' : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
             Stress regime
@@ -171,8 +174,8 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
           className={
             CHECK_PILL +
             (compareBench
-              ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-              : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-line bg-surface text-muted hover:bg-surface-2')
           }
         >
           <input
@@ -187,10 +190,10 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
           className={
             CHECK_PILL +
             (props.suggestedWeights == null
-              ? 'cursor-not-allowed border-gray-200 bg-slate-50 text-slate-300'
+              ? 'cursor-not-allowed border-line bg-surface-2 text-subtle'
               : applyRebalance
-                ? 'border-purple-300 bg-purple-50 text-purple-700'
-                : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50')
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-line bg-surface text-muted hover:bg-surface-2')
           }
         >
           <input
@@ -198,26 +201,26 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
             checked={applyRebalance && props.suggestedWeights != null}
             disabled={props.suggestedWeights == null}
             onChange={(e) => setApplyRebalance(e.target.checked)}
-            className="h-3 w-3 accent-purple-600"
+            className="h-3 w-3 accent-indigo-600"
           />
           Apply suggested rebalance first
         </label>
         <button
           type="button" onClick={run} disabled={isFetching}
-          className="rounded-lg bg-indigo-600 px-3 py-1 text-[0.78rem] font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded-lg bg-accent-solid px-3 py-1 text-[0.78rem] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {isFetching ? 'Running…' : 'Run'}
         </button>
       </div>
 
       {error ? (
-        <p className="text-sm text-red-600">Couldn&rsquo;t run the projection.</p>
+        <p className="text-sm text-neg">Couldn&rsquo;t run the projection.</p>
       ) : isPending || !data ? (
         <Skeleton className="h-64 w-full rounded-card" />
       ) : !data.has_portfolio ? (
-        <p className="text-sm text-slate-500">Add holdings to project your portfolio forward.</p>
+        <p className="text-sm text-muted">Add holdings to project your portfolio forward.</p>
       ) : data.insufficient_history ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted">
           Not enough price history for your holdings to project yet.
         </p>
       ) : (
@@ -252,9 +255,9 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
           <div className="mt-4">
             <ResponsiveContainer width="100%" height={260}>
               <ComposedChart data={coneData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="year" tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }} minTickGap={20} />
-                <YAxis tick={{ fontSize: CHART_TICK_SIZE, fill: '#94a3b8' }} width={56} tickFormatter={(v: number) => fmtMoney(v)} />
+                <CartesianGrid stroke={ct.grid} vertical={false} />
+                <XAxis dataKey="year" tick={{ fontSize: CHART_TICK_SIZE, fill: ct.axis }} minTickGap={20} />
+                <YAxis tick={{ fontSize: CHART_TICK_SIZE, fill: ct.axis }} width={56} tickFormatter={(v: number) => fmtMoney(v)} />
                 <Tooltip
                   formatter={(value: number | number[], name) =>
                     Array.isArray(value)
@@ -268,21 +271,21 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
                               : String(name),
                         ]
                   }
-                  contentStyle={{ fontSize: CHART_LABEL_SIZE, borderRadius: 8, borderColor: '#e5e7eb' }}
+                  contentStyle={{ fontSize: CHART_LABEL_SIZE, borderRadius: 8, background: ct.tooltipBg, borderColor: ct.tooltipBorder, color: ct.tooltipText }}
                 />
-                <Area dataKey="band" stroke="none" fill="#c7d2fe" fillOpacity={0.45} isAnimationActive={false} />
-                <Line dataKey="p90" stroke="#a5b4fc" strokeWidth={1} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
-                <Line dataKey="p10" stroke="#a5b4fc" strokeWidth={1} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
-                <Line dataKey="p50" stroke="#4f46e5" strokeWidth={2.2} dot={false} isAnimationActive={false} />
+                <Area dataKey="band" stroke="none" fill={ct.accent} fillOpacity={0.2} isAnimationActive={false} />
+                <Line dataKey="p90" stroke={ct.accent} strokeOpacity={0.5} strokeWidth={1} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
+                <Line dataKey="p10" stroke={ct.accent} strokeOpacity={0.5} strokeWidth={1} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
+                <Line dataKey="p50" stroke={ct.accent} strokeWidth={2.2} dot={false} isAnimationActive={false} />
                 {data.benchmark && (
-                  <Line dataKey="bench" stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="5,4" isAnimationActive={false} />
+                  <Line dataKey="bench" stroke={ct.muted} strokeWidth={1.5} dot={false} strokeDasharray="5,4" isAnimationActive={false} />
                 )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[0.74rem] text-indigo-900">
+          <div className="mt-3 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-[0.74rem] text-ink">
             {data.simulated_weights && (
-              <span className="mr-1.5 rounded bg-purple-100 px-1.5 text-[0.64rem] font-bold text-purple-700">
+              <span className="mr-1.5 rounded bg-accent-soft px-1.5 text-[0.64rem] font-bold text-accent">
                 rebalanced weights
               </span>
             )}
@@ -298,19 +301,19 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
             </span>
           </div>
           {data.excluded && data.excluded.length > 0 && (
-            <p className="mt-2 text-[0.72rem] text-slate-400">
+            <p className="mt-2 text-[0.72rem] text-muted">
               excluded (too little history): {data.excluded.join(', ')}
             </p>
           )}
           <details className="mt-2">
-            <summary className="cursor-pointer text-[0.72rem] font-semibold text-slate-500">
+            <summary className="cursor-pointer text-[0.72rem] font-semibold text-muted">
               Assumptions — portfolio {Math.round((data.portfolio_assumptions?.ann_return ?? 0) * 100)}%/yr
               return, {Math.round((data.portfolio_assumptions?.ann_vol ?? 0) * 100)}% vol
               {data.stress ? ' · STRESS regime' : ''}
             </summary>
             <table className="mt-2 w-full text-[0.74rem]">
               <thead>
-                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-slate-400">
+                <tr className="text-left text-[0.6rem] uppercase tracking-wide text-muted">
                   <th className="py-1">Holding</th>
                   <th className="py-1">Weight</th>
                   <th className="py-1">
@@ -326,18 +329,18 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
               </thead>
               <tbody>
                 {data.holdings_assumptions?.map((a, i) => (
-                  <tr key={a.ticker ?? i} className="border-t border-slate-50">
-                    <td className="py-1 font-semibold text-slate-800">{a.ticker ?? '—'}</td>
+                  <tr key={a.ticker ?? i} className="border-t border-divider">
+                    <td className="py-1 font-semibold text-ink">{a.ticker ?? '—'}</td>
                     <td className="py-1 tabular-nums">{Math.round(a.weight * 100)}%</td>
                     <td className="py-1 tabular-nums">{Math.round(a.ann_return * 100)}%</td>
-                    <td className="py-1 tabular-nums text-gray-400">{Math.round(a.ann_return_trailing * 100)}%</td>
+                    <td className="py-1 tabular-nums text-muted">{Math.round(a.ann_return_trailing * 100)}%</td>
                     <td className="py-1 tabular-nums">{Math.round(a.ann_vol * 100)}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </details>
-          <p className="mt-2 text-[0.7rem] text-gray-400">{data.disclaimer}</p>
+          <p className="mt-2 text-[0.7rem] text-muted">{data.disclaimer}</p>
         </>
       )}
     </SectionCard>
