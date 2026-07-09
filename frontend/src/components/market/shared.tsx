@@ -5,9 +5,9 @@ import { fmtShortDate } from '@/lib/format'
 export function FilingFreshness({ date }: { date: string | null }) {
   if (!date) return null
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-500">
-      <span className="text-slate-400">Latest filing</span>
-      <span className="tabular-nums text-slate-600">{fmtShortDate(date)}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-3 px-2.5 py-1 text-[0.7rem] font-semibold text-muted">
+      <span className="text-subtle">Latest filing</span>
+      <span className="tabular-nums text-muted">{fmtShortDate(date)}</span>
       <InfoTip text="The most recent day companies actually filed. SEC EDGAR is closed on weekends and federal holidays, so this can sit a few days back and still be current. Today's filings appear after the nightly refresh." />
     </span>
   )
@@ -16,8 +16,8 @@ export function FilingFreshness({ date }: { date: string | null }) {
 /** Tiny provenance pill: what kind of freshness a block carries. */
 export function Provenance({ kind }: { kind: 'live' | 'close' | 'fred' }) {
   const map = {
-    live: { bg: '#ecfdf5', fg: '#047857', label: 'live ~15m' },
-    close: { bg: '#f1f5f9', fg: '#475569', label: 'last close' },
+    live: { bg: 'var(--pos-soft)', fg: 'var(--pos)', label: 'live ~15m' },
+    close: { bg: 'var(--surface-2)', fg: 'var(--muted)', label: 'last close' },
     fred: { bg: '#eff6ff', fg: '#1d4ed8', label: 'FRED · lagged' },
   }[kind]
   return (
@@ -39,18 +39,18 @@ export function BreadthBar({ label, pct, detail, tip }: {
   return (
     <div>
       <div className="flex items-baseline justify-between text-[0.78rem]">
-        <span className="flex items-center font-semibold text-slate-600">
+        <span className="flex items-center font-semibold text-muted">
           {label}
           {tip && <InfoTip text={tip} />}
         </span>
-        <span className="font-bold tabular-nums text-slate-800">
-          {pct == null ? <span className="text-slate-400">no data</span> : `${(pct * 100).toFixed(0)}%`}
-          {detail && pct != null && <span className="ml-1.5 font-normal text-slate-400">{detail}</span>}
+        <span className="font-bold tabular-nums text-ink">
+          {pct == null ? <span className="text-subtle">no data</span> : `${(pct * 100).toFixed(0)}%`}
+          {detail && pct != null && <span className="ml-1.5 font-normal text-subtle">{detail}</span>}
         </span>
       </div>
-      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-red-100">
+      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-neg-soft">
         {pct != null && (
-          <div className="h-full rounded-full bg-emerald-500/80" style={{ width: `${pct * 100}%` }} />
+          <div className="h-full rounded-full bg-pos-strong" style={{ width: `${pct * 100}%` }} />
         )}
       </div>
     </div>
@@ -68,7 +68,7 @@ export function RiskGauge({ score }: { score: number }) {
         <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-900 shadow-[0_1px_4px_rgba(15,23,42,0.45)]"
           style={{ left: `${pct}%` }} aria-hidden />
       </div>
-      <div className="mt-1 flex justify-between text-[0.58rem] font-bold uppercase tracking-[0.08em] text-slate-400">
+      <div className="mt-1 flex justify-between text-[0.58rem] font-bold uppercase tracking-[0.08em] text-subtle">
         <span>Risk-off</span><span>Cautious</span><span>Risk-on</span>
       </div>
     </div>
@@ -80,7 +80,7 @@ export function DivergeBar({ left, right }: { left: number; right: number }) {
   const total = left + right || 1
   const lp = Math.max(0, Math.min(100, (left / total) * 100))
   return (
-    <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-slate-100">
+    <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-surface-3">
       <div style={{ width: `${lp}%`, background: '#34d399' }} />
       <div style={{ width: `${100 - lp}%`, background: '#f87171' }} />
     </div>
@@ -89,10 +89,10 @@ export function DivergeBar({ left, right }: { left: number; right: number }) {
 
 /** Fill meter colored by breadth thresholds (≥60 green, ≥40 amber, else red). */
 export function MeterBar({ pct }: { pct: number | null }) {
-  if (pct == null) return <div className="mt-2 h-2 rounded-full bg-slate-100" />
+  if (pct == null) return <div className="mt-2 h-2 rounded-full bg-surface-3" />
   const c = pct >= 0.6 ? '#34d399' : pct >= 0.4 ? '#fbbf24' : '#f87171'
   return (
-    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+    <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-3">
       <div className="h-full rounded-full" style={{ width: `${Math.max(3, Math.min(100, pct * 100))}%`, background: c }} />
     </div>
   )
@@ -100,8 +100,8 @@ export function MeterBar({ pct }: { pct: number | null }) {
 
 export function SnapTile({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-[0.07em] text-slate-400">
+    <div className="rounded-xl border border-line bg-surface p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-[0.07em] text-subtle">
         {label}{tip && <InfoTip text={tip} />}
       </div>
       {children}

@@ -38,12 +38,12 @@ import type { MarketOverviewResponse } from '@/types/api'
 function TierLabel({ n, title }: { n: 1 | 2 | 3; title: string }) {
   return (
     <div className="flex items-center gap-2 pt-1">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-500">
-        <span className="text-indigo-600">Tier {n}</span>
-        <span className="text-slate-300" aria-hidden>·</span>
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-3 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-muted">
+        <span className="text-accent">Tier {n}</span>
+        <span className="text-subtle" aria-hidden>·</span>
         {title}
       </span>
-      <span className="h-px flex-1 bg-slate-100" />
+      <span className="h-px flex-1 bg-surface-3" />
     </div>
   )
 }
@@ -105,7 +105,7 @@ export function MarketPage() {
     return (
       <div className="space-y-5">
         <Skeleton className="h-[150px] w-full rounded-card" />
-        <div className="text-center text-xs text-gray-400">
+        <div className="text-center text-xs text-subtle">
           Computing market internals across ~5,500 stocks — first load after a server start can take half a minute…
         </div>
         <Skeleton className="h-[360px] w-full rounded-card" />
@@ -134,18 +134,18 @@ export function MarketPage() {
       {/* ── TIER 1 · THE 2-SECOND READ ─────────────────────────────────────── */}
       <TierLabel n={1} title="The 2-second read" />
       <div id="tier-1" className="scroll-mt-24 space-y-5">
-      <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
-        <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
+      <header className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+        <div className="h-1 bg-gradient-to-r from-[var(--accent)] to-transparent" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-            <span className="text-indigo-600">StockBud</span>
-            <span className="text-gray-300">/</span>
-            <span className="text-slate-400">Market</span>
+            <span className="text-accent">StockBud</span>
+            <span className="text-subtle">/</span>
+            <span className="text-subtle">Market</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-slate-900">
+          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
             Market overview
           </h1>
-          <p className="mt-1 text-[0.8rem] text-slate-400">
+          <p className="mt-1 text-[0.8rem] text-subtle">
             Equal-weight internals across our active universe — the 2-second read first, the full story below.
           </p>
           <RegimeHero
@@ -158,10 +158,10 @@ export function MarketPage() {
           />
         </div>
         {/* Freshness FIRST — the trust signal leads, and gets prominence when stale. */}
-        <div className={`px-7 py-2.5 ${stale ? 'bg-amber-50' : 'border-t border-slate-100'}`}>
+        <div className={`px-7 py-2.5 ${stale ? 'bg-warn-soft' : 'border-t border-line'}`}>
           <FreshnessRow d={d} />
         </div>
-        <div className="border-t border-slate-100 px-7 py-3">
+        <div className="border-t border-line px-7 py-3">
           <RegimeStrip d={d} />
         </div>
       </header>
@@ -175,13 +175,13 @@ export function MarketPage() {
           : 'Assembled from the numbers on this page. The AI narrative writes once when you open the tab.'}
       >
         {mkt.note && (
-          <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[0.78rem] font-medium text-slate-600">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[0.78rem] font-medium text-muted">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
             {mkt.note}
           </div>
         )}
         <SessionSnapshot d={d} />
-        <div className="mt-4 border-t border-slate-100 pt-4">
+        <div className="mt-4 border-t border-line pt-4">
           <AiBrief brief={aiBrief} computed={d.brief} generating={briefMut.isPending} asOf={d.as_of} stale={stale} />
         </div>
       </SectionCard>
@@ -198,8 +198,8 @@ export function MarketPage() {
         {d.rotation && d.rotation.state !== 'mixed' && (
           <div className="mb-3 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[0.8rem] font-medium"
             style={d.rotation.state === 'risk_on'
-              ? { borderColor: '#a7f3d0', background: '#f0fdf4', color: '#047857' }
-              : { borderColor: '#fde68a', background: '#fffbeb', color: '#b45309' }}>
+              ? { borderColor: '#a7f3d0', background: 'var(--pos-soft)', color: 'var(--pos)' }
+              : { borderColor: 'var(--warn)', background: 'var(--warn-soft)', color: 'var(--warn)' }}>
             {d.rotation.state === 'risk_on'
               ? `Risk-on rotation — cyclicals (${fmtSignedPct(d.rotation.cyc_r1d)}) leading defensives (${fmtSignedPct(d.rotation.def_r1d)}).`
               : `Defensive rotation — defensives (${fmtSignedPct(d.rotation.def_r1d)}) leading cyclicals (${fmtSignedPct(d.rotation.cyc_r1d)}).`}
@@ -221,40 +221,40 @@ export function MarketPage() {
               detail={`${b.advancers.toLocaleString()} up · ${b.decliners.toLocaleString()} down`} />
             <BreadthBar label="Above 50-day average" pct={b.pct_above_ma50} tip={G.ma50} />
             <BreadthBar label="Above 200-day average" pct={b.pct_above_ma200} tip={G.ma200} />
-            <div className="flex gap-6 border-t border-slate-100 pt-3 text-[0.84rem]">
+            <div className="flex gap-6 border-t border-line pt-3 text-[0.84rem]">
               <span>
-                <span className="font-extrabold tabular-nums text-emerald-600">{b.new_highs}</span>{' '}
-                <span className="text-slate-500">new 52-week highs</span>
+                <span className="font-extrabold tabular-nums text-pos">{b.new_highs}</span>{' '}
+                <span className="text-muted">new 52-week highs</span>
               </span>
               <span className="flex items-center">
-                <span className="font-extrabold tabular-nums text-red-600">{b.new_lows}</span>{' '}
-                <span className="ml-1 text-slate-500">new 52-week lows</span>
+                <span className="font-extrabold tabular-nums text-neg">{b.new_lows}</span>{' '}
+                <span className="ml-1 text-muted">new 52-week lows</span>
                 <InfoTip text={G.highsLows} />
               </span>
             </div>
             {dd && (
-              <div className="border-t border-slate-100 pt-3">
-                <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              <div className="border-t border-line pt-3">
+                <div className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-subtle">
                   Distance from 52-week highs<InfoTip text={G.drawdown} />
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                   {[
-                    { k: 'near', label: 'within 5%', v: dd.near_high_pct, c: '#047857' },
-                    { k: 'corr', label: 'in a correction (10%+)', v: dd.correction_pct, c: '#b45309' },
-                    { k: 'bear', label: '20%+ off highs', v: dd.bear_pct, c: '#b91c1c' },
+                    { k: 'near', label: 'within 5%', v: dd.near_high_pct, c: 'var(--pos)' },
+                    { k: 'corr', label: 'in a correction (10%+)', v: dd.correction_pct, c: 'var(--warn)' },
+                    { k: 'bear', label: '20%+ off highs', v: dd.bear_pct, c: 'var(--neg)' },
                   ].map((x) => (
-                    <div key={x.k} className="rounded-lg bg-slate-50 px-2 py-2">
+                    <div key={x.k} className="rounded-lg bg-surface-2 px-2 py-2">
                       <div className="text-[1.05rem] font-extrabold tabular-nums" style={{ color: x.c }}>
                         {(x.v * 100).toFixed(0)}%
                       </div>
-                      <div className="text-[0.66rem] text-slate-400">{x.label}</div>
+                      <div className="text-[0.66rem] text-subtle">{x.label}</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
             {b.calendar && b.calendar.length > 0 && (
-              <div className="border-t border-slate-100 pt-3">
+              <div className="border-t border-line pt-3">
                 <BreadthCalendar calendar={b.calendar} pctl={b.adv_pct_pctl} />
               </div>
             )}
@@ -269,11 +269,11 @@ export function MarketPage() {
           <div className="grid grid-cols-2 gap-3">
             {d.macro.cards.map((c) => <MacroCardBox key={c.id} card={c} />)}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-[0.8rem] text-slate-500">
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-[0.8rem] text-muted">
             {d.macro.curve_bps != null && (
               <span className="flex items-center">
                 2s10s curve{' '}
-                <strong className="ml-1 tabular-nums text-slate-800">
+                <strong className="ml-1 tabular-nums text-ink">
                   {d.macro.curve_bps > 0 ? '+' : ''}{d.macro.curve_bps.toFixed(0)}bps
                 </strong>
                 {d.macro.curve_bps < 0 && ' (inverted)'}
@@ -282,7 +282,7 @@ export function MarketPage() {
             )}
             {d.macro.cpi_yoy != null && (
               <span>
-                CPI <strong className="tabular-nums text-slate-800">{fmtSignedPct(d.macro.cpi_yoy)}</strong>{' '}
+                CPI <strong className="tabular-nums text-ink">{fmtSignedPct(d.macro.cpi_yoy)}</strong>{' '}
                 YoY {d.macro.cpi_as_of && `(as of ${fmtDate(d.macro.cpi_as_of)})`}
               </span>
             )}
@@ -294,7 +294,7 @@ export function MarketPage() {
         <SectionCard title="What worked today — by factor" tip={G.factorDay}
           hint="Which style the market rewarded, from the factor scores that drive the screener.">
           <FactorOfDay factors={d.factor_day} />
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mt-4 border-t border-line pt-4">
             <FactorCompass factors={d.factor_day} />
           </div>
         </SectionCard>
@@ -338,7 +338,7 @@ export function MarketPage() {
       </SectionCard>
       </div>
 
-      <p className="pb-2 text-center text-xs text-gray-400">
+      <p className="pb-2 text-center text-xs text-subtle">
         Whole-market context from nightly data, SEC filings and public feeds — not investment advice.
       </p>
     </div>

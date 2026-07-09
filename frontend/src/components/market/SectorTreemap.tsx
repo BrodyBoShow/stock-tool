@@ -72,7 +72,7 @@ function SectorTiles({ sectors }: { sectors: MarketSectorRow[] }) {
             // not a flat 0% move (the color legend only speaks for real returns).
             const noData = t.s.r1d == null
             const style = noData
-              ? { background: 'repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 6px,#e2e8f0 6px,#e2e8f0 12px)' }
+              ? { background: 'repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 6px,var(--border) 6px,var(--border) 12px)' }
               : heat(t.s.r1d, 0.025)
             return (
               <Link
@@ -82,14 +82,14 @@ function SectorTiles({ sectors }: { sectors: MarketSectorRow[] }) {
                 className="group relative flex min-w-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-white/60 px-2 text-center no-underline transition-shadow hover:shadow-[0_0_0_2px_rgba(79,70,229,0.5)]"
                 style={{ flexGrow: t.weight, flexBasis: 0, ...style }}
               >
-                <span className="max-w-full truncate text-[0.74rem] font-bold leading-tight text-slate-900">
+                <span className="max-w-full truncate text-[0.74rem] font-bold leading-tight text-ink">
                   {t.s.sector}
                 </span>
-                <span className="text-[0.82rem] font-extrabold tabular-nums text-slate-900">
+                <span className="text-[0.82rem] font-extrabold tabular-nums text-ink">
                   {noData ? 'no data' : fmtSignedPct(t.s.r1d)}
                 </span>
                 {!noData && t.s.adv_pct != null && (
-                  <span className="text-[0.62rem] font-semibold tabular-nums text-slate-700/80">
+                  <span className="text-[0.62rem] font-semibold tabular-nums text-ink/80">
                     {(t.s.adv_pct * 100).toFixed(0)}% up
                   </span>
                 )}
@@ -109,26 +109,26 @@ const TOGGLE_BTN = 'rounded-md px-2.5 py-1 text-[0.7rem] font-semibold transitio
 export function SectorTreemap({ sectors }: { sectors: MarketSectorRow[] }) {
   const [view, setView] = useState<'treemap' | 'table'>('treemap')
   if (sectors.length === 0) {
-    return <p className="text-sm text-gray-400">No sector data for this session — prices may still be loading.</p>
+    return <p className="text-sm text-subtle">No sector data for this session — prices may still be loading.</p>
   }
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="text-[0.68rem] text-slate-400">
+        <span className="text-[0.68rem] text-subtle">
           {view === 'treemap' ? 'Tile size ∝ number of names · color = 1-day move · click to screen the sector' : 'Full multi-period table'}
         </span>
-        <div className="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5">
+        <div className="inline-flex shrink-0 rounded-lg bg-surface-3 p-0.5">
           <button
             type="button"
             onClick={() => setView('treemap')}
-            className={`${TOGGLE_BTN} ${view === 'treemap' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`${TOGGLE_BTN} ${view === 'treemap' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
           >
             Treemap
           </button>
           <button
             type="button"
             onClick={() => setView('table')}
-            className={`${TOGGLE_BTN} ${view === 'table' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`${TOGGLE_BTN} ${view === 'table' ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
           >
             Table
           </button>

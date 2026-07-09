@@ -3,11 +3,11 @@ import { InfoTip } from '@/components/ui/InfoTip'
 // 5-tier breadth color, centered on ~50% (a coin-flip day is neutral slate).
 // Broad rally → green, broad sell-off → red; this is the regime signal.
 function cellColor(p: number): string {
-  if (p >= 0.6) return '#15803d'
-  if (p >= 0.54) return '#86efac'
-  if (p >= 0.46) return '#e2e8f0'
-  if (p >= 0.4) return '#fca5a5'
-  return '#b91c1c'
+  if (p >= 0.6) return 'var(--pos)'
+  if (p >= 0.54) return 'var(--pos-border)'
+  if (p >= 0.46) return 'var(--border)'
+  if (p >= 0.4) return 'var(--neg-border)'
+  return 'var(--neg)'
 }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -45,20 +45,20 @@ export function BreadthCalendar({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+        <span className="flex items-center text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-subtle">
           90-day breadth regime
           <InfoTip text="Each square is one trading day, colored by the share of stocks that rose that day. Green = broad rally, red = broad sell-off, slate = mixed (~50%). Shows regime shifts over ~18 weeks. Context, not advice." />
         </span>
         {pctl != null && (
-          <span className="text-[0.7rem] text-slate-500">
+          <span className="text-[0.7rem] text-muted">
             today{' '}
-            <span className="font-bold tabular-nums text-slate-700">{pctl}th pctl</span>{' '}
+            <span className="font-bold tabular-nums text-ink">{pctl}th pctl</span>{' '}
             of 90d
           </span>
         )}
       </div>
       <div className="flex gap-1.5">
-        <div className="flex flex-col justify-between py-[1px] text-[0.56rem] text-slate-300">
+        <div className="flex flex-col justify-between py-[1px] text-[0.56rem] text-subtle">
           {WEEKDAYS.map((w) => (
             <span key={w} className="leading-none">{w}</span>
           ))}
@@ -69,7 +69,7 @@ export function BreadthCalendar({
               const cell = byCell.get(`${wk}:${dow}`)
               const key = `${wk}:${dow}`
               if (!cell) {
-                return <span key={key} className="h-3 rounded-[2px] bg-slate-50" />
+                return <span key={key} className="h-3 rounded-[2px] bg-surface-2" />
               }
               return (
                 <span
@@ -83,10 +83,10 @@ export function BreadthCalendar({
           )}
         </div>
       </div>
-      <div className="mt-2 flex items-center gap-2 text-[0.6rem] text-slate-400">
+      <div className="mt-2 flex items-center gap-2 text-[0.6rem] text-subtle">
         <span>Broad sell-off</span>
         <span className="flex gap-[3px]">
-          {['#b91c1c', '#fca5a5', '#e2e8f0', '#86efac', '#15803d'].map((c) => (
+          {['var(--neg)', 'var(--neg-border)', 'var(--border)', 'var(--pos-border)', 'var(--pos)'].map((c) => (
             <span key={c} className="h-2.5 w-2.5 rounded-[2px]" style={{ background: c }} />
           ))}
         </span>

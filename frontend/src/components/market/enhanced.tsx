@@ -30,8 +30,8 @@ function FilterChips<T extends string>({ options, value, onChange }: {
           onClick={() => onChange(o.key)}
           className={`${CHIP_BASE} ${
             value === o.key
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+              ? 'bg-accent-solid text-accent-ink'
+              : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink'
           }`}
         >
           {o.label}
@@ -75,8 +75,8 @@ export function EnhancedMovers({ gainers, losers }: { gainers: MarketMover[]; lo
             ? <MoverList movers={g} title="Gainers" />
             : (
               <div>
-                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">Gainers</div>
-                <p className="mt-2 text-[0.78rem] text-slate-400">None in this range.</p>
+                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-subtle">Gainers</div>
+                <p className="mt-2 text-[0.78rem] text-subtle">None in this range.</p>
               </div>
             )}
         </div>
@@ -85,8 +85,8 @@ export function EnhancedMovers({ gainers, losers }: { gainers: MarketMover[]; lo
             ? <MoverList movers={l} title="Losers" />
             : (
               <div>
-                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-slate-400">Losers</div>
-                <p className="mt-2 text-[0.78rem] text-slate-400">None in this range.</p>
+                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-subtle">Losers</div>
+                <p className="mt-2 text-[0.78rem] text-subtle">None in this range.</p>
               </div>
             )}
         </div>
@@ -110,7 +110,7 @@ function materiality(f: MarketFilingRow): 1 | 2 | 3 {
 }
 
 function MaterialityDots({ level }: { level: 1 | 2 | 3 }) {
-  const color = level === 3 ? '#b91c1c' : level === 2 ? '#b45309' : '#94a3b8'
+  const color = level === 3 ? 'var(--neg)' : level === 2 ? 'var(--warn)' : 'var(--subtle)'
   const title = level === 3 ? 'High-materiality event (M&A, bankruptcy, delisting)'
     : level === 2 ? 'Medium materiality (management change, material agreement)'
     : 'Routine 8-K item'
@@ -120,7 +120,7 @@ function MaterialityDots({ level }: { level: 1 | 2 | 3 }) {
         <span
           key={i}
           className="h-1.5 w-1.5 rounded-full"
-          style={{ background: i <= level ? color : '#e2e8f0' }}
+          style={{ background: i <= level ? color : 'var(--border)' }}
         />
       ))}
     </span>
@@ -143,34 +143,34 @@ export function EnhancedFilings({ filings, watchlist }: { filings: MarketFilingR
     <div>
       {labelOptions.length > 1 && <FilterChips options={labelOptions} value={label} onChange={setLabel} />}
       <div className="max-h-[460px] space-y-3 overflow-auto pr-1">
-        {shown.length === 0 && <p className="text-sm text-gray-400">No high-signal filings in the window.</p>}
+        {shown.length === 0 && <p className="text-sm text-subtle">No high-signal filings in the window.</p>}
         {shown.map((f) => {
           const onWatch = f.ticker != null && watchlist.has(f.ticker)
           return (
             <div key={f.accession_no + f.security_id} className="flex items-start gap-3">
-              <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-slate-400">
+              <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-subtle">
                 {fmtShortDate(f.filed_date)}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2">
                   {onWatch && (
-                    <span className="inline-block h-2 w-2 shrink-0 self-center rounded-full bg-indigo-500" title="On your watchlist" aria-label="On your watchlist" />
+                    <span className="inline-block h-2 w-2 shrink-0 self-center rounded-full bg-accent-soft" title="On your watchlist" aria-label="On your watchlist" />
                   )}
                   {f.ticker && (
-                    <Link to={`/securities/${f.ticker}`} className="font-bold text-slate-800 hover:text-indigo-600">{f.ticker}</Link>
+                    <Link to={`/securities/${f.ticker}`} className="font-bold text-ink hover:text-accent">{f.ticker}</Link>
                   )}
-                  <span className="truncate text-[0.76rem] text-slate-400">
+                  <span className="truncate text-[0.76rem] text-subtle">
                     {f.name} {f.market_cap ? `· ${fmtMoney(f.market_cap)}` : ''}
                   </span>
                   <MaterialityDots level={materiality(f)} />
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {f.labels.slice(0, 3).map((l) => (
-                    <span key={l} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[0.68rem] font-semibold text-indigo-600">{l}</span>
+                    <span key={l} className="rounded-full bg-accent-soft px-2 py-0.5 text-[0.68rem] font-semibold text-accent">{l}</span>
                   ))}
                   {f.primary_doc_url && (
                     <a href={f.primary_doc_url} target="_blank" rel="noreferrer"
-                      className="rounded-full bg-slate-50 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-400 hover:text-indigo-600">SEC filing ↗</a>
+                      className="rounded-full bg-surface-2 px-2 py-0.5 text-[0.68rem] font-semibold text-subtle hover:text-accent">SEC filing ↗</a>
                   )}
                 </div>
               </div>
@@ -227,7 +227,7 @@ export function EnhancedInsider({ buys }: { buys: MarketInsiderBuy[] }) {
               <span
                 key={sector}
                 title={`${sector} · ${fmtMoney(total)} (${(share * 100).toFixed(0)}% of insider $ this week)`}
-                className="rounded-md px-2 py-1 text-[0.62rem] font-semibold text-emerald-900"
+                className="rounded-md px-2 py-1 text-[0.62rem] font-semibold text-pos"
                 style={{ background: `rgba(16,185,129,${alpha.toFixed(3)})` }}
               >
                 {shortSector(sector)}
@@ -237,17 +237,17 @@ export function EnhancedInsider({ buys }: { buys: MarketInsiderBuy[] }) {
         </div>
       )}
       <div className="space-y-2.5">
-        {buys.length === 0 && <p className="text-sm text-gray-400">No open-market buys filed this week.</p>}
+        {buys.length === 0 && <p className="text-sm text-subtle">No open-market buys filed this week.</p>}
         {buys.map((i) => (
           <div key={i.security_id} className="flex items-center gap-2.5 text-[0.84rem]">
-            <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-slate-800 hover:text-indigo-600">{i.ticker}</Link>
-            <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[0.76rem] text-slate-400">
+            <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-ink hover:text-accent">{i.ticker}</Link>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[0.76rem] text-subtle">
               <span className="truncate">{i.buyers} buyer{i.buyers !== 1 ? 's' : ''} · filed {fmtShortDate(i.last_filed)}</span>
               {i.buyers >= 3 && (
-                <span className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-emerald-700" title="Cluster buy — 3+ distinct insiders">cluster</span>
+                <span className="shrink-0 rounded-full bg-pos-soft px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-pos" title="Cluster buy — 3+ distinct insiders">cluster</span>
               )}
             </span>
-            <span className="shrink-0 font-bold tabular-nums text-emerald-600">{fmtMoney(i.total_value)}</span>
+            <span className="shrink-0 font-bold tabular-nums text-pos">{fmtMoney(i.total_value)}</span>
           </div>
         ))}
       </div>
@@ -323,14 +323,14 @@ export function EnhancedHeadlines({ headlines, knownTickers, watchlist }: {
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <FilterChips options={HEADLINE_OPTIONS} value={filter} onChange={setFilter} />
-        <div className="mb-3 inline-flex rounded-lg bg-slate-100 p-0.5">
+        <div className="mb-3 inline-flex rounded-lg bg-surface-3 p-0.5">
           {([['Compact', false], ['Comfortable', true]] as const).map(([lab, val]) => (
             <button
               key={lab}
               type="button"
               onClick={() => setComfortable(val)}
               className={`rounded-md px-2.5 py-1 text-[0.7rem] font-semibold transition-colors ${
-                comfortable === val ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                comfortable === val ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'
               }`}
             >
               {lab}
@@ -340,24 +340,24 @@ export function EnhancedHeadlines({ headlines, knownTickers, watchlist }: {
       </div>
       <div className="space-y-2.5">
         {headlines.length === 0 && (
-          <p className="text-sm text-gray-400">Feeds unreachable right now — the rest of the page is unaffected.</p>
+          <p className="text-sm text-subtle">Feeds unreachable right now — the rest of the page is unaffected.</p>
         )}
         {headlines.length > 0 && shown.length === 0 && (
-          <p className="text-sm text-gray-400">No headlines match this filter right now.</p>
+          <p className="text-sm text-subtle">No headlines match this filter right now.</p>
         )}
         {shown.map(({ h, tickers, onWatch }) => (
           // Ticker chips are their own links, so the headline can't be one big
           // anchor (nested <a> is invalid) — the title is the clickable element.
           <div
             key={h.url}
-            className={`group ${onWatch ? 'border-l-2 border-indigo-500 pl-2.5' : ''}`}
+            className={`group ${onWatch ? 'border-l-2 border-accent pl-2.5' : ''}`}
           >
             {comfortable ? (
               <div>
-                <a href={h.url} target="_blank" rel="noreferrer" className="block text-[0.9rem] font-medium leading-snug text-slate-700 no-underline hover:text-indigo-600">
+                <a href={h.url} target="_blank" rel="noreferrer" className="block text-[0.9rem] font-medium leading-snug text-ink no-underline hover:text-accent">
                   {h.title}
                 </a>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] text-slate-400">
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] text-subtle">
                   <span className="font-semibold uppercase tracking-wide">{h.source}</span>
                   <span aria-hidden>·</span>
                   <span>{timeAgo(h.published_epoch)}</span>
@@ -366,12 +366,12 @@ export function EnhancedHeadlines({ headlines, knownTickers, watchlist }: {
               </div>
             ) : (
               <div className="flex items-baseline gap-3">
-                <span className="w-24 shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">{h.source}</span>
-                <a href={h.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-[0.88rem] font-medium text-slate-700 no-underline hover:text-indigo-600">
+                <span className="w-24 shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-subtle">{h.source}</span>
+                <a href={h.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-[0.88rem] font-medium text-ink no-underline hover:text-accent">
                   {h.title}
                 </a>
                 {tickers.length > 0 && <span className="hidden shrink-0 sm:inline-flex"><TickerChips tickers={tickers} /></span>}
-                <span className="shrink-0 text-[0.7rem] text-slate-400">{timeAgo(h.published_epoch)}</span>
+                <span className="shrink-0 text-[0.7rem] text-subtle">{timeAgo(h.published_epoch)}</span>
               </div>
             )}
           </div>
@@ -388,7 +388,7 @@ function TickerChips({ tickers }: { tickers: string[] }) {
         <Link
           key={t}
           to={`/securities/${t}`}
-          className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.64rem] font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-600"
+          className="rounded bg-surface-3 px-1.5 py-0.5 text-[0.64rem] font-bold text-muted hover:bg-accent-soft hover:text-accent"
         >
           {t}
         </Link>
