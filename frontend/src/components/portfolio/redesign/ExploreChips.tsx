@@ -24,7 +24,7 @@ export function ExploreChips({
   chips: ExploreChip[]
 }) {
   const cls =
-    'inline-flex min-h-[36px] items-center gap-1 rounded-[var(--r-md)] border border-slate-200 bg-surface px-3 text-[0.75rem] font-medium text-ink transition-colors duration-[var(--dur-fast)] hover:border-slate-300 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2'
+    'inline-flex min-h-[36px] items-center gap-1 rounded-[var(--r-md)] border border-line bg-surface px-3 text-[0.75rem] font-medium text-ink transition-colors duration-[var(--dur-fast)] hover:border-line hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2'
   return (
     <nav aria-label={ariaLabel} className="flex flex-wrap items-center gap-2">
       <span className="text-[0.75rem] text-muted">{label}</span>

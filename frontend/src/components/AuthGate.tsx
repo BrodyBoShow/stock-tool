@@ -36,8 +36,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (phase === 'checking') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <span className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-300/40 border-t-indigo-400" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--accent-soft)] border-t-[var(--accent)]" />
       </div>
     )
   }

@@ -18,7 +18,7 @@ export function HealthScore({ health }: { health: HealthScoreT; benchmark?: stri
 
   if (health.status === 'insufficient_history' || health.score == null || health.band == null) {
     return (
-      <div className="flex flex-col justify-center rounded-[var(--r-xl)] border border-slate-200/70 bg-surface p-4 shadow-[var(--sh-sm)]">
+      <div className="flex flex-col justify-center rounded-[var(--r-xl)] border border-line bg-surface p-4 shadow-[var(--sh-sm)]">
         <div className="text-micro font-semibold uppercase tracking-wide text-muted">
           Portfolio health
         </div>
@@ -36,7 +36,7 @@ export function HealthScore({ health }: { health: HealthScoreT; benchmark?: stri
   const dash = (score / 100) * C
 
   return (
-    <div className="flex items-center gap-3 rounded-[var(--r-xl)] border border-slate-200/70 bg-surface p-4 shadow-[var(--sh-sm)]">
+    <div className="flex items-center gap-3 rounded-[var(--r-xl)] border border-line bg-surface p-4 shadow-[var(--sh-sm)]">
       <svg width="76" height="76" viewBox="0 0 76 76" className="shrink-0" aria-hidden="true">
         <circle cx="38" cy="38" r={R} fill="none" stroke="#eef2f7" strokeWidth="7" />
         <circle
@@ -143,7 +143,7 @@ function BreakdownDialog({
         </ul>
 
         {passed.length > 0 && (
-          <div className="mt-3 border-t border-slate-100 pt-3">
+          <div className="mt-3 border-t border-line pt-3">
             <div className="text-micro font-semibold uppercase tracking-wide text-muted">Passed</div>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {passed.map((f) => (

@@ -26,7 +26,7 @@ export function DragsList({
     .slice(0, 3)
 
   return (
-    <div className="rounded-[var(--r-lg)] border border-slate-200/70 bg-surface p-4 shadow-[var(--sh-sm)]">
+    <div className="rounded-[var(--r-lg)] border border-line bg-surface p-4 shadow-[var(--sh-sm)]">
       <div className="mb-2 flex items-baseline justify-between">
         <h3 className="text-h3 font-bold text-ink">Biggest drags</h3>
         <span className="text-micro font-semibold uppercase tracking-wide text-muted">
@@ -62,7 +62,7 @@ export function DragsList({
               <button
                 type="button"
                 onClick={() => onReview(d.ticker)}
-                className="ml-1 inline-flex min-h-[36px] shrink-0 items-center gap-1 rounded-[var(--r-md)] px-2.5 text-[0.75rem] font-semibold text-primary transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
+                className="ml-1 inline-flex min-h-[36px] shrink-0 items-center gap-1 rounded-[var(--r-md)] px-2.5 text-[0.75rem] font-semibold text-primary transition-colors hover:bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
               >
                 Review <span aria-hidden="true">→</span>
               </button>

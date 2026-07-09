@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
 export interface NextActionCTAProps {
-  /** `primary` is the single purple accent banner (max one per tab). `info` is a
-   *  calmer, secondary variant for when the tab's best next step is informational. */
+  /** `primary` is the one accent next-step per tab (max one). `info` is a calmer
+   *  secondary variant for when the best next step is informational. */
   intent?: 'primary' | 'info'
   message: string
   ctaLabel: string
@@ -12,9 +12,10 @@ export interface NextActionCTAProps {
 }
 
 /**
- * The one next-step banner per tab (spec principle: Always a next step — every
- * screen ends with exactly one purple primary CTA doable in <30s). Uniqueness is
- * enforced by the page layout (render it once), not by this component. Keyboard:
+ * The one next-step banner per tab (spec principle: every screen ends with
+ * exactly one primary CTA doable in <30s). Redesigned away from a saturated
+ * full-width fill (the "ugly bar") to a calm tinted surface with an accent left
+ * rail + one solid-accent button — reads clean in both light and dark. Keyboard:
  * the CTA is a real <button>, reachable with a single Tab and fired with Enter.
  */
 export function NextActionCTA({
@@ -27,14 +28,14 @@ export function NextActionCTA({
   const primary = intent === 'primary'
   return (
     <div
-      className={`flex flex-col gap-3 rounded-[var(--r-lg)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+      className={`flex flex-col gap-3 rounded-[var(--r-lg)] border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
         primary
-          ? 'bg-accent text-white shadow-[var(--sh-md)]'
-          : 'border border-slate-200 bg-surface text-ink'
+          ? 'border-[var(--border)] border-l-4 border-l-[var(--accent)] bg-[var(--accent-soft)] text-ink shadow-[var(--sh-sm)]'
+          : 'border-[var(--border)] bg-surface text-ink'
       }`}
     >
       <div className="flex items-center gap-2 text-[0.9rem] font-semibold">
-        <span aria-hidden="true" className={primary ? 'text-white/90' : 'text-accent'}>
+        <span aria-hidden="true" className="text-[var(--accent)]">
           {icon ?? '!'}
         </span>
         <span>{message}</span>
@@ -42,11 +43,7 @@ export function NextActionCTA({
       <button
         type="button"
         onClick={onCta}
-        className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1 rounded-[var(--r-md)] px-4 text-[0.85rem] font-semibold transition-colors duration-[var(--dur-fast)] focus:outline-none ${
-          primary
-            ? 'bg-white text-accent hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white/80'
-            : 'bg-accent text-white hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-2'
-        }`}
+        className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1 rounded-[var(--r-md)] bg-[var(--accent-solid)] px-4 text-[0.85rem] font-semibold text-[var(--accent-ink)] transition-colors duration-[var(--dur-fast)] hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-2"
       >
         {ctaLabel}
         <span aria-hidden="true">→</span>

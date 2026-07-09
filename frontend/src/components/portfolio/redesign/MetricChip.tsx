@@ -21,7 +21,7 @@ export interface MetricChipProps {
  */
 export function MetricChip({ label, value, sub, sentiment = 'neutral', gloss }: MetricChipProps) {
   return (
-    <div className="rounded-[var(--r-lg)] border border-slate-200/70 bg-surface p-3 shadow-[var(--sh-sm)]">
+    <div className="rounded-[var(--r-lg)] border border-line bg-surface p-3 shadow-[var(--sh-sm)]">
       <div className="flex items-center text-micro font-semibold uppercase tracking-wide text-muted">
         <span>{label}</span>
         <InfoTip text={gloss} />

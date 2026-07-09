@@ -38,7 +38,7 @@ export function UnifiedPerfStress({
   const [range, setRange] = useState<RangeKey>('Max')
 
   return (
-    <div className="rounded-[var(--r-lg)] border border-slate-200/70 bg-surface p-4 shadow-[var(--sh-sm)]">
+    <div className="rounded-[var(--r-lg)] border border-line bg-surface p-4 shadow-[var(--sh-sm)]">
       <div role="tablist" aria-label="Performance and risk views" className="mb-3 flex flex-wrap gap-1">
         {TABS.map((t) => (
           <button
@@ -48,7 +48,7 @@ export function UnifiedPerfStress({
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
             className={`min-h-[36px] rounded-[var(--r-md)] px-3 text-[0.78rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] ${
-              tab === t.id ? 'bg-slate-900 text-white' : 'text-muted hover:bg-slate-100'
+              tab === t.id ? 'bg-slate-900 text-white' : 'text-muted hover:bg-surface-3'
             }`}
           >
             {t.label}

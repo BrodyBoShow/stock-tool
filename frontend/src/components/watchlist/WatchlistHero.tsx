@@ -18,7 +18,7 @@ export function WatchlistHero({ view }: { view: WatchlistHeroView }) {
   return (
     <section
       aria-label="Watchlist summary"
-      className="rounded-[var(--r-xl)] border border-slate-200/70 bg-surface p-5 shadow-[var(--sh-sm)]"
+      className="rounded-[var(--r-xl)] border border-line bg-surface p-5 shadow-[var(--sh-sm)]"
     >
       <h1 className="sr-only">Watchlist</h1>
       <div className="text-micro font-semibold uppercase tracking-wide text-muted">Your radar</div>
@@ -28,7 +28,7 @@ export function WatchlistHero({ view }: { view: WatchlistHeroView }) {
           name{total === 1 ? '' : 's'} watched
         </span>
         {view.loading ? (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-small font-medium text-muted">
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-small font-medium text-muted">
             checking for updates…
           </span>
         ) : attention > 0 ? (
@@ -36,7 +36,7 @@ export function WatchlistHero({ view }: { view: WatchlistHeroView }) {
             {attention} with updates
           </span>
         ) : (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-small font-semibold text-muted">
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-small font-semibold text-muted">
             all quiet
           </span>
         )}
