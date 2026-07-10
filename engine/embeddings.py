@@ -19,10 +19,10 @@ log = logging.getLogger("stockbud")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-004")
-EMBED_DIM = 768
+EMBED_MODEL = os.getenv("EMBED_MODEL", "gemini-embedding-001")
+EMBED_DIM = 768  # requested via outputDimensionality (model default is 3072)
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_BATCH = 100          # Gemini batchEmbedContents cap
+_BATCH = 20           # keep each batch under the free-tier per-minute quota
 _MAX_CHARS = 8000     # per-chunk safety clip
 
 
@@ -42,6 +42,7 @@ def embed_query(text: str) -> list[float] | None:
             json={
                 "model": f"models/{EMBED_MODEL}",
                 "content": {"parts": [{"text": text[:_MAX_CHARS]}]},
+                "outputDimensionality": EMBED_DIM,
             },
             timeout=15.0,
         )
@@ -71,6 +72,7 @@ def embed_texts(texts: list[str]) -> list[list[float]] | None:
                         {
                             "model": f"models/{EMBED_MODEL}",
                             "content": {"parts": [{"text": t[:_MAX_CHARS]}]},
+                            "outputDimensionality": EMBED_DIM,
                         }
                         for t in batch
                     ]
