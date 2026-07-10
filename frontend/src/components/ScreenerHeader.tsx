@@ -126,7 +126,7 @@ export function ScreenerHeader({
   if (vixLatest != null) {
     vixHint = vixObs[1] ? `vs ${fmtShortDate(vixObs[1].date)}` : 'latest close'
     if (vixChg != null && vixChg !== 0) {
-      const color = vixChg > 0 ? '#dc2626' : '#059669'
+      const color = vixChg > 0 ? 'var(--neg)' : 'var(--pos)'
       const arrow = vixChg > 0 ? '▲' : '▼'
       vixValue = (
         <>
@@ -142,19 +142,25 @@ export function ScreenerHeader({
     }
   }
 
-  const { adv, dec } = useMemo(() => {
+  const { adv, dec, unch } = useMemo(() => {
     let a = 0
     let d = 0
+    let u = 0
     for (const r of rows) {
       if (r.last_price !== null && r.prev_close !== null) {
         if (r.last_price > r.prev_close) a += 1
         else if (r.last_price < r.prev_close) d += 1
+        else u += 1
       }
     }
-    return { adv: a, dec: d }
+    return { adv: a, dec: d, unch: u }
   }, [rows])
   const ratioNum = dec > 0 ? adv / dec : null
   const ratio = ratioNum != null ? ratioNum.toFixed(2) : '—'
+  const priced = adv + dec + unch
+  const advPct = priced > 0 ? (adv / priced) * 100 : 0
+  const decPct = priced > 0 ? (dec / priced) * 100 : 0
+  const unchPct = Math.max(0, 100 - advPct - decPct)
 
   // Market Pulse — a single contextual read replacing five equal-weight KPIs.
   // Breadth (our own nightly close-vs-prior) + VIX regime → one direction word.
@@ -271,10 +277,41 @@ export function ScreenerHeader({
             </span>
             <span className="text-[1.02rem] font-extrabold leading-none">{pulse.label}</span>
           </div>
-          <Stat label="Advancing" value={adv} accent="#059669" hint="vs prior close" />
-          <Stat label="Declining" value={dec} accent="#dc2626" hint="vs prior close" />
+          <Stat label="Advancing" value={adv} accent="var(--pos)" hint="vs prior close" />
+          <Stat label="Declining" value={dec} accent="var(--neg)" hint="vs prior close" />
           <Stat label="Adv / Dec" value={ratio} hint="breadth ratio" />
           <Stat label="Volatility · VIX" value={vixValue} hint={vixHint} />
+
+          {/* market breadth bar — fills the row's right side with the adv/dec
+              split visualized (green up · neutral flat · red down). */}
+          {priced > 0 && (
+            <div className="ml-auto flex min-w-[220px] max-w-[460px] flex-1 flex-col gap-1.5">
+              <div className="flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.07em]">
+                <span className="text-pos">{advPct.toFixed(0)}% up</span>
+                <span className="text-subtle">
+                  Market breadth · {priced.toLocaleString()} priced
+                </span>
+                <span className="text-neg">{decPct.toFixed(0)}% down</span>
+              </div>
+              <div className="flex h-2.5 overflow-hidden rounded-full ring-1 ring-inset ring-line">
+                <div
+                  className="bg-pos-strong"
+                  style={{ width: `${advPct}%` }}
+                  title={`${adv.toLocaleString()} advancing`}
+                />
+                <div
+                  className="bg-surface-3"
+                  style={{ width: `${unchPct}%` }}
+                  title={`${unch.toLocaleString()} unchanged`}
+                />
+                <div
+                  className="bg-neg-strong"
+                  style={{ width: `${decPct}%` }}
+                  title={`${dec.toLocaleString()} declining`}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
