@@ -31,7 +31,10 @@ _TAPE: list[tuple[str, str]] = [
 def get_ticker_tape() -> TickerTapeResponse:
     """Ambient market tape for the app header. Fetches a fixed proxy basket via
     the shared quote cache (delayed ~15m); display only, never touches scores."""
-    payload = quotes_engine.get_quotes([sym for sym, _ in _TAPE])
+    # Bounded wait: on a Yahoo throttle the fetch keeps running in the
+    # background and lands in the cache for the next poll, so the header strip
+    # degrades to "quiet"/stale instead of hanging the request into an error.
+    payload = quotes_engine.get_quotes([sym for sym, _ in _TAPE], timeout=8.0)
     quotes = payload["quotes"]
     items = [
         TickerTapeItem(
