@@ -1,4 +1,5 @@
 import type {
+  AskResponse,
   AlertRule,
   AlertRuleCreate,
   AlertsResponse,
@@ -353,6 +354,16 @@ export function generateBrief(ticker: string): Promise<DecisionBrief> {
   return sendJson<DecisionBrief>(
     'POST',
     `/securities/${encodeURIComponent(ticker)}/brief`,
+  )
+}
+
+/** Ask StockBud AI — a grounded, cached answer about one stock. Groq-free first,
+ *  Claude Haiku fallback; server caches per (question, scoring snapshot). */
+export function askStockBud(ticker: string, question: string): Promise<AskResponse> {
+  return sendJson<AskResponse>(
+    'POST',
+    `/securities/${encodeURIComponent(ticker)}/ask`,
+    { question },
   )
 }
 

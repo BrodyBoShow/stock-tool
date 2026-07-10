@@ -8,6 +8,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from api.auth import CurrentUser, get_current_user
 from api.ratelimit import ai_daily_cap, rate_limit
 from api.schemas import (
+    AskRequest,
+    AskResponse,
     BriefStatusResponse,
     DecisionBrief,
     EventsResponse,
@@ -31,6 +33,7 @@ from api.schemas import (
     SummaryStatusResponse,
     ValuationResponse,
 )
+from engine import assistant as assistant_engine
 from engine import brief as brief_engine
 from engine import commodity_backdrop as commodity_backdrop_engine
 from engine import events as events_engine
@@ -443,6 +446,48 @@ def generate_brief(
             detail=f"{ticker!r} has no factor scores yet — no brief to build",
         )
     return _to_brief(cached)
+
+
+@router.post(
+    "/{ticker}/ask",
+    response_model=AskResponse,
+    dependencies=[
+        Depends(rate_limit(15, 300)),          # per-IP burst guard
+        # Cheap (Groq-free / Haiku) but multi-use — cap per account + service-wide
+        # per day so it can't run up spend. Owner (UNCAPPED_EMAILS) is exempt.
+        Depends(ai_daily_cap(30, 300)),
+    ],
+)
+def ask_stockbud(
+    ticker: str,
+    body: AskRequest,
+    force: bool = Query(False, description="Bypass the answer cache."),
+) -> AskResponse:
+    """Ask StockBud AI — answer a free-form question about this stock, grounded
+    ONLY in StockBud's own data (factor scores + sub-metrics, filings, insiders,
+    8-Ks, valuation, news signals, macro). Not investment advice. Cached per
+    (question, scoring snapshot); Groq-free first, Claude Haiku fallback."""
+    ticker = ticker.upper()
+    question = (body.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=422, detail="Ask a question first.")
+    if len(question) > assistant_engine.MAX_QUESTION_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Question is too long (max {assistant_engine.MAX_QUESTION_CHARS} "
+                   "characters).",
+        )
+    try:
+        result = assistant_engine.answer_question(ticker, question, force=force)
+    except RuntimeError as exc:  # no LLM key configured
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{ticker!r} has no factor scores yet — nothing to analyze.",
+        )
+    return AskResponse(**result)
 
 
 # TODO(auth): generation calls the Anthropic API and costs money per filing —

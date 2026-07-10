@@ -313,6 +313,16 @@ export interface BriefStatusResponse {
   brief: DecisionBrief | null
 }
 
+export interface AskResponse {
+  answer: string                 // markdown, grounded in StockBud data
+  confidence: 'high' | 'medium' | 'low' | null
+  sources: string[]              // deterministic 'sources used' badges
+  model: string | null
+  provider: string | null        // 'groq' | 'anthropic'
+  cached: boolean
+  generated_at: string | null
+}
+
 export interface InsiderTransaction {
   transaction_date: string | null
   filed_date: string

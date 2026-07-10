@@ -2220,6 +2220,80 @@ def save_brief(
         release(conn)
 
 
+# ── Ask StockBud AI cache (assistant_answers) ─────────────────────────────────
+
+def get_cached_answer(
+    security_id: int, question_hash: str, data_version: str, prompt_version: str
+) -> dict[str, Any] | None:
+    """Cached assistant answer for an identical question on the same data snapshot."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT answer, model, provider, generated_at
+                FROM assistant_answers
+                WHERE security_id = %s AND question_hash = %s
+                  AND data_version = %s AND prompt_version = %s
+                LIMIT 1
+                """,
+                (security_id, question_hash, data_version, prompt_version),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    d = dict(zip(cols, row, strict=True))
+    if isinstance(d.get("answer"), str):
+        d["answer"] = json.loads(d["answer"])
+    return d
+
+
+def save_answer(
+    *,
+    security_id: int,
+    question_hash: str,
+    question: str,
+    answer: dict[str, Any],
+    model: str,
+    provider: str,
+    data_version: str,
+    prompt_version: str,
+    input_tokens: int | None,
+    output_tokens: int | None,
+) -> None:
+    """Upsert a generated assistant answer into the assistant_answers cache."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO assistant_answers
+                  (security_id, question_hash, question, answer, model, provider,
+                   data_version, prompt_version, input_tokens, output_tokens)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (security_id, question_hash, data_version, prompt_version)
+                DO UPDATE SET
+                  answer = EXCLUDED.answer,
+                  model = EXCLUDED.model,
+                  provider = EXCLUDED.provider,
+                  input_tokens = EXCLUDED.input_tokens,
+                  output_tokens = EXCLUDED.output_tokens,
+                  generated_at = NOW()
+                """,
+                (
+                    security_id, question_hash, question, json.dumps(answer),
+                    model, provider, data_version, prompt_version,
+                    input_tokens, output_tokens,
+                ),
+            )
+        conn.commit()
+    finally:
+        release(conn)
+
+
 # ── insider transactions (Phase 12 — context only) ────────────────────────────
 
 def insider_rows(ticker: str, months: int = 12, limit: int = 2000) -> list[dict[str, Any]]:
