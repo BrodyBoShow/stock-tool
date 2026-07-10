@@ -1,5 +1,6 @@
 import type {
   AskResponse,
+  ClinicalPipelineResponse,
   AlertRule,
   AlertRuleCreate,
   AlertsResponse,
@@ -364,6 +365,14 @@ export function askStockBud(ticker: string, question: string): Promise<AskRespon
     'POST',
     `/securities/${encodeURIComponent(ticker)}/ask`,
     { question },
+  )
+}
+
+/** Biotech clinical-trial pipeline (ClinicalTrials.gov, free). `available:false`
+ *  for non-health-care names — the panel then renders nothing. */
+export function getClinical(ticker: string): Promise<ClinicalPipelineResponse> {
+  return getJson<ClinicalPipelineResponse>(
+    `/securities/${encodeURIComponent(ticker)}/clinical`,
   )
 }
 

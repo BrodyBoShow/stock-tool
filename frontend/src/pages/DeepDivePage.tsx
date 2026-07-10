@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { CompareDrawer } from '@/components/deepdive/CompareDrawer'
 import { AskStockBudPanel } from '@/components/deepdive/AskStockBudPanel'
+import { ClinicalPipelinePanel } from '@/components/deepdive/ClinicalPipelinePanel'
 import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
@@ -256,6 +257,9 @@ export function DeepDivePage() {
         <>
           <DecisionBriefPanel ticker={header.ticker} header={header} />
           <AskStockBudPanel key={header.ticker} ticker={header.ticker} />
+          {header.sector === 'Health Care' && (
+            <ClinicalPipelinePanel ticker={header.ticker} />
+          )}
           <ThesisPanel ticker={header.ticker} />
         </>
       )}

@@ -323,6 +323,26 @@ export interface AskResponse {
   generated_at: string | null
 }
 
+export interface ClinicalTrial {
+  nct_id: string | null
+  title: string | null
+  phase: string | null
+  status: string | null
+  conditions: string[]
+}
+
+export interface ClinicalPipelineResponse {
+  ticker: string
+  available: boolean             // false = non-biotech / no trials / API down
+  total: number | null
+  counted: number | null
+  by_status: { status: string; count: number }[]
+  by_phase: { phase: string; count: number }[]
+  active_late_stage: ClinicalTrial[]
+  top_conditions: { condition: string; count: number }[]
+  source: string | null
+}
+
 export interface InsiderTransaction {
   transaction_date: string | null
   filed_date: string

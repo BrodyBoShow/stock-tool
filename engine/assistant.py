@@ -32,6 +32,7 @@ import httpx
 from dotenv import load_dotenv
 
 from engine import brief as brief_engine
+from engine import clinical as clinical_engine
 from engine import filing_qa as filing_qa_engine
 from engine import queries, valuation
 from engine.config import LLM_MODEL
@@ -41,7 +42,7 @@ log = logging.getLogger("stockbud")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"  # v2: + biotech clinical pipeline (ClinicalTrials.gov)
 MODEL = LLM_MODEL  # Anthropic fallback model (Haiku by default)
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -139,6 +140,8 @@ def build_context(ticker: str) -> dict[str, Any] | None:
     _try("peers", lambda: queries.peer_strip(ticker))
     _try("news", lambda: (queries.news_signals_for([sid]) or {}).get(sid) if sid else None)
     _try("filing_diligence", lambda: _cached_filing_qa(ticker))
+    _try("clinical", lambda: clinical_engine.clinical_pipeline(
+        core["header"].get("name"), sector=core["header"].get("sector")))
     _try("macro", _macro_snapshot)
     return ctx
 
@@ -191,6 +194,8 @@ def _sources_present(ctx: dict[str, Any]) -> list[str]:
         src.append("Reverse-DCF valuation")
     if extra.get("news"):
         src.append("News signals")
+    if extra.get("clinical"):
+        src.append("ClinicalTrials.gov pipeline")
     if extra.get("macro"):
         src.append("Macro backdrop")
     return src
@@ -212,6 +217,10 @@ def render_prompt(ctx: dict[str, Any], question: str) -> str:
     if extra.get("news"):
         parts += ["", "## News signals (GDELT coverage volume + tone — not verified "
                        "fact)", _clip(extra["news"])]
+    if extra.get("clinical"):
+        parts += ["", "## Clinical-trial pipeline (ClinicalTrials.gov — trials where "
+                       "this company is a sponsor; status/phase counts are of the "
+                       "trials fetched, not FDA approvals)", _clip(extra["clinical"], 2400)]
     if extra.get("macro"):
         parts += ["", "## Macro backdrop (latest values)", _clip(extra["macro"])]
     parts += [

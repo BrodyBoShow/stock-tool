@@ -484,6 +484,43 @@ class AskResponse(BaseModel):
     generated_at: datetime | None = None
 
 
+# ── biotech clinical pipeline (ClinicalTrials.gov — context only) ─────────────
+
+class ClinicalStatusCount(BaseModel):
+    status: str
+    count: int
+
+
+class ClinicalPhaseCount(BaseModel):
+    phase: str
+    count: int
+
+
+class ClinicalConditionCount(BaseModel):
+    condition: str
+    count: int
+
+
+class ClinicalTrial(BaseModel):
+    nct_id: str | None = None
+    title: str | None = None
+    phase: str | None = None
+    status: str | None = None
+    conditions: list[str] = []
+
+
+class ClinicalPipelineResponse(BaseModel):
+    ticker: str
+    available: bool                       # false = non-biotech / no trials / API down
+    total: int | None = None              # total sponsored trials on ClinicalTrials.gov
+    counted: int | None = None            # trials actually fetched + aggregated
+    by_status: list[ClinicalStatusCount] = []
+    by_phase: list[ClinicalPhaseCount] = []
+    active_late_stage: list[ClinicalTrial] = []
+    top_conditions: list[ClinicalConditionCount] = []
+    source: str | None = None
+
+
 # ── insider transactions (Phase 12 — context only) ───────────────────────────
 
 class InsiderTransaction(BaseModel):
