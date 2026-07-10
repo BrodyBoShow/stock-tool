@@ -38,16 +38,16 @@ function Stat({
 }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-subtle">
+      <span className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-subtle">
         {label}
       </span>
       <span
-        className="mt-0.5 text-[1.15rem] font-bold tabular-nums leading-tight"
+        className="text-[1.02rem] font-bold tabular-nums leading-tight"
         style={{ color: accent ?? 'var(--ink)' }}
       >
         {value}
       </span>
-      {hint && <span className="mt-0.5 text-[0.65rem] text-subtle">{hint}</span>}
+      {hint && <span className="text-[0.62rem] text-subtle">{hint}</span>}
     </div>
   )
 }
@@ -194,44 +194,44 @@ export function ScreenerHeader({
       <div className="h-1 bg-gradient-to-r from-[var(--accent)] to-transparent" />
 
       <div
-        className="px-7 pb-5 pt-6"
+        className="px-6 pb-4 pt-4"
         style={{ background: 'linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 62%)' }}
       >
-        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-          {/* identity */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+          {/* identity — title, company count and the live badge on one line */}
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
+            <div className="flex items-center gap-2 text-[0.64rem] font-semibold uppercase tracking-[0.15em]">
               <span className="text-accent">StockBud</span>
               <span className="text-subtle">/</span>
               <span className="text-subtle">Equity Screener</span>
             </div>
-            <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
-              US Equity Factor Screener
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-muted">
-              <span>
-                Factor rankings across {rows.length} companies
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+              <h1 className="text-[1.45rem] font-extrabold leading-[1.15] tracking-[-0.015em] text-ink">
+                US Equity Factor Screener
+              </h1>
+              <span className="text-[0.82rem] text-muted">
+                {rows.length.toLocaleString()} companies
               </span>
               {liveNow && (
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-info bg-info-soft px-2.5 py-0.5 text-[0.72rem] font-semibold text-info"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-info bg-info-soft px-2 py-0.5 text-[0.68rem] font-semibold text-info"
                   title="Prices are ~15-min delayed. Factor scores are official nightly closes."
                 >
                   <span
                     className="h-1.5 w-1.5 rounded-full bg-info"
                     style={{ animation: 'ckpulse 2s ease-in-out infinite' }}
                   />
-                  Live prices · {liveDate}, {liveStamp} ET
+                  Live · {liveDate}, {liveStamp} ET
                 </span>
               )}
             </div>
           </div>
 
-          {/* market status + clock */}
-          <div className="flex flex-col items-end gap-2.5">
+          {/* market status + clock — horizontal, compact */}
+          <div className="flex items-center gap-3">
             <span
               className={
-                'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.78rem] font-semibold ' +
+                'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.74rem] font-semibold ' +
                 (open
                   ? 'border-pos-border bg-pos-soft text-pos'
                   : 'border-line bg-surface-2 text-muted')
@@ -246,10 +246,10 @@ export function ScreenerHeader({
               {open ? 'Markets open' : 'Markets closed'}
             </span>
             <div className="text-right">
-              <div className="font-mono text-[1.1rem] font-semibold tabular-nums text-ink">
+              <div className="font-mono text-[1rem] font-semibold leading-tight tabular-nums text-ink">
                 {clock}
               </div>
-              <div className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-subtle">
+              <div className="text-[0.62rem] font-medium uppercase tracking-[0.1em] text-subtle">
                 {etDateLabel} · New York · ET
               </div>
             </div>
@@ -257,10 +257,10 @@ export function ScreenerHeader({
         </div>
 
         {/* divider */}
-        <div className="my-4 h-px bg-divider" />
+        <div className="my-3 h-px bg-divider" />
 
         {/* market pulse — one contextual read, with the raw breadth beside it */}
-        <div className="flex flex-wrap items-center gap-x-9 gap-y-3">
+        <div className="flex flex-wrap items-center gap-x-7 gap-y-2.5">
           <div
             className={
               'inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 ' +
