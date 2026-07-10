@@ -181,6 +181,21 @@ class QuotesResponse(BaseModel):
     quotes: dict[str, QuoteRow] # ticker -> latest (delayed ~15m) quote
 
 
+class TickerTapeItem(BaseModel):
+    symbol: str                 # yfinance symbol (SPY, ^VIX, BTC-USD, …)
+    label: str                  # friendly display label (S&P 500, VIX, BTC)
+    price: float | None
+    change_pct: float | None    # day change %
+
+
+class TickerTapeResponse(BaseModel):
+    """Ambient market strip for the app header — a fixed set of index / rate /
+    commodity / FX / crypto proxies. Delayed ~15m, display only."""
+    items: list[TickerTapeItem]
+    as_of_epoch: float
+    stale: bool
+
+
 # ── live-adjusted factor scores (Phase 16 — intraday overlay, display only) ───
 
 class FactorSet(BaseModel):
