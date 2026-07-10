@@ -310,11 +310,9 @@ export function FundsPage() {
           {/* T2 — heatmap + leaderboard */}
           <section className="space-y-2">
             <TierLabel n={2} title="The 20-Second Scan — Heatmap & Leaderboard" />
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="lg:col-span-1">
-                <CategoryHeatmap categories={categories} onSelect={setView} />
-              </div>
-              <div className="rounded-lg border border-line bg-surface p-4 lg:col-span-2">
+            <div className="space-y-4">
+              <CategoryHeatmap funds={funds} onSelect={setView} />
+              <div className="rounded-lg border border-line bg-surface p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <div>
                     <div className="text-[0.82rem] font-bold text-ink">
