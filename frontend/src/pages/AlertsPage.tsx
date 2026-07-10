@@ -402,50 +402,61 @@ function TriageStrip({
   )
 }
 
-function FilterBar({
+/** Left "filter by type" rail — a vertical list of the signal groups with live
+ *  counts. The active group gets an accent left-border + surface-2 fill so the
+ *  selection reads at a glance (mirrors the spec mock). */
+function FilterSidebar({
   byGroup,
   kindFilter,
   toggleGroup,
-  query,
-  setQuery,
+  onClear,
 }: {
   byGroup: Record<GroupKey, number>
   kindFilter: Set<GroupKey>
   toggleGroup: (g: GroupKey) => void
-  query: string
-  setQuery: (s: string) => void
+  onClear: () => void
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {GROUPS.map((g) => {
-        const n = byGroup[g.key] ?? 0
-        const active = kindFilter.has(g.key)
-        return (
-          <button
-            key={g.key}
-            type="button"
-            disabled={n === 0}
-            onClick={() => toggleGroup(g.key)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold transition ${
-              active
-                ? 'bg-accent-solid text-accent-ink'
-                : 'bg-surface-2 text-muted hover:bg-surface-3'
-            } ${n === 0 ? 'cursor-not-allowed opacity-40' : ''}`}
-          >
-            {g.chip}
-            <span className={active ? 'text-accent-ink' : 'text-subtle'}>{n}</span>
-          </button>
-        )
-      })}
-      <input
-        type="text"
-        value={query}
-        placeholder="ticker or name"
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
-        className="ml-auto w-44 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.78rem] text-ink placeholder:text-subtle"
-      />
-    </div>
+    <aside className="rounded-card border border-line bg-surface p-2.5 lg:sticky lg:top-4">
+      <div className="px-1.5 pb-2 text-[0.62rem] font-bold uppercase tracking-[0.09em] text-subtle">
+        Filter by type
+      </div>
+      <nav className="space-y-0.5">
+        {GROUPS.map((g) => {
+          const n = byGroup[g.key] ?? 0
+          const active = kindFilter.has(g.key)
+          return (
+            <button
+              key={g.key}
+              type="button"
+              disabled={n === 0}
+              onClick={() => toggleGroup(g.key)}
+              className={`flex w-full items-center gap-2 rounded-lg border-l-2 px-2.5 py-1.5 text-left text-[0.8rem] font-semibold transition ${
+                active
+                  ? 'border-accent bg-surface-2 text-ink'
+                  : 'border-transparent text-muted hover:bg-surface-2 hover:text-ink'
+              } ${n === 0 ? 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted' : ''}`}
+            >
+              <span className="min-w-0 flex-1 truncate">{g.title}</span>
+              <span
+                className={`tabular-nums text-[0.72rem] ${active ? 'text-accent' : 'text-subtle'}`}
+              >
+                {n}
+              </span>
+            </button>
+          )
+        })}
+      </nav>
+      {kindFilter.size > 0 && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-2 px-1.5 text-[0.66rem] font-semibold uppercase tracking-[0.05em] text-subtle hover:text-muted"
+        >
+          Clear all
+        </button>
+      )}
+    </aside>
   )
 }
 
@@ -667,20 +678,33 @@ export function AlertsPage() {
         </SectionCard>
       ) : (
         <>
-          <TriageStrip
-            counts={tierCounts}
-            total={triggered.length}
-            tierFilter={tierFilter}
-            setTierFilter={setTierFilter}
-          />
-          <FilterBar
-            byGroup={byGroup}
-            kindFilter={kindFilter}
-            toggleGroup={toggleGroup}
-            query={query}
-            setQuery={setQuery}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-[240px] flex-1">
+              <TriageStrip
+                counts={tierCounts}
+                total={triggered.length}
+                tierFilter={tierFilter}
+                setTierFilter={setTierFilter}
+              />
+            </div>
+            <input
+              type="text"
+              value={query}
+              placeholder="ticker or name"
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+              className="w-44 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.78rem] text-ink placeholder:text-subtle"
+            />
+          </div>
 
+          <div className="grid gap-5 lg:grid-cols-[190px_minmax(0,1fr)] lg:items-start">
+            <FilterSidebar
+              byGroup={byGroup}
+              kindFilter={kindFilter}
+              toggleGroup={toggleGroup}
+              onClear={() => setKindFilter(new Set())}
+            />
+            <div className="space-y-4">
           {/* Needs attention — the loud, capped critical cluster */}
           <section className="rounded-card border border-neg-border bg-neg-soft p-4 shadow-card">
             <div className="mb-2 flex items-center gap-2">
@@ -756,6 +780,8 @@ export function AlertsPage() {
               {showDismissed ? 'Hide & clear dismissed' : `${dismissedCount} dismissed · show`}
             </button>
           )}
+            </div>
+          </div>
         </>
       )}
 
