@@ -406,21 +406,6 @@ export interface QuotesResponse {
   quotes: Record<string, QuoteRow>
 }
 
-export interface TickerTapeItem {
-  symbol: string
-  label: string
-  price: number | null
-  change_pct: number | null
-}
-
-export interface TickerTapeResponse {
-  items: TickerTapeItem[]
-  as_of_epoch: number
-  stale: boolean
-}
-
-
-
 export interface FilingTopicAnswer {
   topic: string
   disclosed: boolean

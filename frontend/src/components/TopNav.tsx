@@ -2,7 +2,6 @@ import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
 
 import { HeaderSearch } from '@/components/HeaderSearch'
-import { HeaderTickerTape } from '@/components/HeaderTickerTape'
 import { useToast } from '@/components/ui/Toast'
 import { getAlerts } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
@@ -189,8 +188,7 @@ function AlertsLink() {
 
 export function TopNav() {
   return (
-    <header className="sticky top-0 z-30">
-      <nav className="border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur">
+    <nav className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1760px] items-center gap-3 px-4 py-3 lg:gap-4 lg:px-8">
         <NavLink
           to="/"
@@ -231,8 +229,6 @@ export function TopNav() {
         <RefreshButton />
         <LogoutButton />
       </div>
-      </nav>
-      <HeaderTickerTape />
-    </header>
+    </nav>
   )
 }

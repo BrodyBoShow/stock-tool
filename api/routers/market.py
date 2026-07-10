@@ -8,47 +8,12 @@ from api.schemas import (
     MarketBriefResponse,
     MarketOverviewResponse,
     MarketPulseResponse,
-    TickerTapeItem,
-    TickerTapeResponse,
 )
 from engine import market as market_engine
 from engine import market_brief
-from engine import quotes as quotes_engine
 
 # Login required for beta. Global market overview — no owner scoping.
 router = APIRouter(dependencies=[Depends(get_current_user)])
-
-# The ambient header tape: index / rate / commodity / FX / crypto proxies with
-# clean price+% on yfinance. Order = display order in the marquee.
-_TAPE: list[tuple[str, str]] = [
-    ("SPY", "S&P 500"), ("QQQ", "Nasdaq"), ("DIA", "Dow"), ("IWM", "Rus 2K"),
-    ("^VIX", "VIX"), ("TLT", "20Y"), ("UUP", "USD"), ("GLD", "Gold"),
-    ("USO", "Oil"), ("BTC-USD", "BTC"), ("ETH-USD", "ETH"),
-]
-
-
-@router.get("/ticker-tape", response_model=TickerTapeResponse)
-def get_ticker_tape() -> TickerTapeResponse:
-    """Ambient market tape for the app header. Fetches a fixed proxy basket via
-    the shared quote cache (delayed ~15m); display only, never touches scores."""
-    # Bounded wait: on a Yahoo throttle the fetch keeps running in the
-    # background and lands in the cache for the next poll, so the header strip
-    # degrades to "quiet"/stale instead of hanging the request into an error.
-    payload = quotes_engine.get_quotes([sym for sym, _ in _TAPE], timeout=8.0)
-    quotes = payload["quotes"]
-    items = [
-        TickerTapeItem(
-            symbol=sym,
-            label=label,
-            price=quotes.get(sym, {}).get("price"),
-            change_pct=quotes.get(sym, {}).get("change_pct"),
-        )
-        for sym, label in _TAPE
-        if quotes.get(sym, {}).get("price") is not None
-    ]
-    return TickerTapeResponse(
-        items=items, as_of_epoch=payload["as_of_epoch"], stale=payload["stale"]
-    )
 
 
 @router.get("/overview", response_model=MarketOverviewResponse)
