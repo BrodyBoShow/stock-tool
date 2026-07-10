@@ -186,13 +186,55 @@ def _efts_url(cik: str, hit_id: str | None) -> str | None:
     return f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc_nodash}/{filename}"
 
 
+# ── provider #2: pgvector semantic search over filing text ────────────────────
+
+class PgVectorRetriever:
+    """Semantic search over a company's filing text (the actual passages), via
+    lazily-embedded chunks in pgvector. Available only when an embedding key is
+    set (GOOGLE_API_KEY); otherwise inactive and retrieval uses SEC full-text.
+    Returns passage TEXT — the substance EFTS can't give."""
+
+    name = "pgvector"
+
+    def available(self) -> bool:
+        from engine import embeddings  # lazy: avoid import cost when disabled
+        return embeddings.available()
+
+    def retrieve(self, *, ticker: str, cik: str | None, query: str, limit: int
+                 ) -> RetrievalResult:
+        from engine import queries as q
+        from engine import semantic
+
+        security_id = q.security_id_for(ticker)
+        if security_id is None:
+            return RetrievalResult()
+        # Lazy: embed this company's latest 10-K on first ask (best-effort).
+        semantic.ensure_indexed(security_id, ticker)
+        rows = semantic.search(security_id, query, limit=min(limit, 4))
+        docs = [
+            RetrievedDoc(
+                source="Filing text (semantic)",
+                provider=self.name,
+                title=r.get("form"),
+                snippet=(r.get("content") or "")[:700],
+                url=r.get("url"),
+                form=r.get("form"),
+                date=str(r["filed_date"]) if r.get("filed_date") else None,
+                score=(1.0 - r["distance"]) if r.get("distance") is not None else None,
+            )
+            for r in rows
+        ]
+        return RetrievalResult(docs=docs)
+
+
 # ── registry + fan-out ────────────────────────────────────────────────────────
 
-# All known providers. Add PgVectorRetriever() / TranscriptRetriever() here when
-# built — enabling them is then just RETRIEVAL_PROVIDERS, no assistant change.
-_ALL_RETRIEVERS: list[Retriever] = [EftsRetriever()]
+# All known providers, in priority order (semantic passages before filing refs).
+# A TranscriptRetriever() slots in the same way — enabling it is then just
+# RETRIEVAL_PROVIDERS, with no change to engine.assistant or the frontend.
+_ALL_RETRIEVERS: list[Retriever] = [PgVectorRetriever(), EftsRetriever()]
 
-_DEFAULT_ENABLED = "sec-efts"
+_DEFAULT_ENABLED = "pgvector,sec-efts"
 
 
 def active_retrievers() -> list[Retriever]:
@@ -203,11 +245,13 @@ def active_retrievers() -> list[Retriever]:
     return [r for r in _ALL_RETRIEVERS if r.name in enabled and r.available()]
 
 
-def retrieve(ticker: str, query: str, *, cik: str | None = None, limit: int = 5
+def retrieve(ticker: str, query: str, *, cik: str | None = None, limit: int = 4
              ) -> RetrievalResult:
     """Fan out the question across every enabled retriever and merge the evidence.
-    Best-effort: a failing provider is skipped, never raised. Docs are ranked by
-    relevance score (desc) then recency; notes are concatenated across providers."""
+    Best-effort: a failing provider is skipped, never raised. Provider order is
+    preserved (semantic passages before filing references) — relevance scores are
+    not comparable across providers, so they are NOT cross-sorted. Notes are
+    concatenated."""
     cik = cik or queries.cik_for(ticker)
     all_docs: list[RetrievedDoc] = []
     notes: list[str] = []
@@ -220,5 +264,4 @@ def retrieve(ticker: str, query: str, *, cik: str | None = None, limit: int = 5
             log.warning("retriever %s failed for %s", getattr(r, "name", "?"), ticker,
                         exc_info=True)
 
-    all_docs.sort(key=lambda d: (d.score if d.score is not None else 0.0), reverse=True)
-    return RetrievalResult(docs=all_docs[:limit], notes=notes)
+    return RetrievalResult(docs=all_docs[: 2 * limit], notes=notes)

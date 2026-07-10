@@ -2236,6 +2236,99 @@ def cik_for(ticker: str) -> str | None:
     return str(row[0]).zfill(10)
 
 
+def security_id_for(ticker: str) -> int | None:
+    """security_id for a ticker, or None."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT security_id FROM securities WHERE ticker = %s LIMIT 1",
+                (ticker.upper(),),
+            )
+            row = cur.fetchone()
+    finally:
+        release(conn)
+    return int(row[0]) if row and row[0] is not None else None
+
+
+# ── semantic filing-text store (doc_chunks / pgvector) ────────────────────────
+
+def _vec_literal(embedding: list[float]) -> str:
+    """pgvector text literal, e.g. '[0.1,0.2,...]' — cast with ::vector in SQL."""
+    return "[" + ",".join(repr(float(x)) for x in embedding) + "]"
+
+
+def doc_chunks_indexed(security_id: int, accession: str) -> bool:
+    """Whether this filing's chunks are already embedded for this security."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM doc_chunks WHERE security_id = %s AND accession = %s LIMIT 1",
+                (security_id, accession),
+            )
+            return cur.fetchone() is not None
+    finally:
+        release(conn)
+
+
+def insert_doc_chunks(rows: list[dict[str, Any]], embed_model: str) -> None:
+    """Bulk-insert embedded chunks. Each row: security_id, accession, form,
+    filed_date, url, chunk_index, content, embedding (list[float])."""
+    if not rows:
+        return
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO doc_chunks
+                  (security_id, accession, form, filed_date, url,
+                   chunk_index, content, embedding, embed_model)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::vector, %s)
+                ON CONFLICT (security_id, accession, chunk_index) DO NOTHING
+                """,
+                [
+                    (
+                        r["security_id"], r["accession"], r.get("form"),
+                        r.get("filed_date"), r.get("url"), r["chunk_index"],
+                        r["content"], _vec_literal(r["embedding"]), embed_model,
+                    )
+                    for r in rows
+                ],
+            )
+        conn.commit()
+    finally:
+        release(conn)
+
+
+def semantic_search(
+    security_id: int, query_embedding: list[float], limit: int = 4
+) -> list[dict[str, Any]]:
+    """Nearest chunks to the query for ONE security (exact distance over its
+    small chunk set — no ANN index needed). Returns content + filing metadata."""
+    lit = _vec_literal(query_embedding)
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT content, form, filed_date, url,
+                       embedding <=> %s::vector AS distance
+                FROM doc_chunks
+                WHERE security_id = %s
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+                """,
+                (lit, security_id, lit, limit),
+            )
+            rows = cur.fetchall()
+            cols = [d[0] for d in cur.description]
+    finally:
+        release(conn)
+    return [dict(zip(cols, r, strict=True)) for r in rows]
+
+
 # ── Ask StockBud AI cache (assistant_answers) ─────────────────────────────────
 
 def get_cached_answer(
