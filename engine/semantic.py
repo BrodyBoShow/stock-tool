@@ -19,7 +19,7 @@ from engine.summarize import fetch_filing_text
 
 log = logging.getLogger("stockbud")
 
-MAX_CHUNKS = 100          # bound cost/latency/storage of a one-time ingest
+MAX_CHUNKS = 60           # bound cost/latency + stay under the free embed quota
 CHUNK_CHARS = 1100
 OVERLAP = 150
 
