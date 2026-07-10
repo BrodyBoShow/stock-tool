@@ -468,6 +468,22 @@ class BriefStatusResponse(BaseModel):
     brief: DecisionBrief | None       # cached brief for the latest snapshot
 
 
+# ── Ask StockBud AI (deep-dive research assistant) ────────────────────────────
+
+class AskRequest(BaseModel):
+    question: str
+
+
+class AskResponse(BaseModel):
+    answer: str                       # markdown, grounded in StockBud data
+    confidence: str | None = None     # high | medium | low
+    sources: list[str] = []           # deterministic 'sources used' badges
+    model: str | None = None
+    provider: str | None = None       # 'groq' | 'anthropic'
+    cached: bool = False
+    generated_at: datetime | None = None
+
+
 # ── insider transactions (Phase 12 — context only) ───────────────────────────
 
 class InsiderTransaction(BaseModel):

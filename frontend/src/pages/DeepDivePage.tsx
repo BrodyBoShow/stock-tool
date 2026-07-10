@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { CompareDrawer } from '@/components/deepdive/CompareDrawer'
+import { AskStockBudPanel } from '@/components/deepdive/AskStockBudPanel'
 import { DecisionBriefPanel } from '@/components/deepdive/DecisionBriefPanel'
 import { EventsPanel } from '@/components/deepdive/EventsPanel'
 import { FactorCards } from '@/components/deepdive/FactorCards'
@@ -254,6 +255,7 @@ export function DeepDivePage() {
       {pane === 'brief' && (
         <>
           <DecisionBriefPanel ticker={header.ticker} header={header} />
+          <AskStockBudPanel key={header.ticker} ticker={header.ticker} />
           <ThesisPanel ticker={header.ticker} />
         </>
       )}
