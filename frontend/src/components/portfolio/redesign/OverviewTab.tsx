@@ -1,12 +1,11 @@
 import { DASH, fmtMoney, fmtPrice, fmtSignedMoney, fmtSignedPct } from '@/lib/format'
 import type { PortfolioFlag, PortfolioHolding, PortfolioPerformance, PortfolioSummary } from '@/types/api'
-import { HEALTH_BAND_LABEL, type HealthScore as HealthScoreT, type RangeKey } from '../portfolioUi'
+import { type HealthScore as HealthScoreT, type RangeKey } from '../portfolioUi'
 import { DisclaimerChip } from './DisclaimerChip'
 import { DragsList, type DragItem } from './DragsList'
 import { ExploreChips } from './ExploreChips'
 import { HealthScore } from './HealthScore'
 import { MetricChip } from './MetricChip'
-import { NextActionCTA } from './NextActionCTA'
 import { PerfChart } from './PerfChart'
 import { PortfolioHero } from './PortfolioHero'
 import { sentimentFromNumber, type Sentiment } from './sentimentUtils'
@@ -35,7 +34,6 @@ export function OverviewTab({
   summary: s,
   health,
   holdings,
-  flags,
   performance,
   benchmark,
   range,
@@ -52,38 +50,6 @@ export function OverviewTab({
       lossPct: h.unrealized_pl_pct ?? 0,
       lossUsd: h.unrealized_pl ?? 0,
     }))
-  const nDrags = Math.min(drags.length, 3)
-
-  // Zone A next-action: one primary CTA driven by the top issue.
-  const scoreTxt =
-    health && health.score != null && health.band != null
-      ? `Your portfolio health is ${health.score}/100 — ${HEALTH_BAND_LABEL[health.band]}`
-      : 'Your portfolio'
-  const cta =
-    nDrags > 0
-      ? {
-          intent: 'primary' as const,
-          message: `${scoreTxt}, but ${nDrags} holding${nDrags > 1 ? 's are' : ' is'} dragging returns.`,
-          ctaLabel: `Review the ${nDrags} holding${nDrags > 1 ? 's' : ''}`,
-          onCta: () =>
-            document.getElementById(DRAGS_ID)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-        }
-      : flags.length > 0
-        ? {
-            intent: 'primary' as const,
-            message: `${scoreTxt}. ${flags.length} structural flag${flags.length > 1 ? 's' : ''} to review.`,
-            ctaLabel: 'Open Risk & Fit',
-            onCta: () => onExplore('risk'),
-          }
-        : {
-            // Spec: every tab ends with exactly ONE purple primary CTA — even a
-            // healthy book gets a next step (never a dead-end / zero-CTA screen).
-            intent: 'primary' as const,
-            message: `${scoreTxt}. No holdings dragging and no structural flags.`,
-            ctaLabel: 'See how you compare',
-            onCta: () => onExplore('risk'),
-          }
-
   const realizedPlusDivs =
     s.realized_pl != null && s.dividends_received != null
       ? s.realized_pl + s.dividends_received
@@ -92,17 +58,14 @@ export function OverviewTab({
 
   return (
     <div className="space-y-5">
-      {/* ── Zone A · hero + one next-action ─────────────────────────────── */}
+      {/* ── Zone A · hero + portfolio health ────────────────────────────── */}
       <PortfolioHero
         value={view.total_value}
         dayChange={view.day_change ?? 0}
         dayChangePct={view.day_change_pct ?? 0}
         status="live"
       />
-      <div className="grid gap-3 md:grid-cols-[minmax(220px,auto)_1fr] md:items-stretch">
-        {health && <HealthScore health={health} benchmark={benchmark} />}
-        <NextActionCTA {...cta} />
-      </div>
+      {health && <HealthScore health={health} benchmark={benchmark} />}
 
       {/* ── Zone B · analytical core ────────────────────────────────────── */}
       <div className="grid gap-5 lg:grid-cols-2">

@@ -6,7 +6,6 @@ import { HoldingsDiagnostic } from '../HoldingsDiagnostic'
 import { DisclaimerChip } from './DisclaimerChip'
 import { ExploreChips } from './ExploreChips'
 import { MetricChip } from './MetricChip'
-import { NextActionCTA } from './NextActionCTA'
 import { sentimentFromNumber } from './sentimentUtils'
 
 type Quotes = ComponentProps<typeof HoldingsDiagnostic>['quotes']
@@ -49,24 +48,6 @@ export function HoldingsTab({
       topTicker = h.ticker ?? ''
     }
   }
-  const concFlag = flags.find((f) => f.kind === 'concentration')
-  const scrollTable = () =>
-    document.getElementById(TABLE_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-
-  const cta = concFlag
-    ? {
-        intent: 'primary' as const,
-        message: `${concFlag.ticker ?? topTicker} is ${Math.round((concFlag.weight ?? topW) * 100)}% of the book — above the single-name limit.`,
-        ctaLabel: `Review ${concFlag.ticker ?? topTicker}`,
-        onCta: () => onReview(concFlag.ticker ?? topTicker),
-      }
-    : {
-        intent: 'primary' as const,
-        message: 'No positions are over the concentration limit.',
-        ctaLabel: 'Review your holdings',
-        onCta: scrollTable,
-      }
-
   return (
     <div className="space-y-5">
       {/* Zone A */}
@@ -97,7 +78,6 @@ export function HoldingsTab({
           gloss="Count of structural flags on the book — concentration, sector tilt, or drawdown thresholds crossed. Diagnostics, not advice."
         />
       </div>
-      <NextActionCTA {...cta} />
 
       {/* Zone B */}
       <div id={TABLE_ID}>
