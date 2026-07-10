@@ -347,6 +347,11 @@ export function ScreenerTable({
   // rows aren't in composite order, dim the # and spell it out in the tooltip,
   // to make clear the sort didn't renumber the composite ranking.
   const rankInOrder = sort.key === 'composite' || sort.key === 'rank'
+  // Movers sorts by the weekly rank change; that needs a prior score under the
+  // current model. Right after a model update the history is empty, so no row
+  // has a rank_delta — disable the toggle (with an explanation) rather than let
+  // it silently no-op.
+  const hasRankMoves = useMemo(() => rows.some((r) => r.rank_delta != null), [rows])
 
   const sorted = useMemo(() => {
     if (sort.key === 'composite') {
@@ -543,6 +548,7 @@ export function ScreenerTable({
           ))}
           <button
             type="button"
+            disabled={!hasRankMoves}
             onClick={() =>
               applySort(
                 sort.key === 'rank_delta'
@@ -550,14 +556,20 @@ export function ScreenerTable({
                   : { key: 'rank_delta', dir: -1 },
               )
             }
-            title="Sort by biggest rank gains vs ~last week"
+            title={
+              hasRankMoves
+                ? 'Sort by biggest rank gains vs ~last week'
+                : 'Rank moves are still building — the scoring model was updated recently and needs at least one prior day to compare against. Check back after the next nightly run.'
+            }
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[0.7rem] font-bold transition ${
-              sort.key === 'rank_delta'
-                ? 'bg-pos-soft text-pos'
-                : 'bg-surface text-muted ring-1 ring-inset ring-line hover:text-ink'
+              !hasRankMoves
+                ? 'cursor-not-allowed bg-surface text-subtle ring-1 ring-inset ring-line opacity-60'
+                : sort.key === 'rank_delta'
+                  ? 'bg-pos-soft text-pos'
+                  : 'bg-surface text-muted ring-1 ring-inset ring-line hover:text-ink'
             }`}
           >
-            ▲ Movers
+            ▲ Movers{!hasRankMoves && <span className="font-medium"> · building</span>}
           </button>
         </div>
         <span className="whitespace-nowrap text-[0.7rem] italic text-subtle">

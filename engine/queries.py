@@ -243,9 +243,17 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
             cur.execute(
                 f"""
                 WITH base AS (
-                    SELECT max(score_date) AS d FROM factor_scores
-                    WHERE config_version = %s
-                      AND score_date <= %s - INTERVAL '7 days'
+                    -- The ~1-week-ago baseline for the weekly rank move. If the
+                    -- current model lacks 7 days of history yet (e.g. just after
+                    -- a config cutover) fall back to the OLDEST available prior
+                    -- day, so Movers works with a growing window instead of being
+                    -- dead for a full week.
+                    SELECT COALESCE(
+                        (SELECT max(score_date) FROM factor_scores
+                         WHERE config_version = %s AND score_date <= %s - INTERVAL '7 days'),
+                        (SELECT min(score_date) FROM factor_scores
+                         WHERE config_version = %s AND score_date < %s)
+                    ) AS d
                 ),
                 prev1 AS (
                     -- the immediately-prior nightly score_date (for the COMP delta chip)
@@ -327,10 +335,14 @@ def screener_rows(complete_only: bool = True) -> tuple[list[dict[str, Any]], dat
                 WHERE s.is_active{complete_clause}
                 ORDER BY fs.composite DESC NULLS LAST
                 """,
-                (ACTIVE_CONFIG_VERSION, score_date, ACTIVE_CONFIG_VERSION, score_date,
-                 ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION, score_date,
-                 score_date, ACTIVE_CONFIG_VERSION, ACTIVE_CONFIG_VERSION,
-                 ACTIVE_CONFIG_VERSION),
+                (ACTIVE_CONFIG_VERSION, score_date,   # base: ideal ~7d-ago
+                 ACTIVE_CONFIG_VERSION, score_date,   # base: oldest-prior fallback
+                 ACTIVE_CONFIG_VERSION, score_date,   # prev1
+                 ACTIVE_CONFIG_VERSION,               # prev_rank
+                 ACTIVE_CONFIG_VERSION, score_date,   # hist
+                 score_date, ACTIVE_CONFIG_VERSION,   # main fs
+                 ACTIVE_CONFIG_VERSION,               # fsp
+                 ACTIVE_CONFIG_VERSION),              # fs7
             )
             db_rows = cur.fetchall()
             cols = [d[0] for d in cur.description]
