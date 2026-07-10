@@ -342,6 +342,11 @@ export function ScreenerTable({
     return q?.value_live != null || q?.momentum_live != null
   }
   const liveRanked = sort.key === 'composite' && hasLive
+  // The # is always a stock's composite rank. Sorting by a factor column
+  // (GARP/Growth/…) reorders the rows but leaves each # unchanged — so when the
+  // rows aren't in composite order, dim the # and spell it out in the tooltip,
+  // to make clear the sort didn't renumber the composite ranking.
+  const rankInOrder = sort.key === 'composite' || sort.key === 'rank'
 
   const sorted = useMemo(() => {
     if (sort.key === 'composite') {
@@ -573,7 +578,12 @@ export function ScreenerTable({
           style={{ gridTemplateColumns: gridCols, minWidth: mw }}
         >
           {compareMode && <div className={TH} aria-hidden="true" />}
-          <button type="button" onClick={() => toggleSort('rank')} className={`${TH} justify-end pr-2 text-muted`}>
+          <button
+            type="button"
+            onClick={() => toggleSort('rank')}
+            title="Composite rank in the full universe. Sorting by another column reorders the rows but never changes this rank."
+            className={`${TH} justify-end pr-2 ${rankInOrder ? 'text-muted' : 'text-subtle'}`}
+          >
             #{arrow('rank')}
           </button>
           <button type="button" onClick={() => toggleSort('ticker')} className={`${TH} text-muted`}>
@@ -681,11 +691,15 @@ export function ScreenerTable({
                   )}
                   <div className="flex h-full flex-col items-end justify-center pr-2 leading-tight">
                     <span
-                      className="numeric text-[0.74rem] font-semibold text-muted"
+                      className={`numeric text-[0.74rem] font-semibold ${rankInOrder ? 'text-muted' : 'text-subtle'}`}
                       title={
                         liveRanked
                           ? 'Live-adjusted universe rank · nightly #' + r.rank
-                          : undefined
+                          : rankInOrder
+                            ? undefined
+                            : 'Composite rank #' +
+                              r.rank +
+                              ' — the current sort reorders the rows but never changes this rank'
                       }
                     >
                       {liveRanked ? (liveRankByTicker?.[r.ticker] ?? r.rank) : r.rank}
