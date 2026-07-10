@@ -6,7 +6,6 @@ import { TransactionsPanel } from '../TransactionsPanel'
 import { DisclaimerChip } from './DisclaimerChip'
 import { ExploreChips } from './ExploreChips'
 import { MetricChip } from './MetricChip'
-import { NextActionCTA } from './NextActionCTA'
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 const INCOME_ID = 'income-detail'
@@ -34,8 +33,6 @@ export function ActivityTab({
     const amt = (m as { amount?: number }).amount ?? 0
     if (parts.length === 2 && amt > 0) paidMonths.add(Number(parts[1]) - 1)
   }
-  const scrollIncome = () =>
-    document.getElementById(INCOME_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
     <div className="space-y-5">
@@ -70,12 +67,6 @@ export function ActivityTab({
           </div>
         </div>
       </div>
-      <NextActionCTA
-        intent="primary"
-        message="Turn your passive income into an action — review what's coming and when."
-        ctaLabel="See your dividend calendar"
-        onCta={scrollIncome}
-      />
 
       {income && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

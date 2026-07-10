@@ -6,7 +6,6 @@ import { RiskAlignmentPanel } from '../risk/RiskAlignmentPanel'
 import { RiskProfileCard } from '../risk/RiskProfileCard'
 import { DisclaimerChip } from './DisclaimerChip'
 import { ExploreChips } from './ExploreChips'
-import { NextActionCTA } from './NextActionCTA'
 import { UnifiedPerfStress } from './UnifiedPerfStress'
 
 type RiskAlignment = ComponentProps<typeof RiskAlignmentPanel>['data']
@@ -38,54 +37,12 @@ export function RiskFitTab({
   benchmark,
   onExplore,
 }: RiskFitTabProps) {
-  const hasProfile = !!riskAlignment?.has_profile
-  const above = (riskAlignment?.holdings ?? []).filter((h) => h.fit === 'above')
-  const abovePct = riskAlignment?.portfolio?.above_band_weight_pct ?? 0
-  const scrollFit = () =>
-    document.getElementById(FIT_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // The quiz trigger lives in RiskProfileCard (Zone A). Open it directly so the
-  // "take the quiz" CTA actually launches the quiz — the alignment table below
-  // is profile-gated and renders nothing until a profile exists.
-  const openQuiz = () => {
-    const btn = document.getElementById('risk-profile-quiz-btn')
-    if (btn) btn.click()
-    else
-      document
-        .getElementById('risk-profile-setup')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const cta = !hasProfile
-    ? {
-        intent: 'primary' as const,
-        message: 'Set your risk preference to see how each holding compares to it.',
-        ctaLabel: 'Take the 60-second quiz',
-        onCta: openQuiz,
-      }
-    : above.length > 0
-      ? {
-          intent: 'primary' as const,
-          message: `${above.length} holding${above.length > 1 ? 's' : ''} (${above
-            .slice(0, 2)
-            .map((h) => h.ticker)
-            .join(', ')}${above.length > 2 ? '…' : ''}) sit above your risk bands — together ${Math.round(abovePct * 100)}% of your book.`,
-          ctaLabel: `See the ${above.length} above your bands`,
-          onCta: scrollFit,
-        }
-      : {
-          intent: 'primary' as const,
-          message: 'Every holding sits inside your chosen risk bands.',
-          ctaLabel: 'Review your fit',
-          onCta: scrollFit,
-        }
-
   return (
     <div className="space-y-5">
       {/* Zone A */}
       <div id="risk-profile-setup">
         <RiskProfileCard />
       </div>
-      <NextActionCTA {...cta} />
 
       {/* Zone B */}
       <div id={FIT_ID}>{riskAlignment && <RiskAlignmentPanel data={riskAlignment} />}</div>
