@@ -697,8 +697,11 @@ class WatchlistChange(BaseModel):
     rank: int | None
     rank_prior: int | None
     baseline_date: str | None
-    # live-adjusted composite (today's price vs frozen cross-section), if quoted
+    # live-adjusted factors (today's price vs frozen cross-section), if quoted —
+    # display only, so the watchlist table mirrors the screener's live * cells.
     composite_live: float | None
+    value_live: float | None = None
+    momentum_live: float | None = None
     # high-signal 8-K material events in the last 30 days
     new_events: int
     latest_event_label: str | None

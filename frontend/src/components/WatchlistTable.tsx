@@ -82,7 +82,22 @@ function compareRows(a: WatchlistRow, b: WatchlistRow, key: SortKey, dir: 1 | -1
   return ((av as number) - (bv as number)) * dir
 }
 
-export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
+/** Live-adjusted factor percentiles by ticker (composite/value/momentum only —
+ *  growth & quality are filing-driven, never price-adjusted). Sourced from the
+ *  "what changed" digest so the table's cells mirror the screener's live * cells. */
+export interface WatchlistLive {
+  composite_live: number | null
+  value_live: number | null
+  momentum_live: number | null
+}
+
+export function WatchlistTable({
+  rows,
+  live,
+}: {
+  rows: WatchlistRow[]
+  live?: Record<string, WatchlistLive>
+}) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
     key: 'composite',
     dir: -1,
@@ -212,19 +227,19 @@ export function WatchlistTable({ rows }: { rows: WatchlistRow[] }) {
                   <RiskBandChip band={r.risk_band} compact />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="composite" value={r.composite} />
+                  <ScoreCell factor="composite" value={r.composite} live={live?.[r.ticker]?.composite_live} />
                 </div>
                 <div className={`${cell} h-full`}>
                   <ScoreCell factor="growth" value={r.growth_pctl} />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="value" value={r.value_pctl} />
+                  <ScoreCell factor="value" value={r.value_pctl} live={live?.[r.ticker]?.value_live} />
                 </div>
                 <div className={`${cell} h-full`}>
                   <ScoreCell factor="quality" value={r.quality_pctl} />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="momentum" value={r.momentum_pctl} />
+                  <ScoreCell factor="momentum" value={r.momentum_pctl} live={live?.[r.ticker]?.momentum_live} />
                 </div>
                 <div className={`${cell} flex h-full items-center justify-center px-2`}>
                   <Sparkline
