@@ -11,6 +11,7 @@ from api.schemas import (
     AskRequest,
     AskResponse,
     BriefStatusResponse,
+    ClinicalPipelineResponse,
     DecisionBrief,
     EventsResponse,
     FactorSet,
@@ -35,6 +36,7 @@ from api.schemas import (
 )
 from engine import assistant as assistant_engine
 from engine import brief as brief_engine
+from engine import clinical as clinical_engine
 from engine import commodity_backdrop as commodity_backdrop_engine
 from engine import events as events_engine
 from engine import filing_qa as filing_qa_engine
@@ -291,6 +293,35 @@ def get_peers(ticker: str) -> PeerStripResponse | None:
     ticker, _ = _require_security(ticker)
     data = queries.peer_strip(ticker)
     return PeerStripResponse(**data) if data is not None else None
+
+
+@router.get("/{ticker}/clinical", response_model=ClinicalPipelineResponse)
+def get_clinical(ticker: str) -> ClinicalPipelineResponse:
+    """Biotech clinical-trial pipeline from ClinicalTrials.gov (free, keyless):
+    trial totals, status/phase breakdown, active late-stage studies, and the
+    conditions targeted. `available` is false for non-health-care names, when
+    the sponsor has no trials, or if the API is unreachable — the panel then
+    simply doesn't render. Context only; never touches factor scores."""
+    ticker = ticker.upper()
+    header = queries.security_header(ticker)
+    if header is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found")
+    payload = clinical_engine.clinical_pipeline(
+        header.get("name"), sector=header.get("sector")
+    )
+    if payload is None:
+        return ClinicalPipelineResponse(ticker=ticker, available=False)
+    return ClinicalPipelineResponse(
+        ticker=ticker,
+        available=True,
+        total=payload["total"],
+        counted=payload["counted"],
+        by_status=payload["by_status"],
+        by_phase=payload["by_phase"],
+        active_late_stage=payload["active_late_stage"],
+        top_conditions=payload["top_conditions"],
+        source=payload["source"],
+    )
 
 
 def _to_filing_qa(cached: dict) -> FilingAnswers:
