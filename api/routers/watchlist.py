@@ -48,6 +48,8 @@ def get_watchlist_changes(user: CurrentUser) -> WatchlistChangesResponse:
         rows.append(WatchlistChange(
             **s,
             composite_live=adj["composite"] if adj else None,
+            value_live=adj["value"] if adj else None,
+            momentum_live=adj["momentum"] if adj else None,
         ))
 
     return WatchlistChangesResponse(

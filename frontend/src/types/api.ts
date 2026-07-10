@@ -593,6 +593,8 @@ export interface WatchlistChange {
   rank_prior: number | null
   baseline_date: string | null
   composite_live: number | null
+  value_live: number | null
+  momentum_live: number | null
   new_events: number
   latest_event_label: string | null
   latest_event_date: string | null

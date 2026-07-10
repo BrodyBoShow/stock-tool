@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { WatchlistChanges } from '@/components/WatchlistChanges'
 import { StalenessNudge } from '@/components/watchlist/StalenessNudge'
 import { WatchlistHero, type WatchlistHeroView } from '@/components/watchlist/WatchlistHero'
-import { WatchlistTable } from '@/components/WatchlistTable'
+import { WatchlistTable, type WatchlistLive } from '@/components/WatchlistTable'
 import { getWatchlist, getWatchlistChanges } from '@/lib/api'
 import { snoozedUntil } from '@/lib/watchlistSnooze'
 import type { WatchlistChange } from '@/types/api'
@@ -92,6 +92,21 @@ export function WatchlistPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [changes, rows.length, snoozeVersion])
 
+  // Live-adjusted factors (composite/value/momentum) keyed by ticker, from the
+  // same digest that backs the cards' "Live" numbers — so the table's cells
+  // reflect the intraday * scores exactly like the screener.
+  const liveByTicker = useMemo<Record<string, WatchlistLive>>(() => {
+    const m: Record<string, WatchlistLive> = {}
+    for (const c of changes?.rows ?? []) {
+      m[c.ticker] = {
+        composite_live: c.composite_live,
+        value_live: c.value_live,
+        momentum_live: c.momentum_live,
+      }
+    }
+    return m
+  }, [changes])
+
   if (isPending) {
     return (
       <div className="space-y-3">
@@ -168,7 +183,7 @@ export function WatchlistPage() {
       )}
       <StalenessNudge rows={rows} />
       <div id="watchlist-grid">
-        <WatchlistTable rows={rows} />
+        <WatchlistTable rows={rows} live={liveByTicker} />
       </div>
 
       {/* Zone C — explore next + the single disclaimer */}
