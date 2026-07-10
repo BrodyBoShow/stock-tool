@@ -35,7 +35,6 @@ import type {
   PortfolioTransactionCreate,
   PortfolioTransactionsResponse,
   QuotesResponse,
-  TickerTapeResponse,
   RiskAlignmentResponse,
   RiskProfileResponse,
   ScreenerResponse,
@@ -140,10 +139,6 @@ async function getJson<T>(path: string): Promise<T> {
 
 export function getQuotes(): Promise<QuotesResponse> {
   return getJson<QuotesResponse>('/quotes')
-}
-
-export function getTickerTape(): Promise<TickerTapeResponse> {
-  return getJson<TickerTapeResponse>('/market/ticker-tape')
 }
 
 export function getScreener(completeOnly = true): Promise<ScreenerResponse> {
