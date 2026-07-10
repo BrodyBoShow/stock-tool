@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -72,6 +72,7 @@ export function ScreenerPage() {
     staleTime: 5 * 60 * 1000,       // nightly data — 5 min client cache
     refetchOnWindowFocus: true,      // re-fetch on tab focus so the date badge
     refetchOnMount: true,            // and rankings stay current after nightly
+    placeholderData: keepPreviousData, // keep the table up while toggling
   })
 
   // Live intraday quotes overlay. The factor scores stay end-of-day; only the
