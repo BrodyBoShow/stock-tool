@@ -217,7 +217,7 @@ export function FundsPage() {
   return (
     <div className="space-y-5 pb-24">
       {/* Sticky sub-header: title + category tabs + toolbar */}
-      <div className="sticky top-12 z-20 -mx-4 border-b border-line bg-surface px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface">
+      <div className="sticky top-[76px] z-20 -mx-4 border-b border-line bg-surface px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="mr-2">
             <div className="text-[1rem] font-bold text-ink">Funds &amp; ETFs</div>

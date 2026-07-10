@@ -35,7 +35,7 @@ export function MarketSubHeader({ d, onRefresh }: { d: MarketOverviewResponse; o
   // than the nav height with a lower z-index so it tucks under the nav with no
   // gap regardless of the nav's exact height, and never covers it.
   return (
-    <div className="sticky top-12 z-20 -mx-4 border-b border-line bg-surface px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-surface sm:-mx-6 sm:px-6">
+    <div className="sticky top-[76px] z-20 -mx-4 border-b border-line bg-surface px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-surface sm:-mx-6 sm:px-6">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.72rem]">
         <span className="font-bold uppercase tracking-[0.1em] text-accent">Market</span>
 
