@@ -34,15 +34,16 @@ from dotenv import load_dotenv
 from engine import brief as brief_engine
 from engine import clinical as clinical_engine
 from engine import filing_qa as filing_qa_engine
-from engine import queries, valuation
+from engine import queries, retrieval, valuation
 from engine.config import LLM_MODEL
+from engine.retrieval import RetrievalResult
 
 log = logging.getLogger("stockbud")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-PROMPT_VERSION = "v2"  # v2: + biotech clinical pipeline (ClinicalTrials.gov)
+PROMPT_VERSION = "v3"  # v2: clinical pipeline; v3: + filing full-text retrieval
 MODEL = LLM_MODEL  # Anthropic fallback model (Haiku by default)
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -201,8 +202,11 @@ def _sources_present(ctx: dict[str, Any]) -> list[str]:
     return src
 
 
-def render_prompt(ctx: dict[str, Any], question: str) -> str:
-    """Core brief context (reused) + augmentations + the user's question."""
+def render_prompt(
+    ctx: dict[str, Any], question: str, retrieval_result: RetrievalResult | None = None
+) -> str:
+    """Core brief context (reused) + augmentations + retrieved filing evidence +
+    the user's question."""
     parts = [brief_engine.render_prompt(ctx["core"])]
     extra = ctx["extra"]
     if extra.get("valuation"):
@@ -223,6 +227,28 @@ def render_prompt(ctx: dict[str, Any], question: str) -> str:
                        "trials fetched, not FDA approvals)", _clip(extra["clinical"], 2400)]
     if extra.get("macro"):
         parts += ["", "## Macro backdrop (latest values)", _clip(extra["macro"])]
+
+    if retrieval_result and (retrieval_result.notes or retrieval_result.docs):
+        parts += [
+            "", "## Filing evidence (retrieval layer — SEC full-text search)",
+            "These point to WHERE the question's terms appear in the company's "
+            "filings. Use them to tell the investor which filings discuss the "
+            "topic and how prominently (the mention count), and reference the "
+            "filing by form + date. The passage text itself is not included, so "
+            "do not quote or invent specific wording — treat these as pointers, "
+            "and lean on the structured data above for the substance.",
+        ]
+        parts += list(retrieval_result.notes)
+        if retrieval_result.docs:
+            parts.append(
+                "Most relevant filings (cite by form + date; full text at the URL):"
+            )
+            for d in retrieval_result.docs:
+                line = f"  - {d.form or d.title} filed {d.date} — {d.url}"
+                if d.snippet:
+                    line += f"\n    excerpt: {d.snippet}"
+                parts.append(line)
+
     parts += [
         "",
         "----",
@@ -354,9 +380,18 @@ def answer_question(ticker: str, question: str, *, force: bool = False) -> dict[
                 "generated_at": cached.get("generated_at"),
             }
 
-    text, in_tok, out_tok, provider, model = _generate(SYSTEM_PROMPT, render_prompt(ctx, q))
+    # Retrieval layer (best-effort, never raises): pull filing evidence relevant
+    # to THIS question via the pluggable retriever(s) — SEC full-text today,
+    # pgvector/transcripts later behind the same interface.
+    retrieval_result = retrieval.retrieve(ticker, q)
+
+    text, in_tok, out_tok, provider, model = _generate(
+        SYSTEM_PROMPT, render_prompt(ctx, q, retrieval_result)
+    )
     answer_md, confidence = _parse_answer(text)
     sources = _sources_present(ctx)
+    if retrieval_result.docs or retrieval_result.notes:
+        sources.append("SEC filing full-text")
     payload = {"answer": answer_md, "confidence": confidence, "sources": sources}
 
     queries.save_answer(

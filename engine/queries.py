@@ -2220,6 +2220,22 @@ def save_brief(
         release(conn)
 
 
+def cik_for(ticker: str) -> str | None:
+    """Zero-padded 10-digit CIK for a ticker (as SEC EDGAR expects), or None."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT cik FROM securities WHERE ticker = %s LIMIT 1", (ticker.upper(),)
+            )
+            row = cur.fetchone()
+    finally:
+        release(conn)
+    if not row or row[0] is None:
+        return None
+    return str(row[0]).zfill(10)
+
+
 # ── Ask StockBud AI cache (assistant_answers) ─────────────────────────────────
 
 def get_cached_answer(
