@@ -13,6 +13,7 @@ labels them accordingly rather than claiming true real-time.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import threading
 import time
 from typing import Any
@@ -27,6 +28,14 @@ import yfinance as yf
 _TTL_SECONDS = 90
 _lock = threading.Lock()
 _cache: dict[str, dict[str, Any]] = {}  # cache_key -> {fetched_monotonic, payload}
+
+# yfinance has no request timeout, and Yahoo periodically throttles datacenter
+# IPs (e.g. Render) — a throttled call can hang for tens of seconds, stalling
+# the HTTP request past the gateway timeout. We run fetches on a small pool so a
+# caller can wait a bounded time (timeout=) and fall back to stale/empty while
+# the fetch finishes in the background and lands in the cache for the next poll.
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="quotes")
+_inflight: dict[str, concurrent.futures.Future[dict[str, Any]]] = {}
 
 
 def _cache_key(tickers: list[str]) -> str:
@@ -78,13 +87,54 @@ def _fetch(tickers: list[str]) -> dict[str, Any]:
     return {"quotes": quotes, "as_of_epoch": time.time()}
 
 
-def get_quotes(tickers: list[str], *, force: bool = False) -> dict[str, Any]:
+def _fetch_and_cache(key: str, tickers: list[str]) -> dict[str, Any]:
+    """Run a fetch and store it in the cache. Runs on the pool so a caller can
+    bound its wait (see get_quotes' timeout) while this still completes in the
+    background and lands in the cache for the next poll."""
+    payload = _fetch(tickers)
+    with _lock:
+        _cache[key] = {"fetched_monotonic": time.monotonic(), "payload": payload}
+    return payload
+
+
+def _submit(key: str, tickers: list[str]) -> concurrent.futures.Future[dict[str, Any]]:
+    """One in-flight fetch per ticker-set — concurrent callers share it (this is
+    the dedup the old in-lock re-check provided, now future-based)."""
+    with _lock:
+        fut = _inflight.get(key)
+        if fut is None or fut.done():
+            fut = _executor.submit(_fetch_and_cache, key, tickers)
+            _inflight[key] = fut
+        return fut
+
+
+def _fallback(entry: dict[str, Any] | None) -> dict[str, Any]:
+    """Serve the last good payload (marked stale) or an empty one — never raise."""
+    if entry is not None:
+        return {
+            **entry["payload"],
+            "age_seconds": round(time.monotonic() - entry["fetched_monotonic"], 1),
+            "stale": True,
+        }
+    return {"quotes": {}, "as_of_epoch": time.time(), "age_seconds": 0.0, "stale": True}
+
+
+def get_quotes(
+    tickers: list[str], *, force: bool = False, timeout: float | None = None
+) -> dict[str, Any]:
     """Cached live quotes for the given tickers.
 
-    Serves a cached payload if it's younger than the TTL, else refetches under a
-    lock (so concurrent opens trigger a single upstream call). Cache is keyed by
-    the ticker-set, so a single-name lookup never evicts the screener's top-N
-    payload. Returns {quotes, as_of_epoch, age_seconds, stale}.
+    Serves a cached payload if it's younger than the TTL, else fetches (one
+    upstream call shared across concurrent openers, keyed by the ticker-set so a
+    single-name lookup never evicts the screener's top-N payload). Returns
+    {quotes, as_of_epoch, age_seconds, stale}.
+
+    `timeout` bounds the wait for a fresh fetch: yfinance has no request timeout
+    and Yahoo throttles datacenter IPs, so an unbounded wait can hang the HTTP
+    request past the gateway limit. When the fetch overruns `timeout` we return
+    the last good payload (stale) — or empty — while it finishes in the
+    background for the next poll. `timeout=None` waits indefinitely (unchanged
+    behavior for callers that must have data, e.g. nightly sync).
     """
     key = _cache_key(tickers)
     now = time.monotonic()
@@ -93,26 +143,12 @@ def get_quotes(tickers: list[str], *, force: bool = False) -> dict[str, Any]:
         return {**entry["payload"], "age_seconds": round(now - entry["fetched_monotonic"], 1),
                 "stale": False}
 
-    with _lock:
-        # Re-check inside the lock: another thread may have just refreshed.
-        now = time.monotonic()
-        entry = _cache.get(key)
-        if not force and entry is not None and (now - entry["fetched_monotonic"]) < _TTL_SECONDS:
-            return {**entry["payload"], "age_seconds": round(now - entry["fetched_monotonic"], 1),
-                    "stale": False}
-        try:
-            payload = _fetch(tickers)
-            _cache[key] = {"fetched_monotonic": time.monotonic(), "payload": payload}
-            return {**payload, "age_seconds": 0.0, "stale": False}
-        except Exception:  # noqa: BLE001 — never let a quote outage break the page
-            if entry is not None:
-                return {
-                    **entry["payload"],
-                    "age_seconds": round(time.monotonic() - entry["fetched_monotonic"], 1),
-                    "stale": True,
-                }
-            return {"quotes": {}, "as_of_epoch": time.time(), "age_seconds": 0.0,
-                    "stale": True}
+    fut = _submit(key, tickers)
+    try:
+        payload = fut.result(timeout=timeout)
+        return {**payload, "age_seconds": 0.0, "stale": False}
+    except Exception:  # noqa: BLE001 — timeout or outage: never break the page
+        return _fallback(entry)
 
 
 def get_quote_one(ticker: str) -> dict[str, Any]:
