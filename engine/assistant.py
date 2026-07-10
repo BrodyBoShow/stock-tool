@@ -390,7 +390,10 @@ def answer_question(ticker: str, question: str, *, force: bool = False) -> dict[
     )
     answer_md, confidence = _parse_answer(text)
     sources = _sources_present(ctx)
-    if retrieval_result.docs or retrieval_result.notes:
+    providers = {d.provider for d in retrieval_result.docs}
+    if "pgvector" in providers:
+        sources.append("Filing text (semantic)")
+    if retrieval_result.notes or "sec-efts" in providers:
         sources.append("SEC filing full-text")
     payload = {"answer": answer_md, "confidence": confidence, "sources": sources}
 
