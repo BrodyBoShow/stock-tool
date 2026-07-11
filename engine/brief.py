@@ -432,8 +432,11 @@ _GROQ_JSON_HINT = (
 
 
 def _valid_brief(obj: Any) -> bool:
-    """Structural check that a parsed brief matches BRIEF_SCHEMA's required shape
-    (Groq isn't schema-enforced). Anything off → caller falls back to Anthropic."""
+    """Structural check that a parsed brief matches what the API's DecisionBrief
+    pydantic model REQUIRES (Groq isn't schema-enforced). Must be at least as
+    strict as that model on every required leaf: a brief that passes here but
+    fails pydantic would be cached, then 500 on every read until it's
+    invalidated. Anything off → caller falls back to Anthropic's enforced call."""
     if not isinstance(obj, dict):
         return False
     top = ("one_liner", "score_read", "bull_case", "bear_case", "key_catalyst",
@@ -441,16 +444,23 @@ def _valid_brief(obj: Any) -> bool:
     if any(k not in obj for k in top):
         return False
     sr = obj["score_read"]
-    if not isinstance(sr, dict) or "drivers" not in sr or "blind_spot" not in sr:
+    if (not isinstance(sr, dict)
+            or not isinstance(sr.get("drivers"), str)
+            or not isinstance(sr.get("blind_spot"), str)):
         return False
     dc = obj["data_confidence"]
-    if not isinstance(dc, dict) or dc.get("level") not in ("high", "medium", "low"):
+    if (not isinstance(dc, dict)
+            or dc.get("level") not in ("high", "medium", "low")
+            or not isinstance(dc.get("reason"), str)):
         return False
-    return (
-        isinstance(obj["bull_case"], list) and isinstance(obj["bear_case"], list)
-        and isinstance(obj["next_questions"], list)
-        and isinstance(obj["one_liner"], str)
-    )
+    for key in ("one_liner", "key_catalyst", "main_risk"):
+        if not isinstance(obj[key], str):
+            return False
+    for key in ("bull_case", "bear_case", "next_questions"):
+        v = obj[key]
+        if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+            return False
+    return True
 
 
 def _extract_json(text: str) -> Any:
