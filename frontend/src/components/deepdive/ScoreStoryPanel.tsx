@@ -42,32 +42,69 @@ function StoryTooltip({
   payload,
   shown,
   eventsByDate,
+  rows,
 }: {
   active?: boolean
   payload?: { payload: Row }[]
   shown: Set<FactorKey>
   eventsByDate: Map<string, string[]>
+  rows: Row[]
 }) {
   if (!active || !payload?.length) return null
   const r = payload[0].payload
+  const idx = rows.findIndex((x) => x.date === r.date)
+  const prev = idx > 0 ? rows[idx - 1] : null
   const evs = eventsByDate.get(r.date)
   return (
     <div className="rounded-lg border border-line bg-surface p-2.5 text-[0.72rem] shadow-lg">
-      <div className="mb-1 font-bold text-ink">{fmtShortDate(r.date)}</div>
-      {LINES.filter((l) => l.key === 'composite' || shown.has(l.key)).map((l) => (
-        <div key={l.key} className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-muted">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: FACTOR_TABLE[l.key].bar }} />
-            {l.label}
-          </span>
-          <span className="numeric font-semibold text-ink">
-            {r[l.key] == null ? '—' : (r[l.key] as number).toFixed(1)}
-          </span>
-        </div>
-      ))}
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <span className="font-bold text-ink">{fmtShortDate(r.date)}</span>
+        {prev && <span className="text-[0.62rem] text-subtle">Δ vs prior snapshot</span>}
+      </div>
+      {/* Hover shows every factor (drawn or not) — hidden lines get a hollow dot. */}
+      {LINES.map((l) => {
+        const v = r[l.key] as number | null
+        const pv = prev ? (prev[l.key] as number | null) : null
+        const d = v != null && pv != null ? v - pv : null
+        const drawn = l.key === 'composite' || shown.has(l.key)
+        return (
+          <div key={l.key} className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5 text-muted">
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={
+                  drawn
+                    ? { background: FACTOR_TABLE[l.key].bar }
+                    : { background: 'transparent', boxShadow: `inset 0 0 0 1px ${FACTOR_TABLE[l.key].bar}` }
+                }
+              />
+              {l.label}
+            </span>
+            <span className="numeric font-semibold text-ink">
+              {v == null ? '—' : v.toFixed(1)}
+              {d != null && Math.abs(d) >= 0.05 && (
+                <span
+                  className="ml-1.5 text-[0.64rem] font-bold"
+                  style={{ color: d >= 0 ? 'var(--pos)' : 'var(--neg)' }}
+                >
+                  {d >= 0 ? '+' : ''}{d.toFixed(1)}
+                </span>
+              )}
+            </span>
+          </div>
+        )
+      })}
       {r.rank != null && (
         <div className="mt-1 border-t border-line pt-1 text-subtle">
           Universe rank <span className="numeric font-semibold text-muted">#{r.rank}</span>
+          {prev?.rank != null && prev.rank !== r.rank && (
+            <span
+              className="ml-1.5 text-[0.64rem] font-bold"
+              style={{ color: prev.rank - r.rank > 0 ? 'var(--pos)' : 'var(--neg)' }}
+            >
+              {prev.rank - r.rank > 0 ? '▲' : '▼'}{Math.abs(prev.rank - r.rank)}
+            </span>
+          )}
         </div>
       )}
       {evs && (
@@ -232,6 +269,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
                   payload={payload as unknown as { payload: Row }[] | undefined}
                   shown={shown}
                   eventsByDate={eventsByDate}
+                  rows={rows}
                 />
               )}
             />

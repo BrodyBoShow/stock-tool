@@ -259,6 +259,7 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
                 <XAxis dataKey="year" tick={{ fontSize: CHART_TICK_SIZE, fill: ct.axis }} minTickGap={20} />
                 <YAxis tick={{ fontSize: CHART_TICK_SIZE, fill: ct.axis }} width={56} tickFormatter={(v: number) => fmtMoney(v)} />
                 <Tooltip
+                  labelFormatter={(y) => `Year ${y} of the simulation`}
                   formatter={(value: number | number[], name) =>
                     Array.isArray(value)
                       ? [`${fmtMoney(value[0])} – ${fmtMoney(value[1])}`, 'P10–P90']
