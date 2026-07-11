@@ -34,7 +34,7 @@ from dotenv import load_dotenv
 from engine import brief as brief_engine
 from engine import clinical as clinical_engine
 from engine import filing_qa as filing_qa_engine
-from engine import queries, retrieval, valuation
+from engine import queries, retrieval, valuation, web_research
 from engine.config import LLM_MODEL
 from engine.retrieval import RetrievalResult
 
@@ -43,13 +43,13 @@ log = logging.getLogger("stockbud")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-PROMPT_VERSION = "v3"  # v2: clinical pipeline; v3: + filing full-text retrieval
+PROMPT_VERSION = "v4"  # v3: filing retrieval; v4: live web research + richer synthesis
 MODEL = LLM_MODEL  # Anthropic fallback model (Haiku by default)
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 MAX_QUESTION_CHARS = 500
-MAX_ANSWER_TOKENS = 1500
+MAX_ANSWER_TOKENS = 2500  # room for thorough, structured answers
 
 ANTHROPIC_KEY_AVAILABLE: bool = bool(os.getenv("ANTHROPIC_API_KEY"))
 GROQ_KEY_AVAILABLE: bool = bool(os.getenv("GROQ_API_KEY"))
@@ -74,32 +74,59 @@ SUGGESTED_QUESTIONS: list[str] = [
 ]
 
 SYSTEM_PROMPT = (
-    "You are Ask StockBud AI, the research assistant inside an equity screener. "
-    "You answer ONE question about ONE company using ONLY the StockBud data "
-    "snapshot provided in the user message — factor percentile ranks (0-100 "
-    "within the S&P 500, 100 = best) and the raw metrics behind them, sector-peer "
-    "medians, score history, 52-week price position, SEC insider (Form 4) and "
-    "8-K activity, any cached 10-K summary / deep filing diligence, the "
-    "reverse-DCF valuation, news signals, and the macro backdrop.\n\n"
-    "Rules:\n"
-    "- Ground every claim in the provided data; cite the actual numbers "
-    "(e.g. 'Momentum is 18th percentile vs a sector median of 54'). NEVER use "
-    "outside knowledge or invent figures.\n"
-    "- If the data does not cover the question, say so plainly — do not "
-    "speculate. Null metrics are not reported by the company (often structural "
-    "for banks/insurers); treat them as not applicable.\n"
-    "- The composite score is a mechanical weighted average of factor "
-    "percentiles — explain what drove it and name the biggest real-world driver "
-    "it is blind to (value-trap risk for cheap cyclicals, growth priced-in for "
-    "rich names, thin inputs for financials).\n"
-    "- NOT financial advice: no buy/sell/hold language, no price targets. "
-    "Describe what the evidence shows and what would need checking.\n"
-    "- Be specific, concrete, and concise. Use short paragraphs and bullet "
-    "points. Write for an informed retail investor.\n\n"
+    "You are Ask StockBud AI, an equity-research analyst inside a stock screener. "
+    "You answer ONE question about ONE company using the StockBud data snapshot in "
+    "the user message — the proprietary factor percentile ranks (0-100 within the "
+    "S&P 500, 100 = best) and the raw metrics behind them, sector-peer medians, "
+    "score history, 52-week price position, SEC insider (Form 4) and 8-K activity, "
+    "cached 10-K summary / deep filing diligence, retrieved filing passages, the "
+    "reverse-DCF valuation, news signals, clinical pipeline, macro backdrop, and — "
+    "when present — LIVE WEB RESEARCH findings with sources.\n\n"
+    "Be genuinely useful, thorough, and specific — never bland or generic:\n"
+    "- Lead with a direct answer, then the supporting evidence, ALWAYS citing the "
+    "actual numbers (e.g. 'Momentum is 18th percentile vs a sector median of 54').\n"
+    "- Bring in every relevant angle the data supports: the factor read AND the "
+    "real-world drivers, valuation context, filing disclosures, insider/8-K "
+    "signals, peers, and live web findings when provided.\n"
+    "- Weave in the live web research when present and cite its sources — use it "
+    "especially for 'why did it move', recent news, analyst actions, and catalysts "
+    "the nightly data can't capture.\n"
+    "- Explain what it MEANS and what a diligent investor should WATCH NEXT.\n"
+    "- Structure a longer answer with short markdown headings/bullets; aim for a "
+    "complete, well-organized answer, not a one-liner.\n\n"
+    "Grounding + honesty (non-negotiable): ground every claim in the provided data "
+    "or the cited web sources — never invent figures. If something isn't covered, "
+    "say so plainly rather than guessing. Null metrics are not reported (often "
+    "structural for banks/insurers); treat as not applicable. The composite is a "
+    "mechanical weighted average of factor percentiles — say what drove it and name "
+    "the biggest real-world driver it's blind to (value-trap risk for cheap "
+    "cyclicals, growth priced-in for rich names, thin inputs for financials). NOT "
+    "investment advice: no buy/sell/hold, no recommendations, no price targets of "
+    "your own — describe the evidence and what to check.\n\n"
     'Respond with ONLY a JSON object: {"answer": "<markdown answer>", '
     '"confidence": "high"|"medium"|"low"}. Set confidence by how completely the '
-    "provided data answers the question (low when key inputs are missing)."
+    "available data + web findings answer the question."
 )
+
+# Questions that need CURRENT / external info the nightly data can't hold — these
+# trigger a live web-research step (Claude web search). Grounded questions (scores,
+# valuation, filing text) skip it and stay on the cheaper Groq-only path.
+_WEB_TRIGGERS = (
+    "today", "yesterday", "recent", "latest", "right now", "currently", "current ",
+    "this week", "this month", "news", "why did", "why is", "why has", "why are",
+    "drop", "dropp", "fell", "fall", "declin", "rally", "rallie", "surge", "plunge",
+    "spike", "jump", "soar", "tank", "crash", "sell-off", "selloff", "what happened",
+    "happening", "going on", "analyst", "upgrade", "downgrade", "price target",
+    "rating", "catalyst", "guidance", "this quarter", "next quarter", "earnings",
+    "lawsuit", "fda", "approv", "merger", "acquisition", "acquire", "partnership",
+    "offering", "dilution", "short interest", "sentiment", "outlook", "moved",
+    "moving", "buzz", "headline", "downgraded", "upgraded", "should i watch",
+)
+
+
+def _needs_web(question: str) -> bool:
+    q = (question or "").lower()
+    return any(t in q for t in _WEB_TRIGGERS)
 
 
 # ── context assembly (reuse the brief's, then augment) ────────────────────────
@@ -203,10 +230,13 @@ def _sources_present(ctx: dict[str, Any]) -> list[str]:
 
 
 def render_prompt(
-    ctx: dict[str, Any], question: str, retrieval_result: RetrievalResult | None = None
+    ctx: dict[str, Any],
+    question: str,
+    retrieval_result: RetrievalResult | None = None,
+    web: dict[str, Any] | None = None,
 ) -> str:
     """Core brief context (reused) + augmentations + retrieved filing evidence +
-    the user's question."""
+    live web research + the user's question."""
     parts = [brief_engine.render_prompt(ctx["core"])]
     extra = ctx["extra"]
     if extra.get("valuation"):
@@ -248,6 +278,18 @@ def render_prompt(
                 if d.snippet:
                     line += f"\n    excerpt: {d.snippet}"
                 parts.append(line)
+
+    if web and web.get("summary"):
+        parts += [
+            "", "## Live web research (current, external — cite these sources)",
+            web["summary"],
+        ]
+        if web.get("sources"):
+            parts.append(
+                "Sources: " + "; ".join(
+                    f"{s.get('title')} <{s.get('url')}>" for s in web["sources"]
+                )
+            )
 
     parts += [
         "",
@@ -385,8 +427,16 @@ def answer_question(ticker: str, question: str, *, force: bool = False) -> dict[
     # pgvector/transcripts later behind the same interface.
     retrieval_result = retrieval.retrieve(ticker, q)
 
+    # Live web research (best-effort): only for questions that need CURRENT /
+    # external info the nightly data can't hold (price moves, news, analyst moves).
+    web = None
+    if _needs_web(q) and web_research.available():
+        web = web_research.research(
+            ctx["core"]["header"].get("name") or ticker, ticker, q
+        )
+
     text, in_tok, out_tok, provider, model = _generate(
-        SYSTEM_PROMPT, render_prompt(ctx, q, retrieval_result)
+        SYSTEM_PROMPT, render_prompt(ctx, q, retrieval_result, web)
     )
     answer_md, confidence = _parse_answer(text)
     sources = _sources_present(ctx)
@@ -395,6 +445,8 @@ def answer_question(ticker: str, question: str, *, force: bool = False) -> dict[
         sources.append("Filing text (semantic)")
     if retrieval_result.notes or "sec-efts" in providers:
         sources.append("SEC filing full-text")
+    if web and web.get("summary"):
+        sources.append("Live web research")
     payload = {"answer": answer_md, "confidence": confidence, "sources": sources}
 
     queries.save_answer(
