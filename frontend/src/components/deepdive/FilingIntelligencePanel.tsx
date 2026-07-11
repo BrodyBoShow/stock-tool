@@ -211,19 +211,29 @@ export function FilingIntelligencePanel({
   ticker: string
   filings: FilingRow[]
 }) {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   // Deep-link hint: ?filing=diligence (e.g. from the Brief's "what to investigate
   // next" cross-link) opens straight to the deep analysis and scrolls it in.
   const wantsDiligence = searchParams.get('filing') === 'diligence'
   const [collapsed, setCollapsed] = useState(false)
+  // Seed to diligence on the initial mount (no first-paint flash); the effect
+  // below also handles an already-mounted panel and consumes the one-shot hint.
   const [tab, setTab] = useState<Tab>(wantsDiligence ? 'diligence' : 'overview')
   const sectionRef = useRef<HTMLElement>(null)
   const qc = useQueryClient()
   const toast = useToast()
 
+  // The initial tab state (above) already opens Diligence on the fresh mount the
+  // Brief cross-link causes; here we just scroll it into view and consume the
+  // one-shot hint so it doesn't ride the J/K ticker pager (which carries the
+  // search string forward) and re-scroll every subsequent ticker.
   useEffect(() => {
-    if (wantsDiligence) sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [wantsDiligence])
+    if (!wantsDiligence) return
+    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const next = new URLSearchParams(searchParams)
+    next.delete('filing')
+    setSearchParams(next, { replace: true })
+  }, [wantsDiligence, searchParams, setSearchParams])
 
   // ── Overview (summary) ──
   const sum = useQuery({
@@ -283,7 +293,7 @@ export function FilingIntelligencePanel({
         : null
 
   return (
-    <section ref={sectionRef} className="rounded-card border border-line bg-surface p-5 shadow-card">
+    <section ref={sectionRef} className="scroll-mt-20 rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-start gap-3">
           <button
