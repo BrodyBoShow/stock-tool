@@ -20,7 +20,7 @@ export interface RightRailProps {
 const PANE_SECTIONS: Partial<Record<PaneId, string[]>> = {
   overview: ['Decision brief teaser', 'Factor scores', 'Latest activity', 'Price trend'],
   brief: ['Decision brief', 'Your thesis'],
-  factors: ['Factor tiles', 'Live momentum', 'Peers & sector rank'],
+  scores: ['Factor tiles', 'What drives the composite', 'Sub-metric detail', 'Peers & sector rank', 'Score history'],
   value: ['Reverse DCF', 'Scenario compare', 'Macro backdrop'],
 }
 
@@ -112,7 +112,7 @@ export function RightRail(props: RightRailProps) {
         </ul>
         <button
           type="button"
-          onClick={() => onNavigate('score')}
+          onClick={() => onNavigate('scores')}
           className="mt-2 text-[0.7rem] font-semibold text-accent hover:underline"
         >
           Full sub-metric breakdown →

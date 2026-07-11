@@ -45,7 +45,7 @@ import { pagerFor } from '@/lib/screenerOrder'
 
 export type PaneId =
   | 'overview' | 'brief'
-  | 'story' | 'chart' | 'score' | 'factors' | 'value'
+  | 'scores' | 'chart' | 'value'
   | 'financials' | 'filings'
   | 'insiders'
 
@@ -54,10 +54,8 @@ const PANE_GROUPS: Array<{ label: string; panes: Array<{ id: PaneId; label: stri
   {
     label: 'Analysis',
     panes: [
-      { id: 'story', label: 'Story' },
+      { id: 'scores', label: 'Scores' },
       { id: 'chart', label: 'Chart' },
-      { id: 'score', label: 'Score' },
-      { id: 'factors', label: 'Factors' },
       { id: 'value', label: 'Value' },
     ],
   },
@@ -67,14 +65,19 @@ const PANE_GROUPS: Array<{ label: string; panes: Array<{ id: PaneId; label: stri
 
 const PANE_IDS = PANE_GROUPS.flatMap((g) => g.panes.map((p) => p.id))
 
-/** g+<key> pane jumps (spec §7.3, extended to every pane). */
+// Old bookmarks/links used separate story/score/factors panes (now merged into
+// Scores). Redirect them so deep links keep working.
+const LEGACY_PANES: Record<string, PaneId> = { story: 'scores', score: 'scores', factors: 'scores' }
+
+/** g+<key> pane jumps. s/r/f all land on the merged Scores pane so the old
+ *  muscle memory (Story/Score/Factors) still works. */
 const G_KEYS: Record<string, PaneId> = {
-  o: 'overview', b: 'brief', s: 'story', c: 'chart', r: 'score',
-  f: 'factors', v: 'value', n: 'financials', l: 'filings', i: 'insiders',
+  o: 'overview', b: 'brief', s: 'scores', r: 'scores', f: 'scores',
+  c: 'chart', v: 'value', n: 'financials', l: 'filings', i: 'insiders',
 }
 
 /** Panes that read better with the right rail; charts/tables take full width. */
-const RAIL_PANES: PaneId[] = ['overview', 'brief', 'factors', 'value']
+const RAIL_PANES: PaneId[] = ['overview', 'brief', 'scores', 'value']
 
 function DeepDiveSkeleton() {
   return (
@@ -96,7 +99,9 @@ export function DeepDivePage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const rawPane = searchParams.get('pane')
-  const pane: PaneId = PANE_IDS.includes(rawPane as PaneId) ? (rawPane as PaneId) : 'brief'
+  const pane: PaneId = PANE_IDS.includes(rawPane as PaneId)
+    ? (rawPane as PaneId)
+    : (rawPane && LEGACY_PANES[rawPane]) || 'brief'
   const [days, setDays] = useState(365)
   const [compareOpen, setCompareOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -268,11 +273,22 @@ export function DeepDivePage() {
         </>
       )}
 
-      {pane === 'story' && (
+      {pane === 'scores' && (
         <>
-          <ScoreStoryPanel ticker={header.ticker} />
-          <ScoreForensicsPanel ticker={header.ticker} />
+          {/* headline: live composite + factor tiles */}
+          <FactorCards header={header} ticker={header.ticker} prices={prices} />
+          <p className="text-[0.72rem] text-subtle">
+            Cross-sectional percentile ranks within the US-listed universe (100 = top),
+            as of {header.score_date ?? 'n/a'} (nightly)
+            {weightStr ? ` · Weights: ${weightStr}` : ''}.
+          </p>
+          {/* what drives the composite → the drill-down → peer context */}
           <ScoreWaterfall header={header} />
+          <FactorInputsTable header={header} />
+          <PeerStrip ticker={header.ticker} composite={header.composite} />
+          {/* what changed since the last snapshot, then the full history */}
+          <ScoreForensicsPanel ticker={header.ticker} />
+          <ScoreStoryPanel ticker={header.ticker} />
         </>
       )}
 
@@ -285,20 +301,6 @@ export function DeepDivePage() {
           ticker={header.ticker}
           filings={data.filings}
         />
-      )}
-
-      {pane === 'score' && <FactorInputsTable header={header} />}
-
-      {pane === 'factors' && (
-        <>
-          <FactorCards header={header} ticker={header.ticker} prices={prices} />
-          <p className="text-[0.72rem] text-subtle">
-            Cross-sectional percentile ranks within the US-listed universe (100 = top),
-            as of {header.score_date ?? 'n/a'} (nightly)
-            {weightStr ? ` · Weights: ${weightStr}` : ''}.
-          </p>
-          <PeerStrip ticker={header.ticker} composite={header.composite} />
-        </>
       )}
 
       {pane === 'value' && (

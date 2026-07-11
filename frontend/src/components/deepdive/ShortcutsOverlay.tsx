@@ -15,8 +15,8 @@ export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: ()
   const rows: Array<[string, string]> = [
     ['J / K', 'Next / previous ticker (screener order)'],
     ['g then b', 'Go to Brief'],
-    ['g then o / s / c', 'Overview · Story · Chart'],
-    ['g then r / f / v', 'Score · Factors · Value'],
+    ['g then o / s', 'Overview · Scores (also r / f)'],
+    ['g then c / v', 'Chart · Value'],
     ['g then n / l / i', 'Financials · Filings · Insiders'],
     ['?', 'Toggle this overlay'],
     ['Esc', 'Close overlays'],
