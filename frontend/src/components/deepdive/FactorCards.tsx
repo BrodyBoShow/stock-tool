@@ -183,7 +183,7 @@ export function FactorCards({
               className="inline-flex items-center gap-1 text-[0.66rem] text-subtle"
               title="Adjusted close over the last 20 sessions — the price trend behind the live Momentum adjustment, not the momentum percentile itself."
             >
-              <Sparkline data={recentPx} width={60} height={16} />
+              <Sparkline data={recentPx} width={60} height={16} fmt={(v) => `$${v.toFixed(2)}`} />
               price · 20d
             </span>
           )}

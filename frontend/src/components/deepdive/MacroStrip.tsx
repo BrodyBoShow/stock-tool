@@ -13,13 +13,13 @@ function fmtVal(v: number | null, unit: string, dec: number): string {
 
 // Trailing window of a full FRED series, oldest→newest, for the trend sparkline.
 // Date strings are 'YYYY-MM-DD', so a string cutoff is a correct date compare.
-function recentValues(obs: MacroObservation[], years = 3): number[] {
-  if (obs.length === 0) return []
+// Keeps the dates so the sparkline hover can name the observation it's showing.
+function recentPoints(obs: MacroObservation[], years = 3): { values: number[]; dates: string[] } {
+  if (obs.length === 0) return { values: [], dates: [] }
   const latestDate = obs[obs.length - 1].date
   const cutoff = String(Number(latestDate.slice(0, 4)) - years) + latestDate.slice(4)
-  return obs
-    .filter((o) => o.date >= cutoff && o.value != null)
-    .map((o) => o.value as number)
+  const win = obs.filter((o) => o.date >= cutoff && o.value != null)
+  return { values: win.map((o) => o.value as number), dates: win.map((o) => o.date) }
 }
 
 function MacroTile({
@@ -33,7 +33,7 @@ function MacroTile({
   unit: string
   dec: number
   obs: MacroObservation[]
-  spark?: number[]
+  spark?: { values: number[]; dates: string[] }
 }) {
   const latest = obs[0] ?? null
   const prior = obs[1] ?? null
@@ -66,17 +66,19 @@ function MacroTile({
       ) : (
         <div className="mt-0.5 text-[0.72rem] text-subtle">no prior reading</div>
       )}
-      {spark && spark.length >= 2 && (
+      {spark && spark.values.length >= 2 && (
         <div className="mt-1.5">
           {/* Neutral slate — macro is direction-only context, never good/bad.
               Fluid so it fits the narrow 2-col mobile tile without overflow. */}
           <Sparkline
-            data={spark}
+            data={spark.values}
             color="var(--subtle)"
             width={132}
             height={22}
             fluid
             title={`${label} — last 3 years`}
+            fmt={(v) => `${v.toFixed(dec)}${unit}`}
+            labels={spark.dates.map((d) => fmtShortDate(d))}
           />
         </div>
       )}
@@ -109,9 +111,9 @@ export function MacroStrip() {
       const results = await Promise.all(
         MACRO_DISPLAY.map((m) => getMacroSeries(m.id).catch(() => null)),
       )
-      const map: Record<string, number[]> = {}
+      const map: Record<string, { values: number[]; dates: string[] }> = {}
       for (const r of results) {
-        if (r) map[r.series_id] = recentValues(r.observations)
+        if (r) map[r.series_id] = recentPoints(r.observations)
       }
       return map
     },

@@ -29,7 +29,14 @@ function pctCell(v: number | null): JSX.Element {
 function renderCell(f: EnrichedFund, key: FundColumnKey, showRank: boolean): JSX.Element {
   switch (key) {
     case 'spark':
-      return <Sparkline data={f.spark} color={plColor(f.r90d ?? 0)} title={`${f.ticker} ~90-day close`} />;
+      return (
+        <Sparkline
+          data={f.spark}
+          color={plColor(f.r90d ?? 0)}
+          title={`${f.ticker} ~90-day close`}
+          fmt={(v) => `$${v.toFixed(2)}`}
+        />
+      );
     case 'price': {
       const chg = f.r1d;
       return (

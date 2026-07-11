@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts'
+import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 
 import { InfoTip } from '@/components/ui/InfoTip'
 import { useChartTheme } from '@/lib/chartTheme'
@@ -71,7 +71,7 @@ export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
 
 export function MacroCardBox({ card }: { card: MarketMacroCard }) {
   const ct = useChartTheme()
-  const points = card.spark_values.map((v, i) => ({ i, v }))
+  const points = card.spark_values.map((v, i) => ({ i, v, d: card.spark_dates[i] ?? '' }))
   const hasData = Number.isFinite(card.latest)
   const trendUp = card.spark_values.length >= 2 && card.spark_values[card.spark_values.length - 1] >= card.spark_values[0]
   const deltaStr = card.delta == null ? '' : `${card.delta > 0 ? '+' : ''}${card.delta.toFixed(card.dec)}`
@@ -99,6 +99,20 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={points} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                 <YAxis hide domain={['dataMin', 'dataMax']} />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    const p = payload?.[0]?.payload as { v: number; d: string } | undefined
+                    if (!active || !p) return null
+                    return (
+                      <div className="rounded-md border border-line bg-surface px-2 py-1 text-[0.66rem] shadow-card">
+                        <span className="font-bold tabular-nums text-ink">
+                          {p.v.toFixed(card.dec)}{card.unit}
+                        </span>
+                        {p.d && <span className="ml-1.5 text-subtle">{fmtDate(p.d)}</span>}
+                      </div>
+                    )
+                  }}
+                />
                 <Line type="monotone" dataKey="v" stroke={trendUp ? ct.info : ct.muted} strokeWidth={1.4}
                   dot={false} isAnimationActive={false} />
               </LineChart>

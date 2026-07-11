@@ -65,6 +65,8 @@ function BackdropRow({ b }: { b: CommodityBackdrop }) {
             height={40}
             color={s.color}
             title={`${b.label} STEO path (${fmtMonth(b.near_period)} → ${fmtMonth(b.forward_period)})`}
+            fmt={(v) => v.toFixed(2)}
+            labels={b.path.map((p) => `${fmtMonth(p.period)}${p.is_forecast ? ' · forecast' : ''}`)}
           />
         </div>
       )}

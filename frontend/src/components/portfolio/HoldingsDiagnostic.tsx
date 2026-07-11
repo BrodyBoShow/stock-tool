@@ -616,6 +616,7 @@ function HoldingRow({
             height={20}
             color={plColor(day)}
             title={`${h.ticker ?? ''} 30-session closes`}
+            fmt={(v) => `$${v.toFixed(2)}`}
           />
         </td>
         <td className="px-2 py-2">
