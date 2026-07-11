@@ -215,7 +215,7 @@ export function OverviewPane({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <button
           type="button"
-          onClick={() => onNavigate('factors')}
+          onClick={() => onNavigate('scores')}
           className="rounded-lg border border-accent-solid bg-accent-solid p-3 text-left transition-colors hover:border-accent-hover"
         >
           <div className="text-[0.6rem] font-semibold uppercase tracking-[0.06em] text-accent-ink">
@@ -236,7 +236,7 @@ export function OverviewPane({
             key={label}
             label={label}
             value={value}
-            onClick={() => onNavigate('factors')}
+            onClick={() => onNavigate('scores')}
           />
         ))}
       </div>
