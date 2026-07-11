@@ -789,6 +789,34 @@ def watchlist_tickers(owner_id: str | None = None) -> frozenset[str]:
     return frozenset(r[0] for r in rows)
 
 
+def prewarm_brief_tickers() -> list[str]:
+    """The 'hot set' for nightly brief pre-warming: every active ticker that ANY
+    user watches or has ever transacted (union of all watchlists + portfolio
+    ledgers). Over-covers slightly (a few closed positions), which is harmless —
+    on Groq those briefs are free, and get_or_generate_brief skips any that lack
+    factor scores or already have a still-valid cached brief. Sorted for stable
+    logging."""
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT s.ticker
+                FROM securities s
+                WHERE s.is_active AND s.security_id IN (
+                    SELECT security_id FROM watchlist
+                    UNION
+                    SELECT DISTINCT security_id FROM portfolio_transactions
+                )
+                ORDER BY s.ticker
+                """
+            )
+            rows = cur.fetchall()
+    finally:
+        release(conn)
+    return [r[0] for r in rows]
+
+
 def news_signals_for(security_ids: list[int]) -> dict[int, dict[str, Any]]:
     """news_signals rows (GDELT coverage-volume spike, Slice 3.1) keyed by
     security_id. Empty dict when the table isn't populated yet. CONTEXT ONLY."""

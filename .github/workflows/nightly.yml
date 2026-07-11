@@ -36,6 +36,9 @@ jobs:
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Free/fast primary for the on-open AI (Decision Brief, Ask StockBud).
+      # Optional — empty just falls back to Anthropic (Haiku).
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       # Set this repo secret to make the nightly use Massive for prices; empty =
       # run_nightly falls back to yfinance automatically.
       MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
@@ -169,7 +172,11 @@ jobs:
       # DEMAND, cached on first page open, so spend still tracks actual usage.
       # Gated on the key; continue-on-error so a model outage never breaks the
       # pipeline. Runs last, after scoring, so briefs reflect the night's ranks.
-      - name: Warm watchlist Decision Briefs (Haiku)
-        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      # Pre-warm Decision Briefs for the hot set (every watched OR held ticker)
+      # so those deep-dive pages open instantly. Groq-first = free + fast (~2-4s
+      # each), Anthropic fallback. Bounded to the hot set, skips still-valid
+      # cached briefs — a nightly pass is cents at most (free with a Groq key).
+      - name: Warm hot-set Decision Briefs (Groq → Haiku)
+        if: ${{ env.GROQ_API_KEY != '' || env.ANTHROPIC_API_KEY != '' }}
         continue-on-error: true
-        run: python scripts/pregenerate_ai.py --top-n 0 --briefs-only
+        run: python scripts/prewarm_briefs.py --sleep 0.3

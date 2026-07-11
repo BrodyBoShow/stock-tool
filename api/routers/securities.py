@@ -439,7 +439,7 @@ def get_brief(ticker: str, background_tasks: BackgroundTasks) -> BriefStatusResp
             header["security_id"],
             brief_engine.PROMPT_VERSION, brief_engine.SCHEMA_VERSION,
         )
-        if cached is None and brief_engine.ANTHROPIC_KEY_AVAILABLE:
+        if cached is None and brief_engine.LLM_KEY_AVAILABLE:
             background_tasks.add_task(_kick_brief, ticker)
             generating = True
     return BriefStatusResponse(
