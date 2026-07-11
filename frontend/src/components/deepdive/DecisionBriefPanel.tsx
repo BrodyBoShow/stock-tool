@@ -254,7 +254,15 @@ function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
   )
 }
 
-function BriefBody({ cached, header }: { cached: DecisionBrief; header: SecurityHeader }) {
+function BriefBody({
+  cached,
+  header,
+  onOpenDiligence,
+}: {
+  cached: DecisionBrief
+  header: SecurityHeader
+  onOpenDiligence?: () => void
+}) {
   const b = cached.brief
   return (
     <div className="space-y-4">
@@ -326,6 +334,21 @@ function BriefBody({ cached, header }: { cached: DecisionBrief; header: Security
             </li>
           ))}
         </ul>
+        {onOpenDiligence && (
+          <button
+            type="button"
+            onClick={onOpenDiligence}
+            className="mt-2.5 flex w-full items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-left text-[0.78rem] transition-colors hover:border-accent"
+          >
+            <span className="min-w-0 text-muted">
+              These are exactly what the factor score can&apos;t see — a citation-grounded
+              filing read can answer several.
+            </span>
+            <span className="ml-auto flex-none whitespace-nowrap font-bold text-accent">
+              Run deep filing analysis →
+            </span>
+          </button>
+        )}
       </div>
 
       <p className="border-t border-line pt-3 text-[0.7rem] text-subtle">
@@ -346,9 +369,13 @@ function BriefBody({ cached, header }: { cached: DecisionBrief; header: Security
 export function DecisionBriefPanel({
   ticker,
   header,
+  onOpenDiligence,
 }: {
   ticker: string
   header: SecurityHeader
+  /** Opens the Filings pane's deep filing analysis (cross-link from the
+   *  "what to investigate next" card). */
+  onOpenDiligence?: () => void
 }) {
   const qc = useQueryClient()
   const toast = useToast()
@@ -427,7 +454,7 @@ export function DecisionBriefPanel({
               liveRankTotal={liveFactors?.rank_total}
             />
             {data.brief ? (
-              <BriefBody cached={data.brief} header={header} />
+              <BriefBody cached={data.brief} header={header} onOpenDiligence={onOpenDiligence} />
             ) : gen.isError ? (
               <div className="rounded-xl border border-dashed border-neg-border bg-[var(--neg-soft)] p-5 text-center">
                 <p className="text-[0.85rem] font-semibold text-neg">

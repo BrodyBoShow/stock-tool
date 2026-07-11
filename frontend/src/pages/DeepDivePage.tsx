@@ -255,7 +255,11 @@ export function DeepDivePage() {
 
       {pane === 'brief' && (
         <>
-          <DecisionBriefPanel ticker={header.ticker} header={header} />
+          <DecisionBriefPanel
+            ticker={header.ticker}
+            header={header}
+            onOpenDiligence={() => setSearchParams({ pane: 'filings', filing: 'diligence' })}
+          />
           <AskStockBudPanel key={header.ticker} ticker={header.ticker} />
           {header.sector === 'Health Care' && (
             <ClinicalPipelinePanel ticker={header.ticker} />
