@@ -450,7 +450,7 @@ export function DecisionBriefPanel({
               <div className="flex items-center gap-3 rounded-xl border border-accent bg-[var(--surface)] p-4">
                 <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
                 <p className="text-[0.85rem] text-muted">
-                  Preparing brief for {ticker} — usually ready in 15–30 seconds…
+                  Preparing brief for {ticker} — usually just a few seconds…
                 </p>
               </div>
             )}

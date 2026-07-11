@@ -107,9 +107,9 @@ export function OverviewTab({
         <MetricChip
           label="Max drawdown"
           value={s.max_drawdown != null ? fmtSignedPct(s.max_drawdown) : DASH}
-          sub={`net invested ${fmtMoney(s.net_invested)}`}
+          sub={s.cost_basis != null ? `on a ${fmtMoney(s.cost_basis)} book` : undefined}
           sentiment={s.max_drawdown != null ? 'neg' : 'neutral'}
-          gloss="The largest peak-to-trough drop your portfolio has taken — a gauge of how painful the worst stretch has been."
+          gloss="The largest peak-to-trough drop your portfolio has taken — a gauge of how painful the worst stretch has been. Shown against your cost basis (what you paid for the shares you currently hold)."
         />
       </div>
 
