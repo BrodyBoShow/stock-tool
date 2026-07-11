@@ -1136,6 +1136,24 @@ class MacroSeriesResponse(BaseModel):
     observations: list[MacroObservation]  # full history, oldest first
 
 
+# ── compare series (price-chart overlay) ──────────────────────────────────────
+
+class ComparePoint(BaseModel):
+    date: date
+    value: float | None
+
+
+class CompareSeries(BaseModel):
+    ticker: str
+    points: list[ComparePoint]  # oldest first
+
+
+class CompareSeriesResponse(BaseModel):
+    """Adjusted-close series for the price-chart compare overlay. Tickers with
+    no price data are omitted (never fabricated)."""
+    series: list[CompareSeries]
+
+
 # ── health ────────────────────────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):
