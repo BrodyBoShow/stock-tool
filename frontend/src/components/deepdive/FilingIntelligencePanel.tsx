@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { useToast } from '@/components/ui/Toast'
 import {
@@ -210,10 +211,19 @@ export function FilingIntelligencePanel({
   ticker: string
   filings: FilingRow[]
 }) {
+  const [searchParams] = useSearchParams()
+  // Deep-link hint: ?filing=diligence (e.g. from the Brief's "what to investigate
+  // next" cross-link) opens straight to the deep analysis and scrolls it in.
+  const wantsDiligence = searchParams.get('filing') === 'diligence'
   const [collapsed, setCollapsed] = useState(false)
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab] = useState<Tab>(wantsDiligence ? 'diligence' : 'overview')
+  const sectionRef = useRef<HTMLElement>(null)
   const qc = useQueryClient()
   const toast = useToast()
+
+  useEffect(() => {
+    if (wantsDiligence) sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [wantsDiligence])
 
   // ── Overview (summary) ──
   const sum = useQuery({
@@ -273,7 +283,7 @@ export function FilingIntelligencePanel({
         : null
 
   return (
-    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
+    <section ref={sectionRef} className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-start gap-3">
           <button
@@ -314,8 +324,43 @@ export function FilingIntelligencePanel({
         <>
           <div className="mt-3 inline-flex gap-1 rounded-xl bg-surface-2 p-1">
             <TabButton active={tab === 'overview'} onClick={() => setTab('overview')}>Overview</TabButton>
-            <TabButton active={tab === 'diligence'} onClick={() => setTab('diligence')}>Diligence</TabButton>
+            <TabButton active={tab === 'diligence'} onClick={() => setTab('diligence')}>
+              Diligence
+              {qa.data?.has_filing && !qa.data.answers && (
+                <span
+                  aria-hidden
+                  title="Deep analysis available — not run yet"
+                  className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle bg-accent"
+                />
+              )}
+            </TabButton>
           </div>
+
+          {/* Discoverability: surface the deep analysis from the default Overview
+              view so it isn't hidden behind the Diligence sub-tab. */}
+          {tab === 'overview' && qa.data?.has_filing && !qa.data.answers && !qaGen.isPending && (
+            <button
+              type="button"
+              onClick={() => {
+                setTab('diligence')
+                qaGen.mutate()
+              }}
+              className="mt-3 flex w-full items-center gap-2 rounded-xl border border-accent bg-accent-soft px-3.5 py-2.5 text-left transition-opacity hover:opacity-90"
+            >
+              <span className="flex-none rounded bg-accent-solid px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-accent-ink">
+                AI
+              </span>
+              <span className="min-w-0 text-[0.8rem] leading-snug text-ink">
+                <span className="font-semibold">Go deeper —</span> run a citation-grounded read of{' '}
+                {ticker}&apos;s {qaForm}
+                {qaForm === '20-F' ? '' : ' + 10-Q'} across nine diligence topics the factor score
+                can&apos;t see.
+              </span>
+              <span className="ml-auto flex-none whitespace-nowrap text-[0.78rem] font-bold text-accent">
+                Run analysis →
+              </span>
+            </button>
+          )}
 
           <div className="mt-4">
             {tab === 'overview' ? (

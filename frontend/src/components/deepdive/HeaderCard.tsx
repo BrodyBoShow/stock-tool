@@ -33,8 +33,8 @@ function ScoreGauge({ value }: { value: number }) {
         strokeDashoffset={c * (1 - frac)}
         transform="rotate(-90 36 36)"
       />
-      <text x="36" y="34" textAnchor="middle" className="numeric" fontSize="18" fontWeight="800" style={{ fill: 'var(--ink)' }}>
-        {value.toFixed(0)}
+      <text x="36" y="34" textAnchor="middle" className="numeric" fontSize={Number.isInteger(value) ? 18 : 16} fontWeight="800" style={{ fill: 'var(--ink)' }}>
+        {Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}
       </text>
       <text x="36" y="47" textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--subtle)' }}>
         / 100
@@ -129,7 +129,15 @@ export function HeaderCard({
                 <div className={STAT_VALUE}>{DASH}</div>
               )}
               <div>
-                <div className={STAT_LABEL}>Composite</div>
+                <div className={STAT_LABEL}>
+                  Composite{' '}
+                  <span
+                    title="Nightly factor snapshot. The Factors pane shows the live-adjusted value using today's price."
+                    className="cursor-help rounded bg-surface-3 px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-subtle"
+                  >
+                    nightly
+                  </span>
+                </div>
                 {compDelta != null && (
                   <div className="numeric text-[0.82rem] font-bold">
                     <Delta value={compDelta} /> <span className="font-normal text-subtle">wk</span>
