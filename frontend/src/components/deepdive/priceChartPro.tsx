@@ -252,7 +252,8 @@ export function MeasureBar({
 }: {
   rows: ProChartRow[]
   measure: Measurement
-  onZoom: () => void
+  /** Omit to hide the zoom button (e.g. Wyckoff mode measures without zooming). */
+  onZoom?: () => void
   onClear: () => void
 }) {
   const i1 = rows.findIndex((r) => r.date === measure.startDate)
@@ -299,16 +300,20 @@ export function MeasureBar({
           ann. {sPct(annualized, 1)}/yr
         </span>
       )}
-      <span className="tabular-nums text-muted">hi {money(hi)} · lo {money(lo)}</span>
+      <span className="tabular-nums text-muted" title="Highest and lowest close in the selection">
+        close hi {money(hi)} · lo {money(lo)}
+      </span>
       {vol > 0 && <span className="tabular-nums text-muted">Σvol {fmtVol(vol)}</span>}
       <span className="ml-auto flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onZoom}
-          className="rounded-md bg-accent-solid px-2 py-0.5 text-[0.7rem] font-bold text-accent-ink hover:bg-accent-hover"
-        >
-          Zoom to selection
-        </button>
+        {onZoom && (
+          <button
+            type="button"
+            onClick={onZoom}
+            className="rounded-md bg-accent-solid px-2 py-0.5 text-[0.7rem] font-bold text-accent-ink hover:bg-accent-hover"
+          >
+            Zoom to selection
+          </button>
+        )}
         <button
           type="button"
           onClick={onClear}

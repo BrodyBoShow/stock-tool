@@ -80,6 +80,8 @@ export function PriceChart({
   const [showSignals, setShowSignals] = useState(true)
   const [showPhases, setShowPhases] = useState(true)
   const [showTarget, setShowTarget] = useState(false)
+  const [evDir, setEvDir] = useState<'all' | 'bull' | 'bear'>('all')
+  const [minConf, setMinConf] = useState(0)
   const [overlayOn, setOverlayOn] = useState(false)
   const [seriesId, setSeriesId] = useState('VIXCLS')
   const [showMA50, setShowMA50] = useState(false)
@@ -734,9 +736,53 @@ export function PriceChart({
                 : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
-            <span className="h-2 w-2 rounded-full" style={{ background: showSignals ? '#7c3aed' : '#cbd5e1' }} />
+            <span className="h-2 w-2 rounded-full" style={{ background: showSignals ? '#7c3aed' : 'var(--border-strong)' }} />
             Candidate signals
           </button>
+          {showSignals && (
+            <>
+              <div className="flex gap-0.5 rounded-lg bg-surface-3 p-0.5" role="group" aria-label="Signal direction filter">
+                {(['all', 'bull', 'bear'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setEvDir(d)}
+                    aria-pressed={evDir === d}
+                    title={
+                      d === 'all'
+                        ? 'Show every candidate event'
+                        : d === 'bull'
+                          ? 'Only bullish candidates (SC, AR, ST, Spring, Test, SOS, LPS)'
+                          : 'Only bearish candidates (BC, AR, ST, UT, UTAD, SOW, LPSY)'
+                    }
+                    className={
+                      'rounded-md px-2 py-0.5 text-[0.7rem] font-bold capitalize transition-colors ' +
+                      (evDir === d ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink')
+                    }
+                  >
+                    {d === 'all' ? 'All' : d === 'bull' ? 'Bullish' : 'Bearish'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-0.5 rounded-lg bg-surface-3 p-0.5" role="group" aria-label="Minimum signal confidence">
+                {([0, 0.5, 0.7] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setMinConf(c)}
+                    aria-pressed={minConf === c}
+                    title={c === 0 ? 'Show candidates at any confidence' : `Hide candidates below ${Math.round(c * 100)}% confidence`}
+                    className={
+                      'rounded-md px-2 py-0.5 text-[0.7rem] font-bold transition-colors ' +
+                      (minConf === c ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink')
+                    }
+                  >
+                    {c === 0 ? 'Any %' : `≥${Math.round(c * 100)}%`}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setShowPhases((x) => !x)}
@@ -835,12 +881,17 @@ export function PriceChart({
       {/* Charts */}
       {mode === 'wyckoff' ? (
         <div className="mt-4">
+          {/* key: remount on window change so a pinned bar / measurement can't
+              point at a stale index in a different bar set */}
           <WyckoffChart
+            key={`${wyckoff.bars.length}-${wyckoff.bars[0]?.date ?? ''}`}
             analysis={wyckoff}
             isFetching={isFetching}
             showSignals={showSignals}
             showPhases={showPhases}
             showTarget={showTarget}
+            evDir={evDir}
+            minConf={minConf}
           />
         </div>
       ) : (
