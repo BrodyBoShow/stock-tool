@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import anthropic
+import httpx
 from dotenv import load_dotenv
 
 from engine import events as events_engine
@@ -39,6 +40,15 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # Model centralized in engine/config.py (override with the LLM_MODEL env var);
 # Haiku by default per the cost posture.
 MODEL = LLM_MODEL
+
+# Groq is tried FIRST for the structured brief: free and much faster than Haiku
+# (~2-4s vs ~15s for a 2k-token JSON brief), so the first open of any stock is
+# quick. Any failure (no key, rate-limited, malformed JSON) falls back to the
+# Anthropic schema-enforced call, so quality/shape are never at risk. Same
+# provider order the Ask assistant uses.
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+BRIEF_MAX_TOKENS = 2000
 PROMPT_VERSION = "v4"  # v2: insider; v3: 8-K events; v4: score_read meta-layer
 SCHEMA_VERSION = "v4"  # v3: web-search price_move_context; v4: trigger on up+down moves
 
@@ -50,6 +60,9 @@ SCHEMA_VERSION = "v4"  # v3: web-search price_move_context; v4: trigger on up+do
 WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_uses": 1}
 
 ANTHROPIC_KEY_AVAILABLE: bool = bool(os.getenv("ANTHROPIC_API_KEY"))
+# Either provider can produce a brief now (Groq primary, Anthropic fallback), so
+# the auto-generate-on-open path gates on "any LLM key", not Anthropic alone.
+LLM_KEY_AVAILABLE: bool = bool(os.getenv("GROQ_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
 
 BRIEF_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -399,17 +412,119 @@ def render_prompt(ctx: dict[str, Any]) -> str:
 
 # ── Claude call + orchestration ───────────────────────────────────────────────
 
-def generate_brief(ctx: dict[str, Any]) -> tuple[dict[str, Any], int | None, int | None]:
-    """Ask Claude for the structured brief. Returns (brief, in_tok, out_tok)."""
+# Groq's JSON mode isn't schema-enforced (unlike Anthropic's json_schema), so we
+# spell out the exact shape in the prompt and validate the result before trusting
+# it. Keys/enums mirror BRIEF_SCHEMA — keep them in sync.
+_GROQ_JSON_HINT = (
+    "\n\nReturn ONLY a JSON object (no prose, no code fence) with EXACTLY these "
+    "keys:\n"
+    '- "one_liner": string\n'
+    '- "score_read": object with "drivers" (string) and "blind_spot" (string)\n'
+    '- "bull_case": array of 2-4 strings\n'
+    '- "bear_case": array of 2-4 strings\n'
+    '- "key_catalyst": string\n'
+    '- "main_risk": string\n'
+    '- "data_confidence": object with "level" ("high"|"medium"|"low") and '
+    '"reason" (string)\n'
+    '- "next_questions": array of 2-3 strings\n'
+    "Every claim must cite numbers from the input. No extra keys."
+)
+
+
+def _valid_brief(obj: Any) -> bool:
+    """Structural check that a parsed brief matches what the API's DecisionBrief
+    pydantic model REQUIRES (Groq isn't schema-enforced). Must be at least as
+    strict as that model on every required leaf: a brief that passes here but
+    fails pydantic would be cached, then 500 on every read until it's
+    invalidated. Anything off → caller falls back to Anthropic's enforced call."""
+    if not isinstance(obj, dict):
+        return False
+    top = ("one_liner", "score_read", "bull_case", "bear_case", "key_catalyst",
+           "main_risk", "data_confidence", "next_questions")
+    if any(k not in obj for k in top):
+        return False
+    sr = obj["score_read"]
+    if (not isinstance(sr, dict)
+            or not isinstance(sr.get("drivers"), str)
+            or not isinstance(sr.get("blind_spot"), str)):
+        return False
+    dc = obj["data_confidence"]
+    if (not isinstance(dc, dict)
+            or dc.get("level") not in ("high", "medium", "low")
+            or not isinstance(dc.get("reason"), str)):
+        return False
+    for key in ("one_liner", "key_catalyst", "main_risk"):
+        if not isinstance(obj[key], str):
+            return False
+    for key in ("bull_case", "bear_case", "next_questions"):
+        v = obj[key]
+        if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+            return False
+    return True
+
+
+def _extract_json(text: str) -> Any:
+    """Parse a model's JSON, tolerating a ```json code fence."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        if t[:4].lower() == "json":
+            t = t[4:]
+        t = t.strip()
+    return json.loads(t)
+
+
+def _generate_via_groq(
+    ctx: dict[str, Any],
+) -> tuple[dict[str, Any], int | None, int | None, str] | None:
+    """Structured brief via Groq (free, fast). Returns (brief, in_tok, out_tok,
+    model) or None if the key is missing / the call fails / output is malformed —
+    the caller then falls back to Anthropic."""
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        return None
+    try:
+        resp = httpx.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {key}"},
+            json={
+                "model": GROQ_MODEL,
+                "max_tokens": BRIEF_MAX_TOKENS,
+                "temperature": 0.3,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT + _GROQ_JSON_HINT},
+                    {"role": "user", "content": render_prompt(ctx)},
+                ],
+            },
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        brief = _extract_json(data["choices"][0]["message"]["content"])
+        if not _valid_brief(brief):
+            log.warning("Groq brief failed schema validation; falling back")
+            return None
+        usage = data.get("usage") or {}
+        return brief, usage.get("prompt_tokens"), usage.get("completion_tokens"), GROQ_MODEL
+    except Exception as exc:  # noqa: BLE001 — any Groq failure → Anthropic fallback
+        log.warning("Groq brief failed (%s); falling back to Anthropic", exc)
+        return None
+
+
+def _generate_via_anthropic(
+    ctx: dict[str, Any],
+) -> tuple[dict[str, Any], int | None, int | None, str]:
+    """Structured brief via Anthropic with schema enforcement (the fallback)."""
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Add it to .env before generating "
-            "decision briefs."
+            "No LLM key configured. Set GROQ_API_KEY (free) or ANTHROPIC_API_KEY "
+            "before generating decision briefs."
         )
     client = anthropic.Anthropic()
     resp = client.messages.create(
         model=MODEL,
-        max_tokens=2000,
+        max_tokens=BRIEF_MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": render_prompt(ctx)}],
         output_config={"format": {"type": "json_schema", "schema": BRIEF_SCHEMA}},
@@ -417,7 +532,18 @@ def generate_brief(ctx: dict[str, Any]) -> tuple[dict[str, Any], int | None, int
     text = next(b.text for b in resp.content if b.type == "text")
     brief = json.loads(text)
     usage = resp.usage
-    return brief, getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None)
+    return brief, getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None), MODEL
+
+
+def generate_brief(
+    ctx: dict[str, Any],
+) -> tuple[dict[str, Any], int | None, int | None, str]:
+    """Ask for the structured brief — Groq first (fast/free), Anthropic fallback
+    (schema-enforced). Returns (brief, in_tok, out_tok, model)."""
+    via_groq = _generate_via_groq(ctx)
+    if via_groq is not None:
+        return via_groq
+    return _generate_via_anthropic(ctx)
 
 
 # ── gated web-search "what's behind the move" ─────────────────────────────────
@@ -599,12 +725,13 @@ def get_or_generate_brief(ticker: str, *, force: bool = False) -> dict[str, Any]
         if cached is not None and _brief_still_valid(cached, ctx, security_id):
             return cached
 
-    brief, in_tok, out_tok = generate_brief(ctx)
+    brief, in_tok, out_tok, model = generate_brief(ctx)
 
-    # Optional, gated: for a notable price drop, run one quick web search to
+    # Optional, gated: for a notable price move, run one quick web search to
     # explain the cause and attach it to the brief. Best-effort and cost-bounded
     # (only fires for big moves; capped searches) — a failure just omits the card.
-    if _notable_move(ctx):
+    # Anthropic-only (web search is a Claude server tool); skipped without the key.
+    if _notable_move(ctx) and os.getenv("ANTHROPIC_API_KEY"):
         research = _research_move(ctx)
         if research and research.get("summary"):
             brief["price_move_context"] = {
@@ -616,7 +743,7 @@ def get_or_generate_brief(ticker: str, *, force: bool = False) -> dict[str, Any]
         security_id=security_id,
         score_date=score_date,
         brief=brief,
-        model=MODEL,
+        model=model,
         prompt_version=PROMPT_VERSION,
         schema_version=SCHEMA_VERSION,
         input_tokens=in_tok,
