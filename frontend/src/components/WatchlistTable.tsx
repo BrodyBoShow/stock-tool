@@ -241,7 +241,10 @@ export function WatchlistTable({
                 <div className={`${cell} h-full`}>
                   <ScoreCell factor="momentum" value={r.momentum_pctl} live={live?.[r.ticker]?.momentum_live} />
                 </div>
-                <div className={`${cell} flex h-full items-center justify-center px-2`}>
+                {/* z-10 (not the pointer-events-none `cell`) so the sparkline
+                    receives hover; the row's absolute-inset Link still covers
+                    the rest of the row for click-through. */}
+                <div className="relative z-10 flex h-full items-center justify-center px-2">
                   <Sparkline
                     data={r.price_history}
                     title={`${r.ticker} price over the last ${r.price_history?.length ?? 0} sessions`}

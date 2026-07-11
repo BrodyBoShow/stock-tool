@@ -795,7 +795,7 @@ export function PriceChart({
                 : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
-            <span className="h-2 w-2 rounded-sm" style={{ background: showPhases ? '#64748b' : '#cbd5e1' }} />
+            <span className="h-2 w-2 rounded-sm" style={{ background: showPhases ? '#64748b' : 'var(--border-strong)' }} />
             Phases
           </button>
           <button
@@ -810,7 +810,7 @@ export function PriceChart({
                 : 'border-line bg-surface text-muted hover:bg-surface-2')
             }
           >
-            <span className="h-2 w-2 rounded-full" style={{ background: showTarget ? '#15803d' : '#cbd5e1' }} />
+            <span className="h-2 w-2 rounded-full" style={{ background: showTarget ? '#15803d' : 'var(--border-strong)' }} />
             Target
           </button>
         </div>

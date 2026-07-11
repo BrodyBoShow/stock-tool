@@ -102,7 +102,11 @@ export function Sparkline({
     <span
       ref={ref}
       className="relative mt-1 block"
-      style={fluid ? { width: '100%' } : undefined}
+      // Non-fluid: pin the span to the svg's px width so the pointer→index math
+      // (frac of the span) and the bubble's %-left anchor both match the fixed
+      // svg. Without this the span stretches to its td and the hover dot drifts
+      // away from the cursor.
+      style={fluid ? { width: '100%' } : { width }}
       // The browser title would double up with the hover bubble — only offer it
       // while the pointer isn't producing the richer readout.
       title={hoverIdx == null ? title ?? `Trend over the last ${n} points` : undefined}

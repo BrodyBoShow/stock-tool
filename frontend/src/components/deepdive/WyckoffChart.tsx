@@ -401,8 +401,12 @@ export function WyckoffChart({
       {/* tooltip */}
       {hb && (
         <div
-          className={`absolute top-1 z-10 rounded-lg border bg-surface px-3 py-2 text-xs shadow-card ${
-            pinnedSafe !== null ? 'border-accent' : 'pointer-events-none border-line'
+          // Always pointer-events-none so the tooltip never becomes a dead zone
+          // over the bars (and a mid-drag cursor crossing it can't fire the
+          // svg's onMouseLeave and cancel the measurement). Only the ✕ opts back
+          // into pointer events.
+          className={`pointer-events-none absolute top-1 z-10 rounded-lg border bg-surface px-3 py-2 text-xs shadow-card ${
+            pinnedSafe !== null ? 'border-accent' : 'border-line'
           }`}
           style={{ left: `${(tooltipFrac * 100).toFixed(2)}%`, transform: tooltipFrac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)' }}
         >
@@ -413,7 +417,7 @@ export function WyckoffChart({
                 type="button"
                 onClick={() => setPinned(null)}
                 aria-label="Unpin"
-                className="rounded px-1 text-[0.7rem] font-bold text-muted hover:text-ink"
+                className="pointer-events-auto rounded px-1 text-[0.7rem] font-bold text-muted hover:text-ink"
               >
                 ✕
               </button>
@@ -439,7 +443,7 @@ export function WyckoffChart({
             </div>
           )}
           {inRange && range && (
-            <div className="mt-1 text-[0.68rem]" style={{ color: '#378ADD' }}>
+            <div className="mt-1 text-[0.68rem]" style={{ color: 'var(--info)' }}>
               Range ${range.support.toFixed(2)}–${range.resistance.toFixed(2)}
               {range.support > 0 && ` · ${(((range.resistance - range.support) / range.support) * 100).toFixed(1)}% wide`}
             </div>
