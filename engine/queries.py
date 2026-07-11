@@ -595,6 +595,39 @@ def price_history_rows(ticker: str, days: int | None = None) -> list[dict[str, A
     ]
 
 
+def compare_series_bulk(tickers: list[str], days: int) -> dict[str, list[dict[str, Any]]]:
+    """Adjusted-close series for up to a handful of tickers at once — powers the
+    price-chart compare overlay. Deliberately does NOT filter on is_active:
+    benchmark ETFs (SPY/QQQ/IWM) are stored inactive (they're not operating
+    companies) but their prices are exactly what a compare overlay needs.
+    Returns {TICKER: [{date, value}, ...]} ascending; unknown tickers are simply
+    absent from the result (the frontend treats that as "no data")."""
+    if not tickers:
+        return {}
+    cutoff = date.today() - timedelta(days=days)
+    conn = acquire()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.ticker, p.date, p.adj_close
+                FROM prices_daily p
+                JOIN securities s ON s.security_id = p.security_id
+                WHERE s.ticker = ANY(%s) AND p.date >= %s AND p.adj_close IS NOT NULL
+                ORDER BY s.ticker, p.date
+                """,
+                (tickers, cutoff),
+            )
+            rows = cur.fetchall()
+    finally:
+        release(conn)
+
+    out: dict[str, list[dict[str, Any]]] = {}
+    for tkr, d, v in rows:
+        out.setdefault(tkr, []).append({"date": d, "value": _f(v)})
+    return out
+
+
 def fundamental_metric_rows(ticker: str) -> list[dict[str, Any]]:
     """Point-in-time fundamental_metrics for one ticker (metric_version=v1).
 

@@ -23,6 +23,7 @@ import type {
   LinkSyncResponse,
   LiveFactorsResponse,
   NewsNarrativeResponse,
+  CompareSeriesResponse,
   MacroLatestResponse,
   MacroSeriesResponse,
   MarketBriefResponse,
@@ -265,6 +266,12 @@ export function getMacroLatest(): Promise<MacroLatestResponse> {
 
 export function getMacroSeries(seriesId: string): Promise<MacroSeriesResponse> {
   return getJson<MacroSeriesResponse>(`/macro/series/${encodeURIComponent(seriesId)}`)
+}
+
+/** Adjusted-close series for the price-chart compare overlay (max 6 tickers). */
+export function getCompareSeries(tickers: string[], days: number): Promise<CompareSeriesResponse> {
+  const q = new URLSearchParams({ tickers: tickers.join(','), days: String(days) })
+  return getJson<CompareSeriesResponse>(`/market/compare-series?${q.toString()}`)
 }
 
 export function getSummaryStatus(

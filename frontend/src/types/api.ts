@@ -915,6 +915,22 @@ export interface MacroSeriesResponse {
   observations: MacroObservation[]
 }
 
+// ── Compare series (price-chart overlay) ──────────────────────────────────────
+
+export interface ComparePoint {
+  date: string
+  value: number | null
+}
+
+export interface CompareSeries {
+  ticker: string
+  points: ComparePoint[] // oldest first
+}
+
+export interface CompareSeriesResponse {
+  series: CompareSeries[] // tickers with no data are omitted
+}
+
 // ── Market overview (Market tab) ──────────────────────────────────────────────
 
 export interface MarketSectorRow {
