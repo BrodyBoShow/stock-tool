@@ -245,6 +245,7 @@ export function WatchlistTable({
                   <Sparkline
                     data={r.price_history}
                     title={`${r.ticker} price over the last ${r.price_history?.length ?? 0} sessions`}
+                    fmt={(v) => `$${v.toFixed(2)}`}
                   />
                 </div>
                 <div className="relative z-10 flex h-full items-center justify-center px-1">

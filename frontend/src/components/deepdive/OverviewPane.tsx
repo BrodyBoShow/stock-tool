@@ -304,6 +304,7 @@ export function OverviewPane({
               data={closes.length >= 2 ? closes : null}
               fluid
               height={56}
+              fmt={(v) => `$${v.toFixed(2)}`}
               title={
                 windowFrom
                   ? `Adjusted close since ${fmtDate(windowFrom)}`
