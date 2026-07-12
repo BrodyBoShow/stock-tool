@@ -36,25 +36,25 @@
   color-scheme: light;
 
   /* ---- surfaces ---- */
-  --bg: #faf7f2; /* page canvas — warm cream, not paper white */
-  --bg-grad-1: #faf7f2; /* body gradient stops (cream ramp) */
-  --bg-grad-2: #f4eee3;
-  --bg-grad-3: #ede4d3;
-  --surface: #ffffff; /* cards, panels — pure white against the cream body */
-  --surface-2: #f7f2ea; /* inputs, nested surfaces, table headers */
-  --surface-3: #efe8da; /* hover / pressed / selected rows */
-  --nav-bg: rgba(250, 247, 242, 0.88); /* frosted top-nav (pre-alpha'd) */
+  --bg: #faf8f4; /* page canvas — softly warm, not full cream */
+  --bg-grad-1: #faf8f4; /* body gradient stops (gentle warm ramp) */
+  --bg-grad-2: #f4f0e8;
+  --bg-grad-3: #ece6da;
+  --surface: #ffffff; /* cards, panels — pure white against the warm body */
+  --surface-2: #f6f2ec; /* inputs, nested surfaces, table headers */
+  --surface-3: #eee8dd; /* hover / pressed / selected rows */
+  --nav-bg: rgba(250, 248, 244, 0.88); /* frosted top-nav (pre-alpha'd) */
 
   /* ---- text ---- */
   --ink: #14110e; /* primary copy — warm near-black */
   --muted: #57514a; /* secondary copy (AA on light) */
   --subtle: #78715f; /* tertiary — 4.85:1 on white so micro-labels clear AA */
-  --inverse: #faf7f2; /* copy on dark fills */
+  --inverse: #faf8f4; /* copy on dark fills */
 
   /* ---- lines ---- */
-  --border: #e5ddcc;
-  --border-strong: #c9bfa8;
-  --divider: #efe8da;
+  --border: #e4ded2;
+  --border-strong: #c8c0b0;
+  --divider: #eee8dd;
 
   /* ---- brand accent (deep amber) — the ONE brand color ---- */
   --primary: #0e5f58; /* secondary data / benchmark series (petrol teal) */
@@ -131,23 +131,23 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --bg: #0e0c0a;
-  --bg-grad-1: #0e0c0a;
-  --bg-grad-2: #14110d;
-  --bg-grad-3: #1a1612;
-  --surface: #16130f;
-  --surface-2: #1f1b16;
-  --surface-3: #2a241d;
-  --nav-bg: rgba(14, 12, 10, 0.85);
+  --bg: #131211;
+  --bg-grad-1: #131211;
+  --bg-grad-2: #171512;
+  --bg-grad-3: #1b1815;
+  --surface: #1c1a17;
+  --surface-2: #26231e;
+  --surface-3: #312d26;
+  --nav-bg: rgba(20, 18, 16, 0.85);
 
-  --ink: #f2ebdd;
-  --muted: #a39b8a;
-  --subtle: #7d7466;
-  --inverse: #0e0c0a;
+  --ink: #efeae0;
+  --muted: #a6a094;
+  --subtle: #837c70;
+  --inverse: #131211;
 
-  --border: #2a241d;
-  --border-strong: #3d362b;
-  --divider: #1f1b16;
+  --border: #322e28;
+  --border-strong: #464036;
+  --divider: #262320;
 
   --primary: #5eead4;
   /* Dark accent buttons use a BRIGHT amber fill + DARK ink (the modern dark
@@ -156,7 +156,7 @@
   --accent-solid: #fbbf24;
   --accent-hover: #fcd34d;
   --accent-soft: rgba(251, 191, 36, 0.15);
-  --accent-ink: #0e0c0a;
+  --accent-ink: #131211;
 
   --pos: #4ade80;
   --pos-strong: #22c55e;
@@ -213,7 +213,7 @@
     --accent-solid: #fbbf24;
     --accent-hover: #fcd34d;
     --accent-soft: rgba(251, 191, 36, 0.15);
-    --accent-ink: #0e0c0a;
+    --accent-ink: #131211;
 
     --pos: #4ade80;
     --pos-strong: #22c55e;
