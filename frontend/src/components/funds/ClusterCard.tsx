@@ -152,7 +152,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
           </span>
         )}
         {cluster.most_liquid_ticker && (
-          <span className="rounded bg-purple-600 px-2 py-0.5 text-[0.6rem] font-bold text-white">
+          <span className="rounded bg-info px-2 py-0.5 text-[0.6rem] font-bold text-inverse">
             ≡ MOST LIQUID: {cluster.most_liquid_ticker}
           </span>
         )}

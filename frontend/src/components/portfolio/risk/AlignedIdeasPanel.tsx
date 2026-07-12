@@ -75,7 +75,7 @@ export function AlignedIdeasPanel({
             id="ideas-sector"
             value={sector}
             onChange={(e) => setSector(e.target.value)}
-            className="rounded-lg border border-line bg-surface px-2 py-1 text-[0.75rem] text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-indigo-200"
+            className="rounded-lg border border-line bg-surface px-2 py-1 text-[0.75rem] text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent-soft"
           >
             <option value="">All sectors</option>
             {sectors.map((s) => (

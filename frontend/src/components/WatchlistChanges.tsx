@@ -57,7 +57,7 @@ function Chip({
     insider: 'border-pos-border bg-pos-soft text-pos',
     review: 'border-warn bg-warn-soft text-warn',
     quiet: 'border-[var(--divider)] bg-[var(--surface-2)] text-subtle',
-    news: 'border-violet-200 bg-violet-50 text-violet-700',
+    news: 'border-line bg-info-soft text-info',
   }
   return (
     <span

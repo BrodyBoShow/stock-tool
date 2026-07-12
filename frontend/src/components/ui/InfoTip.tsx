@@ -54,7 +54,7 @@ export function InfoTip({ text, className = '' }: { text: string; className?: st
         onMouseLeave={() => setRect(null)}
         onFocus={(e) => show(e.currentTarget)}
         onBlur={() => setRect(null)}
-        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-line text-[0.55rem] font-bold leading-none text-muted transition-colors hover:border-line-strong hover:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40"
+        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-line text-[0.55rem] font-bold leading-none text-muted transition-colors hover:border-line-strong hover:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft"
       >
         <span aria-hidden="true">?</span>
       </button>

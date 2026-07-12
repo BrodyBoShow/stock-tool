@@ -48,8 +48,8 @@ export function ScreenerDrawer({
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-[0.9rem] font-extrabold text-white"
-              style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-[var(--r-md)] font-mono text-[0.9rem] font-bold text-accent-ink"
+              style={{ background: 'var(--accent-solid)' }}
             >
               {row.ticker.slice(0, 2)}
             </div>

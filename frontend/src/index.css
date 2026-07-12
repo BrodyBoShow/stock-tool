@@ -1,99 +1,118 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── StockBud design tokens — theme-aware (light + dark) ───────────────────────
+/* ── StockBud design tokens — "warm-paper terminal" (light + dark) ─────────────
  * Single source of truth for color. Reference by name (var(--token) or the
  * Tailwind aliases in tailwind.config.js, e.g. text-ink / bg-surface / text-pos).
  * NEVER hard-code hex in components — that's what breaks the theme flip.
  *
- * Mechanism: :root holds LIGHT defaults. A [data-theme="dark"] attribute on
- * <html> (set by the anti-FOUC script in index.html + ThemeProvider) overrides
- * the color tokens. A prefers-color-scheme media query covers first-visit users
- * before JS runs; the explicit attribute always wins (manual toggle). Non-color
- * tokens (type scale, radii, motion) are theme-independent and live only here.
+ * Identity (2026-07 refresh): cream/ink paper canvas, hairline rules instead of
+ * soft shadows, deep-amber brand accent + petrol-teal benchmark color, IBM Plex
+ * Sans for words + IBM Plex Mono for every number. Institutional, calm, dense.
+ *
+ * Mechanism: :root holds LIGHT defaults. A [data-theme="dark"] attribute
+ * (set on <html> by the anti-FOUC script in index.html + ThemeProvider)
+ * overrides the color tokens. The selector is deliberately element-agnostic so
+ * a subtree can opt into dark as a "theme island" (e.g. the constant-dark nav
+ * frame) by carrying data-theme="dark" itself. A prefers-color-scheme media
+ * query covers first-visit users before JS runs; the explicit attribute always
+ * wins (manual toggle). Non-color tokens (type scale, radii, motion) are
+ * theme-independent and live only here.
+ *
+ * Deliberate deviations from the design spec (documented, don't "fix" back):
+ *  - --warn is ORANGE, not the accent's amber: warning chips must not read as
+ *    selected/brand chips (accent-soft vs warn-soft would collide otherwise).
+ *  - --accent-ink keeps its existing app semantic: copy ON the solid accent
+ *    fill (white in light, near-black on the bright dark amber) — NOT the
+ *    spec's "text on accent-soft" (that role is plain text-accent, which
+ *    passes AA on the soft wash).
+ *  - Light --band-2/--band-3 are darker than the spec (teal 3.2:1 / mustard
+ *    2.4:1 fail AA) because band tokens double as chip/stamp TEXT colors here.
+ *  - Dark --subtle lifted (#6B6358→#7D7466): this design leans on 10px
+ *    uppercase micro-labels, so tertiary text must clear ~4:1.
  * ─────────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
 
   /* ---- surfaces ---- */
-  --bg: #f7f8fa; /* page canvas */
-  --bg-grad-1: #eff6ff; /* body gradient stops (neutral blue, no purple) */
-  --bg-grad-2: #ffffff;
-  --bg-grad-3: #f2f5fb;
-  --surface: #ffffff; /* cards, panels */
-  --surface-2: #f1f5f9; /* inputs, elevated rows */
-  --surface-3: #e9eef4; /* hover / pressed */
-  --nav-bg: rgba(255, 255, 255, 0.85); /* frosted top-nav (pre-alpha'd) */
+  --bg: #faf7f2; /* page canvas — warm cream, not paper white */
+  --bg-grad-1: #faf7f2; /* body gradient stops (cream ramp) */
+  --bg-grad-2: #f4eee3;
+  --bg-grad-3: #ede4d3;
+  --surface: #ffffff; /* cards, panels — pure white against the cream body */
+  --surface-2: #f7f2ea; /* inputs, nested surfaces, table headers */
+  --surface-3: #efe8da; /* hover / pressed / selected rows */
+  --nav-bg: rgba(250, 247, 242, 0.88); /* frosted top-nav (pre-alpha'd) */
 
   /* ---- text ---- */
-  --ink: #0f172a; /* primary copy */
-  --muted: #64748b; /* secondary copy (AA on light) */
-  --subtle: #94a3b8; /* tertiary — LARGE text only */
-  --inverse: #ffffff; /* copy on dark fills */
+  --ink: #14110e; /* primary copy — warm near-black */
+  --muted: #57514a; /* secondary copy (AA on light) */
+  --subtle: #8b8478; /* tertiary — LARGE/bold-micro text only */
+  --inverse: #faf7f2; /* copy on dark fills */
 
   /* ---- lines ---- */
-  --border: #e5e9f0;
-  --border-strong: #cbd5e1;
-  --divider: #eef1f6;
+  --border: #e5ddcc;
+  --border-strong: #c9bfa8;
+  --divider: #efe8da;
 
-  /* ---- brand accent (indigo) — the ONE brand color ---- */
-  --primary: #2563eb; /* secondary data / benchmark blue (kept distinct) */
-  --accent: #4f46e5; /* accent text / underline / icon */
-  --accent-solid: #4f46e5; /* solid button fill */
-  --accent-hover: #4338ca; /* button hover */
-  --accent-soft: rgba(79, 70, 229, 0.1); /* tinted surfaces / selected */
+  /* ---- brand accent (deep amber) — the ONE brand color ---- */
+  --primary: #0e5f58; /* secondary data / benchmark series (petrol teal) */
+  --accent: #b45309; /* accent text / underline / icon */
+  --accent-solid: #b45309; /* solid button fill */
+  --accent-hover: #92400e; /* button hover */
+  --accent-soft: rgba(180, 83, 9, 0.13); /* tinted surfaces / selected */
   --accent-ink: #ffffff; /* copy on the solid accent */
 
   /* ---- semantic data colors (3 tiers) — gain / loss / caution / neutral ----
    * TEXT tier (AA on its surface): --pos/--neg/--warn/--flat
    * SOLID/FILL tier (bars, dots, strokes): --*-strong
    * SOFT/TINT tier (chip & cell backgrounds): --*-soft (+ optional -border) */
-  --pos: #059669;
-  --pos-strong: #16a34a;
-  --pos-soft: rgba(16, 185, 129, 0.12);
-  --pos-border: #86efac;
-  --neg: #dc2626;
-  --neg-strong: #ef4444;
-  --neg-soft: rgba(239, 68, 68, 0.11);
-  --neg-border: #fecaca;
-  --warn: #d97706;
-  --warn-strong: #f59e0b;
-  --warn-soft: rgba(245, 158, 11, 0.14);
-  --info: #0891b2;
-  --info-soft: rgba(8, 145, 178, 0.12);
-  --flat: #64748b;
+  --pos: #15803d;
+  --pos-strong: #166534;
+  --pos-soft: rgba(21, 128, 61, 0.12);
+  --pos-border: rgba(21, 128, 61, 0.35);
+  --neg: #b91c1c;
+  --neg-strong: #991b1b;
+  --neg-soft: rgba(185, 28, 28, 0.1);
+  --neg-border: rgba(185, 28, 28, 0.3);
+  --warn: #c2410c;
+  --warn-strong: #ea580c;
+  --warn-soft: rgba(234, 88, 12, 0.13);
+  --info: #0369a1;
+  --info-soft: rgba(3, 105, 161, 0.11);
+  --flat: #6b6660;
 
   /* risk-band INTENSITY scale (cool→warm) — deliberately NOT good/bad; the chip
-   * derives its bg/border via color-mix so one hue per band covers both themes. */
-  --band-1: #0369a1;
-  --band-2: #0f766e;
-  --band-3: #b45309;
+   * derives its bg/border via color-mix so one hue per band covers both themes.
+   * Band tokens also color stamp/chip TEXT, so every value clears AA on white. */
+  --band-1: #1e6f8c;
+  --band-2: #137a6b;
+  --band-3: #8a6d10;
   --band-4: #c2410c;
-  --band-5: #be123c;
+  --band-5: #991b1b;
 
   /* ---- type scale (px) — theme-independent ---- */
-  --fs-display: 44px;
-  --fs-h1: 32px;
-  --fs-h2: 22px;
-  --fs-h3: 16px;
-  --fs-body: 14px;
+  --fs-display: 40px;
+  --fs-h1: 28px;
+  --fs-h2: 20px;
+  --fs-h3: 15px;
+  --fs-body: 13px;
   --fs-small: 12px;
   --fs-micro: 10px;
 
-  /* ---- radii ---- */
-  --r-xs: 4px;
-  --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 20px;
+  /* ---- radii — terminal-crisp; 12px is the ceiling (hero containers only) ---- */
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
 
-  /* ---- shadows ---- */
-  --sh-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --sh-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --sh-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+  /* ---- shadows — floating elements ONLY (tooltips/dropdowns/modals);
+   * default panels are hairline-framed with NO shadow ---- */
+  --sh-sm: 0 1px 2px rgba(20, 17, 14, 0.04);
+  --sh-md: 0 2px 8px rgba(20, 17, 14, 0.08);
+  --sh-lg: 0 8px 24px rgba(20, 17, 14, 0.12);
 
   /* ---- motion ---- */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -103,64 +122,64 @@
 }
 
 /* ── DARK theme ───────────────────────────────────────────────────────────────
- * Color overrides only. Text tiers are lifted (brighter) so gain/loss and copy
- * stay WCAG-AA on dark surfaces; tints are darkened + higher-alpha so they don't
- * vanish. Applied both via the explicit attribute (manual toggle wins) and via
- * prefers-color-scheme for first-visit users before the toggle is touched. */
-:root[data-theme='dark'] {
+ * Color overrides only — warm near-black (never zinc/neutral). Text tiers are
+ * lifted (brighter) so gain/loss and copy stay WCAG-AA on dark surfaces; tints
+ * are higher-alpha so they don't vanish. Applied both via the attribute (manual
+ * toggle wins; element-agnostic so subtrees can be dark "theme islands") and
+ * via prefers-color-scheme for first-visit users before the toggle is touched. */
+[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg: #0b0f17;
-  --bg-grad-1: #0b0f17;
-  --bg-grad-2: #0d131c;
-  --bg-grad-3: #0b111b;
-  --surface: #131a24;
-  --surface-2: #1a222e;
-  --surface-3: #232c3a;
-  --nav-bg: rgba(19, 26, 36, 0.85);
+  --bg: #0e0c0a;
+  --bg-grad-1: #0e0c0a;
+  --bg-grad-2: #14110d;
+  --bg-grad-3: #1a1612;
+  --surface: #16130f;
+  --surface-2: #1f1b16;
+  --surface-3: #2a241d;
+  --nav-bg: rgba(14, 12, 10, 0.85);
 
-  --ink: #e6eaf0;
-  --muted: #9aa7b8;
-  --subtle: #6b7688;
-  --inverse: #0b0f17;
+  --ink: #f2ebdd;
+  --muted: #a39b8a;
+  --subtle: #7d7466;
+  --inverse: #0e0c0a;
 
-  --border: #263041;
-  --border-strong: #33415a;
-  --divider: #1b2430;
+  --border: #2a241d;
+  --border-strong: #3d362b;
+  --divider: #1f1b16;
 
-  --primary: #60a5fa;
-  /* Dark accent buttons use a BRIGHT fill + DARK ink (the modern dark pattern) —
-   * this both stands out from the dark surface and clears WCAG-AA, unlike a
-   * mid-indigo fill with white text (~4.47:1). */
-  --accent: #818cf8;
-  --accent-solid: #818cf8;
-  --accent-hover: #a5b4fc;
-  --accent-soft: rgba(129, 140, 248, 0.16);
-  --accent-ink: #0b0f17;
+  --primary: #5eead4;
+  /* Dark accent buttons use a BRIGHT amber fill + DARK ink (the modern dark
+   * pattern) — stands out from the dark surface and clears WCAG-AA (11.7:1). */
+  --accent: #fbbf24;
+  --accent-solid: #fbbf24;
+  --accent-hover: #fcd34d;
+  --accent-soft: rgba(251, 191, 36, 0.15);
+  --accent-ink: #0e0c0a;
 
-  --pos: #34d399;
-  --pos-strong: #4ade80;
-  --pos-soft: rgba(52, 211, 153, 0.16);
-  --pos-border: rgba(52, 211, 153, 0.35);
+  --pos: #4ade80;
+  --pos-strong: #22c55e;
+  --pos-soft: rgba(74, 222, 128, 0.14);
+  --pos-border: rgba(74, 222, 128, 0.35);
   --neg: #f87171;
-  --neg-strong: #fb7185;
-  --neg-soft: rgba(248, 113, 113, 0.18);
+  --neg-strong: #ef4444;
+  --neg-soft: rgba(248, 113, 113, 0.15);
   --neg-border: rgba(248, 113, 113, 0.38);
-  --warn: #fbbf24;
-  --warn-strong: #fbbf24;
-  --warn-soft: rgba(251, 191, 36, 0.18);
-  --info: #22d3ee;
-  --info-soft: rgba(34, 211, 238, 0.16);
-  --flat: #94a3b8;
-  --band-1: #38bdf8;
-  --band-2: #2dd4bf;
-  --band-3: #fbbf24;
-  --band-4: #fb923c;
-  --band-5: #fb7185;
+  --warn: #fb923c;
+  --warn-strong: #fdba74;
+  --warn-soft: rgba(251, 146, 60, 0.16);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.15);
+  --flat: #8b8478;
+  --band-1: #5e9fbc;
+  --band-2: #6fc9bb;
+  --band-3: #e0c34a;
+  --band-4: #f1874a;
+  --band-5: #e15656;
 
-  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --sh-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --sh-md: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --sh-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 /* First-visit default: honor the OS setting until the user picks a theme. The
@@ -170,62 +189,62 @@
   :root:not([data-theme]) {
     color-scheme: dark;
 
-    --bg: #0b0f17;
-    --bg-grad-1: #0b0f17;
-    --bg-grad-2: #0d131c;
-    --bg-grad-3: #0b111b;
-    --surface: #131a24;
-    --surface-2: #1a222e;
-    --surface-3: #232c3a;
-    --nav-bg: rgba(19, 26, 36, 0.85);
+    --bg: #0e0c0a;
+    --bg-grad-1: #0e0c0a;
+    --bg-grad-2: #14110d;
+    --bg-grad-3: #1a1612;
+    --surface: #16130f;
+    --surface-2: #1f1b16;
+    --surface-3: #2a241d;
+    --nav-bg: rgba(14, 12, 10, 0.85);
 
-    --ink: #e6eaf0;
-    --muted: #9aa7b8;
-    --subtle: #6b7688;
-    --inverse: #0b0f17;
+    --ink: #f2ebdd;
+    --muted: #a39b8a;
+    --subtle: #7d7466;
+    --inverse: #0e0c0a;
 
-    --border: #263041;
-    --border-strong: #33415a;
-    --divider: #1b2430;
+    --border: #2a241d;
+    --border-strong: #3d362b;
+    --divider: #1f1b16;
 
-    --primary: #60a5fa;
-    --accent: #818cf8;
-    --accent-solid: #818cf8;
-    --accent-hover: #a5b4fc;
-    --accent-soft: rgba(129, 140, 248, 0.16);
-    --accent-ink: #0b0f17;
+    --primary: #5eead4;
+    --accent: #fbbf24;
+    --accent-solid: #fbbf24;
+    --accent-hover: #fcd34d;
+    --accent-soft: rgba(251, 191, 36, 0.15);
+    --accent-ink: #0e0c0a;
 
-    --pos: #34d399;
-    --pos-strong: #4ade80;
-    --pos-soft: rgba(52, 211, 153, 0.16);
-    --pos-border: rgba(52, 211, 153, 0.35);
+    --pos: #4ade80;
+    --pos-strong: #22c55e;
+    --pos-soft: rgba(74, 222, 128, 0.14);
+    --pos-border: rgba(74, 222, 128, 0.35);
     --neg: #f87171;
-    --neg-strong: #fb7185;
-    --neg-soft: rgba(248, 113, 113, 0.18);
+    --neg-strong: #ef4444;
+    --neg-soft: rgba(248, 113, 113, 0.15);
     --neg-border: rgba(248, 113, 113, 0.38);
-    --warn: #fbbf24;
-    --warn-strong: #fbbf24;
-    --warn-soft: rgba(251, 191, 36, 0.18);
-    --info: #22d3ee;
-    --info-soft: rgba(34, 211, 238, 0.16);
-    --flat: #94a3b8;
-    --band-1: #38bdf8;
-    --band-2: #2dd4bf;
-    --band-3: #fbbf24;
-    --band-4: #fb923c;
-    --band-5: #fb7185;
+    --warn: #fb923c;
+    --warn-strong: #fdba74;
+    --warn-soft: rgba(251, 146, 60, 0.16);
+    --info: #60a5fa;
+    --info-soft: rgba(96, 165, 250, 0.15);
+    --flat: #8b8478;
+    --band-1: #5e9fbc;
+    --band-2: #6fc9bb;
+    --band-3: #e0c34a;
+    --band-4: #f1874a;
+    --band-5: #e15656;
 
-    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --sh-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-    --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --sh-md: 0 2px 8px rgba(0, 0, 0, 0.45);
+    --sh-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
   }
 }
 
-/* Tabular monospace for dense numeric data (scores, prices, caps) — digits are
- * fixed-width so columns align. Falls back to the system mono stack. */
+/* Tabular monospace for dense numeric data (scores, prices, caps, tickers) —
+ * digits are fixed-width so columns align. Falls back to the system mono stack. */
 .numeric {
   font-family:
-    'JetBrains Mono', ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
+    'IBM Plex Mono', ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
   letter-spacing: -0.01em;
@@ -234,20 +253,21 @@
 body {
   min-height: 100vh;
   background: linear-gradient(
-    135deg,
+    180deg,
     var(--bg-grad-1) 0%,
-    var(--bg-grad-2) 45%,
+    var(--bg-grad-2) 60%,
     var(--bg-grad-3) 100%
   );
   background-attachment: fixed;
   color: var(--ink);
   font-family:
+    'IBM Plex Sans',
     system-ui,
     -apple-system,
     'Segoe UI',
     Roboto,
-    'Helvetica Neue',
     sans-serif;
+  font-size: var(--fs-body);
   -webkit-font-smoothing: antialiased;
   transition:
     background-color var(--dur-base) var(--ease),

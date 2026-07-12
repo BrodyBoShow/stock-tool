@@ -408,7 +408,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
             <span className="font-semibold">☑ {selected.size} selected</span>
             <button
               type="button"
-              className="rounded bg-indigo-600 px-2.5 py-1 font-semibold hover:bg-indigo-500"
+              className="rounded bg-accent-solid px-2.5 py-1 font-semibold text-accent-ink hover:bg-accent-hover"
               onClick={() => onOpenSimulator(null)}
             >
               Rebalance…

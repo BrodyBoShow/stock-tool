@@ -199,7 +199,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
                     <span title="Best Access" className="inline-block h-1.5 w-1.5 rounded-full bg-pos-strong" />
                   )}
                   {f.most_liquid && (
-                    <span title="Most Liquid" className="inline-block h-1.5 w-1.5 rounded-full bg-purple-500" />
+                    <span title="Most Liquid" className="inline-block h-1.5 w-1.5 rounded-full bg-info" />
                   )}
                   <span className="font-semibold tabular-nums text-ink">{f.ticker}</span>
                 </span>

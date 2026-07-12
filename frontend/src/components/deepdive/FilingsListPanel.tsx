@@ -36,11 +36,11 @@ const PREVIEW_ROWS = 5
 const CATEGORY_TINT: Record<string, string> = {
   'Annual report': 'bg-accent-soft text-accent',
   'Quarterly report': 'bg-info-soft text-info',
-  'Current report': 'bg-cyan-50 text-cyan-700',
-  'Proxy & governance': 'bg-violet-50 text-violet-700',
+  'Current report': 'bg-info-soft text-info',
+  'Proxy & governance': 'bg-surface-3 text-muted',
   'Ownership & insiders': 'bg-neg-soft text-neg',
-  'Tender & M&A': 'bg-orange-50 text-orange-700',
-  'Offering & registration': 'bg-yellow-50 text-yellow-700',
+  'Tender & M&A': 'bg-warn-soft text-warn',
+  'Offering & registration': 'bg-warn-soft text-warn',
   'Status & other': 'bg-surface-3 text-muted',
 }
 

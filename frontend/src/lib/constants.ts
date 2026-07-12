@@ -2,17 +2,17 @@
 
 /** Small uppercase section/field label used across the deep-dive panels. */
 export const PANEL_LABEL =
-  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-gray-500'
+  'text-[0.67rem] font-bold uppercase tracking-[0.06em] text-subtle'
 
 /** Header row (<tr>) styling shared by the data tables (Portfolio, Market, Funds, Lab). */
 export const TABLE_HEAD_ROW =
-  'border-b border-[#eef1f6] text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-slate-400'
+  'border-b border-divider text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-subtle'
 
 /** Shared form-control styling so every form on the app reads identically. */
-export const FORM_LABEL = 'text-[0.7rem] font-semibold text-slate-500'
+export const FORM_LABEL = 'text-[0.7rem] font-semibold text-muted'
 export const FORM_INPUT =
-  'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.82rem] text-slate-800 ' +
-  'focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600/40'
+  'rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.82rem] text-ink ' +
+  'focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent-soft'
 
 /** Recharts font sizes — shared so every chart's axis ticks + legend match. */
 export const CHART_TICK_SIZE = 11
@@ -38,16 +38,43 @@ export const FACTOR_ORDER: FactorKey[] = [
   'momentum',
 ]
 
-/** (bar color, high-score cell tint, header text color) per factor. */
+/** (bar color, high-score cell tint, header text color) per factor.
+ *
+ * Theme-aware factor identity quartet (2026-07 refresh): Growth = steel blue,
+ * Value = forest green, Quality = petrol teal, Momentum = orange — all drawn
+ * from the semantic tokens so both themes stay AA with no per-theme table.
+ * These are var() strings: fine in HTML styles, but NOT in SVG presentation
+ * attributes (Safari) — chart strokes must resolve them to hex first (see
+ * ScoreStoryPanel's resolver / useChartTheme). */
 export const FACTOR_TABLE: Record<
   FactorKey,
   { bar: string; tint: string; header: string }
 > = {
-  composite: { bar: '#1e293b', tint: 'rgba(30,41,59,0.08)', header: '#1e293b' },
-  growth: { bar: '#3b82f6', tint: 'rgba(59,130,246,0.10)', header: '#2563eb' },
-  value: { bar: '#10b981', tint: 'rgba(16,185,129,0.10)', header: '#059669' },
-  quality: { bar: '#a855f7', tint: 'rgba(168,85,247,0.10)', header: '#9333ea' },
-  momentum: { bar: '#f59e0b', tint: 'rgba(245,158,11,0.10)', header: '#d97706' },
+  composite: {
+    bar: 'var(--ink)',
+    tint: 'color-mix(in srgb, var(--ink) 8%, transparent)',
+    header: 'var(--ink)',
+  },
+  growth: {
+    bar: 'var(--info)',
+    tint: 'color-mix(in srgb, var(--info) 10%, transparent)',
+    header: 'var(--info)',
+  },
+  value: {
+    bar: 'var(--pos)',
+    tint: 'color-mix(in srgb, var(--pos) 10%, transparent)',
+    header: 'var(--pos)',
+  },
+  quality: {
+    bar: 'var(--primary)',
+    tint: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+    header: 'var(--primary)',
+  },
+  momentum: {
+    bar: 'var(--warn)',
+    tint: 'color-mix(in srgb, var(--warn) 10%, transparent)',
+    header: 'var(--warn)',
+  },
 }
 
 /** Plain-English factor definitions — shared by the screener legend, the holdings

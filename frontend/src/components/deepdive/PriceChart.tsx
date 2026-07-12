@@ -583,7 +583,7 @@ export function PriceChart({
             on={showVolume}
             onToggle={() => setShowVolume((x) => !x)}
             label="Volume"
-            color="#10b981"
+            color="var(--pos-strong)"
             bgOn="bg-pos-soft"
             textOn="text-pos"
             borderOn="border-pos-border"
@@ -593,7 +593,7 @@ export function PriceChart({
           on={showMarkers}
           onToggle={() => setShowMarkers((x) => !x)}
           label="Events & filings"
-          color="#f59e0b"
+          color="var(--warn-strong)"
           bgOn="bg-warn-soft"
           textOn="text-warn"
           borderOn="border-warn"
@@ -636,7 +636,7 @@ export function PriceChart({
               value={seriesId}
               onChange={(e) => setSeriesId(e.target.value)}
               aria-label="Macro overlay series"
-              className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[0.76rem] font-semibold text-ink focus:border-violet-600 focus:outline-none"
+              className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[0.76rem] font-semibold text-ink focus:border-accent focus:outline-none"
             >
               {MACRO_DISPLAY.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
@@ -917,9 +917,11 @@ export function PriceChart({
                 onMouseLeave={onChartMouseLeave}
               >
                 <defs>
+                  {/* Ink price line + faint ink wash — the pro-terminal chart
+                      language (never a saturated brand-color fill). */}
                   <linearGradient id="px-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.16} />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                    <stop offset="0%" stopColor={ct.ink} stopOpacity={0.1} />
+                    <stop offset="100%" stopColor={ct.ink} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -1008,8 +1010,8 @@ export function PriceChart({
                   yAxisId="price"
                   type="monotone"
                   dataKey="v"
-                  stroke="#2563eb"
-                  strokeWidth={2}
+                  stroke={ct.ink}
+                  strokeWidth={1.5}
                   fill="url(#px-fill)"
                   isAnimationActive={false}
                 />

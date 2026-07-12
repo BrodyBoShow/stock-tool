@@ -142,7 +142,7 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1 w-full accent-indigo-600"
+        className="mt-1 w-full accent-accent"
       />
       <div className="text-[0.6rem] text-subtle">
         {changed ? 'you set this · ' : 'seeded · '}
@@ -639,7 +639,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                       onClick={() => toggleCompare(s.id)}
                       className={
                         'rounded px-1 text-[0.56rem] font-bold uppercase tracking-wide ' +
-                        (on ? 'bg-indigo-200 text-accent' : 'bg-surface-3 text-muted')
+                        (on ? 'bg-accent-soft text-accent' : 'bg-surface-3 text-muted')
                       }
                       title="Add to the comparison table (up to 3)"
                     >

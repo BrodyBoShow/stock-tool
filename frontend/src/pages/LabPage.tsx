@@ -225,7 +225,7 @@ export function LabPage() {
     <div className="space-y-5">
       {/* header */}
       <header className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
-        <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
+        <div className="h-px bg-line" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
             <span className="text-accent">StockBud</span>

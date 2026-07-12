@@ -162,7 +162,7 @@ export function AddTransactionForm({ onDone }: { onDone?: () => void }) {
       <button
         type="submit"
         disabled={mut.isPending || !canSubmit}
-        className="rounded-lg bg-accent-solid px-4 py-2 text-[0.82rem] font-bold text-accent-ink transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-lg bg-accent-solid px-4 py-2 text-[0.82rem] font-bold text-accent-ink transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
       >
         {mut.isPending ? 'Adding…' : 'Add'}
       </button>

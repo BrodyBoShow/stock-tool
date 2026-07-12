@@ -399,7 +399,7 @@ export function FilingIntelligencePanel({
                 </div>
               ) : (
                 <div className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)] p-5">
-                  <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                  <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent-soft border-t-accent" />
                   <p className="text-[0.85rem] text-muted">
                     Reading {ticker}’s latest {summaryForm}
                     {sum.data.latest_filed_date ? ` (filed ${fmtDate(sum.data.latest_filed_date)})` : ''}{' '}
@@ -417,7 +417,7 @@ export function FilingIntelligencePanel({
               <AnswersBody data={qa.data.answers} />
             ) : qaGen.isPending ? (
               <div className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)] p-5">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent-soft border-t-accent" />
                 <p className="text-[0.85rem] text-muted">
                   Reading {ticker}’s {qaForm}
                   {qaForm === '20-F' ? '' : ' and 10-Q'} and working through the diligence

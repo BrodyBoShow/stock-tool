@@ -89,8 +89,8 @@ export function HeaderCard({
       <div className="flex flex-wrap items-center justify-between gap-[18px]">
         <div className="flex items-center gap-3.5">
           <div
-            className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[13px] text-[1.15rem] font-extrabold text-white"
-            style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+            className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[var(--r-md)] font-mono text-[1.15rem] font-bold text-accent-ink"
+            style={{ background: 'var(--accent-solid)' }}
           >
             {header.ticker.slice(0, 2)}
           </div>

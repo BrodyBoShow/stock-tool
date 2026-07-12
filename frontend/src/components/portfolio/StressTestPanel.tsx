@@ -57,7 +57,7 @@ export function StressTestPanel({ stress, benchmark, holdings }: StressTestPanel
               onClick={() => setSelectedKey(p.key)}
               className={`rounded-lg border p-3 text-left transition-colors ${
                 active
-                  ? 'border-accent bg-accent-soft ring-2 ring-indigo-100'
+                  ? 'border-accent bg-accent-soft ring-2 ring-accent-soft'
                   : 'border-line hover:border-accent'
               }`}
             >

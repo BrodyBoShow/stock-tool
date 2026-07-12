@@ -73,7 +73,7 @@ export function RightRail(props: RightRailProps) {
           <ul className="space-y-1 text-[0.76rem] text-muted">
             {sections.map((s) => (
               <li key={s} className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-indigo-400" />
+                <span className="h-1 w-1 rounded-full bg-accent" />
                 {s}
               </li>
             ))}

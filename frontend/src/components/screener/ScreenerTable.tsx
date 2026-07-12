@@ -493,7 +493,7 @@ export function ScreenerTable({
                           type="checkbox"
                           checked={show(c.key)}
                           onChange={() => toggleCol(c.key)}
-                          className="h-3.5 w-3.5 accent-indigo-600"
+                          className="h-3.5 w-3.5 accent-accent"
                         />
                         {c.label}
                       </label>
@@ -696,7 +696,7 @@ export function ScreenerTable({
                         checked={selected.has(r.ticker)}
                         onChange={() => toggleSelect(r.ticker)}
                         disabled={!selected.has(r.ticker) && selected.size >= 4}
-                        className="h-3.5 w-3.5 accent-indigo-600"
+                        className="h-3.5 w-3.5 accent-accent"
                         aria-label={`Select ${r.ticker} to compare`}
                       />
                     </div>

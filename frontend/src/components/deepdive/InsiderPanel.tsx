@@ -169,7 +169,7 @@ export function InsiderPanel({ ticker }: { ticker: string }) {
                     setOpenMarketOnly(e.target.checked)
                     setExpanded(false)
                   }}
-                  className="h-3 w-3 accent-indigo-600"
+                  className="h-3 w-3 accent-accent"
                 />
                 Open market only
               </label>

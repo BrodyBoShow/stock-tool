@@ -52,14 +52,14 @@ export function AuthScreen() {
   }
 
   const inputCls =
-    'w-full rounded-lg border border-white/10 bg-slate-800/80 px-3.5 py-2.5 text-sm ' +
-    'text-white placeholder-slate-500 outline-none focus:border-indigo-500 ' +
-    'focus:ring-2 focus:ring-indigo-500/30'
+    'w-full rounded-lg border border-white/10 bg-stone-900/80 px-3.5 py-2.5 text-sm ' +
+    'text-white placeholder-stone-500 outline-none focus:border-amber-400 ' +
+    'focus:ring-2 focus:ring-amber-400/30'
 
   return (
     <div
       className="relative flex min-h-screen items-center justify-center overflow-hidden px-4"
-      style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e1b4b 58%, #312e81 100%)' }}
+      style={{ background: 'linear-gradient(160deg, #0e0c0a 0%, #14110d 58%, #241c11 100%)' }}
     >
       <TickerBackdrop />
       <div
@@ -67,7 +67,7 @@ export function AuthScreen() {
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           backgroundImage:
-            'radial-gradient(55% 45% at 50% 36%, rgba(99,102,241,0.18), transparent 70%)',
+            'radial-gradient(55% 45% at 50% 36%, rgba(251,191,36,0.10), transparent 70%)',
         }}
       />
 
@@ -77,12 +77,12 @@ export function AuthScreen() {
           <img src="/logo-dark.png" alt="" aria-hidden="true" className="h-9 w-auto" />
           <span className="text-lg font-extrabold tracking-tight">
             <span className="text-white">Stock</span>
-            <span className="text-indigo-400">Bud</span>
+            <span className="text-amber-400">Bud</span>
           </span>
         </div>
 
         {/* card */}
-        <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-7 shadow-2xl shadow-indigo-950/40 backdrop-blur">
+        <div className="rounded-xl border border-white/10 bg-stone-950/80 p-7 shadow-2xl shadow-black/40 backdrop-blur">
           <h1 className="text-[1.4rem] font-extrabold text-white">
             {mode === 'signin' ? 'Welcome back' : 'Create your account'}
           </h1>
@@ -120,7 +120,7 @@ export function AuthScreen() {
             <button
               type="submit"
               disabled={submitting || !email.trim() || !password}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
+              className="w-full rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-300 disabled:opacity-50"
             >
               {submitting
                 ? mode === 'signin'
@@ -139,7 +139,7 @@ export function AuthScreen() {
                 <button
                   type="button"
                   onClick={() => switchMode('signup')}
-                  className="font-semibold text-indigo-400 hover:text-indigo-300"
+                  className="font-semibold text-amber-400 hover:text-amber-300"
                 >
                   Sign up
                 </button>
@@ -150,7 +150,7 @@ export function AuthScreen() {
                 <button
                   type="button"
                   onClick={() => switchMode('signin')}
-                  className="font-semibold text-indigo-400 hover:text-indigo-300"
+                  className="font-semibold text-amber-400 hover:text-amber-300"
                 >
                   Sign in
                 </button>

@@ -25,7 +25,7 @@ const TXN_TYPES: PortfolioTxnType[] = [
 const TYPE_CHIP: Record<PortfolioTxnType, string> = {
   buy: 'bg-pos-soft text-pos',
   sell: 'bg-neg-soft text-neg',
-  dividend: 'bg-purple-100 text-purple-700',
+  dividend: 'bg-info-soft text-info',
   deposit: 'bg-surface-3 text-muted',
   withdrawal: 'bg-surface-3 text-muted',
   fee: 'bg-surface-3 text-muted',
