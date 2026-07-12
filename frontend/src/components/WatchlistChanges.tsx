@@ -159,7 +159,7 @@ function ChangeCard({
           )}
         </div>
         <div className="flex-none text-right">
-          <div className="text-[1.15rem] font-extrabold tabular-nums text-ink">
+          <div className="text-[1.15rem] font-bold tabular-nums text-ink">
             {c.composite != null ? c.composite.toFixed(1) : '—'}
           </div>
           <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-subtle">

@@ -196,7 +196,7 @@ export function WatchlistTable({
             return (
               <div
                 key={r.security_id}
-                className="group relative grid border-b border-line transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_#1e293b]"
+                className="group relative grid border-b border-line transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
                 style={{ gridTemplateColumns: GRID, height: 54 }}
               >
                 <Link

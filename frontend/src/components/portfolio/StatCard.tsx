@@ -23,8 +23,8 @@ export function StatCard({
         {tip && <InfoTip text={tip} />}
       </div>
       <div
-        className="mt-1 text-[1.25rem] font-extrabold tabular-nums leading-tight"
-        style={{ color: color ?? '#0f172a' }}
+        className="mt-1 text-[1.25rem] font-bold tabular-nums leading-tight"
+        style={{ color: color ?? 'var(--ink)' }}
       >
         {value}
       </div>

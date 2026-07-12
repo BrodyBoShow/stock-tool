@@ -48,7 +48,7 @@ function PerfTooltip({
   const b = winPct(r.bench)
   const spread = you != null && b != null ? you - b : null
   return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-[0.72rem] shadow-card">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-[0.72rem] shadow-[var(--sh-md)]">
       <div className="font-bold text-ink">{fmtDate(String(label))}</div>
       <div className="mt-0.5 space-y-px tabular-nums">
         {you != null && (
@@ -192,7 +192,7 @@ export function PerfChart({
                 onRangeChange(r)
               }}
               className={`min-h-[28px] rounded-full px-2.5 text-[0.7rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] ${
-                r === range ? 'bg-primary text-white' : 'text-muted hover:bg-[var(--surface-3)]'
+                r === range ? 'bg-primary text-inverse' : 'text-muted hover:bg-[var(--surface-3)]'
               }`}
             >
               {r}

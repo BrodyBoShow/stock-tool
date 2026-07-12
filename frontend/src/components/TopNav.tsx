@@ -195,7 +195,7 @@ export function TopNav() {
           className="flex flex-none items-center gap-2.5 no-underline"
         >
           <Logo />
-          <span className="text-[1.2rem] font-extrabold tracking-[-0.01em]">
+          <span className="text-[1.2rem] font-bold tracking-[-0.01em]">
             <span className="text-ink">Stock</span>
             <span className="text-[var(--accent)]">Bud</span>
           </span>

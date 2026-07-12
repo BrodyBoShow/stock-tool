@@ -9,7 +9,7 @@ import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
 
 const STAT_LABEL = 'text-[0.75rem] text-muted'
-const STAT_VALUE = 'text-[1.35rem] font-extrabold text-ink'
+const STAT_VALUE = 'text-[1.35rem] font-bold text-ink'
 const STAT_SUB = 'text-[0.72rem] text-subtle'
 
 /** Circular 0–100 gauge, heat-colored, with the score in the center. */
@@ -96,7 +96,7 @@ export function HeaderCard({
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[1.45rem] font-extrabold text-ink">
+              <span className="text-[1.45rem] font-bold text-ink">
                 {header.ticker}
               </span>
               {header.exchange && (

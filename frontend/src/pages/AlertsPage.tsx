@@ -356,7 +356,7 @@ function AddRuleForm() {
 const TIER_TILE: Record<AlertTier, { label: string; on: string }> = {
   critical: { label: 'Critical', on: 'bg-neg-soft text-neg ring-red-400' },
   elevated: { label: 'Elevated', on: 'bg-warn-soft text-warn ring-amber-400' },
-  routine: { label: 'Routine', on: 'bg-surface-3 text-muted ring-slate-400' },
+  routine: { label: 'Routine', on: 'bg-surface-3 text-muted ring-line-strong' },
 }
 
 function TriageStrip({

@@ -52,7 +52,7 @@ function MacroTile({
       <div className="text-[0.66rem] font-bold uppercase tracking-[0.05em] text-muted">
         {label}
       </div>
-      <div className="mt-0.5 text-[1.3rem] font-extrabold leading-tight text-ink">
+      <div className="mt-0.5 text-[1.3rem] font-bold leading-tight text-ink">
         {fmtVal(latest?.value ?? null, unit, dec)}
       </div>
       {delta && prior ? (

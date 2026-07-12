@@ -121,7 +121,7 @@ export function WatchlistPage() {
   if (rows.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-extrabold text-ink">Watchlist</h1>
+        <h1 className="text-xl font-bold text-ink">Watchlist</h1>
         <div className="rounded-card border border-dashed border-line bg-surface p-10 text-center shadow-card">
           <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warn-soft text-[1.3rem] text-warn">
             ★

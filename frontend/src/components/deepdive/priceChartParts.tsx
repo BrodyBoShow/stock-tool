@@ -15,7 +15,7 @@ export function VolumeTooltip({ active, payload, label }: TooltipProps) {
   const v = typeof vol === 'number' ? vol : null
   const rel = v != null && row?.avgVol20 ? v / row.avgVol20 : null
   return (
-    <div className="rounded-lg border border-line bg-surface px-2 py-1 text-xs shadow-card">
+    <div className="rounded-lg border border-line bg-surface px-2 py-1 text-xs shadow-[var(--sh-md)]">
       <div className="font-semibold text-ink">{fmtDate(label)}</div>
       <div className="tabular-nums text-muted">
         Vol {fmtVol(v)}

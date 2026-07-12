@@ -179,7 +179,7 @@ export function PriceProTooltip({
   const ma50 = row.ma50Raw ?? row.ma50
   const ma200 = row.ma200Raw ?? row.ma200
   return (
-    <div className="max-w-[260px] rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-card">
+    <div className="max-w-[260px] rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-[var(--sh-md)]">
       <div className="flex items-baseline justify-between gap-3">
         <span className="font-semibold text-ink">{fmtDate(label)}</span>
         {typeof chgPct === 'number' && (

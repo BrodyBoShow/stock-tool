@@ -669,7 +669,7 @@ export function ScreenerTable({
               return (
                 <div
                   key={r.security_id}
-                  className="absolute left-0 grid w-full border-b border-line transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_#1e293b]"
+                  className="absolute left-0 grid w-full border-b border-line transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
                   style={{
                     gridTemplateColumns: gridCols,
                     height: vi.size,

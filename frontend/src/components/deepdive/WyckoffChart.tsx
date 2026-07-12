@@ -405,7 +405,7 @@ export function WyckoffChart({
           // over the bars (and a mid-drag cursor crossing it can't fire the
           // svg's onMouseLeave and cancel the measurement). Only the ✕ opts back
           // into pointer events.
-          className={`pointer-events-none absolute top-1 z-10 rounded-lg border bg-surface px-3 py-2 text-xs shadow-card ${
+          className={`pointer-events-none absolute top-1 z-10 rounded-lg border bg-surface px-3 py-2 text-xs shadow-[var(--sh-md)] ${
             pinnedSafe !== null ? 'border-accent' : 'border-line'
           }`}
           style={{ left: `${(tooltipFrac * 100).toFixed(2)}%`, transform: tooltipFrac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)' }}

@@ -36,11 +36,11 @@ const PREVIEW_ROWS = 5
 const CATEGORY_TINT: Record<string, string> = {
   'Annual report': 'bg-accent-soft text-accent',
   'Quarterly report': 'bg-info-soft text-info',
-  'Current report': 'bg-info-soft text-info',
+  'Current report': 'bg-warn-soft text-warn', // 8-Ks — matches the event chips
   'Proxy & governance': 'bg-surface-3 text-muted',
   'Ownership & insiders': 'bg-neg-soft text-neg',
-  'Tender & M&A': 'bg-warn-soft text-warn',
-  'Offering & registration': 'bg-warn-soft text-warn',
+  'Tender & M&A': 'bg-pos-soft text-pos',
+  'Offering & registration': 'bg-surface-2 text-subtle',
   'Status & other': 'bg-surface-3 text-muted',
 }
 

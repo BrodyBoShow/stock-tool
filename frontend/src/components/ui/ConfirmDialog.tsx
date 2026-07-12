@@ -70,10 +70,12 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={pending}
             className={
-              'rounded-lg px-3.5 py-1.5 text-[0.82rem] font-semibold text-white disabled:opacity-60 ' +
+              // text color lives in the branches: accent-ink flips with the theme
+              // (the dark accent fill is BRIGHT, so white text would vanish).
+              'rounded-lg px-3.5 py-1.5 text-[0.82rem] font-semibold disabled:opacity-60 ' +
               (danger
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-accent-solid hover:bg-accent-hover')
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-accent-solid text-accent-ink hover:bg-accent-hover')
             }
           >
             {pending ? 'Working…' : confirmLabel}

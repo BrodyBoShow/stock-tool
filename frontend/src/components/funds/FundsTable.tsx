@@ -180,7 +180,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
             <tr
               key={f.security_id}
               onClick={() => props.onOpen(f.ticker)}
-              className="cursor-pointer border-b border-slate-50 hover:bg-surface-2"
+              className="cursor-pointer border-b border-divider hover:bg-surface-2"
               style={{ borderLeft: '3px solid ' + catMeta(f.category).accent }}
             >
               {props.compareMode && (

@@ -94,7 +94,7 @@ export function RiskProfileCard() {
                   setQuizKey((k) => k + 1)
                   setQuizOpen(true)
                 }}
-                className="rounded-md bg-slate-800 px-2 py-1 text-[0.68rem] font-semibold text-white transition hover:bg-slate-700"
+                className="rounded-md bg-ink px-2 py-1 text-[0.68rem] font-semibold text-inverse transition hover:opacity-90"
               >
                 Retake quiz
               </button>
@@ -111,7 +111,7 @@ export function RiskProfileCard() {
           </div>
         </section>
       ) : (
-        <section className="rounded-card border border-accent bg-accent-soft/50 px-4 py-3 shadow-card">
+        <section className="rounded-card border border-accent bg-accent-soft px-4 py-3 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-[0.9rem] font-bold text-ink">

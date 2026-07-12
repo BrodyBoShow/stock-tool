@@ -208,7 +208,7 @@ function ScorePopover({ h }: { h: PortfolioHolding }) {
       <span className="font-semibold tabular-nums text-ink">
         {h.composite.toFixed(0)}
       </span>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 w-44 -translate-x-1/2 rounded-lg bg-slate-900 p-2 text-left text-[0.66rem] font-normal text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 w-44 -translate-x-1/2 rounded-lg bg-ink p-2 text-left text-[0.66rem] font-normal text-inverse opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
         <span className="mb-1 block font-semibold">Factor percentiles</span>
         {SCORE_FACTORS.map(([label, key]) => {
           const v = h[key]
@@ -404,7 +404,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
         </select>
 
         {selected.size >= 1 && (
-          <div className="ml-auto flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-2 text-[0.72rem] text-white">
+          <div className="ml-auto flex items-center gap-3 rounded-lg bg-ink px-3 py-2 text-[0.72rem] text-inverse">
             <span className="font-semibold">☑ {selected.size} selected</span>
             <button
               type="button"
@@ -415,14 +415,14 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
             </button>
             <button
               type="button"
-              className="rounded border border-white/30 px-2.5 py-1 hover:bg-white/10"
+              className="rounded border border-current px-2.5 py-1 opacity-80 hover:opacity-100"
               onClick={exportCsv}
             >
               Export CSV
             </button>
             <button
               type="button"
-              className="text-slate-300 hover:text-white"
+              className="opacity-80 hover:opacity-100"
               onClick={() => setSelected(new Set())}
             >
               Clear

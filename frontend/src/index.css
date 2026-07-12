@@ -48,7 +48,7 @@
   /* ---- text ---- */
   --ink: #14110e; /* primary copy — warm near-black */
   --muted: #57514a; /* secondary copy (AA on light) */
-  --subtle: #8b8478; /* tertiary — LARGE/bold-micro text only */
+  --subtle: #78715f; /* tertiary — 4.85:1 on white so micro-labels clear AA */
   --inverse: #faf7f2; /* copy on dark fills */
 
   /* ---- lines ---- */
@@ -61,7 +61,8 @@
   --accent: #b45309; /* accent text / underline / icon */
   --accent-solid: #b45309; /* solid button fill */
   --accent-hover: #92400e; /* button hover */
-  --accent-soft: rgba(180, 83, 9, 0.13); /* tinted surfaces / selected */
+  --accent-soft: rgba(180, 83, 9, 0.09); /* tinted surfaces / selected — light
+   * enough that text-accent stays AA on the wash */
   --accent-ink: #ffffff; /* copy on the solid accent */
 
   /* ---- semantic data colors (3 tiers) — gain / loss / caution / neutral ----
@@ -70,7 +71,7 @@
    * SOFT/TINT tier (chip & cell backgrounds): --*-soft (+ optional -border) */
   --pos: #15803d;
   --pos-strong: #166534;
-  --pos-soft: rgba(21, 128, 61, 0.12);
+  --pos-soft: rgba(21, 128, 61, 0.09);
   --pos-border: rgba(21, 128, 61, 0.35);
   --neg: #b91c1c;
   --neg-strong: #991b1b;
@@ -78,7 +79,7 @@
   --neg-border: rgba(185, 28, 28, 0.3);
   --warn: #c2410c;
   --warn-strong: #ea580c;
-  --warn-soft: rgba(234, 88, 12, 0.13);
+  --warn-soft: rgba(234, 88, 12, 0.09);
   --info: #0369a1;
   --info-soft: rgba(3, 105, 161, 0.11);
   --flat: #6b6660;

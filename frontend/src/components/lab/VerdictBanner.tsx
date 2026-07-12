@@ -27,7 +27,7 @@ export function VerdictBanner({ v }: { v: Verdict }) {
         >
           {s.label}
         </span>
-        <h2 className="text-[1.05rem] font-extrabold text-ink">{v.headline}</h2>
+        <h2 className="text-[1.05rem] font-bold text-ink">{v.headline}</h2>
       </div>
       <ul className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {v.points.map((p, i) => (

@@ -55,7 +55,7 @@ export function ScreenerDrawer({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[1.1rem] font-extrabold text-ink">
+                <span className="text-[1.1rem] font-bold text-ink">
                   {row.ticker}
                 </span>
                 <SectorPill sector={row.sector} />
@@ -86,7 +86,7 @@ export function ScreenerDrawer({
             <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-subtle">
               Price
             </div>
-            <div className="text-[1.05rem] font-extrabold tabular-nums text-ink">
+            <div className="text-[1.05rem] font-bold tabular-nums text-ink">
               {fmtPrice(row.last_price)}
             </div>
             {row.last_price != null && row.prev_close != null && row.prev_close !== 0 && (

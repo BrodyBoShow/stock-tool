@@ -85,7 +85,7 @@ export function RightRail(props: RightRailProps) {
         <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-subtle">
           At a glance
         </div>
-        <ul className="divide-y divide-slate-50">
+        <ul className="divide-y divide-divider">
           <Row
             label="Revenue (TTM)"
             tipKey="TTM"

@@ -208,13 +208,11 @@ export function FactorCards({
             <div
               key={key}
               className={
+                // Composite card: inverted ink slab — flips correctly in both
+                // themes (a gradient toward a fixed slate hex exploded in dark,
+                // where --ink is cream).
                 'rounded-card border p-4 shadow-card ' +
-                (dark ? 'border-slate-900' : 'border-line bg-surface')
-              }
-              style={
-                dark
-                  ? { background: 'linear-gradient(135deg, var(--ink), #1e293b)' }
-                  : undefined
+                (dark ? 'border-line bg-ink' : 'border-line bg-surface')
               }
             >
               <div className="flex items-center justify-between">
@@ -228,10 +226,7 @@ export function FactorCards({
                 </div>
                 {moved && (
                   <span
-                    className={
-                      'rounded px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide ' +
-                      (dark ? 'bg-sky-400/20 text-sky-300' : 'bg-info-soft text-info')
-                    }
+                    className="rounded bg-info-soft px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-info"
                     title="Adjusted from the latest price"
                   >
                     live
@@ -240,13 +235,13 @@ export function FactorCards({
               </div>
               <div
                 className={
-                  'mb-2 mt-1 text-[1.8rem] font-extrabold ' +
+                  'mb-2 mt-1 text-[1.8rem] font-bold ' +
                   (v === null
                     ? dark
                       ? 'text-muted'
                       : 'text-subtle'
                     : dark
-                      ? 'text-white'
+                      ? 'text-inverse'
                       : 'text-ink')
                 }
               >

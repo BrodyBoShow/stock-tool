@@ -25,7 +25,7 @@ const ROW_LABELS = [
   'D/E',
 ] as const
 
-const CELL = 'flex h-9 items-center justify-end border-t border-slate-50 px-2 text-[0.76rem] tabular-nums'
+const CELL = 'flex h-9 items-center justify-end border-t border-divider px-2 text-[0.76rem] tabular-nums'
 
 /** Colored percentile pill for a factor cell (composite + the 4 factors). */
 function RankPill({ value }: { value: number | null }): JSX.Element {
@@ -254,7 +254,7 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
               {ROW_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="flex h-9 items-center border-t border-slate-50 pr-2 text-[0.72rem] font-medium text-muted"
+                  className="flex h-9 items-center border-t border-divider pr-2 text-[0.72rem] font-medium text-muted"
                 >
                   {label}
                 </div>

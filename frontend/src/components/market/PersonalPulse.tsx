@@ -64,7 +64,7 @@ export function PersonalPulse() {
           Your watchlist · last close
         </div>
         <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-          <span className="text-[1.3rem] font-extrabold tabular-nums" style={{ color: plColor(avg) }}>
+          <span className="text-[1.3rem] font-bold tabular-nums" style={{ color: plColor(avg) }}>
             {fmtSignedPct(avg)}
           </span>
           <span className="text-[0.76rem] text-subtle">

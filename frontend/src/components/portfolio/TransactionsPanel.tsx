@@ -625,7 +625,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
       </div>
 
       {showAdd && (
-        <div className="mt-4 rounded-lg border border-line bg-surface-2/60 p-3">
+        <div className="mt-4 rounded-lg border border-line bg-surface-2 p-3">
           <AddTransactionForm onDone={() => setShowAdd(false)} />
         </div>
       )}
@@ -635,7 +635,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
       </div>
 
       {selected.size > 0 && (
-        <div className="mt-2 flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-2 text-[0.72rem] text-white">
+        <div className="mt-2 flex items-center gap-3 rounded-lg bg-ink px-3 py-2 text-[0.72rem] text-inverse">
           <span className="font-semibold">{selected.size} selected</span>
           <button
             type="button"
@@ -647,7 +647,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="rounded px-2 py-1 text-subtle transition-colors hover:bg-surface/10 hover:text-white"
+            className="rounded px-2 py-1 opacity-80 transition-opacity hover:opacity-100"
           >
             Clear
           </button>

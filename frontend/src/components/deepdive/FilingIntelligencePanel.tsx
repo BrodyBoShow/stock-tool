@@ -77,7 +77,7 @@ function TopicCard({ t }: { t: FilingTopicAnswer }) {
   return (
     <div
       className={`rounded-xl border p-3.5 ${
-        t.disclosed ? 'border-line bg-surface' : 'border-dashed border-line bg-zinc-50'
+        t.disclosed ? 'border-line bg-surface' : 'border-dashed border-line bg-surface-2'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -196,7 +196,7 @@ function TabButton({ active, onClick, children }: {
       onClick={onClick}
       className={
         'rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ' +
-        (active ? 'bg-slate-800 text-white' : 'text-muted hover:bg-surface-3')
+        (active ? 'bg-ink text-inverse' : 'text-muted hover:bg-surface-3')
       }
     >
       {children}

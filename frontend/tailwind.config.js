@@ -64,20 +64,18 @@ export default {
         },
         flat: 'var(--flat)',
       },
+      // NO baked fontWeight here: a weight inside fontSize is emitted inside the
+      // variant's media query and silently overrides an explicit font-bold at
+      // that breakpoint (e.g. sm:text-display vs font-bold). Call sites always
+      // pair a size with an explicit weight class instead.
       fontSize: {
-        display: [
-          'var(--fs-display)',
-          { lineHeight: '1.1', fontWeight: '600', letterSpacing: '-0.02em' },
-        ],
-        h1: ['var(--fs-h1)', { lineHeight: '1.2', fontWeight: '600', letterSpacing: '-0.01em' }],
-        h2: ['var(--fs-h2)', { lineHeight: '1.3', fontWeight: '600', letterSpacing: '-0.01em' }],
-        h3: ['var(--fs-h3)', { lineHeight: '1.4', fontWeight: '600' }],
+        display: ['var(--fs-display)', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
+        h1: ['var(--fs-h1)', { lineHeight: '1.2', letterSpacing: '-0.01em' }],
+        h2: ['var(--fs-h2)', { lineHeight: '1.3', letterSpacing: '-0.01em' }],
+        h3: ['var(--fs-h3)', { lineHeight: '1.4' }],
         body: ['var(--fs-body)', { lineHeight: '1.55' }],
         small: ['var(--fs-small)', { lineHeight: '1.5' }],
-        micro: [
-          'var(--fs-micro)',
-          { lineHeight: '1.4', fontWeight: '600', letterSpacing: '0.08em' },
-        ],
+        micro: ['var(--fs-micro)', { lineHeight: '1.4', letterSpacing: '0.08em' }],
       },
       // NOTE: spec radii/shadows are intentionally NOT added as sm/md/lg keys —
       // those collide with Tailwind defaults and would restyle the whole app.

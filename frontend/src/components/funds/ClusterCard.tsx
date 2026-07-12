@@ -147,7 +147,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
 
       <div className="mt-2.5 flex gap-1.5 items-center">
         {cluster.best_access_ticker && (
-          <span className="rounded bg-pos-strong px-2 py-0.5 text-[0.6rem] font-bold text-white">
+          <span className="rounded bg-pos-strong px-2 py-0.5 text-[0.6rem] font-bold text-inverse">
             ★ BEST ACCESS: {cluster.best_access_ticker}
           </span>
         )}

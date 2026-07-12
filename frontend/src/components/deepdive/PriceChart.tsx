@@ -712,7 +712,7 @@ export function PriceChart({
             Climax volume
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-3 px-2 py-0.5 text-[0.72rem] font-semibold text-muted">
-            <span className="h-2 w-2 rounded-sm border border-slate-500" />
+            <span className="h-2 w-2 rounded-sm border border-divider0" />
             Wide spread
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-3 px-2 py-0.5 text-[0.72rem] font-semibold text-muted">

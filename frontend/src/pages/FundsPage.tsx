@@ -467,7 +467,7 @@ export function FundsPage() {
 
       {/* Slim compare bar */}
       {compareMode && compareSet.length > 0 && !showCompare && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 bg-slate-900 px-6 py-3 text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 bg-ink px-6 py-3 text-inverse shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
           <span className="text-[0.72rem] font-semibold">Compare mode</span>
           <span className="rounded-full bg-accent-solid px-2 py-0.5 text-[0.66rem] font-bold tabular-nums">
             {compareSet.length} selected

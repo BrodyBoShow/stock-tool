@@ -102,7 +102,7 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
         <div className="flex items-center gap-2">
           <span className="text-[0.78rem] text-subtle">Composite</span>
           <span
-            className="rounded-lg px-3 py-1 text-[1.1rem] font-extrabold tabular-nums"
+            className="rounded-lg px-3 py-1 text-[1.1rem] font-bold tabular-nums"
             style={{ background: compBg, color: compFg }}
           >
             {composite === null ? '—' : composite.toFixed(1)}

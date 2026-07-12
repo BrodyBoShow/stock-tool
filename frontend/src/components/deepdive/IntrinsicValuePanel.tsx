@@ -464,7 +464,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
           </div>
           <div className="mt-1.5 grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[1.4rem] font-extrabold leading-none text-accent tabular-nums">
+              <div className="text-[1.4rem] font-bold leading-none text-accent tabular-nums">
                 {c.implied == null
                   ? '—'
                   : c.implied <= -0.2
@@ -477,7 +477,7 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
               <div className="text-[0.62rem] text-muted">market-implied FCF growth ({c.horizon}y)</div>
             </div>
             <div>
-              <div className="text-[1.4rem] font-extrabold leading-none text-ink tabular-nums">
+              <div className="text-[1.4rem] font-bold leading-none text-ink tabular-nums">
                 {c.histFcf != null ? fmtPct(c.histFcf) : c.revCagr != null ? fmtPct(c.revCagr) : '—'}
                 <span className="text-[0.7rem] font-medium text-subtle"> /yr</span>
               </div>

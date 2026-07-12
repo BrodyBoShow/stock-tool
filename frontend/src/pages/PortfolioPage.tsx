@@ -223,7 +223,7 @@ export function PortfolioPage() {
     return (
       <div className="space-y-5">
         <div className="rounded-card border border-line bg-surface p-10 text-center shadow-card">
-          <h1 className="text-xl font-extrabold text-ink">Portfolio</h1>
+          <h1 className="text-xl font-bold text-ink">Portfolio</h1>
           <p className="mx-auto mt-3 max-w-[560px] text-sm text-muted">
             Log your real buys and sells and StockBud derives everything else from its
             own nightly price, dividend, and factor data: returns vs a benchmark you

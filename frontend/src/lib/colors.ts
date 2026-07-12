@@ -39,11 +39,11 @@ export function rankColor(rank: number | null): Tint {
  * factorReading.ts. `bar` is the gauge fill; `tint` is the faint cell wash.
  */
 const HEAT_RAMP: readonly [number, string][] = [
-  [80, 'var(--pos-strong)'], // top quintile
+  [80, 'var(--pos-strong)'], // deepest green at the top quintile
   [60, 'var(--pos)'],
-  [40, 'var(--warn-strong)'], // middle — amber
-  [20, 'var(--neg-strong)'], // lighter red
-  [0, 'var(--neg)'], // deepest red at the worst quintile (monotonic intensity)
+  [40, 'var(--warn-strong)'], // middle — the lightest tier (neutral)
+  [20, 'var(--neg)'], // lighter red
+  [0, 'var(--neg-strong)'], // deepest red at the worst quintile (monotonic intensity)
 ]
 
 export function scoreHeat(value: number | null): { bar: string; tint: string } {

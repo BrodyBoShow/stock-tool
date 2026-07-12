@@ -12,7 +12,7 @@ export const TABLE_HEAD_ROW =
 export const FORM_LABEL = 'text-[0.7rem] font-semibold text-muted'
 export const FORM_INPUT =
   'rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.82rem] text-ink ' +
-  'focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent-soft'
+  'focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent'
 
 /** Recharts font sizes — shared so every chart's axis ticks + legend match. */
 export const CHART_TICK_SIZE = 11

@@ -75,7 +75,7 @@ export function AuthScreen() {
         {/* brand mark + wordmark */}
         <div className="mb-5 flex items-center justify-center gap-2.5">
           <img src="/logo-dark.png" alt="" aria-hidden="true" className="h-9 w-auto" />
-          <span className="text-lg font-extrabold tracking-tight">
+          <span className="text-lg font-bold tracking-tight">
             <span className="text-white">Stock</span>
             <span className="text-amber-400">Bud</span>
           </span>
@@ -83,7 +83,7 @@ export function AuthScreen() {
 
         {/* card */}
         <div className="rounded-xl border border-white/10 bg-stone-950/80 p-7 shadow-2xl shadow-black/40 backdrop-blur">
-          <h1 className="text-[1.4rem] font-extrabold text-white">
+          <h1 className="text-[1.4rem] font-bold text-white">
             {mode === 'signin' ? 'Welcome back' : 'Create your account'}
           </h1>
           <p className="mt-1 text-[0.85rem] text-slate-400">

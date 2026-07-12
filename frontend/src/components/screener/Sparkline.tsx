@@ -150,7 +150,7 @@ export function Sparkline({
       </svg>
       {hoverIdx != null && hv != null && (
         <span
-          className="pointer-events-none absolute z-20 whitespace-nowrap rounded border border-line bg-surface px-1.5 py-0.5 text-[0.62rem] font-semibold leading-none text-ink shadow-card"
+          className="pointer-events-none absolute z-20 whitespace-nowrap rounded border border-line bg-surface px-1.5 py-0.5 text-[0.62rem] font-semibold leading-none text-ink shadow-[var(--sh-md)]"
           style={{
             bottom: height + 3,
             left: `${bubbleLeftPct}%`,

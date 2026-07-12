@@ -175,7 +175,7 @@ export function MiniAreaChart({
       </svg>
       {hover && (
         <div
-          className="pointer-events-none absolute top-1 z-10 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.7rem] shadow-card"
+          className="pointer-events-none absolute top-1 z-10 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[0.7rem] shadow-[var(--sh-md)]"
           style={{
             left: `${(hoverFrac! * 100).toFixed(2)}%`,
             transform: hoverFrac! > 0.6 ? 'translateX(-105%)' : 'translateX(8px)',

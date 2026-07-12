@@ -124,9 +124,9 @@ function ResearchLoader() {
             className={
               'flex h-4 w-4 items-center justify-center rounded-full text-[0.6rem] ' +
               (i < step
-                ? 'bg-pos-strong text-white'
+                ? 'bg-pos-strong text-inverse'
                 : i === step
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-ink'
                   : 'bg-surface-3 text-transparent')
             }
           >
@@ -194,7 +194,7 @@ export function AskStockBudPanel({ ticker }: { ticker: string }) {
         <button
           type="submit"
           disabled={ask.isPending || input.trim().length === 0}
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[0.86rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[0.86rem] font-semibold text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {ask.isPending ? 'Thinking…' : 'Ask'}
         </button>

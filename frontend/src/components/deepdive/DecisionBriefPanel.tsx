@@ -61,7 +61,7 @@ function QuantChips({ header, tone }: { header: SecurityHeader; tone: 'bull' | '
           >
             {INPUT_LABELS[m.key] ?? m.key}
             {m.value != null && (
-              <span className="font-extrabold">
+              <span className="font-bold">
                 {fmtInput(m.key, m.value, m.key === 'roic' && m.roicIsProxy)}
               </span>
             )}

@@ -251,7 +251,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className={'border-b border-slate-50 ' + (fund.best_access ? 'bg-accent-soft' : '')}>
+                  <tr className={'border-b border-divider ' + (fund.best_access ? 'bg-accent-soft' : '')}>
                     <td className="px-2 py-1.5 text-[0.7rem] font-semibold tabular-nums text-ink">
                       {fund.ticker} <span className="text-[0.55rem] text-subtle">(this)</span>
                     </td>
@@ -270,7 +270,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
                     return (
                       <tr
                         key={t || i}
-                        className={'border-b border-slate-50 hover:bg-surface-2 ' + (bool(p, 'best_access') ? 'bg-accent-soft' : '')}
+                        className={'border-b border-divider hover:bg-surface-2 ' + (bool(p, 'best_access') ? 'bg-accent-soft' : '')}
                       >
                         <td className="px-2 py-1.5 text-[0.7rem] font-semibold tabular-nums text-ink">
                           {t || '—'}
@@ -309,7 +309,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
                   {wlHoldings.length} of your watchlist stocks are in this ETF: {wlHoldings.join(', ')}
                 </div>
               ) : null}
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-divider">
                 {d.holdings.slice(0, 15).map((h) => {
                   const onWl = watchlist.has(h.symbol);
                   return (

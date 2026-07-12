@@ -113,7 +113,7 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
         {tip && <InfoTip text={tip} />}
       </div>
       <div
-        className="mt-0.5 text-[1.15rem] font-extrabold leading-tight tabular-nums"
+        className="mt-0.5 text-[1.15rem] font-bold leading-tight tabular-nums"
         style={{ color: TONE_HEX[tone] }}
       >
         {value}
@@ -176,7 +176,7 @@ export function LabPage() {
   if (!data.has_results || !data.results) {
     return (
       <div className="rounded-card border border-line bg-surface p-10 text-center shadow-card">
-        <h1 className="text-xl font-extrabold text-ink">Factor Lab</h1>
+        <h1 className="text-xl font-bold text-ink">Factor Lab</h1>
         <p className="mx-auto mt-3 max-w-[520px] text-sm text-muted">
           No backtest stored yet. The monthly workflow
           (<code className="rounded bg-surface-2 px-1">backtest.yml</code>) computes and stores
@@ -232,7 +232,7 @@ export function LabPage() {
             <span className="text-subtle">/</span>
             <span className="text-muted">Factor Lab</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
+          <h1 className="mt-2 text-[1.95rem] font-bold leading-[1.1] tracking-[-0.015em] text-ink">
             Does the model actually work?
           </h1>
           <p className="mt-2 text-[0.9rem] text-muted">

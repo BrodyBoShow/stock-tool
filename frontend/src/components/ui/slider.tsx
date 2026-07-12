@@ -12,7 +12,7 @@ interface FactorSliderProps
 export const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   FactorSliderProps
->(({ className, accent = '#1e293b', ...props }, ref) => (
+>(({ className, accent = 'var(--ink)', ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
     className={cn(
@@ -21,14 +21,14 @@ export const Slider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-gray-200">
+    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-surface-3">
       <SliderPrimitive.Range
         className="absolute h-full rounded-full"
         style={{ background: accent }}
       />
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb
-      className="block h-3.5 w-3.5 rounded-full border-2 bg-white shadow transition-transform focus:outline-none focus-visible:scale-110 disabled:pointer-events-none"
+      className="block h-3.5 w-3.5 rounded-full border-2 bg-surface shadow transition-transform focus:outline-none focus-visible:scale-110 disabled:pointer-events-none"
       style={{ borderColor: accent }}
     />
   </SliderPrimitive.Root>
