@@ -196,7 +196,7 @@ export function ScreenerPage() {
           </div>
         )
       })()}
-      <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-stretch">
+      <div className="flex flex-col items-stretch gap-5 lg:h-[calc(100dvh-4.75rem)] lg:flex-row lg:items-stretch lg:overflow-hidden">
         <FilterSidebar
           filters={filters}
           onChange={setFilters}
@@ -209,7 +209,7 @@ export function ScreenerPage() {
             setSearchParams(new URLSearchParams(q), { replace: true })
           }
         />
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
           <ActiveFilterChips filters={filters} onChange={setFilters} onReset={resetAll} />
           <ScreenerTable
             rows={filtered}

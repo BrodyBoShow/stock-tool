@@ -595,7 +595,7 @@ export function ScreenerTable({
           since there's no stretched row to fill against there. */}
       <div
         ref={parentRef}
-        className="min-h-[420px] flex-1 overflow-auto max-h-[calc(100dvh-13rem)] lg:max-h-none"
+        className="min-h-0 flex-1 overflow-auto max-h-[calc(100dvh-13rem)] lg:max-h-none"
       >
         <div
           className="sticky top-0 z-10 grid border-b border-line bg-surface-2"
