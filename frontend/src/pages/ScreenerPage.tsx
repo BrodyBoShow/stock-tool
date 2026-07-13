@@ -34,14 +34,14 @@ const FACTOR_LABEL: Record<FactorKey, string> = {
 
 function ScreenerSkeleton() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Skeleton className="h-[210px] w-full rounded-2xl" />
-      <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start">
+      <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
         <Skeleton className="h-[480px] w-[270px] shrink-0 rounded-card" />
         <div className="min-w-0 flex-1 space-y-0 overflow-hidden rounded-card border border-line bg-surface p-4 shadow-card">
           <Skeleton className="mb-4 h-5 w-56" />
-          {Array.from({ length: 10 }, (_, i) => (
-            <Skeleton key={i} className="mb-2 h-10 w-full" />
+          {Array.from({ length: 12 }, (_, i) => (
+            <Skeleton key={i} className="mb-1.5 h-9 w-full" />
           ))}
         </div>
       </div>

@@ -52,7 +52,12 @@ const FACTOR_TIP: Record<FactorKey, string> = {
   momentum: 'Price trend — 3/6/12-month returns (12-minus-1).',
 }
 
-const ROW_H = 44
+// Terminal density: 36px rows (was 44). Single source of truth — feeds both the
+// virtualizer's estimateSize and each row's rendered height (vi.size), so they
+// can't desync. Companion cell padding/sparkline are tightened to fit. The row
+// clips horizontal bleed only (overflow-x-clip) — vertical overflow stays visible
+// so the composite Sparkline's hover value bubble (not portaled) isn't clipped.
+const ROW_H = 36
 
 /** Columns the user can hide via the ⚙ menu (#14). Rank/Company/Composite/Price
  *  are always shown. */
@@ -68,7 +73,7 @@ const OPTIONAL_COLS: { key: string; label: string }[] = [
 ]
 
 const TH =
-  'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
+  'flex items-center px-3 py-[6px] text-[0.66rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
 
 // GARP ("worst-of Value & Momentum") is display/discovery only and is computed
 // live-aware inside the component (see liveGarp) so it tracks the live-adjusted
@@ -111,18 +116,18 @@ function PriceCell({ row }: { row: ScreenerRow }) {
     const chg = (last - prev) / prev
     delta =
       chg >= 0 ? (
-        <span className="text-[0.7rem] font-semibold text-pos">
+        <span className="numeric text-[0.62rem] font-semibold text-pos">
           ▲ {(chg * 100).toFixed(2)}%
         </span>
       ) : (
-        <span className="text-[0.7rem] font-semibold text-neg">
+        <span className="numeric text-[0.62rem] font-semibold text-neg">
           ▼ {(Math.abs(chg) * 100).toFixed(2)}%
         </span>
       )
   }
   return (
-    <div className="flex h-full flex-col items-end justify-center px-3 py-2">
-      <span className="numeric text-[0.85rem] font-semibold text-ink">
+    <div className="flex h-full flex-col items-end justify-center px-3 py-1 leading-tight">
+      <span className="numeric text-[0.8rem] font-semibold text-ink">
         {fmtPrice(last)}
       </span>
       {delta}
@@ -671,7 +676,7 @@ export function ScreenerTable({
               return (
                 <div
                   key={r.security_id}
-                  className="absolute left-0 grid w-full border-b border-line transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
+                  className="absolute left-0 grid w-full overflow-x-clip border-b border-divider transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
                   style={{
                     gridTemplateColumns: gridCols,
                     height: vi.size,
@@ -732,13 +737,13 @@ export function ScreenerTable({
                       </span>
                     )}
                   </div>
-                  <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1.5">
+                  <div className="flex h-full min-w-0 flex-col justify-center px-3 py-1">
                     {onRowClick ? (
                       <>
                         <span className="flex items-center gap-1">
                           <Link
                             to={`/securities/${r.ticker}`}
-                            className="text-[0.88rem] font-bold leading-[1.15] text-ink hover:text-accent hover:underline"
+                            className="numeric text-[0.82rem] font-bold leading-[1.1] text-ink hover:text-accent hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {r.ticker}
@@ -747,7 +752,7 @@ export function ScreenerTable({
                           <CommodityMark row={r} backdrops={commodityBackdrops} />
                           <WhatChanged d={r.composite_delta_7d} />
                         </span>
-                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-subtle">
+                        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[0.68rem] leading-tight text-subtle">
                           {r.name ?? DASH}
                         </span>
                       </>
@@ -757,25 +762,26 @@ export function ScreenerTable({
                         className="contents text-inherit no-underline"
                       >
                         <span className="flex items-center gap-1">
-                          <span className="text-[0.88rem] font-bold leading-[1.15] text-ink">
+                          <span className="numeric text-[0.82rem] font-bold leading-[1.1] text-ink">
                             {r.ticker}
                           </span>
                           <ValueTrapMark row={r} />
                           <CommodityMark row={r} backdrops={commodityBackdrops} />
                           <WhatChanged d={r.composite_delta_7d} />
                         </span>
-                        <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-subtle">
+                        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[0.68rem] leading-tight text-subtle">
                           {r.name ?? DASH}
                         </span>
                       </Link>
                     )}
                   </div>
                   {show('sector') && (
-                    <div className="flex h-full min-w-0 items-center px-3 py-1.5">
+                    <div className="flex h-full min-w-0 items-center px-3 py-1">
                       <SectorPill sector={r.sector} />
                     </div>
                   )}
                   <ScoreCell
+                    dense
                     factor="composite"
                     value={r.composite}
                     live={liveByTicker?.[r.ticker]?.composite_live}
@@ -783,10 +789,11 @@ export function ScreenerTable({
                     sparkline={r.composite_history}
                   />
                   {show('growth') && (
-                    <ScoreCell factor="growth" value={r.growth_pctl} subPctls={r.sub_pctls} />
+                    <ScoreCell dense factor="growth" value={r.growth_pctl} subPctls={r.sub_pctls} />
                   )}
                   {show('value') && (
                     <ScoreCell
+                      dense
                       factor="value"
                       value={r.value_pctl}
                       live={liveByTicker?.[r.ticker]?.value_live}
@@ -794,10 +801,11 @@ export function ScreenerTable({
                     />
                   )}
                   {show('quality') && (
-                    <ScoreCell factor="quality" value={r.quality_pctl} subPctls={r.sub_pctls} />
+                    <ScoreCell dense factor="quality" value={r.quality_pctl} subPctls={r.sub_pctls} />
                   )}
                   {show('momentum') && (
                     <ScoreCell
+                      dense
                       factor="momentum"
                       value={r.momentum_pctl}
                       live={liveByTicker?.[r.ticker]?.momentum_live}
