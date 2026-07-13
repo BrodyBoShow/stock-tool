@@ -134,8 +134,8 @@ function AnswersBody({ data }: { data: FilingAnswers }) {
           </div>
           <ul className="mt-1 space-y-1.5">
             {a.unanswered.map((u, i) => (
-              <li key={i} className="flex gap-2 text-[0.82rem] leading-relaxed text-amber-900">
-                <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-amber-600" />
+              <li key={i} className="flex gap-2 text-[0.82rem] leading-relaxed text-warn">
+                <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-warn-strong" />
                 <span>{u}</span>
               </li>
             ))}

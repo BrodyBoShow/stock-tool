@@ -3,11 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { searchSecurities } from '@/lib/api'
+import { useTheme } from '@/lib/theme'
 
 /** Global ticker/company typeahead — jump to any operating company's deep-dive
  * from anywhere. Keyboard: ↑/↓ to move, Enter to open, Esc to close. */
 export function HeaderSearch() {
   const navigate = useNavigate()
+  // The nav is a constant-dark theme island; stamp the dropdown with the real
+  // page theme so its tokens (bg-surface/text-ink) resolve to the page, not the
+  // dark frame — otherwise the results float dark over a light page.
+  const { theme } = useTheme()
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -72,7 +77,10 @@ export function HeaderSearch() {
         className="w-32 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[0.82rem] text-ink placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-none lg:w-56"
       />
       {open && q.trim() && rows.length > 0 && (
-        <div className="absolute right-0 z-50 mt-1 max-h-[360px] w-72 overflow-auto rounded-xl border border-line bg-surface py-1 shadow-[0_8px_28px_rgba(15,23,42,0.12)]">
+        <div
+          data-theme={theme}
+          className="absolute right-0 z-50 mt-1 max-h-[360px] w-72 overflow-auto rounded-xl border border-line bg-surface py-1 text-ink shadow-[var(--sh-lg)]"
+        >
           {rows.map((r, i) => (
             <button
               key={r.ticker}
@@ -96,7 +104,10 @@ export function HeaderSearch() {
         </div>
       )}
       {open && q.trim().length >= 1 && rows.length === 0 && (
-        <div className="absolute right-0 z-50 mt-1 w-72 rounded-xl border border-line bg-surface px-3 py-2.5 text-[0.8rem] text-muted shadow-[0_8px_28px_rgba(15,23,42,0.12)]">
+        <div
+          data-theme={theme}
+          className="absolute right-0 z-50 mt-1 w-72 rounded-xl border border-line bg-surface px-3 py-2.5 text-[0.8rem] text-muted shadow-[var(--sh-lg)]"
+        >
           No matches for “{q.trim()}”.
         </div>
       )}
