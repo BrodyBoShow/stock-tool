@@ -1,5 +1,6 @@
 import { rankColor } from '@/lib/colors'
 import { FACTOR_ORDER, FACTOR_TABLE } from '@/lib/constants'
+import { useEffectiveFactors } from '@/lib/liveFactors'
 import type { SecurityHeader } from '@/types/api'
 
 type FactorEntry = {
@@ -59,21 +60,16 @@ function WaterfallBar({ entry, maxContrib }: { entry: FactorEntry; maxContrib: n
 }
 
 /**
- * Score waterfall: composite = Σ (weight_i × pctl_i) per factor.
- * Data comes entirely from the header — no extra fetch needed.
+ * Score waterfall: composite = Σ (weight_i × pctl_i) per factor. Uses the shared
+ * live-adjusted percentiles (same react-query cache as the tiles/header, no extra
+ * fetch), so the breakdown reflects today's price when Value/Momentum have moved.
  */
 export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
+  const eff = useEffectiveFactors(header.ticker, header)
   const weights: Record<string, number> = header.details?.weights ?? {}
 
   const entries: FactorEntry[] = FACTOR_ORDER.filter((k) => k !== 'composite').map((key) => {
-    const pctl =
-      key === 'growth'
-        ? header.growth_pctl
-        : key === 'value'
-          ? header.value_pctl
-          : key === 'quality'
-            ? header.quality_pctl
-            : header.momentum_pctl
+    const pctl = eff.pctls[key]
     const weight = weights[key] ?? 0.25
     return {
       key,
@@ -84,7 +80,7 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
     }
   })
 
-  const composite = header.composite
+  const composite = eff.pctls.composite
   const maxContrib = Math.max(...entries.map((e) => e.contribution), 1)
   const { bg: compBg, fg: compFg } = rankColor(composite)
 
@@ -94,7 +90,17 @@ export function ScoreWaterfall({ header }: { header: SecurityHeader }) {
     <div className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-ink">Score breakdown</div>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-ink">Score breakdown</span>
+            {eff.isLive && (
+              <span
+                title="Live-adjusted from the latest price (~15-min delayed). Value & Momentum (and the composite) reflect today's price; Growth & Quality stay nightly."
+                className="rounded bg-info-soft px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-info"
+              >
+                live
+              </span>
+            )}
+          </div>
           <div className="mt-0.5 text-[0.78rem] text-muted">
             Composite = Σ (factor weight × percentile rank)
           </div>

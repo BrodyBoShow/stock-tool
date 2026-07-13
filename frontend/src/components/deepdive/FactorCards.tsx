@@ -1,15 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
 import { TriangleAlert } from 'lucide-react'
 
 import { Sparkline } from '@/components/screener/Sparkline'
 import { Icon } from '@/components/ui/Icon'
-import { getLiveFactors } from '@/lib/api'
 import { FACTOR_TABLE, isCommoditySensitive, type FactorKey } from '@/lib/constants'
+import { useEffectiveFactors } from '@/lib/liveFactors'
 import {
   compositeContributions,
   factorAgreement,
   isValueTrap,
-  type FactorPctls,
 } from '@/lib/factorReading'
 import { DASH } from '@/lib/format'
 import type { FactorSet, PricePoint, SecurityHeader } from '@/types/api'
@@ -66,17 +64,7 @@ export function FactorCards({
   ticker: string
   prices?: PricePoint[]
 }) {
-  const { data } = useQuery({
-    queryKey: ['live-factors', ticker],
-    queryFn: () => getLiveFactors(ticker),
-    staleTime: 60 * 1000,
-    // Refresh while a live (non-stale) adjustment is in effect — i.e. the
-    // market is moving the price. When closed/stale it settles and stops.
-    refetchInterval: (q) =>
-      q.state.data?.live && !q.state.data.stale ? 90 * 1000 : false,
-  })
-
-  const isLive = Boolean(data?.live && !data?.stale && data?.has_scores)
+  const { data, isLive, pctls: effPctls } = useEffectiveFactors(ticker, header)
   const clock = fmtClock(data?.as_of_epoch)
   // Recent price action that drives the live momentum adjustment (context only).
   const recentPx = (prices ?? [])
@@ -89,18 +77,14 @@ export function FactorCards({
       : null
   const commodity = isCommoditySensitive(header.sector)
 
-  // Transparency readout (Phase 1) — computed from the nightly score the user
-  // sees. Descriptive only; nothing here re-ranks the stock.
-  const pctls: FactorPctls = {
-    composite: header.composite,
-    growth: header.growth_pctl,
-    value: header.value_pctl,
-    quality: header.quality_pctl,
-    momentum: header.momentum_pctl,
-  }
-  const trap = isValueTrap(pctls)
-  const agree = factorAgreement(pctls)
-  const contrib = compositeContributions(pctls, header.details?.weights)
+  // Every score readout on this page uses the LIVE-adjusted percentiles (same as
+  // the tiles + header) so nothing contradicts — the value-trap caveat, the
+  // "what drives the composite" decomposition, and their tooltips all cite one
+  // consistent number. Value & Momentum move with price; Growth & Quality stay
+  // nightly (so effPctls == nightly for them).
+  const trap = isValueTrap(effPctls)
+  const agree = factorAgreement(effPctls)
+  const contrib = compositeContributions(effPctls, header.details?.weights)
 
   return (
     <div>
@@ -125,8 +109,8 @@ export function FactorCards({
         <div
           className="mb-2.5 flex items-start gap-2 rounded-xl border border-warn bg-warn-soft px-3 py-2 text-[0.78rem] text-warn"
           title={
-            `Value ${header.value_pctl?.toFixed(0)} · Quality ${header.quality_pctl?.toFixed(0)} · ` +
-            `Momentum ${header.momentum_pctl?.toFixed(0)}. A cheap valuation paired with weak quality ` +
+            `Value ${effPctls.value?.toFixed(0)} · Quality ${effPctls.quality?.toFixed(0)} · ` +
+            `Momentum ${effPctls.momentum?.toFixed(0)}. A cheap valuation paired with weak quality ` +
             `and weak price trend is the classic "value trap" — the market may be pricing in real ` +
             `deterioration. This is a caveat to investigate, not a sell signal.`
           }
