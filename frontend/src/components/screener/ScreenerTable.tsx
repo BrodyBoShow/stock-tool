@@ -466,7 +466,7 @@ export function ScreenerTable({
   const compareRowsData = rows.filter((r) => selected.has(r.ticker))
 
   return (
-    <section className="min-w-0 flex-1 overflow-hidden rounded-card border border-line bg-surface shadow-card">
+    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card">
       {/* card header */}
       <div className="flex items-start justify-between gap-3 px-4 pb-2.5 pt-3.5">
         <div>
@@ -590,12 +590,12 @@ export function ScreenerTable({
         </span>
       </div>
 
-      {/* virtualized grid — grows with the viewport (was a fixed 640px cap that
-          left a big void on tall monitors); floored so it stays usable on laptops */}
+      {/* virtualized grid — flex-fills the card so the table matches the sidebar
+          height (kills the void beside/below it). Mobile keeps a viewport cap
+          since there's no stretched row to fill against there. */}
       <div
         ref={parentRef}
-        className="overflow-auto"
-        style={{ maxHeight: 'max(440px, calc(100vh - 300px))' }}
+        className="min-h-[420px] flex-1 overflow-auto max-h-[calc(100dvh-13rem)] lg:max-h-none"
       >
         <div
           className="sticky top-0 z-10 grid border-b border-line bg-surface-2"
