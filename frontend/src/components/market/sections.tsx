@@ -36,31 +36,31 @@ export function SectorTable({ sectors }: { sectors: MarketSectorRow[] }) {
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-[0.84rem]">
+      <table className="w-full text-[0.82rem]">
         <thead>
           <tr className={TABLE_HEAD_ROW}>
-            <th className="py-2 pr-4">Sector</th>
-            <th className="py-2 pr-3 text-right">Names</th>
+            <th className="py-1.5 pr-4">Sector</th>
+            <th className="py-1.5 pr-3 text-right">Names</th>
             {cols.map((c) => (
-              <th key={c.key} className="px-2 py-2 text-right">{c.label}</th>
+              <th key={c.key} className="px-2 py-1.5 text-right">{c.label}</th>
             ))}
-            <th className="py-2 pl-3 text-right">Breadth 1D</th>
+            <th className="py-1.5 pl-3 text-right">Breadth 1D</th>
           </tr>
         </thead>
         <tbody>
           {sectors.map((s) => (
             <tr key={s.sector} className="border-b border-line">
-              <td className="py-2 pr-4 font-bold text-ink">{s.sector}</td>
-              <td className="py-2 pr-3 text-right tabular-nums text-subtle">{s.n}</td>
+              <td className="py-1.5 pr-4 font-bold text-ink">{s.sector}</td>
+              <td className="py-1.5 pr-3 text-right numeric text-subtle">{s.n}</td>
               {cols.map((c) => {
                 const v = s[c.key] as number | null
                 return (
-                  <td key={c.key} className="px-2 py-2 text-right font-semibold tabular-nums" style={heat(v, c.scale)}>
+                  <td key={c.key} className="px-2 py-1.5 text-right font-semibold numeric" style={heat(v, c.scale)}>
                     {fmtSignedPct(v)}
                   </td>
                 )
               })}
-              <td className="py-2 pl-3 text-right tabular-nums text-muted">
+              <td className="py-1.5 pl-3 text-right numeric text-muted">
                 {s.adv_pct == null ? '—' : `${(s.adv_pct * 100).toFixed(0)}%`}
               </td>
             </tr>
@@ -187,18 +187,18 @@ export function MoverList({ movers, title }: { movers: MarketMover[]; title: str
   return (
     <div>
       <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-subtle">{title}</div>
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-2 space-y-1">
         {movers.map((m) => (
           <div key={m.security_id} className="flex items-center gap-2 text-[0.82rem]">
-            <Link to={`/securities/${m.ticker}`} className="w-14 shrink-0 font-bold text-ink hover:text-accent">
+            <Link to={`/securities/${m.ticker}`} className="w-14 shrink-0 numeric font-bold text-ink hover:text-accent">
               {m.ticker}
             </Link>
             <span className="min-w-0 flex-1 truncate text-subtle">{m.name}</span>
             {m.factors && <FactorDots factors={m.factors} />}
             {m.has_8k && <EightKChip ticker={m.ticker} />}
             {m.zscore != null && <ZScoreBadge z={m.zscore} />}
-            <span className="hidden shrink-0 tabular-nums text-subtle md:inline">{fmtMoney(m.market_cap)}</span>
-            <span className="w-16 shrink-0 text-right font-bold tabular-nums" style={{ color: plColor(m.r1d) }}>
+            <span className="hidden shrink-0 numeric text-subtle md:inline">{fmtMoney(m.market_cap)}</span>
+            <span className="w-16 shrink-0 text-right font-bold numeric" style={{ color: plColor(m.r1d) }}>
               {fmtSignedPct(m.r1d)}
             </span>
           </div>
@@ -213,7 +213,7 @@ export function FactorOfDay({ factors }: { factors: MarketFactorDay[] }) {
   if (!factors.length) return null
   const max = Math.max(...factors.map((f) => Math.abs(f.spread)), 0.001)
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-1.5">
       {factors.map((f) => {
         const pos = f.spread >= 0
         return (
@@ -230,7 +230,7 @@ export function FactorOfDay({ factors }: { factors: MarketFactorDay[] }) {
                 }}
               />
             </div>
-            <span className="w-16 shrink-0 text-right font-bold tabular-nums" style={{ color: plColor(f.spread) }}>
+            <span className="w-16 shrink-0 text-right font-bold numeric" style={{ color: plColor(f.spread) }}>
               {fmtSignedPct(f.spread)}
             </span>
           </div>

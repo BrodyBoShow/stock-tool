@@ -201,7 +201,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
                   {f.most_liquid && (
                     <span title="Most Liquid" className="inline-block h-1.5 w-1.5 rounded-full bg-info" />
                   )}
-                  <span className="font-semibold tabular-nums text-ink">{f.ticker}</span>
+                  <span className="numeric font-semibold text-ink">{f.ticker}</span>
                 </span>
               </td>
               <td className="max-w-[240px] truncate px-2 py-1.5 text-muted">{f.name ?? DASH_FALLBACK}</td>
@@ -221,7 +221,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
                 return (
                   <td
                     key={key}
-                    className={'px-2 py-1.5 ' + (col.num ? 'text-right tabular-nums' : 'text-left')}
+                    className={'px-2 py-1.5 ' + (col.num ? 'numeric text-right' : 'text-left')}
                   >
                     {renderCell(f, key, showRank)}
                   </td>
