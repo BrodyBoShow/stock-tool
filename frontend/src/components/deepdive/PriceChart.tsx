@@ -4,6 +4,7 @@ import {
   Area,
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
   ComposedChart,
   Line,
@@ -22,7 +23,7 @@ import { Icon } from '@/components/ui/Icon'
 import { getCompareSeries, getEvents, getInsiders, getMacroSeries, getPeers } from '@/lib/api'
 import { useChartTheme } from '@/lib/chartTheme'
 import { MACRO_DISPLAY } from '@/lib/constants'
-import { fmtVol, tickLabel } from '@/lib/format'
+import { fmtVol } from '@/lib/format'
 import { analyzeWyckoff } from '@/lib/wyckoff'
 import type { FilingRow, PricePoint } from '@/types/api'
 
@@ -38,6 +39,7 @@ import {
 import {
   asOfMerge,
   buildRanges,
+  buildTimeTicks,
   compareColor,
   MA200_COLOR,
   MA50_COLOR,
@@ -57,6 +59,10 @@ import {
 import { WyckoffReadPanel } from './WyckoffReadPanel'
 
 const MARKER_CAP = 60 // per category, most-recent kept — keeps a wide window legible
+
+// Concrete mono stack for SVG axis text (var(--font-mono) won't substitute in
+// SVG presentation attributes on Safari — same trap as chartTheme colors).
+const AXIS_MONO = '"IBM Plex Mono", ui-monospace, monospace'
 
 // Recharts mouse-event state (loosely typed upstream).
 interface ChartMouseState {
@@ -454,9 +460,45 @@ export function PriceChart({
   )
   const pinnedItems = pinnedDay ? eventsAt(pinnedDay) : []
 
+  // Adaptive, non-repeating x-axis ticks for the visible window (fixes the old
+  // duplicate-month axis: "Sep '25 … Sep '25").
+  const { ticks: xTicks, fmt: xFmt } = useMemo(
+    () => buildTimeTicks(data.map((r) => r.date)),
+    [data],
+  )
+
+  // Directional price line: green when the window closed up, red when down.
+  const windowUp = stats ? stats.last >= stats.first : true
+  const lineColor = windowUp ? ct.pos : ct.neg
+
+  // Reference levels in the PLOTTED scale (r.v is % in percent mode, $ otherwise)
+  // so the lines sit correctly on either axis. Suppressed when the view is busy
+  // (comparison overlays or a right-axis macro series) to keep it legible.
+  const refLevels = useMemo(() => {
+    if (compare.length > 0 || overlayOn || data.length < 2) return null
+    let hi = -Infinity
+    let lo = Infinity
+    let last: number | null = null
+    for (const r of data) {
+      const v = typeof r.v === 'number' ? r.v : null
+      if (v == null) continue
+      if (v > hi) hi = v
+      if (v < lo) lo = v
+      last = v
+    }
+    if (last == null || !Number.isFinite(hi) || !Number.isFinite(lo)) return null
+    return { hi, lo, last }
+  }, [data, compare.length, overlayOn])
+
   const yTick = pctOn
     ? (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(0)}%`
     : (v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}`
+
+  // Precise label for the "last price" axis pill (2dp in $, 1dp in %). High-
+  // priced names (≥$1k) abbreviate to "k" so the pill never clips the margin.
+  const fmtLevel = pctOn
+    ? (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+    : (v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(2)}`)
 
   return (
     <div className="rounded-card border border-line bg-surface p-5 shadow-card">
@@ -912,7 +954,7 @@ export function PriceChart({
             <ResponsiveContainer width="100%" height={showVolume && hasVolume ? 260 : 300}>
               <ComposedChart
                 data={data}
-                margin={{ top: 4, right: overlayOn ? 52 : 4, bottom: 0, left: 0 }}
+                margin={{ top: 4, right: overlayOn ? 52 : refLevels ? 50 : 6, bottom: 0, left: 0 }}
                 syncId="px"
                 onMouseDown={onChartMouseDown}
                 onMouseMove={onChartMouseMove}
@@ -920,20 +962,29 @@ export function PriceChart({
                 onMouseLeave={onChartMouseLeave}
               >
                 <defs>
-                  {/* Ink price line + faint ink wash — the pro-terminal chart
-                      language (never a saturated brand-color fill). */}
+                  {/* Directional wash — matches the price line: green window up,
+                      red down. Faint so it reads as a fill, never a block. */}
                   <linearGradient id="px-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={ct.ink} stopOpacity={0.1} />
-                    <stop offset="100%" stopColor={ct.ink} stopOpacity={0} />
+                    <stop offset="0%" stopColor={lineColor} stopOpacity={0.14} />
+                    <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
                   </linearGradient>
                 </defs>
+                {/* Dotted horizontal-only grid so price levels read across the width */}
+                <CartesianGrid
+                  vertical={false}
+                  stroke={ct.grid}
+                  strokeDasharray="1 4"
+                  strokeOpacity={0.9}
+                />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={tickLabel}
-                  minTickGap={56}
+                  ticks={xTicks}
+                  tickFormatter={xFmt}
+                  interval="preserveStartEnd"
+                  minTickGap={16}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: ct.axis }}
+                  tick={{ fontSize: 11, fill: ct.axis, fontFamily: AXIS_MONO }}
                 />
                 <YAxis
                   yAxisId="price"
@@ -944,7 +995,7 @@ export function PriceChart({
                   width={56}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: ct.axis }}
+                  tick={{ fontSize: 11, fill: ct.axis, fontFamily: AXIS_MONO }}
                 />
                 {overlayOn && (
                   <YAxis
@@ -955,7 +1006,38 @@ export function PriceChart({
                     width={52}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: OVERLAY_COLOR }}
+                    tick={{ fontSize: 11, fill: OVERLAY_COLOR, fontFamily: AXIS_MONO }}
+                  />
+                )}
+
+                {/* Window high / low guides (behind the data) — the exact figures
+                    live in the stat strip above; these make "how close to the
+                    high" visual. Zero baseline shown in % mode. */}
+                {refLevels && (
+                  <>
+                    <ReferenceLine
+                      yAxisId="price"
+                      y={refLevels.hi}
+                      stroke={ct.axis}
+                      strokeDasharray="1 4"
+                      strokeOpacity={0.5}
+                    />
+                    <ReferenceLine
+                      yAxisId="price"
+                      y={refLevels.lo}
+                      stroke={ct.axis}
+                      strokeDasharray="1 4"
+                      strokeOpacity={0.5}
+                    />
+                  </>
+                )}
+                {pctOn && refLevels && (
+                  <ReferenceLine
+                    yAxisId="price"
+                    y={0}
+                    stroke={ct.axis}
+                    strokeDasharray="2 3"
+                    strokeOpacity={0.55}
                   />
                 )}
                 <Tooltip
@@ -1013,7 +1095,7 @@ export function PriceChart({
                   yAxisId="price"
                   type="monotone"
                   dataKey="v"
-                  stroke={ct.ink}
+                  stroke={lineColor}
                   strokeWidth={1.5}
                   fill="url(#px-fill)"
                   isAnimationActive={false}
@@ -1050,6 +1132,7 @@ export function PriceChart({
                     dataKey={`cmp_${c.ticker}`}
                     stroke={c.color}
                     strokeWidth={1.6}
+                    strokeDasharray="6 3"
                     dot={false}
                     connectNulls
                     isAnimationActive={false}
@@ -1065,6 +1148,26 @@ export function PriceChart({
                     dot={false}
                     connectNulls
                     isAnimationActive={false}
+                  />
+                )}
+
+                {/* Last-price anchor — dashed line at the latest close with a mono
+                    price pill in the right margin. Drawn last so it sits on top. */}
+                {refLevels && (
+                  <ReferenceLine
+                    yAxisId="price"
+                    y={refLevels.last}
+                    stroke={lineColor}
+                    strokeWidth={1}
+                    strokeDasharray="5 3"
+                    label={{
+                      value: fmtLevel(refLevels.last),
+                      position: 'right',
+                      fill: lineColor,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      fontFamily: AXIS_MONO,
+                    }}
                   />
                 )}
               </ComposedChart>
