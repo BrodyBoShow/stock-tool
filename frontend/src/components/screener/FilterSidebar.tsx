@@ -199,7 +199,7 @@ export function FilterSidebar({
     })
 
   return (
-    <aside className="w-full shrink-0 rounded-card border border-line bg-surface px-3.5 pb-3.5 shadow-card lg:w-[270px]">
+    <aside className="w-full shrink-0 rounded-card border border-line bg-surface px-3.5 pb-3.5 shadow-card lg:max-h-full lg:w-[270px] lg:self-start lg:overflow-y-auto">
       {/* header */}
       <div className="flex items-center justify-between border-b border-divider py-3">
         <div className="flex items-center gap-2 text-sm font-bold text-ink">
