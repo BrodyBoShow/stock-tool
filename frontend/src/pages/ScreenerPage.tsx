@@ -196,7 +196,7 @@ export function ScreenerPage() {
           </div>
         )
       })()}
-      <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start">
+      <div className="flex flex-col items-stretch gap-5 lg:flex-row lg:items-stretch">
         <FilterSidebar
           filters={filters}
           onChange={setFilters}
