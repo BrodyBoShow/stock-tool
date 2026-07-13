@@ -31,6 +31,7 @@ export const MARKET_CAP_OPTIONS: Array<{ label: string; value: number }> = [
   { label: '≥ $2B (mid+)', value: 2_000_000_000 },
   { label: '≥ $10B (large)', value: 10_000_000_000 },
   { label: '≥ $200B (mega)', value: 200_000_000_000 },
+  { label: '≥ $500B (mega+)', value: 500_000_000_000 },
 ]
 
 const FACTOR_FIELD: Record<FactorKey, keyof ScreenerRow> = {
