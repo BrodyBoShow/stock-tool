@@ -1,6 +1,7 @@
 import type { FundRotationRow } from '@/types/api';
 import { FUND_CATEGORIES } from '@/components/funds/fundsUi';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { useChartTheme } from '@/lib/chartTheme';
 import { fmtSignedPct } from '@/lib/format';
 import { plColor } from '@/lib/colors';
 
@@ -51,6 +52,9 @@ const AXIS_LABELS = ['Commodity', 'Crypto', 'Lev/Inv', 'Other'];
 
 export function RotationCompass(props: RotationCompassProps): JSX.Element {
   const { rotation } = props;
+  // Resolve chart colors to concrete hex for SVG presentation attributes
+  // (Safari won't substitute var() there). Recomputes on theme flip.
+  const ct = useChartTheme();
 
   if (rotation.length === 0) {
     return (
@@ -99,7 +103,7 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
                   key={r}
                   points={ringPolygon(r)}
                   fill="none"
-                  stroke="#e2e8f0"
+                  stroke={ct.grid}
                   strokeWidth={1}
                 />
               ))}
@@ -111,7 +115,7 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
                   y1={0}
                   x2={(R * Math.cos(ang)).toFixed(1)}
                   y2={(R * Math.sin(ang)).toFixed(1)}
-                  stroke="#e2e8f0"
+                  stroke={ct.grid}
                   strokeWidth={1}
                 />
               ))}
@@ -119,22 +123,22 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
               <polygon
                 points={p20.points}
                 fill="none"
-                stroke="#94a3b8"
+                stroke={ct.muted}
                 strokeDasharray="3,2"
                 opacity={0.6}
               />
               {/* 5-day */}
-              <polygon points={p5.points} fill="#3b82f6" opacity={0.15} stroke="#3b82f6" />
+              <polygon points={p5.points} fill={ct.primary} opacity={0.15} stroke={ct.primary} />
               {/* today */}
               <polygon
                 points={p1.points}
-                fill="#3b82f6"
+                fill={ct.accent}
                 opacity={0.35}
-                stroke="#2563eb"
+                stroke={ct.accent}
                 strokeWidth={1.5}
               />
               {p1.verts.map((v, i) => (
-                <circle key={i} cx={v.x.toFixed(1)} cy={v.y.toFixed(1)} r={2} fill="#2563eb" />
+                <circle key={i} cx={v.x.toFixed(1)} cy={v.y.toFixed(1)} r={2} fill={ct.accent} />
               ))}
               {/* axis labels */}
               {ANGLES.map((ang, i) => (
@@ -143,7 +147,7 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
                   x={((R + 12) * Math.cos(ang)).toFixed(1)}
                   y={((R + 12) * Math.sin(ang)).toFixed(1)}
                   fontSize={9.5}
-                  fill="#0f172a"
+                  fill={ct.muted}
                   textAnchor="middle"
                   dominantBaseline="middle"
                 >
@@ -153,9 +157,9 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
             </g>
           </svg>
           <div className="mt-1 text-center text-[0.6rem] text-subtle">
-            <span style={{ color: '#2563eb' }}>●</span> Today&nbsp;&nbsp;
-            <span style={{ color: '#3b82f6' }}>●</span> 5-day&nbsp;&nbsp;
-            <span style={{ color: '#94a3b8' }}>┄</span> 20-day
+            <span style={{ color: 'var(--accent)' }}>●</span> Today&nbsp;&nbsp;
+            <span style={{ color: 'var(--primary)' }}>●</span> 5-day&nbsp;&nbsp;
+            <span className="text-muted">┄</span> 20-day
           </div>
         </div>
 

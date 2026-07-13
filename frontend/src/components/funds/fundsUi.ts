@@ -57,12 +57,15 @@ export interface Swatch { bg: string; fg: string }
  * per the improvements spec, all with white text so tiles read consistently.
  */
 export function tileColor(ret: number | null | undefined): Swatch {
-  if (ret == null || Number.isNaN(ret)) return { bg: '#94a3b8', fg: '#ffffff' }
-  if (ret >= 0.02) return { bg: '#15803d', fg: '#ffffff' } // deep green
-  if (ret >= 0.003) return { bg: '#16a34a', fg: '#ffffff' } // green
-  if (ret > -0.003) return { bg: '#d97706', fg: '#ffffff' } // amber — flat
-  if (ret > -0.02) return { bg: '#dc2626', fg: '#ffffff' } // red
-  return { bg: '#b91c1c', fg: '#ffffff' } // deep red
+  // Heatmap cells: the fill IS the signal, so these are theme-independent.
+  // Fills are dark enough that white text clears WCAG-AA (the mid tiers were
+  // ~2.9:1 before); the no-data tile is neutral carbon-gray, not cool slate.
+  if (ret == null || Number.isNaN(ret)) return { bg: '#52525b', fg: '#ffffff' }
+  if (ret >= 0.02) return { bg: '#166534', fg: '#ffffff' } // deep green
+  if (ret >= 0.003) return { bg: '#15803d', fg: '#ffffff' } // green
+  if (ret > -0.003) return { bg: '#a16207', fg: '#ffffff' } // amber — flat
+  if (ret > -0.02) return { bg: '#b91c1c', fg: '#ffffff' } // red
+  return { bg: '#991b1b', fg: '#ffffff' } // deep red
 }
 
 /**
