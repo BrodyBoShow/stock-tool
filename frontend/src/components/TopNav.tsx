@@ -10,6 +10,7 @@ import {
   Search,
   Star,
   Sun,
+  SwatchBook,
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
@@ -42,6 +43,27 @@ function ThemeToggle() {
       className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink"
     >
       <Icon icon={dark ? Sun : Moon} />
+    </button>
+  )
+}
+
+/** Warm/cool palette toggle (A/B). Flips the surface temperature — warm-paper
+ *  vs cool graphite — while the amber accent stays. Temporary while we settle
+ *  the palette with beta testers; persists the choice to localStorage. */
+function PaletteToggle() {
+  const { palette, togglePalette } = useTheme()
+  const cool = palette === 'cool'
+  const label = cool ? 'Switch to warm surfaces' : 'Switch to cool surfaces'
+  return (
+    <button
+      type="button"
+      onClick={togglePalette}
+      title={`${cool ? 'Cool' : 'Warm'} surfaces — ${label.toLowerCase()}`}
+      aria-label={label}
+      aria-pressed={cool}
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink"
+    >
+      <Icon icon={SwatchBook} />
     </button>
   )
 }
@@ -202,6 +224,7 @@ export function TopNav() {
           ))}
         </div>
         <span className="h-5 w-px flex-none bg-[var(--border)]" aria-hidden="true" />
+        <PaletteToggle />
         <ThemeToggle />
         <RefreshButton />
         <LogoutButton />

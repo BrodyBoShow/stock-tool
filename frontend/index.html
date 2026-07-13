@@ -19,10 +19,20 @@
           if (t !== 'light' && t !== 'dark') {
             t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
           }
-          document.documentElement.setAttribute('data-theme', t)
-          document.documentElement.style.colorScheme = t
+          // Palette (warm-paper default, cool graphite opt-in) is orthogonal to
+          // light/dark. Stamp both before paint so there is no flash of either.
+          var p = localStorage.getItem('palette')
+          if (p !== 'cool' && p !== 'warm') p = 'warm'
+          var el = document.documentElement
+          el.setAttribute('data-theme', t)
+          el.setAttribute('data-palette', p)
+          el.style.colorScheme = t
           var tc = document.getElementById('theme-color')
-          if (tc) tc.setAttribute('content', t === 'dark' ? '#131211' : '#faf8f4')
+          var chrome = {
+            warm: { dark: '#131211', light: '#faf8f4' },
+            cool: { dark: '#0b0f17', light: '#f7f8fa' },
+          }
+          if (tc) tc.setAttribute('content', chrome[p][t])
         } catch (e) {}
       })()
     </script>

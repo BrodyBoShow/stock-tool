@@ -241,6 +241,78 @@
   }
 }
 
+/* ── COOL palette (opt-in via data-palette="cool" on <html>) ───────────────────
+ * A/B alternative to the default warm-paper surfaces. Community dark-mode
+ * testers preferred a cool graphite terminal over the warm-brown one, so this
+ * swaps ONLY the surface / text / line tokens to cool-neutral (the pre-refresh
+ * graphite in dark; slate in light) while KEEPING the amber accent, the petrol
+ * benchmark, and all gain/loss semantics — the "cool surfaces + amber pop"
+ * compromise. Selectors are more specific than the base blocks so they win:
+ *   [data-palette='cool']                    → cool LIGHT surfaces  (0,1,0, later in source than :root)
+ *   [data-palette='cool'][data-theme='dark'] → cool DARK  surfaces  (0,2,0, beats the dark block)
+ * Accent/semantic tokens are deliberately NOT re-declared here, so they inherit
+ * amber/petrol/pos/neg from :root and [data-theme='dark']. */
+[data-palette='cool'] {
+  --bg: #f7f8fa;
+  --bg-grad-1: #f7f8fa;
+  --bg-grad-2: #eef2f7;
+  --bg-grad-3: #e7ecf3;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e6ecf3;
+  --nav-bg: rgba(247, 248, 250, 0.88);
+
+  --ink: #0f172a;
+  --muted: #475569;
+  --subtle: #5c6b7d; /* 5.45:1 on white, 4.58:1 on surface-3 */
+  --inverse: #f7f8fa;
+
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --divider: #eef2f7;
+}
+
+[data-palette='cool'][data-theme='dark'] {
+  --bg: #0b0f17; /* the graphite testers preferred */
+  --bg-grad-1: #0b0f17;
+  --bg-grad-2: #0d131c;
+  --bg-grad-3: #0f1620;
+  --surface: #131a24;
+  --surface-2: #1a222e;
+  --surface-3: #232c3a;
+  --nav-bg: rgba(11, 15, 23, 0.85);
+
+  --ink: #e6eaf0;
+  --muted: #9aa7b8;
+  --subtle: #808b9e; /* lifted for AA (5.08:1 on surface) */
+  --inverse: #0b0f17;
+
+  --border: #263041;
+  --border-strong: #33415a;
+  --divider: #1b2430;
+}
+
+/* First-visit dark default under the cool palette (before the toggle is set). */
+@media (prefers-color-scheme: dark) {
+  [data-palette='cool']:not([data-theme]) {
+    --bg: #0b0f17;
+    --bg-grad-1: #0b0f17;
+    --bg-grad-2: #0d131c;
+    --bg-grad-3: #0f1620;
+    --surface: #131a24;
+    --surface-2: #1a222e;
+    --surface-3: #232c3a;
+    --nav-bg: rgba(11, 15, 23, 0.85);
+    --ink: #e6eaf0;
+    --muted: #9aa7b8;
+    --subtle: #808b9e;
+    --inverse: #0b0f17;
+    --border: #263041;
+    --border-strong: #33415a;
+    --divider: #1b2430;
+  }
+}
+
 /* Tabular monospace for dense numeric data (scores, prices, caps, tickers) —
  * digits are fixed-width so columns align. Falls back to the system mono stack. */
 .numeric {
