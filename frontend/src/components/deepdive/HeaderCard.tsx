@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { SectorPill } from '@/components/screener/SectorPill'
 import { Delta } from '@/components/ui/Delta'
+import { FactorStamp } from '@/components/ui/FactorStamp'
 import { getBriefStatus } from '@/lib/api'
 import { scoreHeat } from '@/lib/colors'
 import { topDriver, type FactorPctls } from '@/lib/factorReading'
@@ -110,6 +111,13 @@ export function HeaderCard({
             {header.industry && (
               <div className="mt-0.5 text-[0.78rem] text-subtle">{header.industry}</div>
             )}
+            <FactorStamp
+              className="mt-1.5"
+              growth={header.growth_pctl}
+              value={header.value_pctl}
+              quality={header.quality_pctl}
+              momentum={header.momentum_pctl}
+            />
           </div>
         </div>
 
