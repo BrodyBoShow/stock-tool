@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom'
 
 import { ScoreWaterfall } from '@/components/deepdive/ScoreWaterfall'
 import { SectorPill } from '@/components/screener/SectorPill'
+import { FactorStamp } from '@/components/ui/FactorStamp'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { getSecurity } from '@/lib/api'
+import { plColor } from '@/lib/colors'
 import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { ScreenerRow } from '@/types/api'
 
@@ -63,6 +65,13 @@ export function ScreenerDrawer({
               <div className="text-[0.78rem] text-muted">
                 {row.name ?? DASH}
               </div>
+              <FactorStamp
+                className="mt-1"
+                growth={row.growth_pctl}
+                value={row.value_pctl}
+                quality={row.quality_pctl}
+                momentum={row.momentum_pctl}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -92,10 +101,7 @@ export function ScreenerDrawer({
             {row.last_price != null && row.prev_close != null && row.prev_close !== 0 && (
               <div
                 className="text-[0.72rem] font-semibold tabular-nums"
-                style={{
-                  color:
-                    row.last_price >= row.prev_close ? '#059669' : '#dc2626',
-                }}
+                style={{ color: plColor(row.last_price - row.prev_close) }}
               >
                 {row.last_price >= row.prev_close ? '▲' : '▼'}{' '}
                 {(
