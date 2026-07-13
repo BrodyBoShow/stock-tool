@@ -52,43 +52,17 @@ function Stat({
   )
 }
 
-const TILT_MAX = 1.5 // % top-vs-bottom spread that fills the diverging bar
-
-/** One factor's realized tilt today: a centered diverging bar (green right =
- *  top-quintile outperforming, red left = lagging) + the signed spread. */
-function FactorTiltCell({ label, spread }: { label: string; spread: number | null }) {
-  const flat = spread != null && Math.abs(spread) < 0.005
-  const up = spread != null && spread >= 0
-  const color = spread == null || flat ? 'var(--subtle)' : up ? 'var(--pos)' : 'var(--neg)'
-  const half = spread == null || flat ? 0 : Math.min(Math.abs(spread) / TILT_MAX, 1) * 50
-  return (
-    <div
-      className="flex w-16 flex-col items-center gap-0.5"
-      title={
-        spread == null
-          ? `${label}: not enough priced names to measure`
-          : `${label}: top-quintile names (percentile ≥ 80) ${up ? 'outperforming' : 'lagging'} the bottom-quintile (≤ 20) by ${Math.abs(spread).toFixed(2)}% today, vs prior close`
-      }
-    >
-      <span className="text-[0.56rem] font-semibold uppercase tracking-wide text-subtle">{label}</span>
-      <span className="numeric text-[0.8rem] font-bold leading-none" style={{ color }}>
-        {spread == null ? '—' : flat ? '0.00%' : `${up ? '+' : '−'}${Math.abs(spread).toFixed(2)}%`}
-      </span>
-      <span className="relative block h-1.5 w-14 overflow-hidden rounded-full bg-surface-3">
-        <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-500/40" />
-        {spread != null && !flat && (
-          <span
-            className="absolute inset-y-0"
-            style={
-              up
-                ? { left: '50%', width: `${half}%`, background: color }
-                : { right: '50%', width: `${half}%`, background: color }
-            }
-          />
-        )}
-      </span>
-    </div>
-  )
+/** Format a factor's realized tilt (top-quintile − bottom-quintile move) for a
+ *  Stat cell: signed % + its pos/neg colour (neutral when flat/absent), so it
+ *  reads as one more stat alongside Advancing / Declining / VIX. */
+function tiltStat(spread: number | null): { value: string; color: string } {
+  if (spread == null) return { value: '—', color: 'var(--subtle)' }
+  if (Math.abs(spread) < 0.005) return { value: '0.00%', color: 'var(--subtle)' }
+  const up = spread >= 0
+  return {
+    value: `${up ? '+' : '−'}${Math.abs(spread).toFixed(2)}%`,
+    color: up ? 'var(--pos)' : 'var(--neg)',
+  }
 }
 
 /**
@@ -273,7 +247,7 @@ export function ScreenerHeader({
       <div className="h-1 bg-gradient-to-r from-[var(--accent)] to-transparent" />
 
       <div
-        className="px-5 pb-3.5 pt-3.5"
+        className="px-5 pb-3 pt-3"
         style={{ background: 'linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 62%)' }}
       >
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
@@ -306,23 +280,6 @@ export function ScreenerHeader({
             </div>
           </div>
 
-          {/* Factor tilt today — fills the header's mid gap with the one read a
-              factor screener wants: which style the tape is rewarding right now.
-              Client-side from the loaded rows; md+ only (no mid-gap on mobile). */}
-          {hasTilt && (
-            <div className="hidden items-center gap-3 lg:flex">
-              <div className="flex flex-col items-end leading-tight">
-                <span className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-subtle">
-                  Factor tilt
-                </span>
-                <span className="text-[0.54rem] uppercase tracking-wide text-subtle">vs prior close</span>
-              </div>
-              {factorTilt.map((f) => (
-                <FactorTiltCell key={f.label} label={f.label} spread={f.spread} />
-              ))}
-            </div>
-          )}
-
           {/* market status + clock — horizontal, compact */}
           <div className="flex items-center gap-3">
             <span
@@ -353,7 +310,7 @@ export function ScreenerHeader({
         </div>
 
         {/* divider */}
-        <div className="my-2.5 h-px bg-divider" />
+        <div className="my-2 h-px bg-divider" />
 
         {/* market pulse — one contextual read, with the raw breadth beside it */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -377,6 +334,29 @@ export function ScreenerHeader({
           <Stat label="Declining" value={dec} accent="var(--neg)" hint="vs prior close" />
           <Stat label="Adv / Dec" value={ratio} hint="breadth ratio" />
           <Stat label="Volatility · VIX" value={vixValue} hint={vixHint} />
+
+          {/* Factor tilt — one more stat group: which factor style the tape is
+              rewarding today (top-quintile − bottom-quintile move vs prior close),
+              rendered with the same Stat font so it aligns with the row. lg+ only
+              (nothing to align against on a wrapped mobile header). */}
+          {hasTilt && (
+            <div
+              className="hidden items-center gap-x-6 lg:flex"
+              title="Factor tilt — the average move of each factor's top-quintile names (percentile ≥ 80) minus its bottom-quintile (≤ 20), across the whole universe, vs the prior close. A measurement of today's tape, not a forecast."
+            >
+              <span aria-hidden className="h-9 w-px self-center bg-divider" />
+              <div className="flex flex-col justify-center">
+                <span className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-accent">
+                  Factor tilt
+                </span>
+                <span className="text-[0.62rem] text-subtle">vs prior close</span>
+              </div>
+              {factorTilt.map((f) => {
+                const t = tiltStat(f.spread)
+                return <Stat key={f.label} label={f.label} value={t.value} accent={t.color} />
+              })}
+            </div>
+          )}
 
           {/* market breadth bar — fills the row's right side with the adv/dec
               split visualized (green up · neutral flat · red down). */}
