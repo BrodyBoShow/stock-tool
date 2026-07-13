@@ -19,6 +19,84 @@ export const OVERLAY_COLOR = '#7c3aed'
 export const MA50_COLOR = '#06b6d4'   // cyan
 export const MA200_COLOR = '#f97316'  // orange
 
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/**
+ * Adaptive, NON-REPEATING x-axis ticks + a matching label formatter for the
+ * visible window. A daily `tickFormatter` that only knows one date can't avoid
+ * printing the same month twice when two ticks land in it (the old "Sep '25 …
+ * Sep '25" bug). So we instead choose the tick *dates* ourselves — evenly for
+ * short windows, one per month for multi-month, one per year for multi-year —
+ * and hand Recharts an explicit `ticks` array so labels are spaced and unique.
+ *
+ * Month labels carry the year at each January (and on the first tick) so the
+ * year rollover is always legible; day labels read "10 Jul"; year labels "2025".
+ */
+export function buildTimeTicks(dates: string[]): {
+  ticks: string[]
+  fmt: (iso: string) => string
+} {
+  if (dates.length < 2) return { ticks: dates, fmt: (s) => s }
+  const first = dates[0]
+  const last = dates[dates.length - 1]
+  const spanDays = (Date.parse(last) - Date.parse(first)) / 86_400_000
+
+  // Cap a boundary list to `max` evenly-strided entries, always keeping the end.
+  const cap = (arr: string[], max: number): string[] => {
+    if (arr.length <= max) return arr
+    const step = Math.ceil(arr.length / max)
+    const out = arr.filter((_, i) => i % step === 0)
+    if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1])
+    return out
+  }
+
+  // First date of each distinct key prefix (YYYY-MM → month, YYYY → year).
+  const firstOfEach = (keyLen: number): string[] => {
+    const out: string[] = []
+    let prev = ''
+    for (const d of dates) {
+      const k = d.slice(0, keyLen)
+      if (k !== prev) {
+        out.push(d)
+        prev = k
+      }
+    }
+    return out
+  }
+
+  if (spanDays <= 95) {
+    const n = Math.min(6, dates.length)
+    const idx = Array.from({ length: n }, (_, i) =>
+      Math.round((i * (dates.length - 1)) / (n - 1)),
+    )
+    const ticks = [...new Set(idx)].map((i) => dates[i])
+    return {
+      ticks,
+      fmt: (iso: string) => {
+        const [, m, d] = iso.split('-')
+        return `${+d} ${MON[+m - 1]}`
+      },
+    }
+  }
+
+  if (spanDays <= 760) {
+    const ticks = cap(firstOfEach(7), 8)
+    // If the window crosses a year boundary, carry the year on EVERY month tick —
+    // otherwise the same month name one year apart (e.g. Aug '24 / Aug '25) would
+    // print twice, which is the very duplicate this function exists to prevent.
+    const multiYear = new Set(ticks.map((t) => t.slice(0, 4))).size > 1
+    return {
+      ticks,
+      fmt: (iso: string) => {
+        const [y, m] = iso.split('-')
+        return multiYear ? `${MON[+m - 1]} '${y.slice(2)}` : MON[+m - 1]
+      },
+    }
+  }
+
+  return { ticks: cap(firstOfEach(4), 8), fmt: (iso: string) => iso.slice(0, 4) }
+}
+
 export interface ChartRow {
   date: string
   v: number
