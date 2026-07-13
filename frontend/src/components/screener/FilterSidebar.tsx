@@ -1,5 +1,15 @@
+import {
+  Gem,
+  type LucideIcon,
+  Rocket,
+  Save,
+  Star,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react'
 import { useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { Slider } from '@/components/ui/slider'
 import { FACTOR_TABLE, sectorChip, type FactorKey } from '@/lib/constants'
 import {
@@ -37,24 +47,24 @@ const RISK_BAND_OPTIONS: Array<{ value: number; label: string; title: string }> 
 
 interface Preset {
   label: string
-  emoji: string
+  icon: LucideIcon
   meta: string
   mins: Record<FactorKey, number>
 }
 
 const PRESETS: Preset[] = [
-  { label: 'Quality Growth', emoji: '🏆', meta: 'Growth + Quality ≥ 70',
+  { label: 'Quality Growth', icon: Trophy, meta: 'Growth + Quality ≥ 70',
     mins: { composite: 0, growth: 70, value: 0, quality: 70, momentum: 0 } },
-  { label: 'Deep Value', emoji: '💎', meta: 'Value ≥ 80, Quality ≥ 50',
+  { label: 'Deep Value', icon: Gem, meta: 'Value ≥ 80, Quality ≥ 50',
     mins: { composite: 0, growth: 0, value: 80, quality: 50, momentum: 0 } },
-  { label: 'Momentum', emoji: '🚀', meta: 'Momentum ≥ 80',
+  { label: 'Momentum', icon: Rocket, meta: 'Momentum ≥ 80',
     mins: { composite: 0, growth: 0, value: 0, quality: 0, momentum: 80 } },
   // "Cheap & Rising" (GARP): trending AND still reasonably priced — the
   // value×momentum sweet spot. Pairs with the sortable GARP column (worst-of
   // value/momentum) to rank names strong on BOTH.
-  { label: 'Cheap & Rising', emoji: '📈', meta: 'Value + Momentum ≥ 60',
+  { label: 'Cheap & Rising', icon: TrendingUp, meta: 'Value + Momentum ≥ 60',
     mins: { composite: 0, growth: 0, value: 60, quality: 0, momentum: 60 } },
-  { label: 'All Stars', emoji: '⭐', meta: 'Composite ≥ 80',
+  { label: 'All Stars', icon: Star, meta: 'Composite ≥ 80',
     mins: { composite: 80, growth: 0, value: 0, quality: 0, momentum: 0 } },
 ]
 
@@ -238,7 +248,7 @@ export function FilterSidebar({
                     : 'border-line bg-surface hover:border-accent hover:bg-accent-soft')
                 }
               >
-                <span className="text-[0.82rem] leading-none">{p.emoji}</span>
+                <Icon icon={p.icon} size={16} className={on ? 'text-accent-ink' : 'text-accent'} />
                 <span className="text-[0.72rem] font-bold leading-tight">{p.label}</span>
                 <span
                   className={
@@ -506,7 +516,8 @@ export function FilterSidebar({
             onClick={() => setNaming(true)}
             className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-[0.76rem] font-semibold text-muted transition hover:border-accent hover:bg-accent-soft"
           >
-            💾 Save as view
+            <Icon icon={Save} size={14} />
+            Save as view
           </button>
         )}
         <div className="mt-2.5 flex items-center justify-between">

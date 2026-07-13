@@ -1,6 +1,8 @@
+import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import { HEALTH_BAND_LABEL, type HealthScore as HealthScoreT } from '../portfolioUi'
 
 const BAND_HEX: Record<string, string> = {
@@ -148,7 +150,7 @@ function BreakdownDialog({
             <div className="mt-1 flex flex-wrap gap-1.5">
               {passed.map((f) => (
                 <span key={f.key} className="inline-flex items-center gap-1 text-[0.7rem] text-muted">
-                  <span aria-hidden="true" className="text-pos">✓</span>
+                  <Icon icon={Check} size={11} className="text-pos" />
                   {f.label}
                 </span>
               ))}

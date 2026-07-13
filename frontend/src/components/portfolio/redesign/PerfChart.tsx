@@ -9,7 +9,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { X } from 'lucide-react'
 
+import { Icon } from '@/components/ui/Icon'
 import { useChartTheme } from '@/lib/chartTheme'
 
 import { RANGES, rangeStartIndex, rangeStats, rebase } from '../portfolioUi'
@@ -228,9 +230,9 @@ export function PerfChart({
             type="button"
             onClick={() => setMeasure(null)}
             aria-label="Clear measurement"
-            className="ml-auto rounded-md border border-line bg-surface px-2 py-0.5 text-[0.7rem] font-bold text-muted hover:text-ink"
+            className="ml-auto rounded-md border border-line bg-surface px-2 py-0.5 text-muted hover:text-ink"
           >
-            ✕
+            <Icon icon={X} size={14} />
           </button>
         </div>
       )}

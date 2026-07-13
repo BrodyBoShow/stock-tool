@@ -15,7 +15,10 @@ import {
   YAxis,
 } from 'recharts'
 
+import { X } from 'lucide-react'
+
 import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
+import { Icon } from '@/components/ui/Icon'
 import { getCompareSeries, getEvents, getInsiders, getMacroSeries, getPeers } from '@/lib/api'
 import { useChartTheme } from '@/lib/chartTheme'
 import { MACRO_DISPLAY } from '@/lib/constants'
@@ -656,7 +659,7 @@ export function PriceChart({
             className="inline-flex items-center gap-1 rounded-lg border border-accent bg-accent-soft px-2.5 py-1 text-[0.76rem] font-bold text-accent hover:opacity-90"
             title="Back to the full range (Esc)"
           >
-            Reset zoom ✕
+            Reset zoom <Icon icon={X} size={12} />
           </button>
         )}
       </div>

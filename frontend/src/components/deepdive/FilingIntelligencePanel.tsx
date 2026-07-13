@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import {
   ApiError,
@@ -64,8 +66,8 @@ function SummaryBody({ summary, docUrl }: { summary: FilingSummary; docUrl: stri
         </span>
         {docUrl && (
           <a href={docUrl} target="_blank" rel="noopener noreferrer"
-            className="font-semibold text-accent hover:underline">
-            View filing on SEC ↗
+            className="inline-flex items-center gap-0.5 font-semibold text-accent hover:underline">
+            View filing on SEC <Icon icon={ArrowUpRight} size={12} />
           </a>
         )}
       </div>

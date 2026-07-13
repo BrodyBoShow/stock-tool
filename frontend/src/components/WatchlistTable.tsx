@@ -1,9 +1,11 @@
+import { Bell, PencilLine, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ScoreCell } from '@/components/screener/ScoreCell'
 import { SectorPill } from '@/components/screener/SectorPill'
 import { Sparkline } from '@/components/screener/Sparkline'
+import { Icon } from '@/components/ui/Icon'
 import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { WatchlistAlertDialog } from '@/components/watchlist/WatchlistAlertDialog'
@@ -282,10 +284,11 @@ export function WatchlistTable({
                     <button
                       type="button"
                       onClick={() => setPlanRow(r)}
-                      className="rounded-md border border-dashed border-line px-2 py-1 text-[0.66rem] font-semibold text-subtle hover:border-accent hover:text-accent"
+                      className="inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2 py-1 text-[0.66rem] font-semibold text-subtle hover:border-accent hover:text-accent"
                       title="Set your entry plan (target price, why watching, buy/drop criteria)"
                     >
-                      {hasPlan ? '✎ Plan' : '+ Plan'}
+                      <Icon icon={hasPlan ? PencilLine : Plus} size={12} />
+                      Plan
                     </button>
                   )}
                 </div>
@@ -301,11 +304,11 @@ export function WatchlistTable({
                   <button
                     type="button"
                     onClick={() => setAlertTicker(r.ticker)}
-                    className="rounded-md px-1 py-1 text-[0.9rem] leading-none text-subtle hover:bg-surface-3 hover:text-accent"
+                    className="rounded-md p-1 text-subtle hover:bg-surface-3 hover:text-accent"
                     title={`Set event alerts for ${r.ticker}`}
                     aria-label={`Set alerts for ${r.ticker}`}
                   >
-                    🔔
+                    <Icon icon={Bell} size={14} />
                   </button>
                   <WatchlistButton ticker={r.ticker} variant="remove" />
                 </div>

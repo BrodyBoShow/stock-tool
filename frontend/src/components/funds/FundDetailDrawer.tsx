@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Check, GitCompare, Star, TriangleAlert } from 'lucide-react';
+
+import { Icon } from '@/components/ui/Icon';
 import { getFundDetail } from '@/lib/api';
 import { useWatchlistMutations } from '@/hooks/useWatchlist';
 import { catMeta, isLeveraged, fmtAum } from '@/components/funds/fundsUi';
@@ -156,7 +159,7 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
               {meta.short}
             </span>
             {fund.best_access ? (
-              <span className="text-[0.6rem] font-semibold text-warn">★ Best Access</span>
+              <span className="inline-flex items-center gap-1 text-[0.6rem] font-semibold text-warn"><Icon icon={Star} size={11} className="fill-current" /> Best Access</span>
             ) : null}
             {fund.most_liquid ? (
               <span className="text-[0.6rem] font-semibold text-info">≡ Most Liquid</span>
@@ -199,9 +202,12 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
 
         {/* 2. LEVERAGE WARNING */}
         {isLeveraged(fund.category) ? (
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-[0.7rem] text-warn">
-            ⚠ Leveraged/inverse fund — daily reset means multi-day returns compound and decay; not a
-            long-term hold.
+          <div className="flex items-start gap-1.5 rounded-md border border-warn-strong bg-warn-soft p-2.5 text-[0.7rem] text-warn">
+            <Icon icon={TriangleAlert} size={13} className="mt-px" />
+            <span>
+              Leveraged/inverse fund — daily reset means multi-day returns compound and decay; not a
+              long-term hold.
+            </span>
           </div>
         ) : null}
 
@@ -348,21 +354,27 @@ function FundDetailBody(props: FundDetailBodyProps): JSX.Element {
           disabled={onWatchlist}
           onClick={() => props.onAdd(fund.ticker)}
           className={
-            'rounded-md px-3 py-1.5 text-[0.75rem] font-semibold ' +
+            'inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[0.75rem] font-semibold ' +
             (onWatchlist
               ? 'cursor-default bg-surface-3 text-muted'
               : 'bg-accent-solid text-accent-ink hover:bg-accent-hover')
           }
         >
-          {onWatchlist ? 'On Watchlist ✓' : '+ Add to Watchlist'}
+          {onWatchlist ? (
+            <>
+              On Watchlist <Icon icon={Check} size={13} />
+            </>
+          ) : (
+            '+ Add to Watchlist'
+          )}
         </button>
         {d.cluster ? (
           <button
             type="button"
             onClick={() => props.onCompareCluster(peerCompareTickers)}
-            className="rounded-md border border-line px-3 py-1.5 text-[0.75rem] font-semibold text-ink hover:bg-surface-2"
+            className="inline-flex items-center gap-1 rounded-md border border-line px-3 py-1.5 text-[0.75rem] font-semibold text-ink hover:bg-surface-2"
           >
-            Compare peers ⚔
+            Compare peers <Icon icon={GitCompare} size={13} />
           </button>
         ) : null}
       </div>

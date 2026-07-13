@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 
+import { Icon } from '@/components/ui/Icon'
 import { getSecurity, searchSecurities } from '@/lib/api'
 import { rankColor } from '@/lib/colors'
 import { DASH, fmtInput, fmtPctl, fmtPrice } from '@/lib/format'
@@ -202,7 +204,7 @@ export function CompareDrawer({ open, onClose, baseTicker }: CompareDrawerProps)
             className="rounded px-2 py-0.5 text-subtle hover:bg-surface-3 hover:text-muted"
             aria-label="Close compare drawer"
           >
-            ✕
+            <Icon icon={X} size={16} />
           </button>
         </div>
 

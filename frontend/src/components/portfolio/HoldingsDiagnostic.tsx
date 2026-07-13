@@ -9,11 +9,13 @@
  * Batch mode: checkbox-select rows → Rebalance… (opens the simulator),
  * Export CSV, Clear. No trade execution anywhere — measurement, not advice.
  */
+import { Check, CheckSquare, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Sparkline } from '@/components/screener/Sparkline'
+import { Icon } from '@/components/ui/Icon'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { plColor } from '@/lib/colors'
@@ -405,7 +407,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
 
         {selected.size >= 1 && (
           <div className="ml-auto flex items-center gap-3 rounded-lg bg-ink px-3 py-2 text-[0.72rem] text-inverse">
-            <span className="font-semibold">☑ {selected.size} selected</span>
+            <span className="inline-flex items-center gap-1 font-semibold"><Icon icon={CheckSquare} size={14} /> {selected.size} selected</span>
             <button
               type="button"
               className="rounded bg-accent-solid px-2.5 py-1 font-semibold text-accent-ink hover:bg-accent-hover"
@@ -459,7 +461,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
                   <InfoTip text="Composite factor percentile — hover a value for the factor breakdown" />
                 </span>
               </SortHeader>
-              <th className="w-7 px-2 py-2">⚠</th>
+              <th className="w-7 px-2 py-2" aria-label="Flags"><Icon icon={TriangleAlert} size={12} className="inline" /></th>
             </tr>
           </thead>
           <tbody>
@@ -752,8 +754,8 @@ function SubRow({
                 </span>
               ))}
               {diversifier && (
-                <span className="text-[0.62rem] font-semibold text-pos">
-                  diversifier ✓
+                <span className="inline-flex items-center gap-1 text-[0.62rem] font-semibold text-pos">
+                  diversifier <Icon icon={Check} size={11} />
                 </span>
               )}
             </span>

@@ -1,5 +1,7 @@
+import { X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { fmtDate, fmtVol, tickLabel } from '@/lib/format'
 import type { VsaBar, WyckoffAnalysis, WyckoffEventType, WyckoffPhaseId } from '@/lib/wyckoff'
 
@@ -417,9 +419,9 @@ export function WyckoffChart({
                 type="button"
                 onClick={() => setPinned(null)}
                 aria-label="Unpin"
-                className="pointer-events-auto rounded px-1 text-[0.7rem] font-bold text-muted hover:text-ink"
+                className="pointer-events-auto rounded px-1 text-muted hover:text-ink"
               >
-                ✕
+                <Icon icon={X} size={14} />
               </button>
             )}
           </div>

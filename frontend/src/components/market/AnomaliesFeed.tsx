@@ -1,18 +1,20 @@
+import { BarChart3, type LucideIcon, Shuffle, Users, Wind, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import type { MarketAnomaly } from '@/types/api'
 
-// Tasteful, mostly-monochrome emoji per known anomaly type; ⚡ is the default
-// for any type the backend adds later that we don't have a glyph for yet.
-const TYPE_ICON: Record<string, string> = {
-  breadth_divergence: '📊',
-  factor_reversal: '🔀',
-  vol_spike: '🌪',
-  insider_cluster: '👥',
+// One Lucide icon per known anomaly type; Zap is the default for any type the
+// backend adds later that we don't have an icon for yet.
+const TYPE_ICON: Record<string, LucideIcon> = {
+  breadth_divergence: BarChart3,
+  factor_reversal: Shuffle,
+  vol_spike: Wind,
+  insider_cluster: Users,
 }
 
-function iconFor(type: string): string {
-  return TYPE_ICON[type] ?? '⚡'
+function iconFor(type: string): LucideIcon {
+  return TYPE_ICON[type] ?? Zap
 }
 
 /**
@@ -44,9 +46,7 @@ export function AnomaliesFeed({ anomalies }: { anomalies: MarketAnomaly[] }) {
             className="rounded-xl border border-line bg-surface p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
           >
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 shrink-0 text-[1.05rem] leading-none grayscale" aria-hidden>
-                {iconFor(a.type)}
-              </span>
+              <Icon icon={iconFor(a.type)} size={16} className="mt-0.5 text-muted" />
               <div className="min-w-0 flex-1">
                 <div className="text-[0.88rem] font-bold leading-snug text-ink">{a.title}</div>
                 <p className="mt-0.5 text-[0.78rem] leading-snug text-muted">{a.detail}</p>

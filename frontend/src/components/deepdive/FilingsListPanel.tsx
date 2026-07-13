@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 import { useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateSummary } from '@/lib/api'
 import { fmtDate } from '@/lib/format'
@@ -244,9 +246,9 @@ export function FilingsListPanel({
                                 href={f.primary_doc_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-none text-[0.72rem] font-semibold text-muted hover:underline"
+                                className="inline-flex flex-none items-center gap-0.5 text-[0.72rem] font-semibold text-muted hover:underline"
                               >
-                                SEC ↗
+                                SEC <Icon icon={ArrowUpRight} size={12} />
                               </a>
                             )}
                           </div>

@@ -1,5 +1,7 @@
+import { Hourglass } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import type { WatchlistRow } from '@/types/api'
 
 const STALE_DAYS = 90
@@ -24,7 +26,7 @@ export function StalenessNudge({ rows }: { rows: WatchlistRow[] }) {
   if (stale.length === 0) return null
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--r-lg)] border border-warn bg-warn-soft px-4 py-2.5 text-[0.8rem] text-warn">
-      <span aria-hidden="true">⏳</span>
+      <Icon icon={Hourglass} size={14} />
       <span>
         {stale.length} name{stale.length > 1 ? 's have' : ' has'} sat on your radar 90+ days with
         no plan or thesis —

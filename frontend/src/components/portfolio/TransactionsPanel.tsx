@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { AddTransactionForm } from '@/components/portfolio/AddTransactionForm'
+import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { addPortfolioTransactions, deletePortfolioTransaction } from '@/lib/api'
@@ -287,9 +289,10 @@ function ImportWizard({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2 py-0.5 text-[0.78rem] font-bold text-muted hover:bg-surface-2 hover:text-muted"
+            aria-label="Close"
+            className="rounded-md px-2 py-0.5 text-muted hover:bg-surface-2 hover:text-muted"
           >
-            ✕
+            <Icon icon={X} size={16} />
           </button>
         </div>
 

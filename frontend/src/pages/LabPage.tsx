@@ -1,7 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { Icon } from '@/components/ui/Icon'
 import { DrawdownChart, EquityChart, ICChart, QuintileChart } from '@/components/lab/charts'
 import {
   ciPct,
@@ -339,7 +341,10 @@ export function LabPage() {
                   : { borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--muted)' }
               }
             >
-              {showLongShort ? '✓ ' : ''}Long-short
+              <span className="inline-flex items-center gap-1">
+                {showLongShort && <Icon icon={Check} size={12} />}
+                Long-short
+              </span>
             </button>
             <Segmented
               value={logScale ? 'log' : 'lin'}

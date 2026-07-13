@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 
+import { Icon } from '@/components/ui/Icon'
 import { Delta } from '@/components/ui/Delta'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateBrief, getBriefStatus, getLiveFactors } from '@/lib/api'
@@ -240,9 +242,9 @@ function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
               target="_blank"
               rel="noopener noreferrer"
               title={s.title}
-              className="text-[0.72rem] font-medium text-accent hover:underline"
+              className="inline-flex items-center gap-0.5 text-[0.72rem] font-medium text-accent hover:underline"
             >
-              ↗ {sourceHost(s.url)}
+              <Icon icon={ArrowUpRight} size={12} /> {sourceHost(s.url)}
             </a>
           ))}
         </div>

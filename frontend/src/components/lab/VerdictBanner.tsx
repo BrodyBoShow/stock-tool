@@ -1,3 +1,7 @@
+import { Check, X } from 'lucide-react'
+
+import { Icon } from '@/components/ui/Icon'
+
 import { TONE_HEX } from './shared'
 import type { Grade, Verdict } from './verdict'
 
@@ -34,10 +38,10 @@ export function VerdictBanner({ v }: { v: Verdict }) {
           <li key={i} className="flex items-start gap-2 text-[0.82rem] text-ink">
             <span
               aria-hidden
-              className="mt-[1px] font-bold"
+              className="mt-[1px] flex font-bold"
               style={{ color: p.ok == null ? 'var(--muted)' : p.ok ? TONE_HEX.good : TONE_HEX.bad }}
             >
-              {p.ok == null ? '–' : p.ok ? '✓' : '✕'}
+              {p.ok == null ? '–' : p.ok ? <Icon icon={Check} size={14} /> : <Icon icon={X} size={14} />}
             </span>
             <span>{p.text}</span>
           </li>

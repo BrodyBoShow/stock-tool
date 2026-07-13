@@ -1,6 +1,8 @@
+import { TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 
+import { Icon } from '@/components/ui/Icon'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { useChartTheme } from '@/lib/chartTheme'
 import { plColor, scoreHeat } from '@/lib/colors'
@@ -440,7 +442,7 @@ export function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-3 py-2 text-[0.74rem] ${styles}`}>
       <span className="flex items-center">
-        {tone === 'warn' && <span aria-hidden className="mr-1.5">⚠</span>}
+        {tone === 'warn' && <Icon icon={TriangleAlert} size={13} className="mr-1.5" />}
         {msg}
         <InfoTip text={G.freshness} />
       </span>

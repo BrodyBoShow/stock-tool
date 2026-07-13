@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, askStockBud } from '@/lib/api'
 import type { AskResponse } from '@/types/api'
@@ -130,7 +132,7 @@ function ResearchLoader() {
                   : 'bg-surface-3 text-transparent')
             }
           >
-            {i < step ? '✓' : '•'}
+            {i < step ? <Icon icon={Check} size={11} /> : '•'}
           </span>
           <span className={i === step ? 'font-semibold' : ''}>{label}</span>
         </div>
@@ -267,7 +269,7 @@ export function AskStockBudPanel({ ticker }: { ticker: string }) {
                   key={s}
                   className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[0.66rem] font-medium text-muted"
                 >
-                  <span className="text-pos">✓</span>
+                  <Icon icon={Check} size={11} className="text-pos" />
                   {s}
                 </span>
               ))}

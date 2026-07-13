@@ -1,14 +1,27 @@
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Briefcase,
+  FlaskConical,
+  Globe2,
+  Layers,
+  LogOut,
+  Moon,
+  RotateCw,
+  Search,
+  Star,
+  Sun,
+} from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { HeaderSearch } from '@/components/HeaderSearch'
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import { getAlerts } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 
 const link = ({ isActive }: { isActive: boolean }) =>
-  'border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
+  'inline-flex items-center gap-1.5 border-b-2 px-0.5 pb-1 text-[0.86rem] font-semibold transition-colors ' +
   (isActive
     ? 'border-[var(--accent)] text-ink'
     : 'border-transparent text-muted hover:text-ink')
@@ -28,27 +41,7 @@ function ThemeToggle() {
       aria-pressed={dark}
       className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink"
     >
-      {dark ? (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-      ) : (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )}
+      <Icon icon={dark ? Sun : Moon} />
     </button>
   )
 }
@@ -79,22 +72,7 @@ function RefreshButton() {
       aria-label="Refresh data"
       className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink disabled:opacity-60"
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        className={spinning ? 'animate-spin' : ''}
-        aria-hidden="true"
-      >
-        <path
-          d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <Icon icon={RotateCw} className={spinning ? 'animate-spin' : undefined} />
     </button>
   )
 }
@@ -122,47 +100,32 @@ function LogoutButton() {
       aria-label="Sign out"
       className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-[var(--surface-3)] hover:text-ink"
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <Icon icon={LogOut} />
     </button>
   )
 }
 
+/** Brand mark: solid amber tile + sparkline. Colors ride currentColor via
+ *  per-element classes (never var() in SVG presentation attributes — Safari
+ *  doesn't substitute them there). */
 function Logo() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-      <rect width="28" height="28" rx="8" fill="url(#sb-logo)" />
+      <rect width="28" height="28" rx="6" fill="currentColor" className="text-accent" />
       <path
         d="M7 18.5L11.5 13.5L15 16.5L21 8.5"
-        stroke="#fff"
+        stroke="currentColor"
         strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        className="text-accent-ink"
       />
-      <circle cx="21" cy="8.5" r="1.9" fill="#fff" />
-      <defs>
-        <linearGradient id="sb-logo" x1="0" y1="0" x2="28" y2="28">
-          <stop stopColor="var(--primary)" />
-          <stop offset="1" stopColor="var(--accent)" />
-        </linearGradient>
-      </defs>
+      <circle cx="21" cy="8.5" r="1.9" fill="currentColor" className="text-accent-ink" />
     </svg>
   )
 }
 
+/** Bell with a live triggered-count badge. */
 function AlertsLink() {
   const { data } = useQuery({
     queryKey: ['alerts'],
@@ -174,21 +137,41 @@ function AlertsLink() {
   const n = data?.triggered.length ?? 0
   return (
     <NavLink to="/alerts" className={link}>
-      <span className="inline-flex items-center gap-1.5">
-        Alerts
-        {n > 0 && (
-          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[0.62rem] font-bold text-white">
-            {n}
-          </span>
-        )}
-      </span>
+      Alerts
+      {n > 0 && (
+        <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[0.62rem] font-bold text-white">
+          {n}
+        </span>
+      )}
     </NavLink>
   )
 }
 
+/** Nav tab metadata — a 14px Lucide icon per destination (mock §nav). */
+const TABS: Array<{ to: string; label: string; icon: typeof Search; end?: boolean }> = [
+  { to: '/', label: 'Screener', icon: Search, end: true },
+  { to: '/market', label: 'Market', icon: Globe2 },
+  { to: '/watchlist', label: 'Watchlist', icon: Star },
+  { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
+]
+const TABS_AFTER_ALERTS: Array<{ to: string; label: string; icon: typeof Search }> = [
+  { to: '/funds', label: 'Funds', icon: Layers },
+  { to: '/lab', label: 'Lab', icon: FlaskConical },
+]
+
+/**
+ * Top nav — the constant-dark "terminal frame" (design refresh §6.1): the nav
+ * carries data-theme="dark" as a THEME ISLAND, so every token class inside
+ * resolves to the dark palette in BOTH app themes. The frame anchors the
+ * product identity (amber active-tab underline on warm near-black) and stays
+ * visually stable across the light/dark flip — only the page below changes.
+ */
 export function TopNav() {
   return (
-    <nav className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur">
+    <nav
+      data-theme="dark"
+      className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur"
+    >
       <div className="mx-auto flex w-full max-w-[1760px] items-center gap-3 px-4 py-3 lg:gap-4 lg:px-8">
         <NavLink
           to="/"
@@ -203,26 +186,20 @@ export function TopNav() {
         <HeaderSearch />
         {/* tab row: scrolls horizontally on narrow screens instead of pushing
             the page wide; right-aligned on desktop */}
-        <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto whitespace-nowrap lg:justify-end lg:gap-7 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <NavLink to="/" end className={link}>
-            Screener
-          </NavLink>
-          <NavLink to="/market" className={link}>
-            Market
-          </NavLink>
-          <NavLink to="/watchlist" className={link}>
-            Watchlist
-          </NavLink>
-          <NavLink to="/portfolio" className={link}>
-            Portfolio
-          </NavLink>
+        <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto whitespace-nowrap lg:justify-end lg:gap-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((t) => (
+            <NavLink key={t.to} to={t.to} end={t.end} className={link}>
+              <Icon icon={t.icon} size={14} />
+              {t.label}
+            </NavLink>
+          ))}
           <AlertsLink />
-          <NavLink to="/funds" className={link}>
-            Funds
-          </NavLink>
-          <NavLink to="/lab" className={link}>
-            Lab
-          </NavLink>
+          {TABS_AFTER_ALERTS.map((t) => (
+            <NavLink key={t.to} to={t.to} className={link}>
+              <Icon icon={t.icon} size={14} />
+              {t.label}
+            </NavLink>
+          ))}
         </div>
         <span className="h-5 w-px flex-none bg-[var(--border)]" aria-hidden="true" />
         <ThemeToggle />
@@ -232,3 +209,4 @@ export function TopNav() {
     </nav>
   )
 }
+

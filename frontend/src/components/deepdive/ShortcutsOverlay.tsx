@@ -1,4 +1,7 @@
+import { X } from 'lucide-react'
 import { useEffect } from 'react'
+
+import { Icon } from '@/components/ui/Icon'
 
 /** Keyboard-shortcuts overlay (?). Esc or backdrop click closes. */
 export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -41,7 +44,7 @@ export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: ()
             aria-label="Close"
             className="rounded px-1.5 text-subtle hover:text-ink"
           >
-            ✕
+            <Icon icon={X} size={16} />
           </button>
         </div>
         <ul className="space-y-1.5">

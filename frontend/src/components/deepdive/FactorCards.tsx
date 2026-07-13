@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { TriangleAlert } from 'lucide-react'
 
 import { Sparkline } from '@/components/screener/Sparkline'
+import { Icon } from '@/components/ui/Icon'
 import { getLiveFactors } from '@/lib/api'
 import { FACTOR_TABLE, isCommoditySensitive, type FactorKey } from '@/lib/constants'
 import {
@@ -111,7 +113,7 @@ export function FactorCards({
             `reflects the recent commodity trend, not durability.`
           }
         >
-          <span className="mt-px flex-none">⚠</span>
+          <Icon icon={TriangleAlert} size={14} className="mt-px" />
           <span>
             <span className="font-semibold">Commodity-sensitive score.</span> This{' '}
             {header.sector} name&rsquo;s factors ride commodity prices. Read the
@@ -129,7 +131,7 @@ export function FactorCards({
             `deterioration. This is a caveat to investigate, not a sell signal.`
           }
         >
-          <span className="mt-px flex-none">⚠</span>
+          <Icon icon={TriangleAlert} size={14} className="mt-px" />
           <span>
             <span className="font-semibold">Cheap, but weak on quality and momentum.</span> Worth
             checking <em>why</em> it&rsquo;s cheap before treating the Value rank as a bargain —

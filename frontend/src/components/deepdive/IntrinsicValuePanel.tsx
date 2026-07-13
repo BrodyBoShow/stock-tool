@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { Check, Link2, Plus, RotateCcw, TriangleAlert, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import { getValuation } from '@/lib/api'
 import { fmtDate, fmtMoney, fmtPct, fmtPrice } from '@/lib/format'
@@ -127,10 +129,11 @@ function Slider({
             <button
               type="button"
               onClick={() => onChange(seed)}
-              className="text-[0.6rem] text-muted hover:text-accent"
+              className="text-muted hover:text-accent"
               title={`Reset to seeded ${show(seed)}`}
+              aria-label="Reset to seeded value"
             >
-              ↺
+              <Icon icon={RotateCcw} size={12} />
             </button>
           )}
         </span>
@@ -538,9 +541,12 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
             <span>{fmtPrice(c.bull?.perShare)}</span>
           </div>
           {c.base.tvShareOfPv > 0.75 && (
-            <p className="mt-1 text-[0.62rem] text-warn">
-              ⚠ {fmtPct(c.base.tvShareOfPv)} of value is the terminal value — the result leans heavily
-              on assumptions about the distant future.
+            <p className="mt-1 flex items-start gap-1 text-[0.62rem] text-warn">
+              <Icon icon={TriangleAlert} size={12} className="mt-px" />
+              <span>
+                {fmtPct(c.base.tvShareOfPv)} of value is the terminal value — the result leans heavily
+                on assumptions about the distant future.
+              </span>
             </p>
           )}
         </div>
@@ -578,9 +584,10 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
         <button
           type="button"
           onClick={() => setOv({})}
-          className="mt-2 text-[0.66rem] font-medium text-accent hover:text-accent-hover"
+          className="mt-2 inline-flex items-center gap-1 text-[0.66rem] font-medium text-accent hover:text-accent-hover"
         >
-          ↺ Reset all to data-seeded
+          <Icon icon={RotateCcw} size={12} />
+          Reset all to data-seeded
         </button>
       )}
 
@@ -594,16 +601,16 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
             <button
               type="button"
               onClick={doSave}
-              className="rounded-md border border-line bg-surface px-2.5 py-1 text-[0.7rem] font-semibold text-muted hover:bg-surface-2"
+              className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1 text-[0.7rem] font-semibold text-muted hover:bg-surface-2"
             >
-              ＋ Save current
+              <Icon icon={Plus} size={13} /> Save current
             </button>
             <button
               type="button"
               onClick={doShare}
-              className="rounded-md border border-line bg-surface px-2.5 py-1 text-[0.7rem] font-semibold text-muted hover:bg-surface-2"
+              className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2.5 py-1 text-[0.7rem] font-semibold text-muted hover:bg-surface-2"
             >
-              🔗 Share link
+              <Icon icon={Link2} size={13} /> Share link
             </button>
             <span className="text-[0.6rem] text-subtle">
               saved on this device · share encodes your sliders in the URL
@@ -638,20 +645,21 @@ export function IntrinsicValuePanel({ ticker }: { ticker: string }) {
                       type="button"
                       onClick={() => toggleCompare(s.id)}
                       className={
-                        'rounded px-1 text-[0.56rem] font-bold uppercase tracking-wide ' +
+                        'inline-flex items-center gap-0.5 rounded px-1 text-[0.56rem] font-bold uppercase tracking-wide ' +
                         (on ? 'bg-accent-soft text-accent' : 'bg-surface-3 text-muted')
                       }
                       title="Add to the comparison table (up to 3)"
                     >
-                      {on ? '✓ cmp' : 'cmp'}
+                      {on && <Icon icon={Check} size={11} />} cmp
                     </button>
                     <button
                       type="button"
                       onClick={() => removeSaved(s.id)}
                       className="text-subtle hover:text-neg"
                       title="Delete scenario"
+                      aria-label="Delete scenario"
                     >
-                      ✕
+                      <Icon icon={X} size={12} />
                     </button>
                   </span>
                 )

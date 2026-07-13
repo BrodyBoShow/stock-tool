@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -218,7 +220,7 @@ function AlertRow({
         to={`/securities/${a.ticker}`}
         className="flex w-[4.2rem] flex-none items-center gap-0.5 font-bold text-[0.9rem] text-ink hover:text-accent"
       >
-        {watched && <span className="text-warn">★</span>}
+        {watched && <Icon icon={Star} size={12} className="text-warn fill-current" />}
         <span className="truncate">{a.ticker}</span>
       </Link>
 
@@ -380,9 +382,9 @@ function TriageStrip({
           return (
             <span
               key={t}
-              className="rounded-full bg-pos-soft px-3 py-1 text-[0.75rem] font-semibold text-pos"
+              className="inline-flex items-center gap-1 rounded-full bg-pos-soft px-3 py-1 text-[0.75rem] font-semibold text-pos"
             >
-              ✓ Quiet today
+              <Icon icon={Check} size={13} /> Quiet today
             </span>
           )
         }
@@ -717,8 +719,8 @@ export function AlertsPage() {
             </div>
             {criticals.length === 0 ? (
               summary.critical === 0 ? (
-                <p className="text-[0.83rem] font-medium text-pos">
-                  ✓ No critical signals — nothing demands action today.
+                <p className="flex items-center gap-1 text-[0.83rem] font-medium text-pos">
+                  <Icon icon={Check} size={14} /> No critical signals — nothing demands action today.
                 </p>
               ) : (
                 <p className="text-[0.82rem] text-subtle">No critical signals match your filters.</p>
