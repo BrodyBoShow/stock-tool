@@ -5,7 +5,8 @@ import { Delta } from '@/components/ui/Delta'
 import { FactorStamp } from '@/components/ui/FactorStamp'
 import { getBriefStatus } from '@/lib/api'
 import { scoreHeat } from '@/lib/colors'
-import { topDriver, type FactorPctls } from '@/lib/factorReading'
+import { topDriver } from '@/lib/factorReading'
+import { useEffectiveFactors } from '@/lib/liveFactors'
 import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
 
@@ -68,13 +69,12 @@ export function HeaderCard({
   const rank = last?.rank ?? null
   const oneLiner = brief?.brief?.brief?.one_liner ?? null
 
-  const pctls: FactorPctls = {
-    composite: header.composite,
-    growth: header.growth_pctl,
-    value: header.value_pctl,
-    quality: header.quality_pctl,
-    momentum: header.momentum_pctl,
-  }
+  // Live-adjusted scores shared with the Factors pane / breakdown, so the whole
+  // page shows one consistent number (nightly when no fresh price has moved it).
+  const eff = useEffectiveFactors(header.ticker, header)
+  const pctls = eff.pctls
+  const comp = eff.pctls.composite
+  const rankShown = eff.isLive && eff.rank != null ? eff.rank : rank
   const driver = topDriver(pctls)
   const nSub = header.details?.sub_pctls
     ? Object.values(header.details.sub_pctls).filter((v) => v != null).length
@@ -113,10 +113,10 @@ export function HeaderCard({
             )}
             <FactorStamp
               className="mt-1.5"
-              growth={header.growth_pctl}
-              value={header.value_pctl}
-              quality={header.quality_pctl}
-              momentum={header.momentum_pctl}
+              growth={eff.pctls.growth}
+              value={eff.pctls.value}
+              quality={eff.pctls.quality}
+              momentum={eff.pctls.momentum}
             />
           </div>
         </div>
@@ -129,22 +129,32 @@ export function HeaderCard({
               <div className={STAT_VALUE}>{fmtPrice(header.last_price)}</div>
               <div className={STAT_SUB}>{fmtDate(header.price_date)}</div>
             </div>
-            {/* Composite gauge — the page's anchor number */}
+            {/* Composite gauge — the page's anchor number (live-adjusted when a
+                fresh price has moved it, matching the Factors pane) */}
             <div className="flex items-center gap-2.5">
-              {header.composite != null ? (
-                <ScoreGauge value={header.composite} />
+              {comp != null ? (
+                <ScoreGauge value={comp} />
               ) : (
                 <div className={STAT_VALUE}>{DASH}</div>
               )}
               <div>
                 <div className={STAT_LABEL}>
                   Composite{' '}
-                  <span
-                    title="Nightly factor snapshot. The Factors pane shows the live-adjusted value using today's price."
-                    className="cursor-help rounded bg-surface-3 px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-subtle"
-                  >
-                    nightly
-                  </span>
+                  {eff.isLive ? (
+                    <span
+                      title="Live-adjusted from the latest price (~15-min delayed). Value & Momentum (and the composite) move; Growth & Quality stay at the nightly score."
+                      className="cursor-help rounded bg-info-soft px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-info"
+                    >
+                      live
+                    </span>
+                  ) : (
+                    <span
+                      title="Nightly factor snapshot. It goes live-adjusted here (and across this page) once a fresh intraday price moves Value or Momentum."
+                      className="cursor-help rounded bg-surface-3 px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-subtle"
+                    >
+                      nightly
+                    </span>
+                  )}
                 </div>
                 {compDelta != null && (
                   <div className="numeric text-[0.82rem] font-bold">
@@ -152,15 +162,17 @@ export function HeaderCard({
                   </div>
                 )}
                 <div className={STAT_SUB}>
-                  {rank != null ? (
+                  {rankShown != null ? (
                     <>
-                      rank <span className="numeric font-semibold text-muted">#{rank}</span>
+                      rank <span className="numeric font-semibold text-muted">#{rankShown}</span>
                     </>
                   ) : (
                     'percentile · 100 = top'
                   )}
                 </div>
-                <div className={STAT_SUB}>as of {fmtDate(header.score_date)}</div>
+                <div className={STAT_SUB}>
+                  {eff.isLive ? 'live · adjusted now' : `as of ${fmtDate(header.score_date)}`}
+                </div>
               </div>
             </div>
           </div>
