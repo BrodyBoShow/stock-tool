@@ -2,67 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── StockBud design tokens — "warm-paper terminal" (light + dark) ─────────────
+/* ── StockBud design tokens — "Carbon & Cyan" (light + dark) ───────────────────
  * Single source of truth for color. Reference by name (var(--token) or the
  * Tailwind aliases in tailwind.config.js, e.g. text-ink / bg-surface / text-pos).
  * NEVER hard-code hex in components — that's what breaks the theme flip.
  *
- * Identity (2026-07 refresh): cream/ink paper canvas, hairline rules instead of
- * soft shadows, deep-amber brand accent + petrol-teal benchmark color, IBM Plex
- * Sans for words + IBM Plex Mono for every number. Institutional, calm, dense.
+ * Identity: a pure-neutral CARBON canvas (no warm/brown tint) with an electric
+ * CYAN accent and a VIOLET benchmark series — the TradingView / Linear "pro
+ * terminal" direction. IBM Plex Sans for words + IBM Plex Mono for every number.
  *
  * Mechanism: :root holds LIGHT defaults. A [data-theme="dark"] attribute
  * (set on <html> by the anti-FOUC script in index.html + ThemeProvider)
  * overrides the color tokens. The selector is deliberately element-agnostic so
- * a subtree can opt into dark as a "theme island" (e.g. the constant-dark nav
- * frame) by carrying data-theme="dark" itself. A prefers-color-scheme media
- * query covers first-visit users before JS runs; the explicit attribute always
- * wins (manual toggle). Non-color tokens (type scale, radii, motion) are
- * theme-independent and live only here.
+ * a subtree can opt into dark as a "theme island" (the constant-dark nav frame)
+ * by carrying data-theme="dark" itself. A prefers-color-scheme media query
+ * covers first-visit users before JS runs; the explicit attribute always wins.
+ * Non-color tokens (type scale, radii, motion) are theme-independent.
  *
- * Deliberate deviations from the design spec (documented, don't "fix" back):
- *  - --warn is ORANGE, not the accent's amber: warning chips must not read as
- *    selected/brand chips (accent-soft vs warn-soft would collide otherwise).
- *  - --accent-ink keeps its existing app semantic: copy ON the solid accent
- *    fill (white in light, near-black on the bright dark amber) — NOT the
- *    spec's "text on accent-soft" (that role is plain text-accent, which
- *    passes AA on the soft wash).
- *  - Light --band-2/--band-3 are darker than the spec (teal 3.2:1 / mustard
- *    2.4:1 fail AA) because band tokens double as chip/stamp TEXT colors here.
- *  - Dark --subtle lifted (#6B6358→#7D7466): this design leans on 10px
- *    uppercase micro-labels, so tertiary text must clear ~4:1.
+ * Deliberate notes (documented, don't "fix" back):
+ *  - --accent (cyan) is cyan-700 in light for AA as TEXT + as a solid-button
+ *    fill with white ink; dark uses a bright cyan-400 fill with near-black ink.
+ *  - --primary (violet) is the benchmark/secondary DATA series only, never a
+ *    brand CTA — kept distinct from the cyan accent so overlaid chart lines read
+ *    apart. It is NOT the app's accent (that stays cyan).
+ *  - --info is blue-700, deliberately bluer than the cyan accent so "info" and
+ *    "brand" don't collide.
+ *  - --warn stays orange (not the accent hue) so caution never reads as brand.
  * ─────────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
 
-  /* ---- surfaces ---- */
-  --bg: #faf8f4; /* page canvas — softly warm, not full cream */
-  --bg-grad-1: #faf8f4; /* body gradient stops (gentle warm ramp) */
-  --bg-grad-2: #f4f0e8;
-  --bg-grad-3: #ece6da;
-  --surface: #ffffff; /* cards, panels — pure white against the warm body */
-  --surface-2: #f6f2ec; /* inputs, nested surfaces, table headers */
-  --surface-3: #eee8dd; /* hover / pressed / selected rows */
-  --nav-bg: rgba(250, 248, 244, 0.88); /* frosted top-nav (pre-alpha'd) */
+  /* ---- surfaces (carbon neutral) ---- */
+  --bg: #fafafa; /* page canvas — pure neutral, no tint */
+  --bg-grad-1: #fafafa; /* body gradient stops (neutral ramp) */
+  --bg-grad-2: #f4f4f5;
+  --bg-grad-3: #ededf0;
+  --surface: #ffffff; /* cards, panels */
+  --surface-2: #f4f4f5; /* inputs, nested surfaces, table headers */
+  --surface-3: #e8e8eb; /* hover / pressed / selected rows */
+  --nav-bg: rgba(250, 250, 250, 0.88); /* frosted top-nav (pre-alpha'd) */
 
   /* ---- text ---- */
-  --ink: #14110e; /* primary copy — warm near-black */
-  --muted: #57514a; /* secondary copy (AA on light) */
-  --subtle: #78715f; /* tertiary — 4.85:1 on white so micro-labels clear AA */
-  --inverse: #faf8f4; /* copy on dark fills */
+  --ink: #18181b; /* primary copy — near-black neutral */
+  --muted: #52525b; /* secondary copy (AA on light) */
+  --subtle: #6b6b74; /* tertiary (5.3:1 on white) */
+  --inverse: #fafafa; /* copy on dark fills */
 
   /* ---- lines ---- */
-  --border: #e4ded2;
-  --border-strong: #c8c0b0;
-  --divider: #eee8dd;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --divider: #eeeef0;
 
-  /* ---- brand accent (deep amber) — the ONE brand color ---- */
-  --primary: #0e5f58; /* secondary data / benchmark series (petrol teal) */
-  --accent: #b45309; /* accent text / underline / icon */
-  --accent-solid: #b45309; /* solid button fill */
-  --accent-hover: #92400e; /* button hover */
-  --accent-soft: rgba(180, 83, 9, 0.09); /* tinted surfaces / selected — light
-   * enough that text-accent stays AA on the wash */
+  /* ---- brand accent (cyan) — the ONE brand color ---- */
+  --primary: #6d28d9; /* benchmark / secondary data series (violet) */
+  --accent: #0e7490; /* accent text / underline / icon (cyan-700) */
+  --accent-solid: #0e7490; /* solid button fill */
+  --accent-hover: #155e75; /* button hover (cyan-800) */
+  --accent-soft: rgba(14, 116, 144, 0.1); /* tinted surfaces / selected */
   --accent-ink: #ffffff; /* copy on the solid accent */
 
   /* ---- semantic data colors (3 tiers) — gain / loss / caution / neutral ----
@@ -80,15 +76,15 @@
   --warn: #c2410c;
   --warn-strong: #ea580c;
   --warn-soft: rgba(234, 88, 12, 0.09);
-  --info: #0369a1;
-  --info-soft: rgba(3, 105, 161, 0.11);
-  --flat: #6b6660;
+  --info: #1d4ed8;
+  --info-soft: rgba(29, 78, 216, 0.1);
+  --flat: #71717a;
 
   /* risk-band INTENSITY scale (cool→warm) — deliberately NOT good/bad; the chip
    * derives its bg/border via color-mix so one hue per band covers both themes.
    * Band tokens also color stamp/chip TEXT, so every value clears AA on white. */
-  --band-1: #1e6f8c;
-  --band-2: #137a6b;
+  --band-1: #0e7490;
+  --band-2: #0f766e;
   --band-3: #8a6d10;
   --band-4: #c2410c;
   --band-5: #991b1b;
@@ -102,7 +98,7 @@
   --fs-small: 12px;
   --fs-micro: 10px;
 
-  /* ---- radii — terminal-crisp; 12px is the ceiling (hero containers only) ---- */
+  /* ---- radii — terminal-crisp; 12px is the ceiling ---- */
   --r-xs: 3px;
   --r-sm: 4px;
   --r-md: 6px;
@@ -111,9 +107,9 @@
 
   /* ---- shadows — floating elements ONLY (tooltips/dropdowns/modals);
    * default panels are hairline-framed with NO shadow ---- */
-  --sh-sm: 0 1px 2px rgba(20, 17, 14, 0.04);
-  --sh-md: 0 2px 8px rgba(20, 17, 14, 0.08);
-  --sh-lg: 0 8px 24px rgba(20, 17, 14, 0.12);
+  --sh-sm: 0 1px 2px rgba(9, 9, 11, 0.05);
+  --sh-md: 0 2px 8px rgba(9, 9, 11, 0.1);
+  --sh-lg: 0 8px 24px rgba(9, 9, 11, 0.14);
 
   /* ---- motion ---- */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -122,41 +118,41 @@
   --dur-slow: 400ms;
 }
 
-/* ── DARK theme ───────────────────────────────────────────────────────────────
- * Color overrides only — warm near-black (never zinc/neutral). Text tiers are
- * lifted (brighter) so gain/loss and copy stay WCAG-AA on dark surfaces; tints
- * are higher-alpha so they don't vanish. Applied both via the attribute (manual
- * toggle wins; element-agnostic so subtrees can be dark "theme islands") and
- * via prefers-color-scheme for first-visit users before the toggle is touched. */
+/* ── DARK theme (carbon) ───────────────────────────────────────────────────────
+ * Pure-neutral carbon near-black (zinc-scale), never warm. Text tiers are lifted
+ * so gain/loss and copy stay WCAG-AA on dark surfaces; tints are higher-alpha so
+ * they don't vanish. Applied via the attribute (manual toggle wins; element-
+ * agnostic so subtrees can be dark "theme islands") and via prefers-color-scheme
+ * for first-visit users before the toggle is touched. */
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --bg: #131211;
-  --bg-grad-1: #131211;
-  --bg-grad-2: #171512;
-  --bg-grad-3: #1b1815;
-  --surface: #1c1a17;
-  --surface-2: #26231e;
-  --surface-3: #312d26;
-  --nav-bg: rgba(20, 18, 16, 0.85);
+  --bg: #09090b;
+  --bg-grad-1: #09090b;
+  --bg-grad-2: #0c0c0e;
+  --bg-grad-3: #101012;
+  --surface: #18181b;
+  --surface-2: #1f1f23;
+  --surface-3: #29292e;
+  --nav-bg: rgba(9, 9, 11, 0.85);
 
-  --ink: #efeae0;
-  --muted: #a6a094;
-  --subtle: #837c70;
-  --inverse: #131211;
+  --ink: #ededef;
+  --muted: #a1a1aa;
+  --subtle: #8b8b93;
+  --inverse: #09090b;
 
-  --border: #322e28;
-  --border-strong: #464036;
-  --divider: #262320;
+  --border: #27272a;
+  --border-strong: #3f3f46;
+  --divider: #1c1c1f;
 
-  --primary: #5eead4;
-  /* Dark accent buttons use a BRIGHT amber fill + DARK ink (the modern dark
-   * pattern) — stands out from the dark surface and clears WCAG-AA (11.7:1). */
-  --accent: #fbbf24;
-  --accent-solid: #fbbf24;
-  --accent-hover: #fcd34d;
-  --accent-soft: rgba(251, 191, 36, 0.15);
-  --accent-ink: #131211;
+  --primary: #a78bfa; /* violet benchmark, brightened */
+  /* Dark accent = bright cyan fill + near-black ink (the modern dark pattern) —
+   * stands out on carbon and clears WCAG-AA (11:1). */
+  --accent: #22d3ee;
+  --accent-solid: #22d3ee;
+  --accent-hover: #67e8f9;
+  --accent-soft: rgba(34, 211, 238, 0.15);
+  --accent-ink: #09090b;
 
   --pos: #4ade80;
   --pos-strong: #22c55e;
@@ -171,16 +167,16 @@
   --warn-soft: rgba(251, 146, 60, 0.16);
   --info: #60a5fa;
   --info-soft: rgba(96, 165, 250, 0.15);
-  --flat: #8b8478;
-  --band-1: #5e9fbc;
-  --band-2: #6fc9bb;
+  --flat: #a1a1aa;
+  --band-1: #22d3ee;
+  --band-2: #2dd4bf;
   --band-3: #e0c34a;
-  --band-4: #f1874a;
-  --band-5: #e15656;
+  --band-4: #fb923c;
+  --band-5: #f87171;
 
-  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --sh-md: 0 2px 8px rgba(0, 0, 0, 0.45);
-  --sh-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --sh-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 /* First-visit default: honor the OS setting until the user picks a theme. The
@@ -190,30 +186,30 @@
   :root:not([data-theme]) {
     color-scheme: dark;
 
-    --bg: #0e0c0a;
-    --bg-grad-1: #0e0c0a;
-    --bg-grad-2: #14110d;
-    --bg-grad-3: #1a1612;
-    --surface: #16130f;
-    --surface-2: #1f1b16;
-    --surface-3: #2a241d;
-    --nav-bg: rgba(14, 12, 10, 0.85);
+    --bg: #09090b;
+    --bg-grad-1: #09090b;
+    --bg-grad-2: #0c0c0e;
+    --bg-grad-3: #101012;
+    --surface: #18181b;
+    --surface-2: #1f1f23;
+    --surface-3: #29292e;
+    --nav-bg: rgba(9, 9, 11, 0.85);
 
-    --ink: #f2ebdd;
-    --muted: #a39b8a;
-    --subtle: #7d7466;
-    --inverse: #0e0c0a;
+    --ink: #ededef;
+    --muted: #a1a1aa;
+    --subtle: #8b8b93;
+    --inverse: #09090b;
 
-    --border: #2a241d;
-    --border-strong: #3d362b;
-    --divider: #1f1b16;
+    --border: #27272a;
+    --border-strong: #3f3f46;
+    --divider: #1c1c1f;
 
-    --primary: #5eead4;
-    --accent: #fbbf24;
-    --accent-solid: #fbbf24;
-    --accent-hover: #fcd34d;
-    --accent-soft: rgba(251, 191, 36, 0.15);
-    --accent-ink: #131211;
+    --primary: #a78bfa;
+    --accent: #22d3ee;
+    --accent-solid: #22d3ee;
+    --accent-hover: #67e8f9;
+    --accent-soft: rgba(34, 211, 238, 0.15);
+    --accent-ink: #09090b;
 
     --pos: #4ade80;
     --pos-strong: #22c55e;
@@ -228,88 +224,16 @@
     --warn-soft: rgba(251, 146, 60, 0.16);
     --info: #60a5fa;
     --info-soft: rgba(96, 165, 250, 0.15);
-    --flat: #8b8478;
-    --band-1: #5e9fbc;
-    --band-2: #6fc9bb;
+    --flat: #a1a1aa;
+    --band-1: #22d3ee;
+    --band-2: #2dd4bf;
     --band-3: #e0c34a;
-    --band-4: #f1874a;
-    --band-5: #e15656;
+    --band-4: #fb923c;
+    --band-5: #f87171;
 
-    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --sh-md: 0 2px 8px rgba(0, 0, 0, 0.45);
-    --sh-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
-  }
-}
-
-/* ── COOL palette (opt-in via data-palette="cool" on <html>) ───────────────────
- * A/B alternative to the default warm-paper surfaces. Community dark-mode
- * testers preferred a cool graphite terminal over the warm-brown one, so this
- * swaps ONLY the surface / text / line tokens to cool-neutral (the pre-refresh
- * graphite in dark; slate in light) while KEEPING the amber accent, the petrol
- * benchmark, and all gain/loss semantics — the "cool surfaces + amber pop"
- * compromise. Selectors are more specific than the base blocks so they win:
- *   [data-palette='cool']                    → cool LIGHT surfaces  (0,1,0, later in source than :root)
- *   [data-palette='cool'][data-theme='dark'] → cool DARK  surfaces  (0,2,0, beats the dark block)
- * Accent/semantic tokens are deliberately NOT re-declared here, so they inherit
- * amber/petrol/pos/neg from :root and [data-theme='dark']. */
-[data-palette='cool'] {
-  --bg: #f7f8fa;
-  --bg-grad-1: #f7f8fa;
-  --bg-grad-2: #eef2f7;
-  --bg-grad-3: #e7ecf3;
-  --surface: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-3: #e6ecf3;
-  --nav-bg: rgba(247, 248, 250, 0.88);
-
-  --ink: #0f172a;
-  --muted: #475569;
-  --subtle: #5c6b7d; /* 5.45:1 on white, 4.58:1 on surface-3 */
-  --inverse: #f7f8fa;
-
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --divider: #eef2f7;
-}
-
-[data-palette='cool'][data-theme='dark'] {
-  --bg: #0b0f17; /* the graphite testers preferred */
-  --bg-grad-1: #0b0f17;
-  --bg-grad-2: #0d131c;
-  --bg-grad-3: #0f1620;
-  --surface: #131a24;
-  --surface-2: #1a222e;
-  --surface-3: #232c3a;
-  --nav-bg: rgba(11, 15, 23, 0.85);
-
-  --ink: #e6eaf0;
-  --muted: #9aa7b8;
-  --subtle: #808b9e; /* lifted for AA (5.08:1 on surface) */
-  --inverse: #0b0f17;
-
-  --border: #263041;
-  --border-strong: #33415a;
-  --divider: #1b2430;
-}
-
-/* First-visit dark default under the cool palette (before the toggle is set). */
-@media (prefers-color-scheme: dark) {
-  [data-palette='cool']:not([data-theme]) {
-    --bg: #0b0f17;
-    --bg-grad-1: #0b0f17;
-    --bg-grad-2: #0d131c;
-    --bg-grad-3: #0f1620;
-    --surface: #131a24;
-    --surface-2: #1a222e;
-    --surface-3: #232c3a;
-    --nav-bg: rgba(11, 15, 23, 0.85);
-    --ink: #e6eaf0;
-    --muted: #9aa7b8;
-    --subtle: #808b9e;
-    --inverse: #0b0f17;
-    --border: #263041;
-    --border-strong: #33415a;
-    --divider: #1b2430;
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sh-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --sh-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -347,8 +271,7 @@ body {
     color var(--dur-base) var(--ease);
 }
 
-/* Systemic keyboard-focus ring (keyboard only, so mouse users see nothing).
- * Fixes the 41 files that had no visible focus state — one accent ring for all. */
+/* Systemic keyboard-focus ring (keyboard only, so mouse users see nothing). */
 :where(a, button, [role='button'], input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
