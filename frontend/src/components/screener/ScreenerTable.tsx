@@ -590,8 +590,13 @@ export function ScreenerTable({
         </span>
       </div>
 
-      {/* virtualized grid */}
-      <div ref={parentRef} className="overflow-auto" style={{ maxHeight: 640 }}>
+      {/* virtualized grid — grows with the viewport (was a fixed 640px cap that
+          left a big void on tall monitors); floored so it stays usable on laptops */}
+      <div
+        ref={parentRef}
+        className="overflow-auto"
+        style={{ maxHeight: 'max(440px, calc(100vh - 300px))' }}
+      >
         <div
           className="sticky top-0 z-10 grid border-b border-line bg-surface-2"
           style={{ gridTemplateColumns: gridCols, minWidth: mw }}
