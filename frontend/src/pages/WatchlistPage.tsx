@@ -9,7 +9,7 @@ import { DisclaimerChip } from '@/components/portfolio/redesign/DisclaimerChip'
 import { ExploreChips } from '@/components/portfolio/redesign/ExploreChips'
 import { NextActionCTA } from '@/components/portfolio/redesign/NextActionCTA'
 import { Skeleton } from '@/components/ui/skeleton'
-import { WatchlistChanges } from '@/components/WatchlistChanges'
+import { WatchlistChanges, type StampPctls } from '@/components/WatchlistChanges'
 import { StalenessNudge } from '@/components/watchlist/StalenessNudge'
 import { WatchlistHero, type WatchlistHeroView } from '@/components/watchlist/WatchlistHero'
 import { WatchlistTable, type WatchlistLive } from '@/components/WatchlistTable'
@@ -69,10 +69,28 @@ export function WatchlistPage() {
     refetchOnWindowFocus: true,
   })
 
-  const rows = data?.rows ?? []
+  // Stable reference (tied to the query result) so the memos that depend on it
+  // don't recompute every render.
+  const rows = useMemo(() => data?.rows ?? [], [data])
   // Bumped when a name is snoozed/unsnoozed so the hero recomputes (snooze lives
   // in localStorage, read inside the memo).
   const [snoozeVersion, setSnoozeVersion] = useState(0)
+
+  // ticker → factor percentiles, so the "what's changed" cards can render the
+  // signature FactorStamp (the change payload only carries composite; the grid
+  // rows already fetched carry the four factors — join client-side, no request).
+  const pctlsByTicker = useMemo(() => {
+    const m = new Map<string, StampPctls>()
+    for (const r of rows) {
+      m.set(r.ticker, {
+        growth: r.growth_pctl,
+        value: r.value_pctl,
+        quality: r.quality_pctl,
+        momentum: r.momentum_pctl,
+      })
+    }
+    return m
+  }, [rows])
 
   // Hero view model: total watched, how many moved, and the single most-active
   // name (for the headline + the one CTA). Snoozed names are excluded — a name
@@ -180,6 +198,7 @@ export function WatchlistPage() {
       {changes && changes.rows.length > 0 && (
         <WatchlistChanges
           rows={changes.rows}
+          pctlsByTicker={pctlsByTicker}
           onSnoozeChange={() => setSnoozeVersion((v) => v + 1)}
         />
       )}

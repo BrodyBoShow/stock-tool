@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { SectorPill } from '@/components/screener/SectorPill'
 import { Delta } from '@/components/ui/Delta'
+import { FactorStamp } from '@/components/ui/FactorStamp'
 import { Icon } from '@/components/ui/Icon'
 import { fmtDate, fmtMoney } from '@/lib/format'
 import { snoozedUntil, snoozeTicker } from '@/lib/watchlistSnooze'
@@ -11,6 +12,15 @@ import { WhatsChangedButton } from '@/components/watchlist/WhatsChangedButton'
 import type { WatchlistChange } from '@/types/api'
 
 const SNOOZE_DAYS = 30
+
+/** The four factor percentiles for the signature stamp — joined in from the
+ *  watchlist grid rows (the change payload only carries composite). */
+export interface StampPctls {
+  growth: number | null
+  value: number | null
+  quality: number | null
+  momentum: number | null
+}
 
 /** How "active" a name is, for sort-to-top within a tier: review due > new 8-Ks
  * > insider buys > a meaningful rank move. Quiet names sink to the bottom. */
@@ -90,10 +100,12 @@ function TierTag({ tier }: { tier: Tier }) {
 
 function ChangeCard({
   c,
+  pctls,
   snoozedTs,
   onSnooze,
 }: {
   c: WatchlistChange
+  pctls?: StampPctls
   snoozedTs: number | null
   onSnooze: (ticker: string, days: number) => void
 }) {
@@ -158,6 +170,15 @@ function ChangeCard({
           </div>
           {c.name && (
             <div className="mt-0.5 truncate text-[0.75rem] text-subtle">{c.name}</div>
+          )}
+          {pctls && (
+            <FactorStamp
+              className="mt-1"
+              growth={pctls.growth}
+              value={pctls.value}
+              quality={pctls.quality}
+              momentum={pctls.momentum}
+            />
           )}
         </div>
         <div className="flex-none text-right">
@@ -286,9 +307,12 @@ function ChangeCard({
 
 export function WatchlistChanges({
   rows,
+  pctlsByTicker,
   onSnoozeChange,
 }: {
   rows: WatchlistChange[]
+  /** ticker → factor percentiles, joined from the watchlist grid for the stamp. */
+  pctlsByTicker?: Map<string, StampPctls>
   /** Fired when a snooze toggles, so the page's hero can recompute its count. */
   onSnoozeChange?: () => void
 }) {
@@ -335,7 +359,13 @@ export function WatchlistChanges({
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {sorted.map(({ c, ts }) => (
-          <ChangeCard key={c.security_id} c={c} snoozedTs={ts} onSnooze={handleSnooze} />
+          <ChangeCard
+            key={c.security_id}
+            c={c}
+            pctls={pctlsByTicker?.get(c.ticker)}
+            snoozedTs={ts}
+            onSnooze={handleSnooze}
+          />
         ))}
       </div>
     </section>
