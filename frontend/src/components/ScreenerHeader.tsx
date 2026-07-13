@@ -52,6 +52,45 @@ function Stat({
   )
 }
 
+const TILT_MAX = 1.5 // % top-vs-bottom spread that fills the diverging bar
+
+/** One factor's realized tilt today: a centered diverging bar (green right =
+ *  top-quintile outperforming, red left = lagging) + the signed spread. */
+function FactorTiltCell({ label, spread }: { label: string; spread: number | null }) {
+  const flat = spread != null && Math.abs(spread) < 0.005
+  const up = spread != null && spread >= 0
+  const color = spread == null || flat ? 'var(--subtle)' : up ? 'var(--pos)' : 'var(--neg)'
+  const half = spread == null || flat ? 0 : Math.min(Math.abs(spread) / TILT_MAX, 1) * 50
+  return (
+    <div
+      className="flex w-16 flex-col items-center gap-0.5"
+      title={
+        spread == null
+          ? `${label}: not enough priced names to measure`
+          : `${label}: top-quintile names (percentile ≥ 80) ${up ? 'outperforming' : 'lagging'} the bottom-quintile (≤ 20) by ${Math.abs(spread).toFixed(2)}% today, vs prior close`
+      }
+    >
+      <span className="text-[0.56rem] font-semibold uppercase tracking-wide text-subtle">{label}</span>
+      <span className="numeric text-[0.8rem] font-bold leading-none" style={{ color }}>
+        {spread == null ? '—' : flat ? '0.00%' : `${up ? '+' : '−'}${Math.abs(spread).toFixed(2)}%`}
+      </span>
+      <span className="relative block h-1.5 w-14 overflow-hidden rounded-full bg-surface-3">
+        <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-500/40" />
+        {spread != null && !flat && (
+          <span
+            className="absolute inset-y-0"
+            style={
+              up
+                ? { left: '50%', width: `${half}%`, background: color }
+                : { right: '50%', width: `${half}%`, background: color }
+            }
+          />
+        )}
+      </span>
+    </div>
+  )
+}
+
 /**
  * Screener hero — a clean dashboard header (not a terminal readout).
  *
@@ -162,6 +201,46 @@ export function ScreenerHeader({
   const decPct = priced > 0 ? (dec / priced) * 100 : 0
   const unchPct = Math.max(0, 100 - advPct - decPct)
 
+  // Factor tilt today — which style the tape is rewarding. For each factor, the
+  // spread between the average close-vs-prior move of its top-quintile names
+  // (percentile ≥ 80) and its bottom-quintile (≤ 20), across the whole universe.
+  // A realized measurement of today's move vs the prior close (intraday-delayed
+  // while open), NOT a forecast; needs ≥20 priced names per bucket or it reports
+  // null (shown as "—").
+  const factorTilt = useMemo(() => {
+    const FACTORS = [
+      ['growth_pctl', 'Growth'],
+      ['value_pctl', 'Value'],
+      ['quality_pctl', 'Quality'],
+      ['momentum_pctl', 'Mom'],
+    ] as const
+    const ret = (r: ScreenerRow): number | null =>
+      r.last_price != null && r.prev_close != null && r.prev_close > 0
+        ? (r.last_price / r.prev_close - 1) * 100
+        : null
+    return FACTORS.map(([key, label]) => {
+      let topSum = 0
+      let topN = 0
+      let botSum = 0
+      let botN = 0
+      for (const r of rows) {
+        const p = r[key]
+        const g = ret(r)
+        if (p == null || g == null) continue
+        if (p >= 80) {
+          topSum += g
+          topN += 1
+        } else if (p <= 20) {
+          botSum += g
+          botN += 1
+        }
+      }
+      const spread = topN >= 20 && botN >= 20 ? topSum / topN - botSum / botN : null
+      return { label, spread }
+    })
+  }, [rows])
+  const hasTilt = factorTilt.some((f) => f.spread != null)
+
   // Market Pulse — a single contextual read replacing five equal-weight KPIs.
   // Breadth (our own nightly close-vs-prior) + VIX regime → one direction word.
   // Thresholds are conventional market heuristics, not a tuned signal; the raw
@@ -226,6 +305,23 @@ export function ScreenerHeader({
               )}
             </div>
           </div>
+
+          {/* Factor tilt today — fills the header's mid gap with the one read a
+              factor screener wants: which style the tape is rewarding right now.
+              Client-side from the loaded rows; md+ only (no mid-gap on mobile). */}
+          {hasTilt && (
+            <div className="hidden items-center gap-3 lg:flex">
+              <div className="flex flex-col items-end leading-tight">
+                <span className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-subtle">
+                  Factor tilt
+                </span>
+                <span className="text-[0.54rem] uppercase tracking-wide text-subtle">vs prior close</span>
+              </div>
+              {factorTilt.map((f) => (
+                <FactorTiltCell key={f.label} label={f.label} spread={f.spread} />
+              ))}
+            </div>
+          )}
 
           {/* market status + clock — horizontal, compact */}
           <div className="flex items-center gap-3">
