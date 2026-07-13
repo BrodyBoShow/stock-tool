@@ -1,8 +1,10 @@
+import { ArrowUpRight, BellOff, Clock, Newspaper } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { SectorPill } from '@/components/screener/SectorPill'
 import { Delta } from '@/components/ui/Delta'
+import { Icon } from '@/components/ui/Icon'
 import { fmtDate, fmtMoney } from '@/lib/format'
 import { snoozedUntil, snoozeTicker } from '@/lib/watchlistSnooze'
 import { WhatsChangedButton } from '@/components/watchlist/WhatsChangedButton'
@@ -57,7 +59,7 @@ function Chip({
     insider: 'border-pos-border bg-pos-soft text-pos',
     review: 'border-warn bg-warn-soft text-warn',
     quiet: 'border-[var(--divider)] bg-[var(--surface-2)] text-subtle',
-    news: 'border-violet-200 bg-violet-50 text-violet-700',
+    news: 'border-line bg-info-soft text-info',
   }
   return (
     <span
@@ -159,7 +161,7 @@ function ChangeCard({
           )}
         </div>
         <div className="flex-none text-right">
-          <div className="text-[1.15rem] font-extrabold tabular-nums text-ink">
+          <div className="text-[1.15rem] font-bold tabular-nums text-ink">
             {c.composite != null ? c.composite.toFixed(1) : '—'}
           </div>
           <div className="text-[0.62rem] font-semibold uppercase tracking-wide text-subtle">
@@ -172,7 +174,7 @@ function ChangeCard({
         {/* ── ACT: developments that warrant a decision ─────────────────── */}
         {c.review_due && (
           <Link to={`/securities/${c.ticker}`}>
-            <Chip tone="review">⏰ Thesis review due</Chip>
+            <Chip tone="review"><Icon icon={Clock} size={12} /> Thesis review due</Chip>
           </Link>
         )}
         {c.new_events > 0 &&
@@ -184,7 +186,7 @@ function ChangeCard({
                 {c.latest_event_date ? (
                   <span className="text-warn"> ({fmtDate(c.latest_event_date)})</span>
                 ) : null}
-                {c.latest_event_url ? <span className="ml-0.5">↗</span> : null}
+                {c.latest_event_url ? <Icon icon={ArrowUpRight} size={12} className="ml-0.5" /> : null}
               </Chip>
             )
             // Link straight to the most recent 8-K's primary document on SEC
@@ -247,9 +249,9 @@ function ChangeCard({
           <Chip tone="news">
             <span
               title="Recent news coverage jumped above this name's own recent baseline (GDELT article volume, matched by company name — may catch unrelated same-name coverage). Context only, not a signal — open the name to see the headlines."
-              className="cursor-help"
+              className="inline-flex cursor-help items-center gap-1"
             >
-              📰 News spike
+              <Icon icon={Newspaper} size={12} /> News spike
               {c.news_ratio ? ` · ${c.news_ratio.toFixed(1)}× vs usual` : ''}
               {c.news_count != null ? ` (${c.news_count} art.)` : ''}
             </span>
@@ -262,10 +264,10 @@ function ChangeCard({
           <button
             type="button"
             onClick={() => onSnooze(c.ticker, SNOOZE_DAYS)}
-            className="ml-auto text-[0.7rem] font-medium text-subtle hover:text-muted"
+            className="ml-auto inline-flex items-center gap-1 text-[0.7rem] font-medium text-subtle hover:text-muted"
             title={`Quiet ${c.ticker}'s updates for ${SNOOZE_DAYS} days`}
           >
-            🔕 Snooze {SNOOZE_DAYS}d
+            <Icon icon={BellOff} size={12} /> Snooze {SNOOZE_DAYS}d
           </button>
         )}
       </div>

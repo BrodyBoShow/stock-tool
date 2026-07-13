@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 import { useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { getEvents } from '@/lib/api'
 import { fmtDate } from '@/lib/format'
 import type { MaterialEvent } from '@/types/api'
@@ -55,9 +57,9 @@ function EventRow({ e }: { e: MaterialEvent }) {
           href={e.primary_doc_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-none self-center text-[0.72rem] font-semibold text-accent hover:underline"
+          className="inline-flex flex-none items-center gap-0.5 self-center text-[0.72rem] font-semibold text-accent hover:underline"
         >
-          {e.form} ↗
+          {e.form} <Icon icon={ArrowUpRight} size={12} />
         </a>
       )}
     </li>

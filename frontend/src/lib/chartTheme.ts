@@ -29,19 +29,19 @@ export interface ChartTheme {
 }
 
 const FALLBACK_LIGHT: ChartTheme = {
-  grid: '#e5e9f0',
-  axis: '#94a3b8',
+  grid: '#e4e4e7',
+  axis: '#6b6b74',
   tooltipBg: '#ffffff',
-  tooltipBorder: '#e5e9f0',
-  tooltipText: '#0f172a',
-  ink: '#0f172a',
-  accent: '#4f46e5',
-  primary: '#2563eb',
-  info: '#0891b2',
-  pos: '#16a34a',
-  neg: '#dc2626',
-  warn: '#d97706',
-  muted: '#94a3b8',
+  tooltipBorder: '#e4e4e7',
+  tooltipText: '#18181b',
+  ink: '#18181b',
+  accent: '#0e7490',
+  primary: '#6d28d9',
+  info: '#1d4ed8',
+  pos: '#166534',
+  neg: '#b91c1c',
+  warn: '#c2410c',
+  muted: '#6b6b74',
   surface: '#ffffff',
 }
 

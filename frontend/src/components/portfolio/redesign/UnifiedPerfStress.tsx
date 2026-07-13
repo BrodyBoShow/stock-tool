@@ -48,7 +48,7 @@ export function UnifiedPerfStress({
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
             className={`min-h-[36px] rounded-[var(--r-md)] px-3 text-[0.78rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] ${
-              tab === t.id ? 'bg-slate-900 text-white' : 'text-muted hover:bg-surface-3'
+              tab === t.id ? 'bg-ink text-inverse' : 'text-muted hover:bg-surface-3'
             }`}
           >
             {t.label}

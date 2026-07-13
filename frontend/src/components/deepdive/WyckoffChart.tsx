@@ -1,5 +1,7 @@
+import { X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { fmtDate, fmtVol, tickLabel } from '@/lib/format'
 import type { VsaBar, WyckoffAnalysis, WyckoffEventType, WyckoffPhaseId } from '@/lib/wyckoff'
 
@@ -405,7 +407,7 @@ export function WyckoffChart({
           // over the bars (and a mid-drag cursor crossing it can't fire the
           // svg's onMouseLeave and cancel the measurement). Only the ✕ opts back
           // into pointer events.
-          className={`pointer-events-none absolute top-1 z-10 rounded-lg border bg-surface px-3 py-2 text-xs shadow-card ${
+          className={`pointer-events-none absolute top-1 z-10 rounded-lg border bg-surface px-3 py-2 text-xs shadow-[var(--sh-md)] ${
             pinnedSafe !== null ? 'border-accent' : 'border-line'
           }`}
           style={{ left: `${(tooltipFrac * 100).toFixed(2)}%`, transform: tooltipFrac > 0.6 ? 'translateX(-105%)' : 'translateX(8px)' }}
@@ -417,9 +419,9 @@ export function WyckoffChart({
                 type="button"
                 onClick={() => setPinned(null)}
                 aria-label="Unpin"
-                className="pointer-events-auto rounded px-1 text-[0.7rem] font-bold text-muted hover:text-ink"
+                className="pointer-events-auto rounded px-1 text-muted hover:text-ink"
               >
-                ✕
+                <Icon icon={X} size={14} />
               </button>
             )}
           </div>

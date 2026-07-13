@@ -1,6 +1,8 @@
+import { TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 
+import { Icon } from '@/components/ui/Icon'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { useChartTheme } from '@/lib/chartTheme'
 import { plColor, scoreHeat } from '@/lib/colors'
@@ -81,7 +83,7 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
         <div>
           <div className="text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-subtle">{card.label}</div>
           {hasData ? (
-            <div className="mt-0.5 text-[1.15rem] font-extrabold tabular-nums text-ink">
+            <div className="mt-0.5 text-[1.15rem] font-bold tabular-nums text-ink">
               {card.latest.toFixed(card.dec)}{card.unit}
               {deltaStr && (
                 // Rates/yields: direction only, neutral color (a move isn't "good" or "bad").
@@ -104,7 +106,7 @@ export function MacroCardBox({ card }: { card: MarketMacroCard }) {
                     const p = payload?.[0]?.payload as { v: number; d: string } | undefined
                     if (!active || !p) return null
                     return (
-                      <div className="rounded-md border border-line bg-surface px-2 py-1 text-[0.66rem] shadow-card">
+                      <div className="rounded-md border border-line bg-surface px-2 py-1 text-[0.66rem] shadow-[var(--sh-md)]">
                         <span className="font-bold tabular-nums text-ink">
                           {p.v.toFixed(card.dec)}{card.unit}
                         </span>
@@ -440,7 +442,7 @@ export function FreshnessRow({ d }: { d: MarketOverviewResponse }) {
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-3 py-2 text-[0.74rem] ${styles}`}>
       <span className="flex items-center">
-        {tone === 'warn' && <span aria-hidden className="mr-1.5">⚠</span>}
+        {tone === 'warn' && <Icon icon={TriangleAlert} size={13} className="mr-1.5" />}
         {msg}
         <InfoTip text={G.freshness} />
       </span>
@@ -474,7 +476,7 @@ export function RegimeHero({ read, spyLive, spy1d, ewr1d, breadth, liveVsLast }:
       <div className="rounded-xl border px-4 py-3.5" style={{ borderColor: c.border, background: c.bg }}>
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.fg }} aria-hidden />
-          <span className="text-[1.15rem] font-extrabold tracking-tight" style={{ color: c.fg }}>
+          <span className="text-[1.15rem] font-bold tracking-tight" style={{ color: c.fg }}>
             {read?.state ?? 'Market'}
           </span>
           <InfoTip text="Plain-English read of the last session's tape — from the index move, breadth, and sector rotation. Not advice." />
@@ -486,7 +488,7 @@ export function RegimeHero({ read, spyLive, spy1d, ewr1d, breadth, liveVsLast }:
         {spyLive?.price != null ? (
           <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-subtle">SPY</span>
-            <span className="text-[1.35rem] font-extrabold tabular-nums text-ink">${spyLive.price.toFixed(2)}</span>
+            <span className="text-[1.35rem] font-bold tabular-nums text-ink">${spyLive.price.toFixed(2)}</span>
             <span className="text-[0.95rem] font-bold tabular-nums" style={{ color: plColor(spyLive.change_pct) }}>
               {spyLive.change_pct == null ? '' : `${spyLive.change_pct > 0 ? '+' : ''}${spyLive.change_pct.toFixed(2)}%`}
             </span>
@@ -523,7 +525,7 @@ export function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <SnapTile label="Advancers · decliners" tip="Active names that rose vs fell last session — the broad participation read.">
         <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-[1.25rem] font-extrabold tabular-nums" style={{ color: advPct >= 0.5 ? 'var(--pos)' : 'var(--neg)' }}>{(advPct * 100).toFixed(0)}%</span>
+          <span className="text-[1.25rem] font-bold tabular-nums" style={{ color: advPct >= 0.5 ? 'var(--pos)' : 'var(--neg)' }}>{(advPct * 100).toFixed(0)}%</span>
           <span className="text-[0.7rem] text-subtle">advancing</span>
         </div>
         <DivergeBar left={b.advancers} right={b.decliners} />
@@ -535,7 +537,7 @@ export function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
 
       <SnapTile label="Above 50-day avg" tip={G.ma50}>
         <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-[1.25rem] font-extrabold tabular-nums text-ink">{b.pct_above_ma50 == null ? '—' : `${(b.pct_above_ma50 * 100).toFixed(0)}%`}</span>
+          <span className="text-[1.25rem] font-bold tabular-nums text-ink">{b.pct_above_ma50 == null ? '—' : `${(b.pct_above_ma50 * 100).toFixed(0)}%`}</span>
           <span className="text-[0.7rem] text-subtle">in uptrend</span>
         </div>
         <MeterBar pct={b.pct_above_ma50} />
@@ -546,7 +548,7 @@ export function SessionSnapshot({ d }: { d: MarketOverviewResponse }) {
 
       <SnapTile label="New 52-wk highs · lows" tip="Stocks at fresh 1-year highs vs lows — the momentum extremes of the tape.">
         <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-[1.25rem] font-extrabold tabular-nums text-pos">{b.new_highs}</span>
+          <span className="text-[1.25rem] font-bold tabular-nums text-pos">{b.new_highs}</span>
           <span className="text-[0.7rem] text-subtle">highs ·</span>
           <span className="text-[1.05rem] font-bold tabular-nums text-neg">{b.new_lows}</span>
           <span className="text-[0.7rem] text-subtle">lows</span>

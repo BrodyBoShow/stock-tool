@@ -206,7 +206,7 @@ export function ScreenerHeader({
               <span className="text-subtle">Equity Screener</span>
             </div>
             <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <h1 className="text-[1.45rem] font-extrabold leading-[1.15] tracking-[-0.015em] text-ink">
+              <h1 className="text-[1.45rem] font-bold leading-[1.15] tracking-[-0.015em] text-ink">
                 US Equity Factor Screener
               </h1>
               <span className="text-[0.82rem] text-muted">
@@ -275,7 +275,7 @@ export function ScreenerHeader({
             <span className="text-[0.66rem] font-bold uppercase tracking-[0.12em] opacity-70">
               Market Pulse
             </span>
-            <span className="text-[1.02rem] font-extrabold leading-none">{pulse.label}</span>
+            <span className="text-[1.02rem] font-bold leading-none">{pulse.label}</span>
           </div>
           <Stat label="Advancing" value={adv} accent="var(--pos)" hint="vs prior close" />
           <Stat label="Declining" value={dec} accent="var(--neg)" hint="vs prior close" />

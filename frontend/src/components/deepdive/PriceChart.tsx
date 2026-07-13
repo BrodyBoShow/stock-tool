@@ -15,7 +15,10 @@ import {
   YAxis,
 } from 'recharts'
 
+import { X } from 'lucide-react'
+
 import { WyckoffChart } from '@/components/deepdive/WyckoffChart'
+import { Icon } from '@/components/ui/Icon'
 import { getCompareSeries, getEvents, getInsiders, getMacroSeries, getPeers } from '@/lib/api'
 import { useChartTheme } from '@/lib/chartTheme'
 import { MACRO_DISPLAY } from '@/lib/constants'
@@ -583,7 +586,7 @@ export function PriceChart({
             on={showVolume}
             onToggle={() => setShowVolume((x) => !x)}
             label="Volume"
-            color="#10b981"
+            color="var(--pos-strong)"
             bgOn="bg-pos-soft"
             textOn="text-pos"
             borderOn="border-pos-border"
@@ -593,7 +596,7 @@ export function PriceChart({
           on={showMarkers}
           onToggle={() => setShowMarkers((x) => !x)}
           label="Events & filings"
-          color="#f59e0b"
+          color="var(--warn-strong)"
           bgOn="bg-warn-soft"
           textOn="text-warn"
           borderOn="border-warn"
@@ -636,7 +639,7 @@ export function PriceChart({
               value={seriesId}
               onChange={(e) => setSeriesId(e.target.value)}
               aria-label="Macro overlay series"
-              className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[0.76rem] font-semibold text-ink focus:border-violet-600 focus:outline-none"
+              className="rounded-lg border border-line bg-surface px-2.5 py-1 text-[0.76rem] font-semibold text-ink focus:border-accent focus:outline-none"
             >
               {MACRO_DISPLAY.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
@@ -656,7 +659,7 @@ export function PriceChart({
             className="inline-flex items-center gap-1 rounded-lg border border-accent bg-accent-soft px-2.5 py-1 text-[0.76rem] font-bold text-accent hover:opacity-90"
             title="Back to the full range (Esc)"
           >
-            Reset zoom ✕
+            Reset zoom <Icon icon={X} size={12} />
           </button>
         )}
       </div>
@@ -712,7 +715,7 @@ export function PriceChart({
             Climax volume
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-3 px-2 py-0.5 text-[0.72rem] font-semibold text-muted">
-            <span className="h-2 w-2 rounded-sm border border-slate-500" />
+            <span className="h-2 w-2 rounded-sm border border-divider0" />
             Wide spread
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-3 px-2 py-0.5 text-[0.72rem] font-semibold text-muted">
@@ -917,9 +920,11 @@ export function PriceChart({
                 onMouseLeave={onChartMouseLeave}
               >
                 <defs>
+                  {/* Ink price line + faint ink wash — the pro-terminal chart
+                      language (never a saturated brand-color fill). */}
                   <linearGradient id="px-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.16} />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                    <stop offset="0%" stopColor={ct.ink} stopOpacity={0.1} />
+                    <stop offset="100%" stopColor={ct.ink} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -1008,8 +1013,8 @@ export function PriceChart({
                   yAxisId="price"
                   type="monotone"
                   dataKey="v"
-                  stroke="#2563eb"
-                  strokeWidth={2}
+                  stroke={ct.ink}
+                  strokeWidth={1.5}
                   fill="url(#px-fill)"
                   isAnimationActive={false}
                 />

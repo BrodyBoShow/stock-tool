@@ -73,7 +73,7 @@ export function RightRail(props: RightRailProps) {
           <ul className="space-y-1 text-[0.76rem] text-muted">
             {sections.map((s) => (
               <li key={s} className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-indigo-400" />
+                <span className="h-1 w-1 rounded-full bg-accent" />
                 {s}
               </li>
             ))}
@@ -85,7 +85,7 @@ export function RightRail(props: RightRailProps) {
         <div className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-subtle">
           At a glance
         </div>
-        <ul className="divide-y divide-slate-50">
+        <ul className="divide-y divide-divider">
           <Row
             label="Revenue (TTM)"
             tipKey="TTM"

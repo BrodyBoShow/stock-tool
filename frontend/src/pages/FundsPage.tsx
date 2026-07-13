@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { GitCompare } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -21,6 +22,7 @@ import type { FundColumnKey, FundSort, FundSortKey } from '@/components/funds/fu
 import { FundsTable } from '@/components/funds/FundsTable'
 import { RotationCompass } from '@/components/funds/RotationCompass'
 import { WatchlistBridge } from '@/components/funds/WatchlistBridge'
+import { Icon } from '@/components/ui/Icon'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useWatchlistSet } from '@/hooks/useWatchlist'
@@ -287,13 +289,13 @@ export function FundsPage() {
             </details>
             <button
               onClick={() => (compareMode ? exitCompare() : setCompareMode(true))}
-              className={`rounded-md border px-2.5 py-1.5 text-[0.68rem] font-semibold transition ${
+              className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[0.68rem] font-semibold transition ${
                 compareMode
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line text-muted hover:border-line'
               }`}
             >
-              ⚔ Compare
+              <Icon icon={GitCompare} size={14} /> Compare
             </button>
           </div>
         </div>
@@ -467,7 +469,7 @@ export function FundsPage() {
 
       {/* Slim compare bar */}
       {compareMode && compareSet.length > 0 && !showCompare && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 bg-slate-900 px-6 py-3 text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 bg-ink px-6 py-3 text-inverse shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
           <span className="text-[0.72rem] font-semibold">Compare mode</span>
           <span className="rounded-full bg-accent-solid px-2 py-0.5 text-[0.66rem] font-bold tabular-nums">
             {compareSet.length} selected
@@ -492,9 +494,9 @@ export function FundsPage() {
             <button
               onClick={() => setShowCompare(true)}
               disabled={compareSet.length < 2}
-              className="rounded border border-accent bg-accent-solid px-3 py-1 text-[0.68rem] font-semibold disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded border border-accent bg-accent-solid px-3 py-1 text-[0.68rem] font-semibold text-accent-ink disabled:opacity-40"
             >
-              View Comparison ⚔
+              View Comparison <Icon icon={GitCompare} size={14} />
             </button>
           </div>
         </div>

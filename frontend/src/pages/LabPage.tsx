@@ -1,7 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { Icon } from '@/components/ui/Icon'
 import { DrawdownChart, EquityChart, ICChart, QuintileChart } from '@/components/lab/charts'
 import {
   ciPct,
@@ -113,7 +115,7 @@ function Stat({ label, value, sub, tone = 'neutral', tip }: {
         {tip && <InfoTip text={tip} />}
       </div>
       <div
-        className="mt-0.5 text-[1.15rem] font-extrabold leading-tight tabular-nums"
+        className="mt-0.5 text-[1.15rem] font-bold leading-tight tabular-nums"
         style={{ color: TONE_HEX[tone] }}
       >
         {value}
@@ -176,7 +178,7 @@ export function LabPage() {
   if (!data.has_results || !data.results) {
     return (
       <div className="rounded-card border border-line bg-surface p-10 text-center shadow-card">
-        <h1 className="text-xl font-extrabold text-ink">Factor Lab</h1>
+        <h1 className="text-xl font-bold text-ink">Factor Lab</h1>
         <p className="mx-auto mt-3 max-w-[520px] text-sm text-muted">
           No backtest stored yet. The monthly workflow
           (<code className="rounded bg-surface-2 px-1">backtest.yml</code>) computes and stores
@@ -225,14 +227,14 @@ export function LabPage() {
     <div className="space-y-5">
       {/* header */}
       <header className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
-        <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
+        <div className="h-px bg-line" />
         <div className="px-7 pb-5 pt-6">
           <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
             <span className="text-accent">StockBud</span>
             <span className="text-subtle">/</span>
             <span className="text-muted">Factor Lab</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
+          <h1 className="mt-2 text-[1.95rem] font-bold leading-[1.1] tracking-[-0.015em] text-ink">
             Does the model actually work?
           </h1>
           <p className="mt-2 text-[0.9rem] text-muted">
@@ -339,7 +341,10 @@ export function LabPage() {
                   : { borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--muted)' }
               }
             >
-              {showLongShort ? '✓ ' : ''}Long-short
+              <span className="inline-flex items-center gap-1">
+                {showLongShort && <Icon icon={Check} size={12} />}
+                Long-short
+              </span>
             </button>
             <Segmented
               value={logScale ? 'log' : 'lin'}

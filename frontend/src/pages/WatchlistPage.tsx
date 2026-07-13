@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { ErrorCard } from '@/components/ErrorCard'
+import { Icon } from '@/components/ui/Icon'
 import { DisclaimerChip } from '@/components/portfolio/redesign/DisclaimerChip'
 import { ExploreChips } from '@/components/portfolio/redesign/ExploreChips'
 import { NextActionCTA } from '@/components/portfolio/redesign/NextActionCTA'
@@ -121,10 +123,10 @@ export function WatchlistPage() {
   if (rows.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-extrabold text-ink">Watchlist</h1>
+        <h1 className="text-xl font-bold text-ink">Watchlist</h1>
         <div className="rounded-card border border-dashed border-line bg-surface p-10 text-center shadow-card">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warn-soft text-[1.3rem] text-warn">
-            ★
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warn-soft text-warn">
+            <Icon icon={Star} size={22} className="fill-current" />
           </div>
           <p className="mt-3 text-sm font-semibold text-ink">No saved names yet</p>
           <p className="mx-auto mt-1 max-w-sm text-[0.82rem] text-subtle">

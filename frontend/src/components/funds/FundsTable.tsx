@@ -180,7 +180,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
             <tr
               key={f.security_id}
               onClick={() => props.onOpen(f.ticker)}
-              className="cursor-pointer border-b border-slate-50 hover:bg-surface-2"
+              className="cursor-pointer border-b border-divider hover:bg-surface-2"
               style={{ borderLeft: '3px solid ' + catMeta(f.category).accent }}
             >
               {props.compareMode && (
@@ -199,7 +199,7 @@ export function FundsTable(props: FundsTableProps): JSX.Element {
                     <span title="Best Access" className="inline-block h-1.5 w-1.5 rounded-full bg-pos-strong" />
                   )}
                   {f.most_liquid && (
-                    <span title="Most Liquid" className="inline-block h-1.5 w-1.5 rounded-full bg-purple-500" />
+                    <span title="Most Liquid" className="inline-block h-1.5 w-1.5 rounded-full bg-info" />
                   )}
                   <span className="font-semibold tabular-nums text-ink">{f.ticker}</span>
                 </span>

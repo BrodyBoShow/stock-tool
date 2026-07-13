@@ -74,7 +74,7 @@ export function BreadthCalendar({
               return (
                 <span
                   key={key}
-                  className={'h-3 rounded-[2px] ' + (key === todayKey ? 'ring-1 ring-slate-900 ring-offset-1' : '')}
+                  className={'h-3 rounded-[2px] ' + (key === todayKey ? 'ring-1 ring-ink ring-offset-1' : '')}
                   style={{ background: cellColor(cell.adv_pct) }}
                   title={`${cell.date} · ${(cell.adv_pct * 100).toFixed(0)}% of stocks up`}
                 />

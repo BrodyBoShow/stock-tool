@@ -79,17 +79,17 @@ function SectorTiles({ sectors }: { sectors: MarketSectorRow[] }) {
                 key={t.s.sector}
                 to={`/?sector=${encodeURIComponent(t.s.sector)}`}
                 title={tileTitle(t.s)}
-                className="group relative flex min-w-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-white/60 px-2 text-center no-underline transition-shadow hover:shadow-[0_0_0_2px_rgba(79,70,229,0.5)]"
+                className="group relative flex min-w-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-white/60 px-2 text-center no-underline transition-shadow hover:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_60%,transparent)]"
                 style={{ flexGrow: t.weight, flexBasis: 0, ...style }}
               >
                 <span className="max-w-full truncate text-[0.74rem] font-bold leading-tight text-ink">
                   {t.s.sector}
                 </span>
-                <span className="text-[0.82rem] font-extrabold tabular-nums text-ink">
+                <span className="text-[0.82rem] font-bold tabular-nums text-ink">
                   {noData ? 'no data' : fmtSignedPct(t.s.r1d)}
                 </span>
                 {!noData && t.s.adv_pct != null && (
-                  <span className="text-[0.62rem] font-semibold tabular-nums text-ink/80">
+                  <span className="text-[0.62rem] font-semibold tabular-nums text-muted">
                     {(t.s.adv_pct * 100).toFixed(0)}% up
                   </span>
                 )}

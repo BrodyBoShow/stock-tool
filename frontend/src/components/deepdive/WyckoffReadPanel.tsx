@@ -122,7 +122,7 @@ export function WyckoffReadPanel({
               </thead>
               <tbody>
                 {Object.entries(grade.byType).map(([t, s]) => (
-                  <tr key={t} className="border-t border-slate-50">
+                  <tr key={t} className="border-t border-divider">
                     <td className="py-1 font-semibold text-ink">{t}</td>
                     <td className="py-1 tabular-nums">{s.signals}</td>
                     <td className="py-1 tabular-nums">{Math.round(s.fwdRate * 100)}%</td>

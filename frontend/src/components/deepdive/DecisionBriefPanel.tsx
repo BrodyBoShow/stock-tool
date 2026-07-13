@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 
+import { Icon } from '@/components/ui/Icon'
 import { Delta } from '@/components/ui/Delta'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateBrief, getBriefStatus, getLiveFactors } from '@/lib/api'
@@ -61,7 +63,7 @@ function QuantChips({ header, tone }: { header: SecurityHeader; tone: 'bull' | '
           >
             {INPUT_LABELS[m.key] ?? m.key}
             {m.value != null && (
-              <span className="font-extrabold">
+              <span className="font-bold">
                 {fmtInput(m.key, m.value, m.key === 'roic' && m.roicIsProxy)}
               </span>
             )}
@@ -240,9 +242,9 @@ function MoveContext({ ctx }: { ctx: PriceMoveContext }) {
               target="_blank"
               rel="noopener noreferrer"
               title={s.title}
-              className="text-[0.72rem] font-medium text-accent hover:underline"
+              className="inline-flex items-center gap-0.5 text-[0.72rem] font-medium text-accent hover:underline"
             >
-              ↗ {sourceHost(s.url)}
+              <Icon icon={ArrowUpRight} size={12} /> {sourceHost(s.url)}
             </a>
           ))}
         </div>
@@ -475,7 +477,7 @@ export function DecisionBriefPanel({
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-xl border border-accent bg-[var(--surface)] p-4">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent-soft border-t-accent" />
                 <p className="text-[0.85rem] text-muted">
                   Preparing brief for {ticker} — usually just a few seconds…
                 </p>

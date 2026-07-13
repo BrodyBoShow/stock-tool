@@ -5,8 +5,10 @@
  * All presentational — every number traces to a real row value; nothing here
  * fabricates or forecasts.
  */
+import { ArrowUpRight, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { fmtDate, fmtVol } from '@/lib/format'
 
 import {
@@ -179,7 +181,7 @@ export function PriceProTooltip({
   const ma50 = row.ma50Raw ?? row.ma50
   const ma200 = row.ma200Raw ?? row.ma200
   return (
-    <div className="max-w-[260px] rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-card">
+    <div className="max-w-[260px] rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-[var(--sh-md)]">
       <div className="flex items-baseline justify-between gap-3">
         <span className="font-semibold text-ink">{fmtDate(label)}</span>
         {typeof chgPct === 'number' && (
@@ -318,9 +320,9 @@ export function MeasureBar({
           type="button"
           onClick={onClear}
           aria-label="Clear measurement"
-          className="rounded-md border border-line bg-surface px-2 py-0.5 text-[0.7rem] font-bold text-muted hover:text-ink"
+          className="rounded-md border border-line bg-surface px-2 py-0.5 text-muted hover:text-ink"
         >
-          ✕
+          <Icon icon={X} size={14} />
         </button>
       </span>
     </div>
@@ -379,7 +381,7 @@ export function CompareBar({
               style={{ background: on ? compareColor(idx) : 'var(--border-strong)' }}
             />
             {t}
-            {on && <span aria-hidden className="text-subtle">✕</span>}
+            {on && <Icon icon={X} size={12} className="text-subtle" />}
           </button>
         )
       })}
@@ -428,9 +430,9 @@ export function DayEventsCard({
           type="button"
           onClick={onClose}
           aria-label="Close day events"
-          className="rounded px-1 text-[0.74rem] font-bold text-muted hover:text-ink"
+          className="rounded px-1 text-muted hover:text-ink"
         >
-          ✕
+          <Icon icon={X} size={14} />
         </button>
       </div>
       <ul className="mt-1 space-y-1">
@@ -449,9 +451,9 @@ export function DayEventsCard({
                     href={e.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-semibold text-accent hover:underline"
+                    className="inline-flex items-center gap-0.5 font-semibold text-accent hover:underline"
                   >
-                    open filing ↗
+                    open filing <Icon icon={ArrowUpRight} size={12} />
                   </a>
                 </>
               )}

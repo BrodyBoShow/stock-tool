@@ -50,10 +50,11 @@ function truncate(text: string, maxLen: number): string {
   return `${cut.slice(0, lastSpace > 0 ? lastSpace : maxLen).trimEnd()}…`
 }
 
+// Factor identity quartet — matches FACTOR_TABLE in constants.ts (theme-aware).
 const FACTOR_COLORS: Record<string, string> = {
-  Growth: '#3b82f6',
-  Value: '#10b981',
-  Quality: '#8b5cf6',
+  Growth: 'var(--info)',
+  Value: 'var(--pos)',
+  Quality: 'var(--primary)',
   Momentum: 'var(--warn)',
 }
 
@@ -64,7 +65,7 @@ interface FactorPillProps {
 }
 
 function FactorPill({ label, value, onClick }: FactorPillProps) {
-  const color = FACTOR_COLORS[label] ?? '#6366f1'
+  const color = FACTOR_COLORS[label] ?? 'var(--accent)'
   const width = value == null ? 0 : Math.max(0, Math.min(100, value))
   return (
     <button

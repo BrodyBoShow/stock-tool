@@ -1,6 +1,9 @@
+import { GitCompare, Star } from 'lucide-react';
+
 import type { EnrichedFund, FundCluster } from '@/types/api';
 import { catMeta, fmtAum } from '@/components/funds/fundsUi';
 import { MAX_COMPARE } from '@/components/funds/fundsUi';
+import { Icon } from '@/components/ui/Icon';
 import { fmtSignedPct, fmtVol, DASH } from '@/lib/format';
 import { plColor } from '@/lib/colors';
 
@@ -33,7 +36,7 @@ function extremeIndex(
 const CELL = 'text-center tabular-nums text-[0.7rem] py-1.5 border-t border-line';
 const LABEL = 'uppercase text-[0.55rem] font-bold text-subtle py-1.5 border-t border-line';
 const BTN =
-  'rounded border border-line px-2.5 py-1 text-[0.62rem] font-semibold text-muted hover:border-accent hover:text-accent';
+  'inline-flex items-center gap-1 rounded border border-line px-2.5 py-1 text-[0.62rem] font-semibold text-muted hover:border-accent hover:text-accent';
 
 export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
   const { cluster, fundsByTicker, onOpen, onCompare } = props;
@@ -75,7 +78,7 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
             className={BTN}
             onClick={() => onCompare(members.slice(0, MAX_COMPARE).map((m) => m.ticker))}
           >
-            ⚔ Compare
+            <Icon icon={GitCompare} size={14} /> Compare
           </button>
           <button
             type="button"
@@ -147,12 +150,12 @@ export function ClusterCard(props: ClusterCardProps): JSX.Element | null {
 
       <div className="mt-2.5 flex gap-1.5 items-center">
         {cluster.best_access_ticker && (
-          <span className="rounded bg-pos-strong px-2 py-0.5 text-[0.6rem] font-bold text-white">
-            ★ BEST ACCESS: {cluster.best_access_ticker}
+          <span className="inline-flex items-center gap-1 rounded bg-pos-strong px-2 py-0.5 text-[0.6rem] font-bold text-inverse">
+            <Icon icon={Star} size={11} className="fill-current" /> BEST ACCESS: {cluster.best_access_ticker}
           </span>
         )}
         {cluster.most_liquid_ticker && (
-          <span className="rounded bg-purple-600 px-2 py-0.5 text-[0.6rem] font-bold text-white">
+          <span className="rounded bg-info px-2 py-0.5 text-[0.6rem] font-bold text-inverse">
             ≡ MOST LIQUID: {cluster.most_liquid_ticker}
           </span>
         )}

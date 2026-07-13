@@ -80,7 +80,7 @@ export function FactorCompass({ factors }: { factors: MarketFactorDay[] }) {
           </thead>
           <tbody>
             {rows.map((f) => (
-              <tr key={f.factor} className="border-t border-slate-50">
+              <tr key={f.factor} className="border-t border-divider">
                 <td className="py-2 pr-3 font-semibold text-muted">{FACTOR_LABEL[f.factor] ?? f.factor}</td>
                 {HORIZONS.map((h) => {
                   const v = spreadOf(f, h.key)

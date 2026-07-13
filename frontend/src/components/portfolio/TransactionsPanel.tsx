@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { AddTransactionForm } from '@/components/portfolio/AddTransactionForm'
+import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { addPortfolioTransactions, deletePortfolioTransaction } from '@/lib/api'
@@ -25,7 +27,7 @@ const TXN_TYPES: PortfolioTxnType[] = [
 const TYPE_CHIP: Record<PortfolioTxnType, string> = {
   buy: 'bg-pos-soft text-pos',
   sell: 'bg-neg-soft text-neg',
-  dividend: 'bg-purple-100 text-purple-700',
+  dividend: 'bg-info-soft text-info',
   deposit: 'bg-surface-3 text-muted',
   withdrawal: 'bg-surface-3 text-muted',
   fee: 'bg-surface-3 text-muted',
@@ -287,9 +289,10 @@ function ImportWizard({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2 py-0.5 text-[0.78rem] font-bold text-muted hover:bg-surface-2 hover:text-muted"
+            aria-label="Close"
+            className="rounded-md px-2 py-0.5 text-muted hover:bg-surface-2 hover:text-muted"
           >
-            ✕
+            <Icon icon={X} size={16} />
           </button>
         </div>
 
@@ -625,7 +628,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
       </div>
 
       {showAdd && (
-        <div className="mt-4 rounded-lg border border-line bg-surface-2/60 p-3">
+        <div className="mt-4 rounded-lg border border-line bg-surface-2 p-3">
           <AddTransactionForm onDone={() => setShowAdd(false)} />
         </div>
       )}
@@ -635,7 +638,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
       </div>
 
       {selected.size > 0 && (
-        <div className="mt-2 flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-2 text-[0.72rem] text-white">
+        <div className="mt-2 flex items-center gap-3 rounded-lg bg-ink px-3 py-2 text-[0.72rem] text-inverse">
           <span className="font-semibold">{selected.size} selected</span>
           <button
             type="button"
@@ -647,7 +650,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="rounded px-2 py-1 text-subtle transition-colors hover:bg-surface/10 hover:text-white"
+            className="rounded px-2 py-1 opacity-80 transition-opacity hover:opacity-100"
           >
             Clear
           </button>

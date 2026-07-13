@@ -39,7 +39,7 @@ export function DragsList({
           No holdings are at a loss right now. Nothing dragging the book.
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-divider">
           {top.map((d) => (
             <li key={d.ticker} className="flex items-center gap-3 py-2.5">
               <span

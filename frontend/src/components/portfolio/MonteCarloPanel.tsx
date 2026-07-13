@@ -181,7 +181,7 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
           <input
             type="checkbox" checked={compareBench}
             onChange={(e) => setCompareBench(e.target.checked)}
-            className="h-3 w-3 accent-indigo-600"
+            className="h-3 w-3 accent-accent"
           />
           Compare to: just buy {props.benchmark}
         </label>
@@ -201,7 +201,7 @@ export function MonteCarloPanel(props: MonteCarloPanelProps) {
             checked={applyRebalance && props.suggestedWeights != null}
             disabled={props.suggestedWeights == null}
             onChange={(e) => setApplyRebalance(e.target.checked)}
-            className="h-3 w-3 accent-indigo-600"
+            className="h-3 w-3 accent-accent"
           />
           Apply suggested rebalance first
         </label>

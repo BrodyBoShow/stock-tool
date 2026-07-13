@@ -181,7 +181,7 @@ export function RotationCompass(props: RotationCompassProps): JSX.Element {
               {tableRows.map(({ meta, row }) => (
                 <tr
                   key={meta.key}
-                  className="border-b border-slate-50 hover:bg-surface-2"
+                  className="border-b border-divider hover:bg-surface-2"
                   style={{ borderLeft: '3px solid ' + meta.accent }}
                 >
                   <td className="py-1 pl-1 text-[0.68rem] font-semibold text-ink">

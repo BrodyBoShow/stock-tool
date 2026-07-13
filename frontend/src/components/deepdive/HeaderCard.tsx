@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { SectorPill } from '@/components/screener/SectorPill'
 import { Delta } from '@/components/ui/Delta'
+import { FactorStamp } from '@/components/ui/FactorStamp'
 import { getBriefStatus } from '@/lib/api'
 import { scoreHeat } from '@/lib/colors'
 import { topDriver, type FactorPctls } from '@/lib/factorReading'
@@ -9,7 +10,7 @@ import { DASH, fmtDate, fmtPrice } from '@/lib/format'
 import type { SecurityHeader } from '@/types/api'
 
 const STAT_LABEL = 'text-[0.75rem] text-muted'
-const STAT_VALUE = 'text-[1.35rem] font-extrabold text-ink'
+const STAT_VALUE = 'text-[1.35rem] font-bold text-ink'
 const STAT_SUB = 'text-[0.72rem] text-subtle'
 
 /** Circular 0–100 gauge, heat-colored, with the score in the center. */
@@ -89,14 +90,14 @@ export function HeaderCard({
       <div className="flex flex-wrap items-center justify-between gap-[18px]">
         <div className="flex items-center gap-3.5">
           <div
-            className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[13px] text-[1.15rem] font-extrabold text-white"
-            style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+            className="flex h-[54px] w-[54px] flex-none items-center justify-center rounded-[var(--r-md)] font-mono text-[1.15rem] font-bold text-accent-ink"
+            style={{ background: 'var(--accent-solid)' }}
           >
             {header.ticker.slice(0, 2)}
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[1.45rem] font-extrabold text-ink">
+              <span className="text-[1.45rem] font-bold text-ink">
                 {header.ticker}
               </span>
               {header.exchange && (
@@ -110,6 +111,13 @@ export function HeaderCard({
             {header.industry && (
               <div className="mt-0.5 text-[0.78rem] text-subtle">{header.industry}</div>
             )}
+            <FactorStamp
+              className="mt-1.5"
+              growth={header.growth_pctl}
+              value={header.value_pctl}
+              quality={header.quality_pctl}
+              momentum={header.momentum_pctl}
+            />
           </div>
         </div>
 

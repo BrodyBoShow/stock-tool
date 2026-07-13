@@ -1,6 +1,8 @@
+import { ArrowUpRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import { fmtMoney, fmtShortDate } from '@/lib/format'
 import type {
   MarketFilingRow,
@@ -170,7 +172,7 @@ export function EnhancedFilings({ filings, watchlist }: { filings: MarketFilingR
                   ))}
                   {f.primary_doc_url && (
                     <a href={f.primary_doc_url} target="_blank" rel="noreferrer"
-                      className="rounded-full bg-surface-2 px-2 py-0.5 text-[0.68rem] font-semibold text-subtle hover:text-accent">SEC filing ↗</a>
+                      className="inline-flex items-center gap-0.5 rounded-full bg-surface-2 px-2 py-0.5 text-[0.68rem] font-semibold text-subtle hover:text-accent">SEC filing <Icon icon={ArrowUpRight} size={11} /></a>
                   )}
                 </div>
               </div>

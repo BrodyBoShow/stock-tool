@@ -75,7 +75,7 @@ export function AlignedIdeasPanel({
             id="ideas-sector"
             value={sector}
             onChange={(e) => setSector(e.target.value)}
-            className="rounded-lg border border-line bg-surface px-2 py-1 text-[0.75rem] text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-indigo-200"
+            className="rounded-lg border border-line bg-surface px-2 py-1 text-[0.75rem] text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value="">All sectors</option>
             {sectors.map((s) => (
@@ -146,7 +146,7 @@ export function AlignedIdeasPanel({
             </thead>
             <tbody>
               {ideas.map((i) => (
-                <tr key={i.ticker} className="border-b border-line hover:bg-surface-2/60">
+                <tr key={i.ticker} className="border-b border-line hover:bg-surface-2">
                   <td className="py-1.5 pr-3">
                     <Link
                       to={`/securities/${i.ticker}`}

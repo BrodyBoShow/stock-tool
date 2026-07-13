@@ -9,7 +9,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { X } from 'lucide-react'
 
+import { Icon } from '@/components/ui/Icon'
 import { useChartTheme } from '@/lib/chartTheme'
 
 import { RANGES, rangeStartIndex, rangeStats, rebase } from '../portfolioUi'
@@ -48,7 +50,7 @@ function PerfTooltip({
   const b = winPct(r.bench)
   const spread = you != null && b != null ? you - b : null
   return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-[0.72rem] shadow-card">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-[0.72rem] shadow-[var(--sh-md)]">
       <div className="font-bold text-ink">{fmtDate(String(label))}</div>
       <div className="mt-0.5 space-y-px tabular-nums">
         {you != null && (
@@ -192,7 +194,7 @@ export function PerfChart({
                 onRangeChange(r)
               }}
               className={`min-h-[28px] rounded-full px-2.5 text-[0.7rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] ${
-                r === range ? 'bg-primary text-white' : 'text-muted hover:bg-[var(--surface-3)]'
+                r === range ? 'bg-primary text-inverse' : 'text-muted hover:bg-[var(--surface-3)]'
               }`}
             >
               {r}
@@ -228,9 +230,9 @@ export function PerfChart({
             type="button"
             onClick={() => setMeasure(null)}
             aria-label="Clear measurement"
-            className="ml-auto rounded-md border border-line bg-surface px-2 py-0.5 text-[0.7rem] font-bold text-muted hover:text-ink"
+            className="ml-auto rounded-md border border-line bg-surface px-2 py-0.5 text-muted hover:text-ink"
           >
-            ✕
+            <Icon icon={X} size={14} />
           </button>
         </div>
       )}

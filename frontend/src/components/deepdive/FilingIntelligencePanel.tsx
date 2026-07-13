@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import {
   ApiError,
@@ -64,8 +66,8 @@ function SummaryBody({ summary, docUrl }: { summary: FilingSummary; docUrl: stri
         </span>
         {docUrl && (
           <a href={docUrl} target="_blank" rel="noopener noreferrer"
-            className="font-semibold text-accent hover:underline">
-            View filing on SEC ↗
+            className="inline-flex items-center gap-0.5 font-semibold text-accent hover:underline">
+            View filing on SEC <Icon icon={ArrowUpRight} size={12} />
           </a>
         )}
       </div>
@@ -77,7 +79,7 @@ function TopicCard({ t }: { t: FilingTopicAnswer }) {
   return (
     <div
       className={`rounded-xl border p-3.5 ${
-        t.disclosed ? 'border-line bg-surface' : 'border-dashed border-line bg-zinc-50'
+        t.disclosed ? 'border-line bg-surface' : 'border-dashed border-line bg-surface-2'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -196,7 +198,7 @@ function TabButton({ active, onClick, children }: {
       onClick={onClick}
       className={
         'rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ' +
-        (active ? 'bg-slate-800 text-white' : 'text-muted hover:bg-surface-3')
+        (active ? 'bg-ink text-inverse' : 'text-muted hover:bg-surface-3')
       }
     >
       {children}
@@ -399,7 +401,7 @@ export function FilingIntelligencePanel({
                 </div>
               ) : (
                 <div className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)] p-5">
-                  <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                  <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent-soft border-t-accent" />
                   <p className="text-[0.85rem] text-muted">
                     Reading {ticker}’s latest {summaryForm}
                     {sum.data.latest_filed_date ? ` (filed ${fmtDate(sum.data.latest_filed_date)})` : ''}{' '}
@@ -417,7 +419,7 @@ export function FilingIntelligencePanel({
               <AnswersBody data={qa.data.answers} />
             ) : qaGen.isPending ? (
               <div className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)] p-5">
-                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent border-t-indigo-600" />
+                <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-accent-soft border-t-accent" />
                 <p className="text-[0.85rem] text-muted">
                   Reading {ticker}’s {qaForm}
                   {qaForm === '20-F' ? '' : ' and 10-Q'} and working through the diligence

@@ -26,7 +26,7 @@ function apply(theme: Theme): void {
   // (the meta is a single element, updated here + by the anti-FOUC script).
   document
     .getElementById('theme-color')
-    ?.setAttribute('content', theme === 'dark' ? '#0b0f17' : '#f7f8fa')
+    ?.setAttribute('content', theme === 'dark' ? '#09090b' : '#fafafa')
 }
 
 function initial(): Theme {

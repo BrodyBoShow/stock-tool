@@ -1,7 +1,9 @@
+import { Circle, Folder, type LucideIcon, Search, Tag } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 
+import { Icon } from '@/components/ui/Icon'
 import { getSavedViews } from '@/lib/savedViews'
 import type { ScreenerRow } from '@/types/api'
 
@@ -119,7 +121,7 @@ export function CommandPalette({
     }
   }
 
-  const ICON: Record<Item['kind'], string> = { ticker: '🔵', view: '📁', sector: '🏷' }
+  const ICON: Record<Item['kind'], LucideIcon> = { ticker: Circle, view: Folder, sector: Tag }
 
   return createPortal(
     <div
@@ -131,7 +133,7 @@ export function CommandPalette({
     >
       <div className="w-[560px] max-w-[92vw] overflow-hidden rounded-xl bg-surface shadow-2xl">
         <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-          <span className="text-subtle">🔍</span>
+          <Icon icon={Search} size={16} className="text-subtle" />
           <input
             ref={inputRef}
             value={q}
@@ -162,7 +164,9 @@ export function CommandPalette({
                   (i === sel ? 'bg-accent-soft' : 'hover:bg-surface-2')
                 }
               >
-                <span className="w-5 text-center text-[0.9rem]">{ICON[it.kind]}</span>
+                <span className="flex w-5 justify-center text-subtle">
+                  <Icon icon={ICON[it.kind]} size={it.kind === 'ticker' ? 12 : 14} />
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[0.85rem] font-medium text-ink">
                     {it.label}

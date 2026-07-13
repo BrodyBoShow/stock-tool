@@ -80,7 +80,7 @@ export function MarketSubHeader({ d, onRefresh }: { d: MarketOverviewResponse; o
             <span className="text-subtle" aria-hidden>·</span>
             <Link to="/alerts" className="flex items-center gap-1 font-semibold text-muted hover:text-accent">
               Alerts
-              <span className="inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-neg-strong px-1 text-[0.6rem] font-bold text-white">
+              <span className="inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-neg-strong px-1 text-[0.6rem] font-bold text-inverse">
                 {alertCount}
               </span>
             </Link>

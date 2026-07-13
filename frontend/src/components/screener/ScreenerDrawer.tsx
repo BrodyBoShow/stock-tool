@@ -48,14 +48,14 @@ export function ScreenerDrawer({
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-[0.9rem] font-extrabold text-white"
-              style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)' }}
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-[var(--r-md)] font-mono text-[0.9rem] font-bold text-accent-ink"
+              style={{ background: 'var(--accent-solid)' }}
             >
               {row.ticker.slice(0, 2)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[1.1rem] font-extrabold text-ink">
+                <span className="text-[1.1rem] font-bold text-ink">
                   {row.ticker}
                 </span>
                 <SectorPill sector={row.sector} />
@@ -86,7 +86,7 @@ export function ScreenerDrawer({
             <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-subtle">
               Price
             </div>
-            <div className="text-[1.05rem] font-extrabold tabular-nums text-ink">
+            <div className="text-[1.05rem] font-bold tabular-nums text-ink">
               {fmtPrice(row.last_price)}
             </div>
             {row.last_price != null && row.prev_close != null && row.prev_close !== 0 && (

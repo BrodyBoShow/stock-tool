@@ -20,7 +20,7 @@ function Chip({ label, value, sub }: { label: string; value: string; sub?: strin
   return (
     <div className="rounded-lg bg-surface-2 px-3 py-2">
       <div className="text-[0.62rem] font-bold uppercase tracking-[0.05em] text-subtle">{label}</div>
-      <div className="numeric text-[0.92rem] font-extrabold text-ink">{value}</div>
+      <div className="numeric text-[0.92rem] font-bold text-ink">{value}</div>
       {sub && <div className="text-[0.62rem] text-subtle">{sub}</div>}
     </div>
   )
@@ -113,12 +113,12 @@ export function PeerStrip({ ticker, composite }: { ticker: string; composite: nu
               <tr
                 key={p.ticker}
                 className={
-                  'border-b border-gray-50 ' + (p.is_focal ? 'bg-accent-soft' : 'hover:bg-surface-2')
+                  'border-b border-divider ' + (p.is_focal ? 'bg-accent-soft' : 'hover:bg-surface-2')
                 }
               >
                 <td className="px-3 py-1.5">
                   {p.is_focal ? (
-                    <span className="text-[0.82rem] font-extrabold text-ink">
+                    <span className="text-[0.82rem] font-bold text-ink">
                       {p.ticker}
                       <span className="ml-1.5 rounded bg-accent-soft px-1.5 py-px text-[0.58rem] font-bold text-accent">
                         you

@@ -298,7 +298,7 @@ export function WatchlistPlanDialog({
                 disabled={updatePlan.isPending}
                 className={`rounded-lg px-2.5 py-1.5 text-[0.78rem] font-semibold transition-colors disabled:opacity-50 ${
                   confirmClear
-                    ? 'bg-neg-strong text-white hover:bg-rose-700'
+                    ? 'bg-neg-strong text-inverse hover:bg-neg'
                     : 'text-neg hover:bg-neg-soft'
                 }`}
                 title="Remove this name's saved plan (target + notes)"

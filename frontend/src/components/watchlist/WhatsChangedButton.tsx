@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
+import { ArrowUpRight, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { ApiError, getWhatsChanged } from '@/lib/api'
 
 /** On-demand "what changed" AI narrative for one watched name. A click POSTs to
@@ -31,7 +33,9 @@ export function WhatsChangedButton({
     return (
       <div className="mt-2 rounded-lg bg-accent-soft px-3 py-2 text-[0.76rem] leading-snug text-ink">
         <div className="mb-0.5 flex items-center gap-1.5">
-          <span className="text-[0.68rem] font-bold text-accent">✨ What changed</span>
+          <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-accent">
+            <Icon icon={Sparkles} size={12} /> What changed
+          </span>
           <span className="text-[0.58rem] font-semibold uppercase tracking-wide text-muted">
             AI · not advice
           </span>
@@ -45,7 +49,8 @@ export function WhatsChangedButton({
             className="mt-1.5 inline-flex items-center gap-1 text-[0.72rem] font-semibold text-accent hover:underline"
           >
             Read the {filingLabel ? `${filingLabel} ` : ''}
-            {filingForm ?? 'filing'} on SEC EDGAR ↗
+            {filingForm ?? 'filing'} on SEC EDGAR
+            <Icon icon={ArrowUpRight} size={12} />
           </a>
         )}
       </div>
@@ -53,10 +58,10 @@ export function WhatsChangedButton({
   }
 
   const label = m.isPending
-    ? '✨ Thinking…'
+    ? 'Thinking…'
     : m.isError
-      ? '✨ Unavailable — try again'
-      : '✨ What changed?'
+      ? 'Unavailable — try again'
+      : 'What changed?'
 
   return (
     <button
@@ -68,8 +73,9 @@ export function WhatsChangedButton({
           ? m.error.message
           : 'A one-line AI read of what moved (Haiku, on-demand)'
       }
-      className="mt-1 text-[0.72rem] font-medium text-accent hover:text-accent disabled:opacity-50"
+      className="mt-1 inline-flex items-center gap-1 text-[0.72rem] font-medium text-accent hover:text-accent disabled:opacity-50"
     >
+      <Icon icon={Sparkles} size={12} />
       {label}
     </button>
   )

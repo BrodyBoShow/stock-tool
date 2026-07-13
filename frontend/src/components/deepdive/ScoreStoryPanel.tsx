@@ -136,6 +136,17 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
   })
   const ct = useChartTheme()
 
+  // Recharts strokes are SVG presentation attributes — Safari won't substitute
+  // var() there, so resolve the factor tokens to concrete hex at render time.
+  // Reads live off <html>, so a theme flip (which re-renders via ct) re-colors.
+  const factorStroke = (k: FactorKey): string => {
+    if (k === 'composite') return ct.ink
+    if (typeof window === 'undefined') return ct.accent
+    const name =
+      k === 'growth' ? '--info' : k === 'value' ? '--pos' : k === 'quality' ? '--primary' : '--warn'
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || ct.accent
+  }
+
   const trend: FactorTrendPoint[] = brief?.trend ?? []
   const rows: Row[] = trend.map((t) => ({
     date: t.score_date,
@@ -222,13 +233,15 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
                 className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[0.7rem] font-semibold transition"
                 style={
                   on
-                    ? { background: FACTOR_TABLE[l.key].bar, color: '#fff' }
+                    ? // --inverse flips with the theme: light bars get cream text,
+                      // the brighter dark-theme bars get near-black (AA both ways).
+                      { background: FACTOR_TABLE[l.key].bar, color: 'var(--inverse)' }
                     : { background: 'var(--surface)', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }
                 }
               >
                 <span
                   className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: on ? '#fff' : FACTOR_TABLE[l.key].bar }}
+                  style={{ background: on ? 'var(--inverse)' : FACTOR_TABLE[l.key].bar }}
                 />
                 {l.label}
               </button>
@@ -281,7 +294,7 @@ export function ScoreStoryPanel({ ticker }: { ticker: string }) {
                 key={l.key}
                 type="monotone"
                 dataKey={l.key}
-                stroke={l.key === 'composite' ? ct.ink : FACTOR_TABLE[l.key].bar}
+                stroke={factorStroke(l.key)}
                 strokeWidth={l.key === 'composite' ? 2.4 : 1.4}
                 strokeOpacity={l.key === 'composite' ? 1 : 0.7}
                 dot={false}

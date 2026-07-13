@@ -1,10 +1,12 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { Fuel, Settings2, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 
 import { ScoreCell } from '@/components/screener/ScoreCell'
 import { SectorPill } from '@/components/screener/SectorPill'
+import { Icon } from '@/components/ui/Icon'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { scoreHeat } from '@/lib/colors'
@@ -150,7 +152,7 @@ function ValueTrapMark({ row }: { row: ScreenerRow }) {
       }
       aria-label="Value-trap caveat"
     >
-      ⚠
+      <Icon icon={TriangleAlert} size={12} />
     </span>
   )
 }
@@ -207,7 +209,7 @@ function CommodityMark({
       }
       aria-label="Forward commodity backdrop caveat"
     >
-      ⛽
+      <Icon icon={Fuel} size={12} />
     </span>
   )
 }
@@ -478,7 +480,7 @@ export function ScreenerTable({
                 onClick={() => setColMenu((o) => !o)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[0.74rem] font-semibold text-muted transition hover:border-line hover:bg-surface-2"
               >
-                ⚙ Columns
+                <Icon icon={Settings2} size={14} /> Columns
               </button>
               {colMenu && (
                 <>
@@ -493,7 +495,7 @@ export function ScreenerTable({
                           type="checkbox"
                           checked={show(c.key)}
                           onChange={() => toggleCol(c.key)}
-                          className="h-3.5 w-3.5 accent-indigo-600"
+                          className="h-3.5 w-3.5 accent-accent"
                         />
                         {c.label}
                       </label>
@@ -669,7 +671,7 @@ export function ScreenerTable({
               return (
                 <div
                   key={r.security_id}
-                  className="absolute left-0 grid w-full border-b border-line transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_#1e293b]"
+                  className="absolute left-0 grid w-full border-b border-line transition-[box-shadow,background] duration-100 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
                   style={{
                     gridTemplateColumns: gridCols,
                     height: vi.size,
@@ -696,7 +698,7 @@ export function ScreenerTable({
                         checked={selected.has(r.ticker)}
                         onChange={() => toggleSelect(r.ticker)}
                         disabled={!selected.has(r.ticker) && selected.size >= 4}
-                        className="h-3.5 w-3.5 accent-indigo-600"
+                        className="h-3.5 w-3.5 accent-accent"
                         aria-label={`Select ${r.ticker} to compare`}
                       />
                     </div>
@@ -907,8 +909,9 @@ export function ScreenerTable({
                 type="button"
                 onClick={() => setShowCompare(false)}
                 className="text-subtle hover:text-ink"
+                aria-label="Close"
               >
-                ✕
+                <Icon icon={X} size={16} />
               </button>
             </div>
             <div className="overflow-x-auto p-5">

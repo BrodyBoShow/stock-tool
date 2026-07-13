@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
 import { useState } from 'react'
 
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import { ApiError, generateSummary } from '@/lib/api'
 import { fmtDate } from '@/lib/format'
@@ -36,11 +38,11 @@ const PREVIEW_ROWS = 5
 const CATEGORY_TINT: Record<string, string> = {
   'Annual report': 'bg-accent-soft text-accent',
   'Quarterly report': 'bg-info-soft text-info',
-  'Current report': 'bg-cyan-50 text-cyan-700',
-  'Proxy & governance': 'bg-violet-50 text-violet-700',
+  'Current report': 'bg-warn-soft text-warn', // 8-Ks — matches the event chips
+  'Proxy & governance': 'bg-surface-3 text-muted',
   'Ownership & insiders': 'bg-neg-soft text-neg',
-  'Tender & M&A': 'bg-orange-50 text-orange-700',
-  'Offering & registration': 'bg-yellow-50 text-yellow-700',
+  'Tender & M&A': 'bg-pos-soft text-pos',
+  'Offering & registration': 'bg-surface-2 text-subtle',
   'Status & other': 'bg-surface-3 text-muted',
 }
 
@@ -244,9 +246,9 @@ export function FilingsListPanel({
                                 href={f.primary_doc_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-none text-[0.72rem] font-semibold text-muted hover:underline"
+                                className="inline-flex flex-none items-center gap-0.5 text-[0.72rem] font-semibold text-muted hover:underline"
                               >
-                                SEC ↗
+                                SEC <Icon icon={ArrowUpRight} size={12} />
                               </a>
                             )}
                           </div>

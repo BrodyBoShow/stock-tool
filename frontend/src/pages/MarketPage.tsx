@@ -142,7 +142,7 @@ export function MarketPage() {
             <span className="text-subtle">/</span>
             <span className="text-subtle">Market</span>
           </div>
-          <h1 className="mt-2 text-[1.95rem] font-extrabold leading-[1.1] tracking-[-0.015em] text-ink">
+          <h1 className="mt-2 text-[1.95rem] font-bold leading-[1.1] tracking-[-0.015em] text-ink">
             Market overview
           </h1>
           <p className="mt-1 text-[0.8rem] text-subtle">
@@ -223,11 +223,11 @@ export function MarketPage() {
             <BreadthBar label="Above 200-day average" pct={b.pct_above_ma200} tip={G.ma200} />
             <div className="flex gap-6 border-t border-line pt-3 text-[0.84rem]">
               <span>
-                <span className="font-extrabold tabular-nums text-pos">{b.new_highs}</span>{' '}
+                <span className="font-bold tabular-nums text-pos">{b.new_highs}</span>{' '}
                 <span className="text-muted">new 52-week highs</span>
               </span>
               <span className="flex items-center">
-                <span className="font-extrabold tabular-nums text-neg">{b.new_lows}</span>{' '}
+                <span className="font-bold tabular-nums text-neg">{b.new_lows}</span>{' '}
                 <span className="ml-1 text-muted">new 52-week lows</span>
                 <InfoTip text={G.highsLows} />
               </span>
@@ -244,7 +244,7 @@ export function MarketPage() {
                     { k: 'bear', label: '20%+ off highs', v: dd.bear_pct, c: 'var(--neg)' },
                   ].map((x) => (
                     <div key={x.k} className="rounded-lg bg-surface-2 px-2 py-2">
-                      <div className="text-[1.05rem] font-extrabold tabular-nums" style={{ color: x.c }}>
+                      <div className="text-[1.05rem] font-bold tabular-nums" style={{ color: x.c }}>
                         {(x.v * 100).toFixed(0)}%
                       </div>
                       <div className="text-[0.66rem] text-subtle">{x.label}</div>

@@ -74,7 +74,7 @@ export function RiskAlignmentPanel({ data }: { data: RiskAlignmentResponse }) {
           return (
             <div
               key={h.ticker ?? `row-${i}`}
-              className="flex items-center gap-2 rounded-lg border border-line bg-surface-2/50 px-2.5 py-1.5"
+              className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5"
             >
               <Link
                 to={`/securities/${h.ticker}`}
@@ -98,7 +98,7 @@ export function RiskAlignmentPanel({ data }: { data: RiskAlignmentResponse }) {
 
       {/* profile-aware threshold flags */}
       {data.threshold_flags.length > 0 && (
-        <div className="mt-3 rounded-lg border border-warn bg-warn-soft/50 p-2.5">
+        <div className="mt-3 rounded-lg border border-warn bg-warn-soft p-2.5">
           <div className="text-[0.64rem] font-bold uppercase tracking-[0.05em] text-warn">
             Above your alert thresholds
           </div>

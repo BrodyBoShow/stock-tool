@@ -1,8 +1,10 @@
 import { useMutation } from '@tanstack/react-query'
+import { TriangleAlert, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { capWeights, whatIfStats, tradesToWeights, taxForSell } from '@/components/portfolio/portfolioUi'
 import type { SimTrade } from '@/components/portfolio/portfolioUi'
+import { Icon } from '@/components/ui/Icon'
 import { useToast } from '@/components/ui/Toast'
 import { runProjection } from '@/lib/api'
 import { plColor } from '@/lib/colors'
@@ -176,9 +178,9 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded px-2 text-[1.3rem] leading-none text-muted hover:text-ink"
+            className="rounded px-2 text-muted hover:text-ink"
           >
-            ✕
+            <Icon icon={X} size={18} />
           </button>
         </div>
 
@@ -234,7 +236,7 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                     aria-label="Remove trade"
                     className="text-muted hover:text-neg"
                   >
-                    ✕
+                    <Icon icon={X} size={12} />
                   </button>
                 </div>
               ))}
@@ -327,8 +329,8 @@ export function RebalanceDrawer(props: RebalanceDrawerProps) {
                       </>
                     )}
                     {tax.washRisk && (
-                      <span className="rounded bg-neg-soft px-1.5 py-0.5 text-[0.64rem] font-bold text-neg">
-                        ⚠ wash-sale risk (bought &lt;30d ago, selling at a loss)
+                      <span className="inline-flex items-center gap-1 rounded bg-neg-soft px-1.5 py-0.5 text-[0.64rem] font-bold text-neg">
+                        <Icon icon={TriangleAlert} size={11} /> wash-sale risk (bought &lt;30d ago, selling at a loss)
                       </span>
                     )}
                   </div>
