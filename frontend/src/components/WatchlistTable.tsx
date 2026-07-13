@@ -58,7 +58,7 @@ const FACTOR_HEAD: Record<FactorKey, string> = {
 }
 
 const TH =
-  'flex items-center px-3 py-[9px] text-[0.68rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
+  'flex items-center px-3 py-[6px] text-[0.66rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
 
 /** Close-to-close day change (latest EOD close vs the prior close). Null when
  *  either close is missing — never fabricated. */
@@ -198,17 +198,17 @@ export function WatchlistTable({
             return (
               <div
                 key={r.security_id}
-                className="group relative grid border-b border-line transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
-                style={{ gridTemplateColumns: GRID, height: 54 }}
+                className="group relative grid overflow-x-clip border-b border-line transition-[box-shadow,background] duration-100 last:border-b-0 hover:bg-surface-2 hover:shadow-[inset_3px_0_0_var(--accent)]"
+                style={{ gridTemplateColumns: GRID, height: 36 }}
               >
                 <Link
                   to={`/securities/${r.ticker}`}
                   aria-label={`Open ${r.ticker} deep dive`}
                   className="absolute inset-0 z-0"
                 />
-                <div className={`${cell} flex h-full min-w-0 flex-col justify-center px-3 py-2`}>
-                  <span className="flex items-center gap-1.5 text-[0.88rem] font-bold leading-[1.15] text-ink">
-                    {r.ticker}
+                <div className={`${cell} flex h-full min-w-0 flex-col justify-center px-3 py-1`}>
+                  <span className="flex items-center gap-1.5 text-[0.82rem] font-bold leading-[1.1] text-ink">
+                    <span className="numeric">{r.ticker}</span>
                     {r.thesis_review_due && (
                       <span
                         className="rounded-full bg-warn-soft px-1.5 text-[0.56rem] font-bold uppercase tracking-wide text-warn"
@@ -218,30 +218,30 @@ export function WatchlistTable({
                       </span>
                     )}
                   </span>
-                  <span className="mt-px overflow-hidden text-ellipsis whitespace-nowrap text-[0.72rem] text-subtle">
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[0.68rem] leading-tight text-subtle">
                     {r.name ?? DASH}
                   </span>
                 </div>
-                <div className={`${cell} flex h-full min-w-0 items-center px-3 py-2`}>
+                <div className={`${cell} flex h-full min-w-0 items-center px-3 py-1`}>
                   <SectorPill sector={r.sector} />
                 </div>
                 <div className="relative z-10 flex h-full items-center justify-center px-2">
                   <RiskBandChip band={r.risk_band} compact />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="composite" value={r.composite} live={live?.[r.ticker]?.composite_live} />
+                  <ScoreCell dense factor="composite" value={r.composite} live={live?.[r.ticker]?.composite_live} />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="growth" value={r.growth_pctl} />
+                  <ScoreCell dense factor="growth" value={r.growth_pctl} />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="value" value={r.value_pctl} live={live?.[r.ticker]?.value_live} />
+                  <ScoreCell dense factor="value" value={r.value_pctl} live={live?.[r.ticker]?.value_live} />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="quality" value={r.quality_pctl} />
+                  <ScoreCell dense factor="quality" value={r.quality_pctl} />
                 </div>
                 <div className={`${cell} h-full`}>
-                  <ScoreCell factor="momentum" value={r.momentum_pctl} live={live?.[r.ticker]?.momentum_live} />
+                  <ScoreCell dense factor="momentum" value={r.momentum_pctl} live={live?.[r.ticker]?.momentum_live} />
                 </div>
                 {/* z-10 (not the pointer-events-none `cell`) so the sparkline
                     receives hover; the row's absolute-inset Link still covers
@@ -249,6 +249,7 @@ export function WatchlistTable({
                 <div className="relative z-10 flex h-full items-center justify-center px-2">
                   <Sparkline
                     data={r.price_history}
+                    height={12}
                     title={`${r.ticker} price over the last ${r.price_history?.length ?? 0} sessions`}
                     fmt={(v) => `$${v.toFixed(2)}`}
                   />
@@ -258,22 +259,22 @@ export function WatchlistTable({
                     <button
                       type="button"
                       onClick={() => setPlanRow(r)}
-                      className="flex flex-col items-center gap-0.5 rounded-md px-1.5 py-1 hover:bg-surface-3"
+                      className="flex flex-col items-center gap-0.5 rounded-md px-1.5 py-0.5 hover:bg-surface-3"
                       title="Edit your entry plan"
                     >
-                      <span className="text-[0.78rem] font-semibold tabular-nums text-ink">
+                      <span className="numeric text-[0.78rem] font-semibold leading-none text-ink">
                         {fmtPrice(target)}
                       </span>
                       {buyZone ? (
                         <span
-                          className="rounded-full bg-pos-soft px-1.5 text-[0.6rem] font-bold text-pos"
+                          className="rounded-full bg-pos-soft px-1.5 text-[0.6rem] font-bold leading-none text-pos"
                           title={`Price has reached your ${fmtPrice(target)} target — your plan, not advice`}
                         >
                           in buy zone
                         </span>
                       ) : pctAbove != null ? (
                         <span
-                          className="rounded-full bg-warn-soft px-1.5 text-[0.6rem] font-semibold text-warn"
+                          className="rounded-full bg-warn-soft px-1.5 text-[0.6rem] font-semibold leading-none text-warn"
                           title={`${(pctAbove * 100).toFixed(0)}% above your ${fmtPrice(target)} target — your plan, not advice`}
                         >
                           {(pctAbove * 100).toFixed(0)}% above
@@ -292,11 +293,11 @@ export function WatchlistTable({
                     </button>
                   )}
                 </div>
-                <div className={`${cell} flex h-full flex-col items-end justify-center px-3 py-2`}>
-                  <span className="text-[0.85rem] font-semibold text-ink">
+                <div className={`${cell} flex h-full flex-col items-end justify-center px-3 py-1 leading-tight`}>
+                  <span className="numeric text-[0.8rem] font-semibold text-ink">
                     {fmtPrice(r.last_price)}
                   </span>
-                  <span className={`text-[0.72rem] font-semibold tabular-nums ${dayCls}`}>
+                  <span className={`numeric text-[0.62rem] font-semibold ${dayCls}`}>
                     {day == null ? DASH : `${day > 0 ? '▲' : day < 0 ? '▼' : ''} ${fmtSignedPct(day)}`}
                   </span>
                 </div>

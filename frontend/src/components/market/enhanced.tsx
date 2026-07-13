@@ -144,13 +144,13 @@ export function EnhancedFilings({ filings, watchlist }: { filings: MarketFilingR
   return (
     <div>
       {labelOptions.length > 1 && <FilterChips options={labelOptions} value={label} onChange={setLabel} />}
-      <div className="max-h-[460px] space-y-3 overflow-auto pr-1">
+      <div className="max-h-[460px] space-y-2 overflow-auto pr-1">
         {shown.length === 0 && <p className="text-sm text-subtle">No high-signal filings in the window.</p>}
         {shown.map((f) => {
           const onWatch = f.ticker != null && watchlist.has(f.ticker)
           return (
             <div key={f.accession_no + f.security_id} className="flex items-start gap-3">
-              <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] tabular-nums text-subtle">
+              <div className="w-[4.2rem] shrink-0 pt-0.5 text-[0.7rem] numeric text-subtle">
                 {fmtShortDate(f.filed_date)}
               </div>
               <div className="min-w-0 flex-1">
@@ -159,7 +159,7 @@ export function EnhancedFilings({ filings, watchlist }: { filings: MarketFilingR
                     <span className="inline-block h-2 w-2 shrink-0 self-center rounded-full bg-accent-soft" title="On your watchlist" aria-label="On your watchlist" />
                   )}
                   {f.ticker && (
-                    <Link to={`/securities/${f.ticker}`} className="font-bold text-ink hover:text-accent">{f.ticker}</Link>
+                    <Link to={`/securities/${f.ticker}`} className="numeric font-bold text-ink hover:text-accent">{f.ticker}</Link>
                   )}
                   <span className="truncate text-[0.76rem] text-subtle">
                     {f.name} {f.market_cap ? `· ${fmtMoney(f.market_cap)}` : ''}
@@ -238,18 +238,18 @@ export function EnhancedInsider({ buys }: { buys: MarketInsiderBuy[] }) {
           })}
         </div>
       )}
-      <div className="space-y-2.5">
+      <div className="space-y-1.5">
         {buys.length === 0 && <p className="text-sm text-subtle">No open-market buys filed this week.</p>}
         {buys.map((i) => (
-          <div key={i.security_id} className="flex items-center gap-2.5 text-[0.84rem]">
-            <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 font-bold text-ink hover:text-accent">{i.ticker}</Link>
+          <div key={i.security_id} className="flex items-center gap-2.5 text-[0.82rem]">
+            <Link to={`/securities/${i.ticker}`} className="w-16 shrink-0 numeric font-bold text-ink hover:text-accent">{i.ticker}</Link>
             <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[0.76rem] text-subtle">
               <span className="truncate">{i.buyers} buyer{i.buyers !== 1 ? 's' : ''} · filed {fmtShortDate(i.last_filed)}</span>
               {i.buyers >= 3 && (
                 <span className="shrink-0 rounded-full bg-pos-soft px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-pos" title="Cluster buy — 3+ distinct insiders">cluster</span>
               )}
             </span>
-            <span className="shrink-0 font-bold tabular-nums text-pos">{fmtMoney(i.total_value)}</span>
+            <span className="shrink-0 font-bold numeric text-pos">{fmtMoney(i.total_value)}</span>
           </div>
         ))}
       </div>

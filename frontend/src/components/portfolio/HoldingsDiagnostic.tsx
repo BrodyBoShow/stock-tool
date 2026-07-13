@@ -207,7 +207,7 @@ function ScorePopover({ h }: { h: PortfolioHolding }) {
   if (h.composite == null) return <span className="text-subtle">{DASH}</span>
   return (
     <span className="group relative inline-block cursor-default">
-      <span className="font-semibold tabular-nums text-ink">
+      <span className="numeric font-semibold text-ink">
         {h.composite.toFixed(0)}
       </span>
       <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 w-44 -translate-x-1/2 rounded-lg bg-ink p-2 text-left text-[0.66rem] font-normal text-inverse opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
@@ -246,7 +246,7 @@ function SortHeader({
   const active = sort.key === k
   return (
     <th
-      className={`cursor-pointer select-none px-2 py-2 ${align === 'right' ? 'text-right' : ''}`}
+      className={`cursor-pointer select-none px-2 py-1.5 ${align === 'right' ? 'text-right' : ''}`}
       onClick={() => onSort(k)}
       aria-sort={active ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
     >
@@ -438,7 +438,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
         <table className="w-full min-w-[900px] text-[0.74rem]">
           <thead>
             <tr className={TABLE_HEAD_ROW}>
-              <th className="w-7 px-2 py-2">
+              <th className="w-7 px-2 py-1.5">
                 <input
                   type="checkbox"
                   aria-label="Select all holdings"
@@ -447,11 +447,11 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
                 />
               </th>
               <SortHeader label="Ticker" k="ticker" sort={sort} onSort={onSort} />
-              <th className="px-2 py-2">30D</th>
-              <th className="px-2 py-2">Sector</th>
-              <th className="px-2 py-2 text-right">Shares</th>
-              <th className="px-2 py-2 text-right">Avg cost</th>
-              <th className="px-2 py-2 text-right">Price</th>
+              <th className="px-2 py-1.5">30D</th>
+              <th className="px-2 py-1.5">Sector</th>
+              <th className="px-2 py-1.5 text-right">Shares</th>
+              <th className="px-2 py-1.5 text-right">Avg cost</th>
+              <th className="px-2 py-1.5 text-right">Price</th>
               <SortHeader label="Day" k="day" sort={sort} onSort={onSort} align="right" />
               <SortHeader label="Value" k="value" sort={sort} onSort={onSort} align="right" />
               <SortHeader label="Weight" k="weight" sort={sort} onSort={onSort} align="right" />
@@ -461,7 +461,7 @@ export function HoldingsDiagnostic(props: HoldingsDiagnosticProps): JSX.Element 
                   <InfoTip text="Composite factor percentile — hover a value for the factor breakdown" />
                 </span>
               </SortHeader>
-              <th className="w-7 px-2 py-2" aria-label="Flags"><Icon icon={TriangleAlert} size={12} className="inline" /></th>
+              <th className="w-7 px-2 py-1.5" aria-label="Flags"><Icon icon={TriangleAlert} size={12} className="inline" /></th>
             </tr>
           </thead>
           <tbody>
@@ -595,7 +595,7 @@ function HoldingRow({
         className={`border-b border-line ${interactive ? 'cursor-pointer hover:bg-surface-2' : ''}`}
         onClick={interactive ? () => onToggleExpanded(h.security_id) : undefined}
       >
-        <td className="px-2 py-2">
+        <td className="px-2 py-1">
           <input
             type="checkbox"
             aria-label={`Select ${h.ticker ?? 'holding'}`}
@@ -605,13 +605,13 @@ function HoldingRow({
             onChange={() => onToggleSelected(h.security_id)}
           />
         </td>
-        <td className="px-2 py-2 font-bold text-ink">
+        <td className="numeric px-2 py-1 font-bold text-ink">
           <span className="inline-flex items-center gap-1.5">
             {h.ticker ?? DASH}
             <RiskBandChip band={h.risk_band} compact />
           </span>
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-1">
           <Sparkline
             data={h.ticker ? (analytics?.sparks?.[h.ticker] ?? null) : null}
             width={80}
@@ -621,7 +621,7 @@ function HoldingRow({
             fmt={(v) => `$${v.toFixed(2)}`}
           />
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-1">
           <span
             className="rounded px-1.5 py-0.5 text-[0.62rem] font-semibold text-white"
             style={{ background: sectorColor(h.sector) }}
@@ -629,13 +629,13 @@ function HoldingRow({
             {sectorShort(h.sector)}
           </span>
         </td>
-        <td className="px-2 py-2 text-right tabular-nums">
+        <td className="numeric px-2 py-1 text-right">
           {fmtShares(h.shares)}
         </td>
-        <td className="px-2 py-2 text-right tabular-nums">
+        <td className="numeric px-2 py-1 text-right">
           {fmtPrice(h.avg_cost)}
         </td>
-        <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+        <td className="whitespace-nowrap numeric px-2 py-1 text-right">
           {fmtPrice(price)}
           {live && (
             <span
@@ -645,25 +645,25 @@ function HoldingRow({
           )}
         </td>
         <td
-          className="px-2 py-2 text-right tabular-nums"
+          className="numeric px-2 py-1 text-right"
           style={{ color: plColor(day) }}
         >
           {fmtSignedPct(day)}
         </td>
-        <td className="px-2 py-2 text-right tabular-nums">{fmtPrice(value)}</td>
-        <td className="px-2 py-2 text-right font-semibold tabular-nums">
+        <td className="numeric px-2 py-1 text-right">{fmtPrice(value)}</td>
+        <td className="numeric px-2 py-1 text-right font-semibold">
           {row.liveWeight == null ? DASH : `${(row.liveWeight * 100).toFixed(1)}%`}
         </td>
         <td
-          className="whitespace-nowrap px-2 py-2 text-right tabular-nums"
+          className="whitespace-nowrap numeric px-2 py-1 text-right"
           style={{ color: plColor(pl) }}
         >
           {pl == null ? DASH : `${fmtSignedMoney(pl)} (${fmtSignedPct(plPct)})`}
         </td>
-        <td className="px-2 py-2 text-right">
+        <td className="px-2 py-1 text-right">
           <ScorePopover h={h} />
         </td>
-        <td className="px-2 py-2 text-center">
+        <td className="px-2 py-1 text-center">
           {warn && (
             <span
               title={warn.title}

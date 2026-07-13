@@ -661,7 +661,7 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
         <table className="w-full text-[0.82rem]">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr className={TABLE_HEAD_ROW}>
-              <th className="w-8 py-2 pr-2">
+              <th className="w-8 py-1.5 pr-2">
                 <input
                   type="checkbox"
                   checked={allFilteredSelected}
@@ -669,20 +669,20 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
                   aria-label="Select all shown transactions"
                 />
               </th>
-              <th className="py-2 pr-4">Date</th>
-              <th className="py-2 pr-4">Type</th>
-              <th className="py-2 pr-4">Ticker</th>
-              <th className="py-2 pr-4 text-right">Shares</th>
-              <th className="py-2 pr-4 text-right">Price</th>
-              <th className="py-2 pr-4 text-right">Amount</th>
-              <th className="py-2 pr-4">Note</th>
-              <th className="py-2" />
+              <th className="py-1.5 pr-4">Date</th>
+              <th className="py-1.5 pr-4">Type</th>
+              <th className="py-1.5 pr-4">Ticker</th>
+              <th className="py-1.5 pr-4 text-right">Shares</th>
+              <th className="py-1.5 pr-4 text-right">Price</th>
+              <th className="py-1.5 pr-4 text-right">Amount</th>
+              <th className="py-1.5 pr-4">Note</th>
+              <th className="py-1.5" />
             </tr>
           </thead>
           <tbody>
             {filtered.map((r) => (
               <tr key={r.id} className="border-b border-line">
-                <td className="py-2 pr-2">
+                <td className="py-1 pr-2">
                   <input
                     type="checkbox"
                     checked={selected.has(r.id)}
@@ -690,28 +690,28 @@ export function TransactionsPanel(props: TransactionsPanelProps): JSX.Element {
                     aria-label={`Select ${r.txn_type} ${r.ticker ?? ''} ${r.trade_date}`}
                   />
                 </td>
-                <td className="py-2 pr-4 tabular-nums text-muted">
+                <td className="numeric py-1 pr-4 text-muted">
                   {fmtDate(r.trade_date)}
                 </td>
-                <td className="py-2 pr-4">
+                <td className="py-1 pr-4">
                   <span
                     className={`rounded-full px-2 py-0.5 text-[0.66rem] font-semibold capitalize ${TYPE_CHIP[r.txn_type]}`}
                   >
                     {r.txn_type}
                   </span>
                 </td>
-                <td className="py-2 pr-4 font-bold text-ink">{r.ticker ?? '—'}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{r.shares ?? '—'}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">
+                <td className="numeric py-1 pr-4 font-bold text-ink">{r.ticker ?? '—'}</td>
+                <td className="numeric py-1 pr-4 text-right">{r.shares ?? '—'}</td>
+                <td className="numeric py-1 pr-4 text-right">
                   {r.price != null ? fmtPrice(r.price) : '—'}
                 </td>
-                <td className="py-2 pr-4 text-right tabular-nums">
+                <td className="numeric py-1 pr-4 text-right">
                   {r.amount != null ? fmtPrice(r.amount) : '—'}
                 </td>
-                <td className="max-w-[220px] truncate py-2 pr-4 text-muted">
+                <td className="max-w-[220px] truncate py-1 pr-4 text-muted">
                   {r.note ?? ''}
                 </td>
-                <td className="py-2 text-right">
+                <td className="py-1 text-right">
                   <button
                     type="button"
                     onClick={() => setToDelete(r)}
