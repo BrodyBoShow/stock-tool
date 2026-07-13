@@ -42,7 +42,7 @@ function Stat({
         {label}
       </span>
       <span
-        className="text-[1.02rem] font-bold tabular-nums leading-tight"
+        className="numeric text-[1rem] font-bold leading-tight"
         style={{ color: accent ?? 'var(--ink)' }}
       >
         {value}
@@ -194,7 +194,7 @@ export function ScreenerHeader({
       <div className="h-1 bg-gradient-to-r from-[var(--accent)] to-transparent" />
 
       <div
-        className="px-6 pb-4 pt-4"
+        className="px-5 pb-3.5 pt-3.5"
         style={{ background: 'linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 62%)' }}
       >
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
@@ -206,7 +206,7 @@ export function ScreenerHeader({
               <span className="text-subtle">Equity Screener</span>
             </div>
             <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <h1 className="text-[1.45rem] font-bold leading-[1.15] tracking-[-0.015em] text-ink">
+              <h1 className="text-[1.3rem] font-bold leading-[1.15] tracking-[-0.015em] text-ink">
                 US Equity Factor Screener
               </h1>
               <span className="text-[0.82rem] text-muted">
@@ -257,10 +257,10 @@ export function ScreenerHeader({
         </div>
 
         {/* divider */}
-        <div className="my-3 h-px bg-divider" />
+        <div className="my-2.5 h-px bg-divider" />
 
         {/* market pulse — one contextual read, with the raw breadth beside it */}
-        <div className="flex flex-wrap items-center gap-x-7 gap-y-2.5">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <div
             className={
               'inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 ' +

@@ -142,7 +142,7 @@ function Toggle({
   )
 }
 
-const STEP = 'border-b border-line py-4 first:pt-3.5 last:border-b-0'
+const STEP = 'border-b border-divider py-3 first:pt-3 last:border-b-0'
 
 export function FilterSidebar({
   filters,
@@ -199,9 +199,9 @@ export function FilterSidebar({
     })
 
   return (
-    <aside className="w-full shrink-0 rounded-card border border-line bg-surface px-4 pb-4 shadow-card lg:w-[270px]">
+    <aside className="w-full shrink-0 rounded-card border border-line bg-surface px-3.5 pb-3.5 shadow-card lg:w-[270px]">
       {/* header */}
-      <div className="flex items-center justify-between border-b border-line py-3.5">
+      <div className="flex items-center justify-between border-b border-divider py-3">
         <div className="flex items-center gap-2 text-sm font-bold text-ink">
           Filters
           {active > 0 && (
@@ -217,14 +217,14 @@ export function FilterSidebar({
       </div>
 
       {/* search (kept until ⌘K command palette lands) */}
-      <div className="pt-3">
+      <div className="pt-2.5">
         <input
           id="screener-search"
           type="text"
           value={filters.search}
           onChange={(e) => set({ search: e.target.value })}
           placeholder="Search ticker or company…  ( / )"
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[0.82rem] text-ink placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[0.8rem] text-ink placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 

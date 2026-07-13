@@ -116,6 +116,7 @@ export function ScoreCell({
   delta,
   subPctls,
   sparkline,
+  dense = false,
 }: {
   factor: FactorKey
   value: number | null
@@ -124,6 +125,9 @@ export function ScoreCell({
   subPctls?: Record<string, number | null> | null
   /** Composite history (composite only): drawn in place of the bar when present. */
   sparkline?: number[] | null
+  /** Screener density mode — tighter padding + shorter sparkline so the cell
+   *  fits a ~36px row. Default off keeps the shared Watchlist look unchanged. */
+  dense?: boolean
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null)
 
@@ -148,7 +152,8 @@ export function ScoreCell({
     <div
       data-factor={factor}
       className={
-        'flex h-full flex-col items-center justify-center px-3 py-2 ' +
+        'flex h-full flex-col items-center justify-center ' +
+        (dense ? 'px-2 py-1 ' : 'px-3 py-2 ') +
         (canTip ? 'cursor-help' : '')
       }
       style={bg ? { background: bg } : undefined}
@@ -171,6 +176,7 @@ export function ScoreCell({
             <span
               className={
                 'numeric text-[0.82rem] font-bold ' +
+                (dense ? 'leading-none ' : '') +
                 (moved ? 'text-info' : 'text-ink')
               }
             >
@@ -184,9 +190,11 @@ export function ScoreCell({
             )}
           </span>
           {sparkline && sparkline.length >= 2 ? (
-            <Sparkline data={sparkline} />
+            <Sparkline data={sparkline} height={dense ? 12 : 16} />
           ) : (
-            <span className="relative mt-1 block h-1 w-12 overflow-hidden rounded-full bg-surface-3">
+            <span
+              className={`relative block h-1 w-12 overflow-hidden rounded-full bg-surface-3 ${dense ? 'mt-0.5' : 'mt-1'}`}
+            >
               <span
                 className="block h-full rounded-full"
                 style={{
