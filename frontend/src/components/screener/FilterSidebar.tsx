@@ -314,7 +314,7 @@ export function FilterSidebar({
               <button
                 key={o.value}
                 type="button"
-                onClick={() => set({ minMarketCap: o.value })}
+                onClick={() => set({ minMarketCap: on ? 0 : o.value })}
                 className={
                   'rounded-md border px-1.5 py-1 text-center text-[0.62rem] font-semibold leading-tight transition-all ' +
                   (on
