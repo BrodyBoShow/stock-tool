@@ -34,6 +34,7 @@ export function OverviewTab({
   summary: s,
   health,
   holdings,
+  flags,
   performance,
   benchmark,
   range,
@@ -41,6 +42,11 @@ export function OverviewTab({
   onReview,
   onExplore,
 }: OverviewTabProps) {
+  // The engine suppresses the growth-of-$1 curve (and TWR/drawdown) when the
+  // imported ledger has sells without matching buys — its value history is
+  // incomplete, so any return series would be wrong. Show the reason instead.
+  const histFlag = flags.find((f) => f.kind === 'unreliable_history')
+  const hasCurve = !!performance && performance.twr_curve.length >= 2
   const drags: DragItem[] = holdings
     .filter((h) => h.ticker && (h.unrealized_pl ?? 0) < 0)
     .map((h) => ({
@@ -69,13 +75,31 @@ export function OverviewTab({
 
       {/* ── Zone B · analytical core ────────────────────────────────────── */}
       <div className="grid gap-5 lg:grid-cols-2">
-        {performance && (
+        {hasCurve ? (
           <PerfChart
-            performance={performance}
+            performance={performance!}
             benchmark={benchmark}
             range={range}
             onRangeChange={onRangeChange}
           />
+        ) : (
+          <div className="rounded-card border border-line bg-surface p-5 shadow-card">
+            <div className="text-base font-bold text-ink">Performance</div>
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-warn bg-warn-soft px-3 py-2.5 text-[0.82rem] leading-snug text-warn">
+              <span>
+                {histFlag?.text ??
+                  'Return history isn’t available yet — not enough valued price history for this ledger.'}
+                {histFlag && (
+                  <>
+                    {' '}
+                    Your <span className="font-semibold">money-weighted return</span>,{' '}
+                    <span className="font-semibold">realized + dividends</span>, and{' '}
+                    <span className="font-semibold">holdings</span> below are accurate.
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
         )}
         <div id={DRAGS_ID}>
           <DragsList items={drags} onReview={onReview} />
