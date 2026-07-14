@@ -520,6 +520,8 @@ def compute_portfolio(owner_id: str | None = None,
     invested_series: list[float] = []
     twr_rets: list[float] = []
     spy_rets: list[float | None] = []
+    twr_skipped = 0  # degenerate days dropped from the TWR chain (see guard below)
+    phantom_over = 0.0  # shares sold beyond what was held (missing buy history)
     xirr_flows: list[tuple[date, float]] = []
     prev_value: float | None = None
     prev_spy: float | None = None
@@ -589,6 +591,7 @@ def compute_portfolio(owner_id: str | None = None,
                 to_sell = t["shares"]
                 avail = sum(lot[0] for lot in lots.get(sid, ()))
                 if to_sell > avail + 1e-6:
+                    phantom_over += to_sell - avail
                     tk = meta.get(sid, {}).get("ticker", sid)
                     warnings.append(
                         f"Sell of {t['shares']:g} {tk} on {day} exceeds the "
@@ -644,12 +647,25 @@ def compute_portfolio(owner_id: str | None = None,
         if spy_c:
             prev_spy = spy_c
 
-        if prev_value is not None and prev_value + flow > 1e-9:
-            twr_rets.append(value / (prev_value + flow) - 1.0)
-            spy_rets.append(spy_r)
-            dates_out.append(str(day))
-            values.append(round(value, 2))
-            invested_series.append(round(net_invested, 2))
+        base = (prev_value + flow) if prev_value is not None else None
+        if base is not None and base > 1e-9:
+            day_ret = value / base - 1.0
+            # Drop degenerate days a broken/partial ledger produces. When the
+            # imported history has sells without matching buys (positions clamp
+            # to ~0), `value` collapses toward 0 — that chains a -100% daily
+            # return which permanently zeros the growth-of-$1 curve, and the
+            # recovery off a near-zero base explodes it. Such a day is a data
+            # artifact, not a real return, so it must not enter the chain:
+            #   • value ~0  → the -100% "portfolio wiped out then rebuilt" day
+            #   • |ret| > 5 → ±500% in one day is impossible for a cash-equity book
+            if value > 1e-6 and abs(day_ret) <= 5.0:
+                twr_rets.append(day_ret)
+                spy_rets.append(spy_r)
+                dates_out.append(str(day))
+                values.append(round(value, 2))
+                invested_series.append(round(net_invested, 2))
+            else:
+                twr_skipped += 1
         elif prev_value is None and value > 0:
             dates_out.append(str(day))
             values.append(round(value, 2))
@@ -819,6 +835,25 @@ def compute_portfolio(owner_id: str | None = None,
     # align: curves correspond to dates_out[1:] (returns start on day 2)
     curve_dates = dates_out[1:] if len(dates_out) > 1 else dates_out
 
+    # A ledger with sells that exceed the shares held (positions opened before
+    # the imported broker history, or a partial/duplicated sync) produces an
+    # INCOMPLETE daily value series — the recognized value collapses toward 0,
+    # so the time-weighted return, drawdown, and the vol/Sharpe/beta derived
+    # from that series are meaningless (they'd read like +400%/-100%). Suppress
+    # them rather than surface a wrong number; the money-weighted return and the
+    # dollar P/L don't depend on the daily series and stay. A flag is added below.
+    #
+    # Trigger on the phantom over-sell ONLY (missing buy history) — the daily
+    # guard above already BRIDGES an isolated 0-value day (e.g. a legitimate
+    # full liquidation to cash then re-entry), so those must not be suppressed.
+    history_unreliable = phantom_over > 0.5
+    if history_unreliable:
+        for _k in ("twr_total", "twr_cagr", "volatility", "sharpe",
+                   "sortino", "max_drawdown", "beta"):
+            stats[_k] = None
+        twr_curve = []
+        spy_curve = []
+
     total_cost = sum(h["cost_basis"] for h in holdings)
     total_unreal = sum(h["unrealized_pl"] or 0 for h in holdings)
     total_real = sum(realized.values())
@@ -828,7 +863,10 @@ def compute_portfolio(owner_id: str | None = None,
     # that day's external flow.
     prev_day_value = values[-2] if len(values) >= 2 else None
     day_change = day_change_pct = None
-    if twr_rets and prev_day_value is not None:
+    # Suppress the flow-adjusted day change too when the value series is
+    # unreliable — it's derived from the same twr_rets/values and would mix
+    # mis-aligned days (the live-quote path in the UI computes its own instead).
+    if twr_rets and prev_day_value is not None and not history_unreliable:
         day_change_pct = round(twr_rets[-1], 6)
         day_change = round((prev_day_value + last_flow) * twr_rets[-1], 2)
 
@@ -1053,6 +1091,14 @@ def compute_portfolio(owner_id: str | None = None,
                     "target_weight": sector_flag,
                 },
             })
+    if history_unreliable:
+        flags.append({
+            "level": "warn", "kind": "unreliable_history", "severity": "med",
+            "text": "Return history is unavailable — the imported ledger has "
+                    "sells without matching buys (positions opened before the "
+                    "import window), so the daily value series is incomplete. "
+                    "Your money-weighted return and dollar P/L are unaffected.",
+        })
     if twr_curve:
         peak = max(twr_curve)
         dd_now = twr_curve[-1] / peak - 1.0
