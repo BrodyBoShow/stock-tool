@@ -1261,6 +1261,9 @@ export interface PortfolioSummary {
   max_drawdown: number | null
   beta: number | null
   mwr: number | null
+  // true when the TWR/curve were reconstructed from a broker cash balance
+  // (feed had no deposit/withdrawal rows) — the UI labels the return "estimated"
+  twr_estimated?: boolean
   benchmark: string // the reference ticker the *_total/curve values track
   spy_total: number | null // legacy name — holds the requested benchmark
   bench_total: number | null

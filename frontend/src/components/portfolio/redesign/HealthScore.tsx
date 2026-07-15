@@ -15,7 +15,16 @@ const BAND_HEX: Record<string, string> = {
  *  the per-factor penalty breakdown (spec: HealthScore = circular score with
  *  click-to-expand factor breakdown). A diagnostic of measurable STRUCTURAL
  *  issues — not a rating of stock-picking, and not advice. */
-export function HealthScore({ health }: { health: HealthScoreT; benchmark?: string }) {
+export function HealthScore({
+  health,
+  estimated,
+}: {
+  health: HealthScoreT
+  benchmark?: string
+  /** true when the drawdown/Sharpe inputs come from a reconstructed (estimated)
+   *  return series — surfaced in the breakdown so the bands aren't read as exact. */
+  estimated?: boolean
+}) {
   const [open, setOpen] = useState(false)
 
   if (health.status === 'insufficient_history' || health.score == null || health.band == null) {
@@ -79,7 +88,14 @@ export function HealthScore({ health }: { health: HealthScoreT; benchmark?: stri
           </button>
         </div>
       </div>
-      {open && <BreakdownDialog health={health} color={color} onClose={() => setOpen(false)} />}
+      {open && (
+        <BreakdownDialog
+          health={health}
+          color={color}
+          estimated={estimated}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -87,10 +103,12 @@ export function HealthScore({ health }: { health: HealthScoreT; benchmark?: stri
 function BreakdownDialog({
   health,
   color,
+  estimated,
   onClose,
 }: {
   health: HealthScoreT
   color: string
+  estimated?: boolean
   onClose: () => void
 }) {
   useEffect(() => {
@@ -131,6 +149,13 @@ function BreakdownDialog({
           Measures structural resilience — concentration, drawdown, diversification — not whether
           you beat the market. Not investment advice.
         </p>
+        {estimated && (
+          <p className="mt-1 text-[0.68rem] leading-snug text-warn">
+            The drawdown and risk-adjusted (Sharpe/volatility) factors use your{' '}
+            <span className="font-semibold">reconstructed</span> return history (your broker feed
+            doesn’t report cash flows), so those bands are estimates.
+          </p>
+        )}
 
         <ul className="mt-3 space-y-2">
           {hits.map((f) => (

@@ -47,6 +47,13 @@ export function OverviewTab({
   // incomplete, so any return series would be wrong. Show the reason instead.
   const histFlag = flags.find((f) => f.kind === 'unreliable_history')
   const hasCurve = !!performance && performance.twr_curve.length >= 2
+  // When a linked broker feed has no cash-flow rows, the engine reconstructs the
+  // cash balance (anchored to the broker's reported cash) to build an honest —
+  // but estimated — return series. EVERY metric derived from that daily series is
+  // estimated (TWR, drawdown, Sharpe, volatility, and MWR), so we label them all.
+  // Gated on the engine flag only (not hasCurve) so a 1-point curve is still
+  // labeled; the chart caption below stays inside the hasCurve branch.
+  const estimatedTwr = !!s.twr_estimated
   const drags: DragItem[] = holdings
     .filter((h) => h.ticker && (h.unrealized_pl ?? 0) < 0)
     .map((h) => ({
@@ -71,17 +78,32 @@ export function OverviewTab({
         dayChangePct={view.day_change_pct ?? 0}
         status="live"
       />
-      {health && <HealthScore health={health} benchmark={benchmark} />}
+      {health && <HealthScore health={health} benchmark={benchmark} estimated={estimatedTwr} />}
 
       {/* ── Zone B · analytical core ────────────────────────────────────── */}
       <div className="grid gap-5 lg:grid-cols-2">
         {hasCurve ? (
-          <PerfChart
-            performance={performance!}
-            benchmark={benchmark}
-            range={range}
-            onRangeChange={onRangeChange}
-          />
+          <div className="flex flex-col gap-2">
+            <PerfChart
+              performance={performance!}
+              benchmark={benchmark}
+              range={range}
+              onRangeChange={onRangeChange}
+            />
+            {estimatedTwr && (
+              <p className="px-1 text-[0.72rem] leading-snug text-subtle">
+                <span className="font-semibold text-muted">Estimated.</span>{' '}
+                Your broker feed doesn’t include cash deposits/withdrawals, so your
+                cash balance was reconstructed from your trades and anchored to your
+                current balance. The return chart and every metric drawn from it —
+                time-weighted return, drawdown, Sharpe, volatility, money-weighted
+                return, and the health score’s risk bands — are estimates measured
+                since your imported history begins. Your total value, holdings, and
+                dividends are exact; realized P&L is left unaffected (pre-import
+                shares are booked at cost, so their sale realizes ~$0).
+              </p>
+            )}
+          </div>
         ) : (
           <div className="rounded-card border border-line bg-surface p-5 shadow-card">
             <div className="text-base font-bold text-ink">Performance</div>
@@ -108,18 +130,28 @@ export function OverviewTab({
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <MetricChip
-          label="Time-weighted"
+          label={estimatedTwr ? 'Time-weighted · est.' : 'Time-weighted'}
           value={s.twr_total != null ? fmtSignedPct(s.twr_total) : DASH}
           sub={`${s.twr_cagr != null ? fmtSignedPct(s.twr_cagr) + '/yr' : ''} · ${benchmark} ${s.bench_total != null ? fmtSignedPct(s.bench_total) : DASH}`}
           sentiment={sig(s.twr_total)}
-          gloss="Time-weighted return removes the effect of WHEN you added or withdrew cash — it isolates how your holdings performed, so it's comparable to an index."
+          gloss={
+            'Time-weighted return removes the effect of WHEN you added or withdrew cash — it isolates how your holdings performed, so it\'s comparable to an index.' +
+            (estimatedTwr
+              ? ' Estimated: your broker feed has no cash deposits/withdrawals, so cash was reconstructed from your trades and anchored to your current balance.'
+              : '')
+          }
         />
         <MetricChip
-          label="Money-weighted"
+          label={estimatedTwr ? 'Money-weighted · est.' : 'Money-weighted'}
           value={s.mwr != null ? fmtSignedPct(s.mwr) : DASH}
           sub="your dollars, your timing"
           sentiment={sig(s.mwr)}
-          gloss="Money-weighted return (an internal rate of return) reflects the size and timing of your cash flows — the return on the actual dollars you had invested."
+          gloss={
+            'Money-weighted return (an internal rate of return) reflects the size and timing of your cash flows — the return on the actual dollars you had invested.' +
+            (estimatedTwr
+              ? ' Estimated: based on cash deposits/withdrawals reconstructed from your trades (your broker feed doesn\'t report them).'
+              : '')
+          }
         />
         <MetricChip
           label="Realized + divs"
@@ -129,11 +161,16 @@ export function OverviewTab({
           gloss="Cash you've actually banked: profit or loss on shares you've SOLD, plus dividends received. Separate from paper (unrealized) gains."
         />
         <MetricChip
-          label="Max drawdown"
+          label={estimatedTwr ? 'Max drawdown · est.' : 'Max drawdown'}
           value={s.max_drawdown != null ? fmtSignedPct(s.max_drawdown) : DASH}
           sub={s.cost_basis != null ? `on a ${fmtMoney(s.cost_basis)} book` : undefined}
           sentiment={s.max_drawdown != null ? 'neg' : 'neutral'}
-          gloss="The largest peak-to-trough drop your portfolio has taken — a gauge of how painful the worst stretch has been. Shown against your cost basis (what you paid for the shares you currently hold)."
+          gloss={
+            'The largest peak-to-trough drop your portfolio has taken — a gauge of how painful the worst stretch has been. Shown against your cost basis (what you paid for the shares you currently hold).' +
+            (estimatedTwr
+              ? ' Estimated: derived from the reconstructed return series.'
+              : '')
+          }
         />
       </div>
 

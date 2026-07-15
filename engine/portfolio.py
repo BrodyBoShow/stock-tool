@@ -434,13 +434,26 @@ def _fifo_sell(q: list[list[float]], to_sell: float) -> float:
 
 
 def compute_portfolio(owner_id: str | None = None,
-                      benchmark: str = "SPY") -> dict[str, Any]:  # noqa: PLR0912, PLR0915
+                      benchmark: str = "SPY",
+                      cash_anchor: float | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     """The entire Portfolio tab payload in one pass over the ledger.
 
     `benchmark` swaps the reference series everywhere (TWR comparison curve,
     beta, the vs-market table) — any ticker with prices works; unknown tickers
     fall back to SPY. Output keys keep their legacy spy_* names (the curve is
-    whatever benchmark was requested) plus an explicit `benchmark` field."""
+    whatever benchmark was requested) plus an explicit `benchmark` field.
+
+    `cash_anchor` (the broker's CURRENT cash balance, from a linked account)
+    turns on IMPLIED-CASH reconstruction for a buys/sells/dividends-only ledger
+    that has no explicit deposit/withdrawal rows. Without it, such a ledger models
+    only the invested stock, so selling to cash collapses the tracked value toward
+    $0 and the daily-return series (TWR/drawdown/Sharpe) becomes meaningless.
+    With it, cash is tracked (value = stock + cash): sells/dividends add cash,
+    buys spend it, a shortfall on a buy is imputed as a deposit (external inflow,
+    stripped from TWR), and the reconstructed cash is snapped to this anchor on the
+    last day (the residual booked as a flow). The result is a continuous value
+    series and an honest — if reconstructed — time-weighted return. No effect when
+    the ledger already has explicit cash flows (it's already complete)."""
     benchmark = (benchmark or "SPY").upper().strip()
     owner_clause = " WHERE owner_id = %s" if owner_id is not None else ""
     params = (owner_id,) if owner_id is not None else ()
@@ -487,6 +500,13 @@ def compute_portfolio(owner_id: str | None = None,
     prices, splits, divs = inputs["prices"], inputs["splits"], inputs["divs"]
     meta, spy_sid = inputs["meta"], inputs["spy_sid"]
     cash_tracking = any(t["type"] in ("deposit", "withdrawal") for t in ledger)
+    # Implied-cash reconstruction: only when a broker cash anchor is supplied AND
+    # the ledger has no explicit cash flows (else it's already complete). Turning
+    # it on makes value = stock + cash, so a sell-to-cash no longer collapses the
+    # series. See the docstring.
+    implied_cash = cash_anchor is not None and not cash_tracking
+    if implied_cash:
+        cash_tracking = True
     # securities with logged dividend rows use ONLY those (no auto-accrual)
     logged_div_sids = {t["sid"] for t in ledger if t["type"] == "dividend"}
 
@@ -577,8 +597,20 @@ def compute_portfolio(owner_id: str | None = None,
                     # spurious one-day jump in the TWR curve. Handled in BOTH modes;
                     # the lot's cost basis (`amt` above) is untouched so per-holding
                     # P/L stays correct. (cash is left alone: nothing was spent.)
+                    # Flow must equal the value the transfer-in ADDS to the series.
+                    # A security with no price contributes 0 to `value` (it's not in
+                    # last_close), so flowing its cost injects a flow with no matching
+                    # value → a one-day TWR cliff (seen with delisted/foreign broker
+                    # symbols we have no prices for). Zero it — but ONLY in implied-
+                    # cash mode, where the curve is shown and this was validated. In
+                    # the legacy path keep cost (mkt-less) as the flow: it's byte-for-
+                    # byte prior behavior, and a lone negative flow can be load-bearing
+                    # for MWR's sign change (dropping it can make XIRR non-convergent).
                     mkt = prices.get(sid, {}).get(day) or last_close.get(sid)
-                    entry_val = t["shares"] * mkt if mkt else amt
+                    if mkt:
+                        entry_val = t["shares"] * mkt
+                    else:
+                        entry_val = 0.0 if implied_cash else amt
                     flow += entry_val
                     xirr_flows.append((day, -entry_val))
                 else:
@@ -627,6 +659,29 @@ def compute_portfolio(owner_id: str | None = None,
                 xirr_flows.append((day, t["amount"]))
             elif typ == "fee":
                 cash -= t["amount"]  # internal: fees reduce return, not a flow
+
+        if implied_cash:
+            # Cash went negative after today's trades → the buys were funded by
+            # money that isn't in the imported feed: impute a deposit (external
+            # inflow, stripped from TWR) for exactly the shortfall. End-of-day so a
+            # same-day sell that funds a buy nets out first.
+            if cash < -1e-6:
+                dep = -cash
+                cash = 0.0
+                flow += dep
+                net_invested += dep
+                xirr_flows.append((day, -dep))
+            # On the final priced day, snap the reconstructed cash to the broker's
+            # reported balance; the residual (unexplained cash → a withdrawal, or a
+            # shortfall → a late deposit) is booked as a flow so it never distorts a
+            # daily return, only reconciles the ending value to reality.
+            if day == timeline[-1]:
+                residual = cash - cash_anchor
+                if abs(residual) > 0.005:
+                    cash -= residual
+                    flow -= residual
+                    net_invested -= residual
+                    xirr_flows.append((day, residual))
 
         if not cash_tracking:
             net_invested += flow
@@ -723,6 +778,16 @@ def compute_portfolio(owner_id: str | None = None,
                 net_invested -= t["amount"]
             elif typ == "fee":
                 cash -= t["amount"]
+
+    # A future-dated buy (entered today, before tonight's prices) funded beyond the
+    # reconstructed cash is an external deposit; floor snapshot cash so the total
+    # isn't understated. Floor at min(0, anchor) — NOT 0 — so a legitimately
+    # negative anchor (a margin debit balance) is preserved rather than silently
+    # wiped (which would overstate net worth). Only in implied mode.
+    if implied_cash:
+        cash_floor = min(0.0, cash_anchor or 0.0)
+        if cash < cash_floor - 1e-6:
+            cash = cash_floor
 
     # Snapshot total = open lots valued at their last known close (+ cash when a
     # cash ledger is tracked), so it always equals the sum of the holdings rows —
@@ -883,6 +948,9 @@ def compute_portfolio(owner_id: str | None = None,
         "day_change_pct": day_change_pct,
         "first_date": str(first_date),
         "as_of": str(last_day),
+        # True when TWR/curve were built from a RECONSTRUCTED cash series (broker
+        # feed had no deposit/withdrawal rows) — the UI labels it "estimated".
+        "twr_estimated": bool(implied_cash and twr_curve),
         **stats,
         # the *_total / *_curve keys hold whatever benchmark was requested; the
         # legacy spy_* names are kept so older clients keep working
@@ -1098,6 +1166,16 @@ def compute_portfolio(owner_id: str | None = None,
                     "sells without matching buys (positions opened before the "
                     "import window), so the daily value series is incomplete. "
                     "Your money-weighted return and dollar P/L are unaffected.",
+        })
+    if implied_cash and twr_curve:
+        flags.append({
+            "level": "info", "kind": "estimated_history", "severity": "low",
+            "text": "Return history is estimated. Your broker's feed doesn't "
+                    "include cash deposits/withdrawals, so your cash balance was "
+                    "reconstructed from your trades and anchored to your current "
+                    "balance. Your total value and holdings are exact; the return "
+                    "series (and drawdown/Sharpe/MWR derived from it) is estimated, "
+                    "measured since your imported history begins.",
         })
     if twr_curve:
         peak = max(twr_curve)
