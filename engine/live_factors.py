@@ -50,26 +50,31 @@ from engine.queries import ACTIVE_CONFIG_VERSION, acquire, release, top_quote_ti
 # (no DB round-trip), which keeps the screener batch path cheap.
 _SNAPSHOT_TTL_SECONDS = 600
 
-# (sub-metric -> rank direction) mirroring engine.scoring.FACTOR_DEFS_V2 exactly,
-# so a percentile computed here matches one the nightly run would produce.
+# (sub-metric -> rank direction) mirroring engine.scoring.FACTOR_DEFS_V6_TREND
+# exactly, so a percentile computed here matches one the nightly run would
+# produce. MUST be kept in lock-step with the ACTIVE_CONFIG_VERSION's factor
+# spec: the original version of this map mirrored V2 and kept live-adjusting
+# `pe` (dropped from Value at v4) and `r3m`/`r6m` (dropped from Momentum at
+# v4/v6) long after they left the factors — so the "live" score drifted from
+# the nightly for reasons that weren't price moves (caught 2026-07-20).
 _DIRECTION = {
-    "pe": "lower",
     "ps": "lower",
     "fcf_yield": "higher",
-    "ev_ebitda": "lower",
-    "r3m": "higher",
-    "r6m": "higher",
-    "r12_1m": "higher",
+    "prox_52w": "higher",
 }
 
-# Price-driven sub-metrics we recompute from the live price, by factor. The
-# remaining sub-metrics in each factor (value's ev_ebitda, momentum's r12_1m)
-# are held at their nightly percentile.
-_VALUE_LIVE = ("pe", "ps", "fcf_yield")   # ev_ebitda held nightly
-_MOMENTUM_LIVE = ("r3m", "r6m")           # r12_1m held nightly
+# Price-driven sub-metrics we recompute from the live price, by factor (v6):
+#   Value    = ps + fcf_yield live; ev_ebitda held at its nightly percentile.
+#   Momentum = prox_52w live (live/hi52 == min(1, nightly_prox x ratio), exact
+#              because a price above the trailing high IS the new high);
+#              r12_1m held (its window SKIPS the last month, so the live price
+#              is outside it by construction) and pos_days held (a daily
+#              up-day fraction; one intraday move doesn't change it).
+_VALUE_LIVE = ("ps", "fcf_yield")
+_MOMENTUM_LIVE = ("prox_52w",)
 
 # Raw nightly inputs needed to rebuild the distributions + per-name scaling.
-_DIST_INPUTS = ("pe", "ps", "fcf_yield", "r3m", "r6m")
+_DIST_INPUTS = ("ps", "fcf_yield", "prox_52w")
 
 
 class _Snapshot:
@@ -165,6 +170,7 @@ def _load_snapshot() -> _Snapshot | None:
             "close": inputs.get("close"),
             "ev_ebitda_pctl": sub.get("ev_ebitda"),
             "r12_1m_pctl": sub.get("r12_1m"),
+            "pos_days_pctl": sub.get("pos_days"),
             "growth_pctl": float(g) if g is not None else None,
             "value_pctl": float(v) if v is not None else None,
             "quality_pctl": float(q) if q is not None else None,
@@ -269,15 +275,19 @@ def live_adjust(security_id: int, live_price: float | None) -> dict[str, Any] | 
         nv = row.get(metric)
         if nv is None or pd.isna(nv):
             return None
-        if metric in ("pe", "ps"):
+        if metric == "ps":
             return float(nv) * ratio              # price in numerator
         if metric == "fcf_yield":
             return float(nv) / ratio              # price in denominator
-        if metric in ("r3m", "r6m"):
-            return (1.0 + float(nv)) * ratio - 1.0  # window ends on today's price
+        if metric == "prox_52w":
+            # prox = close / trailing-52wk-high. A live price above the trailing
+            # high IS the new high, so live prox = live/max(hi52, live) =
+            # min(1, nightly_prox x ratio) — exact, not an approximation.
+            return min(1.0, float(nv) * ratio)
         return float(nv)
 
-    # Value: live pe/ps/fcf_yield vs frozen distribution + nightly ev_ebitda pctl.
+    # Value (v6 = v4's): live ps/fcf_yield vs frozen distribution + nightly
+    # ev_ebitda pctl (pe left the factor at v4 — don't blend it back in).
     value_subs: list[float | None] = []
     for metric in _VALUE_LIVE:
         lv = live_raw(metric)
@@ -290,7 +300,9 @@ def live_adjust(security_id: int, live_price: float | None) -> dict[str, Any] | 
     if value_live is None:
         value_live = nightly["value"]
 
-    # Momentum: live r3m/r6m vs frozen distribution + nightly r12_1m pctl.
+    # Momentum (v6): live prox_52w vs frozen distribution + nightly r12_1m and
+    # pos_days pctls (r12_1m's window skips the last month; pos_days is a daily
+    # up-day fraction — neither is moved by an intraday price).
     mom_subs: list[float | None] = []
     for metric in _MOMENTUM_LIVE:
         lv = live_raw(metric)
@@ -298,7 +310,8 @@ def live_adjust(security_id: int, live_price: float | None) -> dict[str, Any] | 
             mom_subs.append(_pctl_of(snap.sorted_vals[metric], lv, _DIRECTION[metric]))
         else:
             mom_subs.append(None)
-    mom_subs.append(m["r12_1m_pctl"])  # held nightly
+    mom_subs.append(m["r12_1m_pctl"])   # held nightly
+    mom_subs.append(m["pos_days_pctl"])  # held nightly
     momentum_live = _mean_available(mom_subs)
     if momentum_live is None:
         momentum_live = nightly["momentum"]

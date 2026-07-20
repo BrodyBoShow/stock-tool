@@ -67,15 +67,17 @@ load_dotenv(_PROJECT_ROOT / ".env")
 JOB_NAME = "factor_scoring"
 JOB_VERSION = "v1"
 
-# Which config the nightly/weekly default run writes, and which the read layer
-# (engine.queries.ACTIVE_CONFIG_VERSION) serves. Bumped to 'v4_lean' at the
-# 2026-06-30 cutover — v5_qmean carries the pruning into the Quality MEAN, dropping
-# the three measured-noise members (gross_margin/debt_to_equity/net_debt_ebitda) the
-# equal-weight average still diluted Quality with. Cleanly beat v4_lean on the §6
-# gate (IC +0.067->+0.072, t 5.47->5.73, Sharpe 1.04->1.06, turnover flat) AND in
-# both split-halves. Prior configs' rows coexist for rollback (flip both constants
-# back to 'v4_lean' / 'v3_pruned' / 'v2_linear').
-DEFAULT_CONFIG_VERSION = "v5_qmean"
+# Which config the nightly/weekly default run WRITES. This MUST match the read
+# layer's engine.queries.ACTIVE_CONFIG_VERSION, or the app serves scores that
+# stop refreshing: the 2026-07-07 v6_trend read cutover flipped only the read
+# constant, so for ~2 weeks the nightly kept writing v5_qmean while every query
+# served the one frozen v6_trend date (caught 2026-07-20 by the schema audit).
+# Bumped to 'v6_trend' to complete that cutover — v6 reshapes MOMENTUM to reward
+# "still trending, good entry" over "already spiked" (r12_1m + prox_52w +
+# pos_days; raw r6m dropped, IC t=+1.5 non-predictive; new members cleared the
+# |t|>2.7 gate). Prior configs' rows coexist for rollback (flip BOTH constants
+# together, e.g. back to 'v5_qmean').
+DEFAULT_CONFIG_VERSION = "v6_trend"
 
 # 12-month return SKIPPING the most recent ~month: the last month exhibits
 # short-term reversal, so the academic-standard momentum signal is the
