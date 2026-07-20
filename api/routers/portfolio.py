@@ -79,8 +79,13 @@ def get_portfolio(
     """The whole Portfolio tab: holdings, TWR/MWR performance vs the chosen
     benchmark, risk stats, factor tilt, allocation, dividend income, and
     action cards — all derived live from the transaction ledger."""
+    # Broker cash balance (if a linked account reported one) anchors the engine's
+    # cash-aware TWR reconstruction, so a sell-to-cash ledger still gets an honest
+    # return series. None → engine keeps its prior behavior.
+    cash_anchor = portfolio_sync.owner_cash_anchor(owner_id=user.id)
     return PortfolioResponse(
-        **portfolio_engine.compute_portfolio(owner_id=user.id, benchmark=benchmark))
+        **portfolio_engine.compute_portfolio(
+            owner_id=user.id, benchmark=benchmark, cash_anchor=cash_anchor))
 
 
 @router.get(

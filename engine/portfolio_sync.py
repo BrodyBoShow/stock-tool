@@ -232,10 +232,10 @@ class SnapTradeProvider(Provider):
         access, bundle = self._ensure_access(bundle)
         try:
             try:
-                accts, txns, names, positions = self._read_all(access, since)
+                accts, txns, names, positions, cash = self._read_all(access, since)
             except _ReauthNeeded:                  # token rejected -> one forced refresh
                 access, bundle = self._refresh(bundle)
-                accts, txns, names, positions = self._read_all(access, since)
+                accts, txns, names, positions, cash = self._read_all(access, since)
         except _ReauthNeeded:
             return {"linked": False, "needs_reauth": True, "display_name": None,
                     "transactions": [], "secret": bundle}
@@ -243,7 +243,7 @@ class SnapTradeProvider(Provider):
             return {"linked": False, "display_name": None,
                     "transactions": [], "secret": bundle}
         return {"linked": True, "secret": bundle, "transactions": txns,
-                "positions": positions,
+                "positions": positions, "cash": cash,
                 "display_name": (", ".join(names) or "SnapTrade")[:200]}
 
     # -- internals ---------------------------------------------------------
@@ -313,11 +313,32 @@ class SnapTradeProvider(Provider):
         return {"ticker": ticker, "units": units,
                 "avg_price": _absf(_bget(p, "average_purchase_price")) or _absf(_bget(p, "price"))}
 
+    @staticmethod
+    def _account_cash(bals: Any) -> float | None:
+        """Sum the cash across a /balances response (all currency buckets). None if
+        the endpoint returned nothing usable — the engine then falls back to its
+        no-cash-anchor behavior rather than assume $0."""
+        if not bals:
+            return None
+        total = 0.0
+        seen = False
+        for b in bals:
+            c = _bget(b, "cash")
+            if c is None:
+                continue
+            try:
+                total += float(c)
+                seen = True
+            except (TypeError, ValueError):
+                continue
+        return total if seen else None
+
     def _read_all(self, access: str, since: date):
         accts = self._get(f"{_ST_API}/accounts", access) or []
         names: list[str] = []
         txns: list[dict] = []
         positions: list[dict] = []
+        cash_total: float | None = None
         since_iso = since.isoformat()
         for a in accts:
             acct_id = _bget(a, "id")
@@ -343,7 +364,17 @@ class SnapTradeProvider(Provider):
                 row = self._position_row(p)
                 if row:
                     positions.append(row)
-        return accts, txns, names, positions
+            # Current cash balance — anchors the engine's cash-aware value series so
+            # a sell-to-cash doesn't collapse the return curve. Tolerant of a missing
+            # endpoint (leaves cash None → engine falls back).
+            try:
+                acct_cash = self._account_cash(
+                    self._get(f"{_ST_API}/accounts/{acct_id}/balances", access))
+            except (httpx.HTTPError, _ReauthNeeded):
+                acct_cash = None
+            if acct_cash is not None:
+                cash_total = (cash_total or 0.0) + acct_cash
+        return accts, txns, names, positions, cash_total
 
 
 class SchwabProvider(Provider):
@@ -435,6 +466,31 @@ def list_links(owner_id: str | None = None) -> dict[str, Any]:
     except psycopg.errors.UndefinedTable:
         conn.rollback()
         return {"ready": False, "accounts": []}
+    finally:
+        release(conn)
+
+
+def owner_cash_anchor(owner_id: str | None = None) -> float | None:
+    """Total broker-reported cash across an owner's ACTIVE linked accounts — the
+    anchor for the engine's cash-aware TWR reconstruction. None when no linked
+    account has a stored balance (pre-migration, provider without balances, or no
+    link), so ``compute_portfolio`` falls back to its prior behavior. Tolerant of
+    the column/table being absent (older schema) → None."""
+    conn = acquire()
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    params = (owner_id,) if owner_id is not None else ()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT sum(cash_balance) FROM linked_accounts "
+                f"WHERE status = 'active' AND cash_balance IS NOT NULL{owner_clause}",
+                params,
+            )
+            row = cur.fetchone()
+        return float(row[0]) if row and row[0] is not None else None
+    except (psycopg.errors.UndefinedColumn, psycopg.errors.UndefinedTable):
+        conn.rollback()
+        return None
     finally:
         release(conn)
 
@@ -657,14 +713,25 @@ def _insert_synced(conn, link_id: int, provider: str,
     return inserted, skipped
 
 
-def _current_shares_by_link(conn, link_id: int, owner_id: str | None = None,
-                            as_of: date | None = None) -> dict[int, float]:
-    """Split-adjusted net shares per security for one link's REAL (non-'opening')
-    ledger, replayed chronologically with splits applied on their ex-date and
-    oversells clamped to zero — i.e. exactly what ``engine.portfolio`` SHOWS for
-    this link's holdings. Reconciliation targets THIS (not a naive buy-minus-sell
-    sum) so a today-dated adjustment lands the displayed holding on the broker's
-    number regardless of split double-counts or missing acquisition history."""
+def _current_shares_by_link(
+    conn, link_id: int, owner_id: str | None = None, as_of: date | None = None
+) -> tuple[dict[int, float], dict[int, float]]:
+    """Return ``(shown, deficit)`` for one link's REAL (non-'opening') ledger.
+
+    ``shown`` — split-adjusted net shares per security, replayed chronologically
+    with splits applied on their ex-date and oversells clamped to zero — i.e.
+    exactly what ``engine.portfolio`` SHOWS for this link's holdings.
+    Reconciliation targets THIS (not a naive buy-minus-sell sum) so a today-dated
+    adjustment lands the displayed holding on the broker's number regardless of
+    split double-counts or missing acquisition history.
+
+    ``deficit`` — per security, the deepest the *unclamped* running balance goes
+    NEGATIVE across the same replay: the minimum shares that must have existed at
+    window-open for the imported sells to have a basis (a position opened before
+    the broker's ~4yr activity window and sold inside it). It is what
+    ``_seed_prewindow_bases`` seeds so those sells aren't 'phantom'. Measured in
+    the split basis current at the oversell point (correct when no split falls
+    between window-open and the sell — the common case)."""
     as_of = as_of or date.today()
     owner_clause = " AND owner_id = %s" if owner_id is not None else ""
     params = (link_id, owner_id) if owner_id is not None else (link_id,)
@@ -705,6 +772,8 @@ def _current_shares_by_link(conn, link_id: int, owner_id: str | None = None,
                 trading_days = {d for (d,) in cur.fetchall()}
 
     shares: dict[int, float] = defaultdict(float)
+    unclamped: dict[int, float] = defaultdict(float)   # no oversell clamp
+    deficit: dict[int, float] = defaultdict(float)     # deepest oversell (>= 0)
     split_dates = sorted(splits)
     si = 0
 
@@ -715,16 +784,23 @@ def _current_shares_by_link(conn, link_id: int, owner_id: str | None = None,
             if sd in trading_days:  # skip splits on non-priced days, as compute does
                 for sid, ratio in splits[sd]:
                     shares[sid] *= ratio
+                    unclamped[sid] *= ratio  # keep the deficit gauge in the same basis
             si += 1
 
     for sid, typ, tdate, sh in txns:
         apply_splits_upto(tdate)  # a split's ex-date scales holdings before that day's trades
         if typ == "buy":
             shares[sid] += sh
+            unclamped[sid] += sh
         else:  # sell — clamp to available, matching compute_portfolio's oversell clamp
             shares[sid] = max(0.0, shares[sid] - sh)
+            unclamped[sid] -= sh          # unclamped tracks the true running balance
+            if -unclamped[sid] > deficit[sid]:
+                deficit[sid] = -unclamped[sid]
     apply_splits_upto(as_of)  # splits between the last trade and today
-    return {sid: v for sid, v in shares.items() if v > 1e-9}
+    shown = {sid: v for sid, v in shares.items() if v > 1e-9}
+    deficits = {sid: v for sid, v in deficit.items() if v > 1e-9}
+    return shown, deficits
 
 
 def _reconcile_positions(conn, link_id: int, positions: list[dict],
@@ -786,7 +862,8 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
             (link_id, owner_id) if owner_id is not None else (link_id,),
         )
     # What the app SHOWS now, per security, from the real (post-delete) ledger.
-    shown = _current_shares_by_link(conn, link_id, owner_id)
+    # (deficits are used by _seed_prewindow_bases, not here.)
+    shown, _deficits = _current_shares_by_link(conn, link_id, owner_id)
 
     # Tickers for shown names, so we only zero out a held name the broker does NOT
     # report BY TICKER — a name the broker still holds but whose ticker failed
@@ -895,6 +972,191 @@ def _reconcile_positions(conn, link_id: int, positions: list[dict],
     return len(rows)
 
 
+def _seed_prewindow_bases(conn, link_id: int, provider: str,
+                          owner_id: str | None = None) -> int:
+    """Give pre-window CLOSED positions a cost basis so their in-window sells
+    aren't 'phantom' (sold with no matching buy) — which otherwise leaves the
+    engine's value series incomplete.
+
+    The broker's activity feed only reaches ~4 years back (Schwab). A position
+    OPENED before that window and SOLD TO ZERO inside it shows up as sells with no
+    buys. The broker no longer lists it as a current position, so
+    ``_reconcile_positions`` — which only tops up CURRENTLY-HELD names — never
+    covers it, and the sells stay phantom forever.
+
+    For each such name we seed ONE ``opening:`` transfer-in lot sized to the
+    deepest the unclamped balance went negative (the minimum shares that must have
+    pre-existed). ``compute_portfolio`` treats an ``opening:`` lot as a TRANSFER-IN
+    valued at MARKET on its entry day — no cash is invented and its flow is market
+    value — so the value series is completed without a spurious one-day jump. The
+    lot is priced at the market close on/at window-open so the sells that consume
+    it realize only the IN-WINDOW gain (the sole observable part). Dated on the
+    LAST TRADING DAY before the name's first real activity so it is in the price
+    timeline (a weekend date would be silently skipped) and precedes that name's
+    first sell regardless of intraday row order.
+
+    Idempotent + disjoint from reconciliation: rows are keyed
+    ``opening:<link>:<sid>`` with ON CONFLICT DO NOTHING and seeded ONLY for names
+    the app currently shows as CLOSED (``sid not in shown``) with no existing
+    opening lot (reconciliation owns the held names). MUST run AFTER
+    ``_reconcile_positions`` (which deletes+rebuilds held openings) so its rows
+    survive. Returns the number of opening lots seeded."""
+    shown, deficits = _current_shares_by_link(conn, link_id, owner_id)
+    if not deficits:
+        return 0
+
+    owner_clause = " AND owner_id = %s" if owner_id is not None else ""
+    base = (link_id, owner_id) if owner_id is not None else (link_id,)
+
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM portfolio_transactions "
+            f"WHERE linked_account_id = %s AND external_id LIKE 'opening:%%'{owner_clause}",
+            base,
+        )
+        have_opening = {r[0] for r in cur.fetchall()}
+    # Only seed names the app currently shows as CLOSED (zero shares): this path
+    # gives fully-sold pre-window positions a basis, never tops up (or fabricates)
+    # a held one — that's reconciliation's job (and `shown` excludes it here).
+    todo = {sid: d for sid, d in deficits.items()
+            if sid not in shown and f"opening:{link_id}:{sid}" not in have_opening}
+    if not todo:
+        return 0
+    sids = list(todo)
+
+    # Each name's first REAL activity date — the opening lot must precede it.
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT security_id, min(trade_date) FROM portfolio_transactions "
+            "WHERE linked_account_id = %s AND security_id = ANY(%s) "
+            f"  AND external_id NOT LIKE 'opening:%%'{owner_clause} "
+            "GROUP BY security_id",
+            (link_id, sids, owner_id) if owner_id is not None else (link_id, sids),
+        )
+        first_by_sid = {int(s): d for s, d in cur.fetchall()}
+
+    # Date each opening lot on the LAST TRADING DAY strictly before the name's
+    # first activity. That day must be a real price date so compute_portfolio VALUES
+    # the transfer-in at MARKET on entry (a weekend/holiday date falls outside the
+    # price timeline and the lot is silently skipped). Falls back to the earliest
+    # available price row if the name has none before its first activity.
+    open_by_sid: dict[int, str] = {}
+    with conn.cursor() as cur:
+        for sid in sids:
+            fa = first_by_sid.get(sid)
+            if fa is None:
+                continue
+            cur.execute(
+                "SELECT date FROM prices_daily WHERE security_id = %s "
+                "  AND date < %s AND close IS NOT NULL ORDER BY date DESC LIMIT 1",
+                (sid, fa),
+            )
+            r = cur.fetchone()
+            if r is None:
+                cur.execute(
+                    "SELECT date FROM prices_daily WHERE security_id = %s "
+                    "  AND close IS NOT NULL ORDER BY date ASC LIMIT 1",
+                    (sid,),
+                )
+                r = cur.fetchone()
+            if r is not None:
+                open_by_sid[sid] = r[0].isoformat()
+
+    # Cost basis = the volume-weighted price of the FIRST `deficit` shares this
+    # name sold. FIFO consumes the opening lot (the earliest lot) first, so those
+    # exact sells realize $0 against it — realized P&L is left UNCHANGED from the
+    # prior clamp (which dropped these proceeds). We don't know the true pre-window
+    # purchase price and must not fabricate a realized gain/loss. The engine still
+    # values the transfer-in at MARKET for the return series (that flow ignores
+    # this cost), so TWR reflects the shares' in-window move while realized stays
+    # exact. (Pricing at window-open market instead would book the full in-window
+    # swing into realized — a reconstructed, misleading figure.)
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT security_id, shares, coalesce(amount, shares * price) AS proceeds "
+            "FROM portfolio_transactions "
+            "WHERE linked_account_id = %s AND security_id = ANY(%s) "
+            "  AND txn_type = 'sell' AND shares IS NOT NULL AND shares > 0 "
+            f"  AND external_id NOT LIKE 'opening:%%'{owner_clause} "
+            "ORDER BY security_id, trade_date, id",
+            (link_id, sids, owner_id) if owner_id is not None else (link_id, sids),
+        )
+        sells_by_sid: dict[int, list[tuple[float, float]]] = defaultdict(list)
+        for s, sh, proc in cur.fetchall():
+            if proc is not None:
+                sells_by_sid[int(s)].append((float(sh), float(proc)))
+    avg_sell: dict[int, float] = {}
+    for sid, dd in todo.items():
+        remaining, cost = dd, 0.0
+        for sh, proc in sells_by_sid.get(sid, ()):
+            take = min(sh, remaining)
+            cost += take * (proc / sh if sh else 0.0)   # per-share price × taken
+            remaining -= take
+            if remaining <= 1e-9:
+                break
+        covered = dd - max(0.0, remaining)
+        if covered > 1e-9:
+            avg_sell[sid] = cost / covered
+
+    # A split whose ex-date is AFTER the opening lot re-scales its share count in
+    # compute_portfolio (splits touch every open lot), so a lot dated pre-split and
+    # sized to the POST-split deficit ends wrong — a forward split leaves phantom
+    # 'held' shares on a broker-closed name, a reverse split re-introduces an
+    # oversell. We can't date the lot after the split (its sells predate that), so
+    # SKIP these names: they stay honestly unreconciled rather than fabricated.
+    split_after_open: set[int] = set()
+    with conn.cursor() as cur:
+        for sid in sids:
+            od = open_by_sid.get(sid)
+            if od is None:
+                continue
+            cur.execute(
+                "SELECT 1 FROM corporate_actions WHERE security_id = %s "
+                "  AND action_type = 'split' AND ratio IS NOT NULL AND ratio > 0 "
+                "  AND ex_date > %s LIMIT 1",
+                (sid, od),
+            )
+            if cur.fetchone():
+                split_after_open.add(sid)
+
+    rows: list[tuple] = []
+    for sid, deficit in todo.items():
+        open_d = open_by_sid.get(sid)
+        price = avg_sell.get(sid)
+        if open_d is None or not price or deficit <= 1e-6 or sid in split_after_open:
+            continue  # can't date/value it (or split would mis-scale) — leave to
+            # the engine's honest suppression rather than fabricate a lot
+        ext = f"opening:{link_id}:{sid}"
+        row = (sid, "buy", open_d, round(deficit, 6), price, None,
+               "pre-window opening balance (reconciled so pre-history sells have a basis)",
+               provider, ext, link_id)
+        rows.append(row + (owner_id,) if owner_id is not None else row)
+    if not rows:
+        return 0
+
+    if owner_id is not None:
+        sql = """
+            INSERT INTO portfolio_transactions
+                (security_id, txn_type, trade_date, shares, price, amount,
+                 note, source, external_id, linked_account_id, owner_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (linked_account_id, external_id)
+                WHERE external_id IS NOT NULL DO NOTHING
+            """
+    else:
+        sql = """
+            INSERT INTO portfolio_transactions
+                (security_id, txn_type, trade_date, shares, price, amount,
+                 note, source, external_id, linked_account_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (linked_account_id, external_id)
+                WHERE external_id IS NOT NULL DO NOTHING
+            """
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+    return len(rows)
+
+
 def sync_account(link_id: int, owner_id: str | None = None) -> dict[str, Any]:
     """Pull new activity for one linked account into the ledger (idempotent).
 
@@ -954,6 +1216,10 @@ def sync_account(link_id: int, owner_id: str | None = None) -> dict[str, Any]:
                                            res["transactions"], owner_id)
         reconciled = _reconcile_positions(conn, link_id, res.get("positions") or [],
                                           owner_id)
+        # Seed a basis for pre-window CLOSED positions (sold-to-zero names the
+        # broker no longer reports). MUST run after reconcile — it rebuilds the
+        # held-name openings this depends on, and would otherwise delete these.
+        reconciled += _seed_prewindow_bases(conn, link_id, link["provider"], owner_id)
         fields = {"status": "active", "display_name": res.get("display_name"),
                   "last_synced_at": datetime.now(UTC),
                   "cursor": date.today().isoformat(), "last_error": None}
@@ -963,6 +1229,22 @@ def sync_account(link_id: int, owner_id: str | None = None) -> dict[str, Any]:
         conn.commit()
     finally:
         release(conn)
+
+    # Persist the broker's current cash balance — the anchor for the engine's
+    # cash-aware TWR reconstruction — as a SEPARATE best-effort write. Kept out of
+    # the main transaction so that on a schema where migration 0037 hasn't been
+    # applied yet (code can deploy before the manual migration runs) a missing
+    # column can't roll back the whole sync (imports + reconcile + seeding). Only
+    # written when the sync actually read a balance (None = endpoint absent).
+    if res.get("cash") is not None:
+        c2 = acquire()
+        try:
+            _mark(c2, link_id, cash_balance=res["cash"], cash_as_of=datetime.now(UTC))
+            c2.commit()
+        except (psycopg.errors.UndefinedColumn, psycopg.errors.UndefinedTable):
+            c2.rollback()  # pre-0037 schema — skip the anchor, sync still succeeded
+        finally:
+            release(c2)
     return {"inserted": inserted, "skipped": skipped, "skipped_count": len(skipped),
             "reconciled": reconciled, "pending": False,
             "display_name": res.get("display_name")}
