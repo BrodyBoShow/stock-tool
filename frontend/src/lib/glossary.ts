@@ -55,5 +55,3 @@ export const glossary: Record<string, string> = {
   Concentration: 'How much of the book sits in a single name or sector. High concentration means one bad holding can sink the whole portfolio.',
 }
 
-/** Longest-key-first list for places that want to auto-annotate labels. */
-export const glossaryKeys = Object.keys(glossary).sort((a, b) => b.length - a.length)

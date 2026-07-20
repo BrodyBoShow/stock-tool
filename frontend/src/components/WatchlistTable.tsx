@@ -10,7 +10,7 @@ import { RiskBandChip } from '@/components/ui/RiskBandChip'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { WatchlistAlertDialog } from '@/components/watchlist/WatchlistAlertDialog'
 import { WatchlistPlanDialog } from '@/components/watchlist/WatchlistPlanDialog'
-import { FACTOR_ORDER, FACTOR_TABLE, type FactorKey } from '@/lib/constants'
+import { FACTOR_ORDER, FACTOR_TABLE, type FactorKey, VIRT_TABLE_HEAD_CELL } from '@/lib/constants'
 import { DASH, fmtPrice, fmtSignedPct } from '@/lib/format'
 import type { WatchlistRow } from '@/types/api'
 
@@ -57,8 +57,7 @@ const FACTOR_HEAD: Record<FactorKey, string> = {
   momentum: 'Mom',
 }
 
-const TH =
-  'flex items-center px-3 py-[6px] text-[0.66rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
+const TH = VIRT_TABLE_HEAD_CELL
 
 /** Close-to-close day change (latest EOD close vs the prior close). Null when
  *  either close is missing — never fabricated. */

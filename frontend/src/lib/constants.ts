@@ -8,6 +8,10 @@ export const PANEL_LABEL =
 export const TABLE_HEAD_ROW =
   'border-b border-divider text-left text-[0.66rem] font-semibold uppercase tracking-[0.09em] text-subtle'
 
+/** Header cell for the virtualized flex tables (Screener, Watchlist). */
+export const VIRT_TABLE_HEAD_CELL =
+  'flex items-center px-3 py-[6px] text-[0.66rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
+
 /** Shared form-control styling so every form on the app reads identically. */
 export const FORM_LABEL = 'text-[0.7rem] font-semibold text-muted'
 export const FORM_INPUT =
@@ -89,8 +93,6 @@ export const FACTOR_TIP: Record<FactorKey, string> = {
   momentum:
     'Price trend that rewards a still-trending name — near its 52-week high, rising smoothly — over one that spiked then faded. Blends 12-minus-1 return, 52-week-high proximity and up-day fraction.',
 }
-
-export const LOW_SCORE_TINT = 'rgba(239,68,68,0.07)'
 
 /** Sector pill colors: [background, text]. */
 export const SECTOR_PILLS: Record<string, [string, string]> = {
@@ -301,11 +303,6 @@ export const FINANCIAL_NULL_METRICS = new Set([
   'net_debt_ebitda',
 ])
 export const FINANCIAL_SECTORS = new Set(['Financials', 'Real Estate'])
-
-/** Shared CSS grid template for the screener table header + rows.
- * Columns: # | Company | Sector | 5 factors | Mkt cap | Price */
-export const SCREENER_GRID =
-  '38px minmax(150px,1.6fr) minmax(130px,1.3fr) repeat(5,minmax(78px,1fr)) minmax(82px,0.8fr) minmax(90px,0.9fr)'
 
 export const PREVIEW_N = 100
 

@@ -18,10 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engine import live_factors  # noqa: E402
 from engine.queries import ACTIVE_CONFIG_VERSION, acquire, release  # noqa: E402
 
-# Tolerances: live pe/ps/fcf_yield/r3m/r6m percentiles are recomputed at full
-# precision and should match the nightly sub-percentiles to the bit; ev_ebitda
-# and r12_1m reuse the stored 2-dp percentile, so the factor means inherit at
-# most ~0.01 of rounding, and the composite ~0.02. Keep a little headroom.
+# Tolerances: live ps/fcf_yield/prox_52w percentiles (the v6 live members) are
+# recomputed at full precision and should match the nightly sub-percentiles to
+# the bit; ev_ebitda, r12_1m and pos_days reuse the stored 2-dp percentile, so
+# the factor means inherit at most ~0.01 of rounding, and the composite ~0.02.
 TOL_FACTOR = 0.10
 TOL_COMPOSITE = 0.05
 SAMPLE = 400  # top names by composite — the set users actually look at

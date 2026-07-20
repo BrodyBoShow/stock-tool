@@ -9,9 +9,8 @@ Verifies whichever scheme the Supabase project issues:
   - HS256 (legacy shared secret)  -> SUPABASE_JWT_SECRET
   - ES256 / RS256 (new signing keys) -> the project JWKS at SUPABASE_URL
 
-NOT attached to any router yet. Wiring `Depends(get_current_user)` onto the
-routes happens in Phase 3 (in lockstep with the frontend login swap), so adding
-this module changes no live behavior.
+Every router depends on `get_current_user` (wired at the multi-tenant cutover),
+so all API reads/writes are authenticated and owner-scoped.
 """
 from __future__ import annotations
 

@@ -55,11 +55,6 @@ ANTHROPIC_KEY_AVAILABLE: bool = bool(os.getenv("ANTHROPIC_API_KEY"))
 GROQ_KEY_AVAILABLE: bool = bool(os.getenv("GROQ_API_KEY"))
 
 
-def key_available() -> bool:
-    """Whether ANY LLM provider is configured (Groq free or Anthropic)."""
-    return bool(os.getenv("GROQ_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
-
-
 # Canonical suggested prompts (the frontend mirrors these as chips). Chosen to
 # map onto data we already have, per the intent router.
 SUGGESTED_QUESTIONS: list[str] = [

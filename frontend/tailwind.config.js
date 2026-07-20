@@ -62,7 +62,6 @@ export default {
           DEFAULT: 'var(--info)',
           soft: 'var(--info-soft)',
         },
-        flat: 'var(--flat)',
       },
       // NO baked fontWeight here: a weight inside fontSize is emitted inside the
       // variant's media query and silently overrides an explicit font-bold at
@@ -89,9 +88,6 @@ export default {
         // shadow. shadow-card is kept as an alias so the ~200 call sites stay
         // valid; floating elements use shadow-[var(--sh-md)] / -lg instead.
         card: 'none',
-      },
-      transitionTimingFunction: {
-        spec: 'var(--ease)',
       },
     },
   },

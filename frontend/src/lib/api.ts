@@ -5,7 +5,6 @@ import type {
   AlertRuleCreate,
   AlertsResponse,
   BacktestRunResponse,
-  FundsResponse,
   FundsOverviewResponse,
   FundDetailResponse,
   FundsBridgeResponse,
@@ -218,10 +217,6 @@ export function getWatchlistChanges(): Promise<WatchlistChangesResponse> {
 
 export function getAlerts(): Promise<AlertsResponse> {
   return getJson<AlertsResponse>('/alerts')
-}
-
-export function getFunds(): Promise<FundsResponse> {
-  return getJson<FundsResponse>('/funds')
 }
 
 export function getFundsOverview(): Promise<FundsOverviewResponse> {
@@ -451,21 +446,6 @@ export function getPortfolioAnalytics(
 ): Promise<PortfolioAnalyticsResponse> {
   return getJson<PortfolioAnalyticsResponse>(
     `/portfolio/analytics?benchmark=${encodeURIComponent(benchmark)}`)
-}
-
-export function getProjection(p: {
-  years: number
-  monthly: number
-  annual_fee: number
-  stress: boolean
-}): Promise<ProjectionResponse> {
-  const qs = new URLSearchParams({
-    years: String(p.years),
-    monthly: String(p.monthly),
-    annual_fee: String(p.annual_fee),
-    stress: String(p.stress),
-  })
-  return getJson<ProjectionResponse>(`/portfolio/projection?${qs.toString()}`)
 }
 
 /** Extended projection (POST): custom weights, goal probability, benchmark cone. */

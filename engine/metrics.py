@@ -86,12 +86,6 @@ DEFAULT_TAX_RATE = 0.21
 # not enough — bound the value too. Margins outside plausible bounds signal
 # a concept-basis mismatch (e.g. full COGS against a revenue subset) and are
 # nulled + warned rather than stored.
-UNIT_RULES = {
-    "eps_basic": "USD/shares",
-    "eps_diluted": "USD/shares",
-    "shares_outstanding": "shares",
-}
-DEFAULT_UNIT = "USD"  # money default; foreign filers use their dominant currency
 EPS_FACT_BOUND = 1000.0
 # JPY/KRW-scale EPS can legitimately run to tens of thousands per share.
 EPS_FACT_BOUND_NON_USD = 100_000.0

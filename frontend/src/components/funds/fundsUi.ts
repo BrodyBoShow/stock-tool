@@ -53,22 +53,6 @@ export function isLeveraged(category: string | null | undefined): boolean {
 export interface Swatch { bg: string; fg: string }
 
 /**
- * A category/heatmap tile background from a daily return (fraction). Five bands
- * per the improvements spec, all with white text so tiles read consistently.
- */
-export function tileColor(ret: number | null | undefined): Swatch {
-  // Heatmap cells: the fill IS the signal, so these are theme-independent.
-  // Fills are dark enough that white text clears WCAG-AA (the mid tiers were
-  // ~2.9:1 before); the no-data tile is neutral carbon-gray, not cool slate.
-  if (ret == null || Number.isNaN(ret)) return { bg: '#52525b', fg: '#ffffff' }
-  if (ret >= 0.02) return { bg: '#166534', fg: '#ffffff' } // deep green
-  if (ret >= 0.003) return { bg: '#15803d', fg: '#ffffff' } // green
-  if (ret > -0.003) return { bg: '#a16207', fg: '#ffffff' } // amber — flat
-  if (ret > -0.02) return { bg: '#b91c1c', fg: '#ffffff' } // red
-  return { bg: '#991b1b', fg: '#ffffff' } // deep red
-}
-
-/**
  * Rank-within-category chip tone: top quartile green, bottom quartile red,
  * middle slate. `rank` is 1-based (1 = best), `n` the category size.
  */

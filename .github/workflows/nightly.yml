@@ -163,15 +163,6 @@ jobs:
         continue-on-error: true
         run: python -u scripts/ingest_etf_meta.py
 
-      # AI warm: pre-generate Decision Briefs for the WATCHLIST only
-      # (--top-n 0 --briefs-only) so the stocks you track open instantly instead
-      # of showing "Synthesizing…" on first open. Briefs cache per scoring
-      # snapshot — one Haiku call each (~$0.006), idempotent, so this is
-      # pennies/month for a small watchlist. Everything else (briefs for
-      # non-watchlist names, 10-K summaries, deep filing analysis) stays ON
-      # DEMAND, cached on first page open, so spend still tracks actual usage.
-      # Gated on the key; continue-on-error so a model outage never breaks the
-      # pipeline. Runs last, after scoring, so briefs reflect the night's ranks.
       # Pre-warm Decision Briefs for the hot set (every watched OR held ticker)
       # so those deep-dive pages open instantly. Groq-first = free + fast (~2-4s
       # each), Anthropic fallback. Bounded to the hot set, skips still-valid
