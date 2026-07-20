@@ -7,44 +7,13 @@ from api.schemas import (
     FundDetailResponse,
     FundOverlapRequest,
     FundOverlapResponse,
-    FundRow,
     FundsBridgeResponse,
     FundsOverviewResponse,
-    FundsResponse,
 )
 from engine import funds as funds_engine
-from engine import queries
-from engine import quotes as quotes_engine
 
 # Login required for beta. Global fund list — no owner scoping (except /bridge).
 router = APIRouter(dependencies=[Depends(get_current_user)])
-
-
-@router.get("", response_model=FundsResponse)
-def get_funds() -> FundsResponse:
-    """Legacy flat fund list with trailing returns + a live (~15m delayed) price
-    overlay. Kept for back-compat; the richer /funds/overview supersedes it."""
-    funds = queries.funds_list()
-    tickers = [f["ticker"] for f in funds]
-    payload = quotes_engine.get_quotes(tickers) if tickers else {"quotes": {}, "as_of_epoch": None}
-    quotes = payload.get("quotes", {})
-
-    rows: list[FundRow] = []
-    for f in funds:
-        q = quotes.get(f["ticker"], {})
-        rows.append(FundRow(
-            security_id=f["security_id"],
-            ticker=f["ticker"],
-            name=f["name"],
-            exchange=f["exchange"],
-            category=funds_engine.category_for(f["name"]),
-            last_close=f["last_close"],
-            price_date=f["price_date"],
-            price=q.get("price"),
-            change_pct=q.get("change_pct"),
-            r1w=f["r1w"], r1m=f["r1m"], r3m=f["r3m"], rytd=f["rytd"],
-        ))
-    return FundsResponse(as_of_epoch=payload.get("as_of_epoch"), rows=rows)
 
 
 @router.get("/overview", response_model=FundsOverviewResponse)

@@ -718,27 +718,6 @@ export interface AlertRuleCreate {
 
 // ── funds & ETFs ──────────────────────────────────────────────────────────────
 
-export interface FundRow {
-  security_id: number
-  ticker: string
-  name: string | null
-  exchange: string | null
-  category: string
-  last_close: number | null
-  price_date: string | null
-  price: number | null
-  change_pct: number | null
-  r1w: number | null
-  r1m: number | null
-  r3m: number | null
-  rytd: number | null
-}
-
-export interface FundsResponse {
-  as_of_epoch: number | null
-  rows: FundRow[]
-}
-
 // Rich Funds-tab payloads (Phase 1). Loose-typed where the engine ships open
 // documents (same convention as MarketOverviewResponse). NO expense ratio /
 // tracking error / bid-ask spread — that data does not exist.
@@ -1395,7 +1374,6 @@ export interface LinkConnectResponse {
   status: string // 'authorize' | 'not_implemented' | 'not_configured'
   authorize_url: string | null
   link_id: number | null
-  state: string | null
   detail: string | null
 }
 

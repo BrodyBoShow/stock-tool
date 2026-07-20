@@ -34,27 +34,6 @@ from engine.portfolio_projection import project_portfolio
 router = APIRouter()
 
 
-@router.get(
-    "/projection",
-    response_model=ProjectionResponse,
-    dependencies=[Depends(rate_limit(20, 60))],
-)
-def get_projection(
-    user: CurrentUser,
-    years: int = Query(10, ge=1, le=40),
-    monthly: float = Query(0.0, ge=0.0, le=1_000_000.0),
-    annual_fee: float = Query(0.0, ge=0.0, le=0.1),
-    stress: bool = Query(False),
-) -> ProjectionResponse:
-    """Correlated Monte Carlo projection cone for the current holdings. Computed
-    on demand (a 1k-path sim); display-only, never feeds the factor model."""
-    out = project_portfolio(
-        years=years, monthly=monthly, annual_fee=annual_fee, stress=stress,
-        owner_id=user.id,
-    )
-    return ProjectionResponse(**out)
-
-
 @router.post(
     "/projection",
     response_model=ProjectionResponse,

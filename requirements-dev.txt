@@ -1,3 +1,4 @@
 # Dev/test-only dependencies (not needed by the runtime API or engine jobs).
 # Install with:  pip install -r requirements-dev.txt
 pytest
+ruff

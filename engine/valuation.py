@@ -75,7 +75,6 @@ DISCLAIMER = (
 )
 
 # Income-statement TTM concepts surfaced as their own audit rows.
-_FACT_BOUND_PRICE_MULT = 50.0  # |value/share : price| outside [1/50, 50] => scaling error
 
 
 def _inp(

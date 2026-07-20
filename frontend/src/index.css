@@ -100,7 +100,6 @@
 
   /* ---- radii — terminal-crisp; 12px is the ceiling ---- */
   --r-xs: 3px;
-  --r-sm: 4px;
   --r-md: 6px;
   --r-lg: 8px;
   --r-xl: 12px;
@@ -115,7 +114,6 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 150ms;
   --dur-base: 250ms;
-  --dur-slow: 400ms;
 }
 
 /* ── DARK theme (carbon) ───────────────────────────────────────────────────────

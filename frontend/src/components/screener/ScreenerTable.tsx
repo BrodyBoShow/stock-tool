@@ -14,6 +14,7 @@ import {
   FACTOR_ORDER,
   FACTOR_TABLE,
   PREVIEW_N,
+  VIRT_TABLE_HEAD_CELL,
   type FactorKey,
 } from '@/lib/constants'
 import { isValueTrap } from '@/lib/factorReading'
@@ -72,8 +73,7 @@ const OPTIONAL_COLS: { key: string; label: string }[] = [
   { key: 'risk', label: 'Risk band' },
 ]
 
-const TH =
-  'flex items-center px-3 py-[6px] text-[0.66rem] font-bold uppercase tracking-[0.06em] whitespace-nowrap select-none'
+const TH = VIRT_TABLE_HEAD_CELL
 
 // GARP ("worst-of Value & Momentum") is display/discovery only and is computed
 // live-aware inside the component (see liveGarp) so it tracks the live-adjusted

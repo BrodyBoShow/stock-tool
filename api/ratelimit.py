@@ -76,21 +76,30 @@ def _uncapped_emails() -> set[str]:
     return {e.strip().lower() for e in raw.split(",") if e.strip()}
 
 
-def ai_daily_cap(per_account: int, global_cap: int):
+def ai_daily_cap(per_account: int, global_cap: int, scope: str = ""):
     """FastAPI dependency: per-account AND service-wide per-UTC-day caps on an
     expensive AI endpoint, so neither a single user nor a crowd of beta signups can
     run up the Anthropic bill. Accounts in UNCAPPED_EMAILS (e.g. the owner) bypass
     both caps and don't count toward the global. The numbers can be tuned without a
-    code deploy via AI_CAP_PER_ACCOUNT / AI_CAP_GLOBAL. In-process counters — fine
+    code deploy: AI_CAP_{SCOPE}_PER_ACCOUNT / AI_CAP_{SCOPE}_GLOBAL override one
+    endpoint's caps; the un-scoped AI_CAP_PER_ACCOUNT / AI_CAP_GLOBAL fall back for
+    all of them. (The scoped names exist because the endpoints are deliberately
+    tuned differently — e.g. filing-QA 5/40 vs ask 30/300 — and a single global
+    env var would silently collapse them to one value.) In-process counters — fine
     for the single instance this runs on; a restart only resets (loosens), never
     wrongly locks anyone out.
     """
+    prefix = f"AI_CAP_{scope}_" if scope else "AI_CAP_"
+
+    def _env_cap(suffix: str, default: int) -> int:
+        raw = os.getenv(prefix + suffix) or os.getenv("AI_CAP_" + suffix)
+        return int(raw) if raw else default
 
     def _dep(user: CurrentUser) -> None:
         if user.email and user.email.lower() in _uncapped_emails():
             return  # owner / allowlisted — never capped
-        pa = int(os.getenv("AI_CAP_PER_ACCOUNT", str(per_account)))
-        gl = int(os.getenv("AI_CAP_GLOBAL", str(global_cap)))
+        pa = _env_cap("PER_ACCOUNT", per_account)
+        gl = _env_cap("GLOBAL", global_cap)
         today = datetime.now(UTC).strftime("%Y-%m-%d")
         with _daily_lock:
             if _global_daily["day"] != today:

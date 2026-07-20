@@ -17,8 +17,9 @@
 
 After scoring, the workflow runs four best-effort steps (each `continue-on-error`,
 so a failure never blocks the critical path): FRED macro refresh, Form 4 insider
-ingestion, 8-K event ingestion, and a **watchlist Decision-Brief warm** (Haiku,
-`pregenerate_ai.py --top-n 0 --briefs-only`, gated on `ANTHROPIC_API_KEY`).
+ingestion, 8-K event ingestion, and a **hot-set Decision-Brief warm** (Groq-first
+with Haiku fallback, `prewarm_briefs.py --sleep 0.3`, gated on `GROQ_API_KEY` /
+`ANTHROPIC_API_KEY`).
 
 Fundamentals + metrics (steps 4–5) were moved into the nightly so new filings
 land in ranks the next morning; the weekly still re-runs them behind the full

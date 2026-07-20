@@ -103,12 +103,6 @@ export function computeVsa(prices: PricePoint[]): VsaBar[] {
   })
 }
 
-export const VSA_LABEL: Record<Exclude<VsaClass, 'normal'>, string> = {
-  climax: 'Climax volume',
-  wide: 'Wide spread',
-  churn: 'Churn / no-demand',
-}
-
 /* ── trading range ────────────────────────────────────────────────────────── */
 
 export interface TradingRange {

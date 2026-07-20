@@ -302,10 +302,7 @@ def get_clinical(ticker: str) -> ClinicalPipelineResponse:
     conditions targeted. `available` is false for non-health-care names, when
     the sponsor has no trials, or if the API is unreachable — the panel then
     simply doesn't render. Context only; never touches factor scores."""
-    ticker = ticker.upper()
-    header = queries.security_header(ticker)
-    if header is None:
-        raise HTTPException(status_code=404, detail=f"Ticker {ticker!r} not found")
+    ticker, header = _require_security(ticker)
     payload = clinical_engine.clinical_pipeline(
         header.get("name"), sector=header.get("sector")
     )
@@ -375,7 +372,7 @@ def get_filing_qa(ticker: str) -> FilingQaStatusResponse:
         Depends(rate_limit(5, 300)),  # per-IP burst guard
         # per-account + service-wide per-day cap on the costliest (Opus-class) AI
         # call; the owner (UNCAPPED_EMAILS) is exempt from both.
-        Depends(ai_daily_cap(5, 40)),
+        Depends(ai_daily_cap(5, 40, scope="FILING_QA")),
     ],
 )
 def generate_filing_qa(
@@ -486,7 +483,7 @@ def generate_brief(
         Depends(rate_limit(15, 300)),          # per-IP burst guard
         # Cheap (Groq-free / Haiku) but multi-use — cap per account + service-wide
         # per day so it can't run up spend. Owner (UNCAPPED_EMAILS) is exempt.
-        Depends(ai_daily_cap(30, 300)),
+        Depends(ai_daily_cap(30, 300, scope="ASK")),
     ],
 )
 def ask_stockbud(

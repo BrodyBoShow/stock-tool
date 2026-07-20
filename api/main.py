@@ -25,7 +25,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.auth import CurrentUser
 from api.routers import (
     alerts,
     funds,
@@ -107,16 +106,6 @@ def _close_pool() -> None:
     from engine import db
 
     db.close_pool()
-
-
-@app.get("/auth/me", tags=["meta"])
-def auth_me(user: CurrentUser) -> dict:
-    """Return the authenticated user's id + email — validates a Supabase session.
-
-    The SPA's login probe: a 200 confirms the bearer token verifies, a 401 means
-    the user must (re)authenticate.
-    """
-    return {"id": user.id, "email": user.email}
 
 
 app.include_router(screener.router, prefix="/screener", tags=["screener"])
