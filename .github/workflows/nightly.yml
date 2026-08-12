@@ -122,11 +122,16 @@ jobs:
       # nights, then it settles into small deltas. Supervised so a Supabase
       # pooler drop mid-write restarts instead of eating the job timeout;
       # incremental, so the restart resumes where it left off.
+      # --incremental: fetch only the ~1-2% of CIKs that filed a new Form 4 since
+      # their last stored txn (via the filings catalog), instead of sweeping all
+      # ~5,650 CIKs' submissions just to discover them (~80 min -> a few min). The
+      # twice-weekday intraday full sweep + the weekly full insiders.run() are the
+      # backstops; insider data is context-only (never feeds factor scores).
       - name: Refresh insider transactions (Form 4)
         continue-on-error: true
         run: >
           python scripts/supervise_backfill.py --label nightly-insiders --stall 900 --
-          python -u scripts/ingest_insiders.py --max-fetches 40000
+          python -u scripts/ingest_insiders.py --max-fetches 40000 --incremental
 
       # 8-K material events — CONTEXT ONLY. One submissions read per company
       # (no document fetch), incremental by accession.
