@@ -33,6 +33,7 @@ Conventions the math relies on (documented once, used everywhere):
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from collections import defaultdict
 from datetime import date, timedelta
 from typing import Any
@@ -518,9 +519,20 @@ def compute_portfolio(owner_id: str | None = None,
                 "warnings": ["No price data on or after the first transaction date."],
                 "cash_tracking": cash_tracking}
 
+    # Each ledger row is applied on the first PRICED session on/after its trade
+    # date. A row dated on a mid-history weekend/holiday (e.g. a manual buy the
+    # user dated Saturday July 4th) previously fell through the day loop
+    # entirely — only pre-timeline and post-timeline dates were handled — so the
+    # position silently never appeared in holdings or the value series. Broker
+    # convention: a non-session-dated transaction books on the next session.
+    # Rows dated after the last priced session keep their own date for the
+    # post-loop snapshot block below; lot acquisition keeps the ORIGINAL trade
+    # date (set where lots are created), so tax-lot aging is unaffected.
     txns_by_date: dict[date, list[dict]] = defaultdict(list)
     for t in ledger:
-        txns_by_date[t["date"]].append(t)
+        i = bisect_left(timeline, t["date"])
+        eff = timeline[i] if i < len(timeline) else t["date"]
+        txns_by_date[eff].append(t)
 
     # ── day-by-day simulation ────────────────────────────────────────────────
     # sid -> [shares, cost$, acquired: date]. _fifo_sell only touches indices
@@ -551,9 +563,6 @@ def compute_portfolio(owner_id: str | None = None,
         """Actual cash moved by a buy/sell (broker total wins over shares×price)."""
         return t["amount"] if t["amount"] is not None else t["shares"] * t["price"]
 
-    # process any ledger rows dated before the first price date (e.g. weekend)
-    pending = [d for d in txns_by_date if d < timeline[0]]
-
     for day in timeline:
         flow = 0.0
 
@@ -576,12 +585,9 @@ def compute_portfolio(owner_id: str | None = None,
                     flow -= paid
                     xirr_flows.append((day, paid))
 
-        # 3) this day's ledger rows (start-of-day convention)
-        todays = txns_by_date.get(day, [])
-        if pending:
-            todays = [t for d in pending for t in txns_by_date[d]] + todays
-            pending = []
-        for t in todays:
+        # 3) this day's ledger rows (start-of-day convention; each row was
+        # mapped to its first priced session when txns_by_date was built)
+        for t in txns_by_date.get(day, []):
             typ, sid = t["type"], t["sid"]
             if typ == "buy":
                 amt = cash_amt(t)
