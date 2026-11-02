@@ -210,6 +210,59 @@ def _upsert_rows(cur, security_id: int, accession: str, form: str,
     return len(rows)
 
 
+FORM4_FORMS = ("4", "4/A")
+INCREMENTAL_LOOKBACK_DAYS = 30
+
+
+def companies_with_new_form4(days: int = INCREMENTAL_LOOKBACK_DAYS) -> list[str]:
+    """Active tickers with a Form 4/4-A in the `filings` catalog newer than their
+    latest stored insider transaction — i.e. an insider filing we haven't parsed.
+
+    Lets the nightly fetch only the handful of companies that actually had an
+    insider file (~1-2%/day) instead of hitting SEC's submissions index for all
+    ~5,650 CIKs just to discover them. Insider data is CONTEXT-ONLY (never feeds
+    factor scores), so the recency bar is looser than fundamentals: the
+    twice-weekday intraday full sweep and the weekly full run() are the backstops.
+    Bounded to `days` so a 4/A amendment or a parser-gap name isn't re-fetched
+    forever (the weekly full sweep reconciles the long tail).
+
+    Filings attach to the LOWEST security_id of a CIK and run() re-fetches the
+    whole CIK per ticker, so returning the lowest-sid ticker covers all classes.
+    Requires the filing catalog to have run first (it populates `filings`); the
+    catalog precedes this step intraday, and runs ~1 day ahead in the nightly.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH recent AS (
+                    SELECT f.security_id, max(f.filed_date) AS last_form4
+                    FROM filings f
+                    WHERE f.form = ANY(%s)
+                      AND f.filed_date >= CURRENT_DATE - make_interval(days => %s)
+                    GROUP BY f.security_id
+                ),
+                txns AS (
+                    SELECT it.security_id, max(it.filed_date) AS last_txn
+                    FROM insider_transactions it
+                    WHERE it.security_id IN (SELECT security_id FROM recent)
+                    GROUP BY it.security_id
+                )
+                SELECT s.ticker
+                FROM recent r
+                JOIN securities s ON s.security_id = r.security_id AND s.is_active
+                LEFT JOIN txns t ON t.security_id = r.security_id
+                WHERE r.last_form4 > COALESCE(t.last_txn, DATE '1900-01-01')
+                ORDER BY s.ticker
+                """,
+                (list(FORM4_FORMS), days),
+            )
+            return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def run(
     limit: int | None = None,
     tickers: list[str] | None = None,
