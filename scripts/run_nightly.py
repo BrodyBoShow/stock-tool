@@ -137,32 +137,49 @@ def main() -> int:
     deactivated = universe.deactivate_derivative_listings()
     print(f"  Deactivated {deactivated} warrant/unit/right listing(s).")
 
-    # --- step 4: fundamentals refresh ---
-    # resume=False: re-fetch every active company so new 10-Q/10-K facts land
-    # daily (resume=True is a backfill flag that would skip everyone).
-    print("\n=== [4/6] Fundamentals refresh ===")
-    fi = fundamentals.run(resume=False)
-    print(
-        f"  Companies {fi['companies_processed']}/{fi['companies_total']}  "
-        f"filings {fi['filings_rows']}  facts {fi['fact_rows']}  "
-        f"failed {fi['companies_failed']}  "
-        f"job_runs id {fi['job_id']}"
-    )
-    if fi["warnings"]:
-        print(f"  Warnings: {len(fi['warnings'])} (see job_runs id {fi['job_id']})")
+    # --- step 4: fundamentals refresh (incremental) ---
+    # Only re-fetch companyfacts for companies that filed a new 10-Q/10-K/20-F/40-F
+    # since their facts were last ingested — typically <1% of the universe — instead
+    # of re-pulling all ~5,600 companyfacts nightly (~70 min -> a few minutes). The
+    # weekly pipeline (run_weekly: fundamentals.run(resume=False)) does the full
+    # sweep as the backstop for anything this diff misses (filings with no XBRL,
+    # normalization gaps, restatements). Passing explicit tickers force-refreshes
+    # them regardless of the resume flag.
+    print("\n=== [4/6] Fundamentals refresh (incremental) ===")
+    dirty = fundamentals.companies_needing_refresh()
+    if dirty:
+        fi = fundamentals.run(tickers=dirty)
+        print(
+            f"  Refreshed {len(dirty)} name(s) with new filings  "
+            f"facts {fi['fact_rows']}  failed {fi['companies_failed']}  "
+            f"job_runs id {fi['job_id']}"
+        )
+        if fi["warnings"]:
+            print(f"  Warnings: {len(fi['warnings'])} (see job_runs id {fi['job_id']})")
+    else:
+        fi = None
+        print("  No companies filed new fundamentals since last refresh — skipping fetch.")
 
-    # --- step 5: derived metrics ---
+    # --- step 5: derived metrics (only the refreshed names) ---
+    # Fundamental metrics change only when a company files, so recompute just the
+    # refreshed set; names that didn't file keep their existing metric rows (which
+    # scoring still reads). Price-derived ratios (P/E, P/S, momentum) are recomputed
+    # for the WHOLE universe in step 6 from tonight's close, independent of this.
     print("\n=== [5/6] Derived metrics ===")
-    me = metrics.run()
-    print(
-        f"  Companies {me['companies_done']}/{me['companies_total']}  "
-        f"metric rows {me['metric_rows']}  "
-        f"non-USD filers {me.get('non_usd_companies', 0)}  "
-        f"failed {me['companies_failed']}  "
-        f"job_runs id {me['job_id']}"
-    )
-    if me["warnings"]:
-        print(f"  Warnings: {len(me['warnings'])} (see job_runs id {me['job_id']})")
+    if dirty:
+        me = metrics.run(tickers=dirty)
+        print(
+            f"  Recomputed {me['companies_done']}/{me['companies_total']}  "
+            f"metric rows {me['metric_rows']}  "
+            f"non-USD filers {me.get('non_usd_companies', 0)}  "
+            f"failed {me['companies_failed']}  "
+            f"job_runs id {me['job_id']}"
+        )
+        if me["warnings"]:
+            print(f"  Warnings: {len(me['warnings'])} (see job_runs id {me['job_id']})")
+    else:
+        me = None
+        print("  No refreshed names — fundamental metrics unchanged.")
 
     # --- step 6: factor scoring ---
     print("\n=== [6/6] Factor scoring ===")
